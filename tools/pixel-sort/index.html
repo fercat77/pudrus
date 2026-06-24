@@ -1,0 +1,391 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Pixel Sorter — PUDRUS.XYZ</title>
+  <link rel="stylesheet" href="../../css/style.css">
+</head>
+<body>
+
+<nav>
+  <a href="../../index.html" class="nav-logo">PUDRUS<span>.xyz</span></a>
+  <ul class="nav-links">
+    <li><a href="../../index.html#tools">All Tools</a></li>
+  </ul>
+</nav>
+
+<div class="tool-layout">
+
+  <!-- ── PANEL ── -->
+  <div class="tool-panel">
+    <div class="tool-panel-header">
+      <a href="../../index.html" class="back">← Back</a>
+      <h2>⟆ Pixel Sorter</h2>
+      <p>Sort pixels by brightness, hue or saturation. Load an image to start.</p>
+    </div>
+
+    <div class="tool-panel-body">
+
+      <!-- Upload -->
+      <div class="file-upload" id="dropZone">
+        <span class="icon">◈</span>
+        <span>Click or drop an image here</span>
+        <input type="file" id="fileInput" accept="image/*">
+      </div>
+
+      <hr class="divider">
+
+      <!-- Sort Direction -->
+      <div class="control-group">
+        <span class="control-label">Sort Direction</span>
+        <div class="control-row">
+          <select id="direction">
+            <option value="horizontal">Horizontal</option>
+            <option value="vertical">Vertical</option>
+            <option value="diagonal">Diagonal</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- Sort By -->
+      <div class="control-group">
+        <span class="control-label">Sort By</span>
+        <div class="control-row">
+          <select id="sortBy">
+            <option value="brightness">Brightness</option>
+            <option value="hue">Hue</option>
+            <option value="saturation">Saturation</option>
+            <option value="red">Red Channel</option>
+            <option value="green">Green Channel</option>
+            <option value="blue">Blue Channel</option>
+          </select>
+        </div>
+      </div>
+
+      <hr class="divider">
+
+      <!-- Threshold -->
+      <div class="control-group">
+        <span class="control-label">Threshold</span>
+        <div class="control-row">
+          <label>Min</label>
+          <input type="range" id="threshMin" min="0" max="255" value="20">
+          <span class="val" id="threshMinVal">20</span>
+        </div>
+        <div class="control-row">
+          <label>Max</label>
+          <input type="range" id="threshMax" min="0" max="255" value="235">
+          <span class="val" id="threshMaxVal">235</span>
+        </div>
+      </div>
+
+      <!-- Interval -->
+      <div class="control-group">
+        <span class="control-label">Interval Length</span>
+        <div class="control-row">
+          <label>Min Length</label>
+          <input type="range" id="intervalMin" min="1" max="200" value="10">
+          <span class="val" id="intervalMinVal">10</span>
+        </div>
+        <div class="control-row">
+          <label>Max Length</label>
+          <input type="range" id="intervalMax" min="10" max="1000" value="200">
+          <span class="val" id="intervalMaxVal">200</span>
+        </div>
+      </div>
+
+      <!-- Intensity -->
+      <div class="control-group">
+        <span class="control-label">Effect Intensity</span>
+        <div class="control-row">
+          <label>Coverage</label>
+          <input type="range" id="coverage" min="0" max="100" value="100">
+          <span class="val" id="coverageVal">100%</span>
+        </div>
+        <div class="control-row">
+          <label>Randomness</label>
+          <input type="range" id="randomness" min="0" max="100" value="0">
+          <span class="val" id="randomnessVal">0%</span>
+        </div>
+      </div>
+
+      <!-- Reverse -->
+      <div class="control-group">
+        <span class="control-label">Options</span>
+        <div class="toggle-row">
+          <label>Reverse Sort</label>
+          <div class="toggle" id="reverseToggle"></div>
+        </div>
+        <div class="toggle-row">
+          <label>Preserve Edges</label>
+          <div class="toggle" id="edgesToggle"></div>
+        </div>
+      </div>
+
+    </div>
+
+    <div class="status-bar" id="statusBar">◈ No image loaded</div>
+
+    <div class="action-btns">
+      <button class="btn btn-primary" id="applyBtn" style="width:100%">◈ Apply Sort</button>
+      <button class="btn btn-outline" id="randomBtn" style="width:100%">◈ Random Sort</button>
+      <button class="btn btn-outline" id="resetBtn" style="width:100%">Reset</button>
+      <button class="btn btn-outline" id="exportBtn" style="width:100%">Export PNG</button>
+    </div>
+  </div>
+
+  <!-- ── CANVAS ── -->
+  <div class="tool-canvas-area" id="canvasArea">
+    <canvas id="mainCanvas"></canvas>
+    <div class="canvas-info" id="canvasInfo">No image loaded</div>
+  </div>
+
+</div>
+
+<script>
+// ── STATE ─────────────────────────────────────────────
+let origImageData = null;
+let currentImageData = null;
+let img = null;
+let canvas = document.getElementById('mainCanvas');
+let ctx = canvas.getContext('2d');
+let isReverse = false;
+let preserveEdges = false;
+
+// ── UI HELPERS ────────────────────────────────────────
+function slider(id, valId, suffix='') {
+  let el = document.getElementById(id);
+  let vl = document.getElementById(valId);
+  el.addEventListener('input', () => { vl.textContent = el.value + suffix; });
+}
+slider('threshMin',    'threshMinVal');
+slider('threshMax',    'threshMaxVal');
+slider('intervalMin',  'intervalMinVal');
+slider('intervalMax',  'intervalMaxVal');
+slider('coverage',     'coverageVal', '%');
+slider('randomness',   'randomnessVal', '%');
+
+function toggle(id, callback) {
+  let el = document.getElementById(id);
+  el.addEventListener('click', () => {
+    el.classList.toggle('on');
+    callback(el.classList.contains('on'));
+  });
+}
+toggle('reverseToggle', v => isReverse = v);
+toggle('edgesToggle',   v => preserveEdges = v);
+
+function status(msg) {
+  document.getElementById('statusBar').textContent = '◈ ' + msg;
+}
+
+// ── FILE LOAD ─────────────────────────────────────────
+let dropZone = document.getElementById('dropZone');
+let fileInput = document.getElementById('fileInput');
+
+dropZone.addEventListener('click', () => fileInput.click());
+dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.style.borderColor='var(--c1)'; });
+dropZone.addEventListener('dragleave', () => dropZone.style.borderColor='');
+dropZone.addEventListener('drop', e => {
+  e.preventDefault(); dropZone.style.borderColor='';
+  let file = e.dataTransfer.files[0];
+  if (file && file.type.startsWith('image/')) loadFile(file);
+});
+fileInput.addEventListener('change', () => {
+  if (fileInput.files[0]) loadFile(fileInput.files[0]);
+});
+
+function loadFile(file) {
+  let reader = new FileReader();
+  reader.onload = e => {
+    img = new Image();
+    img.onload = () => {
+      // Fit canvas to area
+      let area = document.getElementById('canvasArea');
+      let maxW = area.clientWidth - 40;
+      let maxH = area.clientHeight - 40;
+      let scale = Math.min(maxW/img.width, maxH/img.height, 1);
+      canvas.width  = img.width;
+      canvas.height = img.height;
+      canvas.style.width  = (img.width  * scale) + 'px';
+      canvas.style.height = (img.height * scale) + 'px';
+      ctx.drawImage(img, 0, 0);
+      origImageData    = ctx.getImageData(0, 0, canvas.width, canvas.height);
+      currentImageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+      document.getElementById('canvasInfo').textContent =
+        img.width + ' × ' + img.height + ' px';
+      status('Image loaded — click Apply Sort');
+    };
+    img.src = e.target.result;
+  };
+  reader.readAsDataURL(file);
+}
+
+// ── PIXEL SORT ────────────────────────────────────────
+function getBrightness(r,g,b) { return 0.299*r + 0.587*g + 0.114*b; }
+function getHue(r,g,b) {
+  r/=255; g/=255; b/=255;
+  let max=Math.max(r,g,b), min=Math.min(r,g,b), h=0, d=max-min;
+  if(d===0) return 0;
+  if(max===r) h=(g-b)/d%6;
+  else if(max===g) h=(b-r)/d+2;
+  else h=(r-g)/d+4;
+  return (h*60+360)%360;
+}
+function getSaturation(r,g,b) {
+  r/=255; g/=255; b/=255;
+  let max=Math.max(r,g,b), min=Math.min(r,g,b);
+  return max===0 ? 0 : (max-min)/max*255;
+}
+
+function getSortValue(data, idx, sortBy) {
+  let r=data[idx], g=data[idx+1], b=data[idx+2];
+  switch(sortBy) {
+    case 'brightness':  return getBrightness(r,g,b);
+    case 'hue':         return getHue(r,g,b)/360*255;
+    case 'saturation':  return getSaturation(r,g,b);
+    case 'red':         return r;
+    case 'green':       return g;
+    case 'blue':        return b;
+    default: return getBrightness(r,g,b);
+  }
+}
+
+function applySort() {
+  if (!origImageData) { status('Load an image first'); return; }
+  status('Sorting...');
+
+  setTimeout(() => {
+    let src = new ImageData(
+      new Uint8ClampedArray(origImageData.data),
+      origImageData.width, origImageData.height
+    );
+    let data    = src.data;
+    let W       = src.width, H = src.height;
+    let sortBy  = document.getElementById('sortBy').value;
+    let dir     = document.getElementById('direction').value;
+    let tMin    = parseInt(document.getElementById('threshMin').value);
+    let tMax    = parseInt(document.getElementById('threshMax').value);
+    let iMin    = parseInt(document.getElementById('intervalMin').value);
+    let iMax    = parseInt(document.getElementById('intervalMax').value);
+    let cov     = parseInt(document.getElementById('coverage').value) / 100;
+    let rnd     = parseInt(document.getElementById('randomness').value) / 100;
+
+    if (dir === 'horizontal') {
+      for (let y = 0; y < H; y++) {
+        if (Math.random() > cov) continue;
+        sortLine(data, W, H, y, sortBy, tMin, tMax, iMin, iMax, rnd, 'h');
+      }
+    } else if (dir === 'vertical') {
+      for (let x = 0; x < W; x++) {
+        if (Math.random() > cov) continue;
+        sortLine(data, W, H, x, sortBy, tMin, tMax, iMin, iMax, rnd, 'v');
+      }
+    } else {
+      // Diagonal
+      for (let y = 0; y < H; y++) {
+        if (Math.random() > cov) continue;
+        sortLine(data, W, H, y, sortBy, tMin, tMax, iMin, iMax, rnd, 'h');
+      }
+      for (let x = 0; x < W; x++) {
+        if (Math.random() > cov) continue;
+        sortLine(data, W, H, x, sortBy, tMin, tMax, iMin, iMax, rnd, 'v');
+      }
+    }
+
+    ctx.putImageData(src, 0, 0);
+    currentImageData = ctx.getImageData(0, 0, W, H);
+    status('Done — ' + W + '×' + H + ' px');
+  }, 10);
+}
+
+function sortLine(data, W, H, lineIdx, sortBy, tMin, tMax, iMin, iMax, rnd, axis) {
+  let len = axis==='h' ? W : H;
+  let i = 0;
+  while (i < len) {
+    // Saltar si fuera del threshold
+    let idx = axis==='h'
+      ? (lineIdx * W + i) * 4
+      : (i * W + lineIdx) * 4;
+    let val = getSortValue(data, idx, sortBy);
+
+    if (val < tMin || val > tMax) { i++; continue; }
+
+    // Intervalo a ordenar
+    let intLen = iMin + Math.floor(Math.random() * (iMax - iMin));
+    if (rnd > 0) intLen = Math.floor(intLen * (1 + (Math.random()-0.5) * rnd * 2));
+    let end = Math.min(i + intLen, len);
+
+    // Extraer segmento
+    let segment = [];
+    for (let j = i; j < end; j++) {
+      let si = axis==='h'
+        ? (lineIdx * W + j) * 4
+        : (j * W + lineIdx) * 4;
+      let sv = getSortValue(data, si, sortBy);
+      if (sv < tMin || sv > tMax) { end=j; break; }
+      segment.push({ r:data[si], g:data[si+1], b:data[si+2], a:data[si+3], v:sv });
+    }
+
+    // Ordenar
+    segment.sort((a,b) => isReverse ? b.v-a.v : a.v-b.v);
+
+    // Escribir de vuelta
+    for (let j = 0; j < segment.length; j++) {
+      let si = axis==='h'
+        ? (lineIdx * W + (i+j)) * 4
+        : ((i+j) * W + lineIdx) * 4;
+      data[si]   = segment[j].r;
+      data[si+1] = segment[j].g;
+      data[si+2] = segment[j].b;
+      data[si+3] = segment[j].a;
+    }
+
+    i = end + 1;
+  }
+}
+
+// ── BUTTONS ───────────────────────────────────────────
+document.getElementById('applyBtn').addEventListener('click', applySort);
+
+function randomSort() {
+  if (!origImageData) { status('Load an image first'); return; }
+  let directions = ['horizontal','vertical','diagonal'];
+  let sortBys    = ['brightness','hue','saturation','red','green','blue'];
+  document.getElementById('direction').value   = directions[Math.floor(Math.random()*directions.length)];
+  document.getElementById('sortBy').value      = sortBys[Math.floor(Math.random()*sortBys.length)];
+  document.getElementById('threshMin').value   = Math.floor(Math.random()*80);
+  document.getElementById('threshMax').value   = Math.floor(Math.random()*80+160);
+  document.getElementById('intervalMin').value = Math.floor(Math.random()*50+5);
+  document.getElementById('intervalMax').value = Math.floor(Math.random()*400+100);
+  document.getElementById('coverage').value    = Math.floor(Math.random()*60+40);
+  document.getElementById('randomness').value  = Math.floor(Math.random()*60);
+  // Update labels
+  ['threshMin','threshMax','intervalMin','intervalMax'].forEach(id=>{
+    document.getElementById(id+'Val').textContent = document.getElementById(id).value;
+  });
+  document.getElementById('coverageVal').textContent    = document.getElementById('coverage').value+'%';
+  document.getElementById('randomnessVal').textContent  = document.getElementById('randomness').value+'%';
+  applySort();
+}
+
+document.getElementById('randomBtn').addEventListener('click', randomSort);
+
+document.getElementById('resetBtn').addEventListener('click', () => {
+  if (!origImageData) return;
+  ctx.putImageData(origImageData, 0, 0);
+  status('Reset to original');
+});
+
+document.getElementById('exportBtn').addEventListener('click', () => {
+  if (!origImageData) { status('Nothing to export'); return; }
+  let link = document.createElement('a');
+  link.download = 'pudrus_pixelsort_' + Date.now() + '.png';
+  link.href = canvas.toDataURL('image/png');
+  link.click();
+  status('Exported!');
+});
+</script>
+</body>
+</html>

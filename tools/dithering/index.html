@@ -1,0 +1,332 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Dithering — PUDRUS.XYZ</title>
+  <link rel="stylesheet" href="../../css/style.css">
+</head>
+<body>
+<nav>
+  <a href="../../index.html" class="nav-logo">PUDRUS<span>.xyz</span></a>
+  <ul class="nav-links"><li><a href="../../index.html#tools">All Tools</a></li></ul>
+</nav>
+
+<div class="tool-layout">
+  <div class="tool-panel">
+    <div class="tool-panel-header">
+      <a href="../../index.html" class="back">← Back</a>
+      <h2>⠿ Dithering</h2>
+      <p>Classic dithering algorithms with full color palette control.</p>
+    </div>
+
+    <div class="tool-panel-body">
+      <div class="file-upload" id="dropZone">
+        <span class="icon">◈</span>
+        <span>Click or drop an image here</span>
+        <input type="file" id="fileInput" accept="image/*">
+      </div>
+
+      <hr class="divider">
+
+      <div class="control-group">
+        <span class="control-label">Algorithm</span>
+        <select id="algorithm">
+          <option value="floyd">Floyd-Steinberg</option>
+          <option value="atkinson">Atkinson</option>
+          <option value="ordered">Ordered (Bayer)</option>
+          <option value="random">Random</option>
+          <option value="halftone">Halftone</option>
+        </select>
+      </div>
+
+      <div class="control-group">
+        <span class="control-label">Color Mode</span>
+        <select id="colorMode">
+          <option value="bw">Black & White</option>
+          <option value="2bit">2-bit (4 colors)</option>
+          <option value="custom">Custom Palette</option>
+        </select>
+      </div>
+
+      <div class="control-group" id="customPalette" style="display:none">
+        <span class="control-label">Custom Colors</span>
+        <div class="control-row">
+          <label>Color 1</label>
+          <input type="color" id="col1" value="#000000">
+          <label>Color 2</label>
+          <input type="color" id="col2" value="#ffffff">
+        </div>
+        <div class="control-row">
+          <label>Color 3</label>
+          <input type="color" id="col3" value="#00d4ff">
+          <label>Color 4</label>
+          <input type="color" id="col4" value="#ff0080">
+        </div>
+      </div>
+
+      <div class="control-group">
+        <span class="control-label">Parameters</span>
+        <div class="control-row">
+          <label>Scale</label>
+          <input type="range" id="scale" min="1" max="8" value="1">
+          <span class="val" id="scaleVal">1x</span>
+        </div>
+        <div class="control-row">
+          <label>Threshold</label>
+          <input type="range" id="threshold" min="0" max="255" value="128">
+          <span class="val" id="thresholdVal">128</span>
+        </div>
+        <div class="control-row">
+          <label>Contrast</label>
+          <input type="range" id="contrast" min="-100" max="100" value="0">
+          <span class="val" id="contrastVal">0</span>
+        </div>
+      </div>
+
+      <div class="control-group">
+        <span class="control-label">Options</span>
+        <div class="toggle-row">
+          <label>Invert</label>
+          <div class="toggle" id="invertToggle"></div>
+        </div>
+        <div class="toggle-row">
+          <label>Grayscale First</label>
+          <div class="toggle on" id="grayToggle"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="status-bar" id="statusBar">◈ No image loaded</div>
+    <div class="action-btns">
+      <button class="btn btn-primary" id="applyBtn" style="width:100%">◈ Apply Dither</button>
+      <button class="btn btn-outline"  id="randomBtn" style="width:100%">◈ Random Dither</button>
+      <button class="btn btn-outline"  id="resetBtn"  style="width:100%">Reset</button>
+      <button class="btn btn-outline"  id="exportBtn" style="width:100%">Export PNG</button>
+    </div>
+  </div>
+
+  <div class="tool-canvas-area" id="canvasArea">
+    <canvas id="mainCanvas"></canvas>
+    <div class="canvas-info" id="canvasInfo">No image loaded</div>
+  </div>
+</div>
+
+<script>
+let origImageData=null, canvas=document.getElementById('mainCanvas'), ctx=canvas.getContext('2d');
+let isInvert=false, doGray=true;
+
+// Sliders
+[['scale','scaleVal','x'],['threshold','thresholdVal',''],['contrast','contrastVal','']].forEach(([id,vid,suf])=>{
+  document.getElementById(id).addEventListener('input',()=>{
+    document.getElementById(vid).textContent=document.getElementById(id).value+suf;
+  });
+});
+
+function toggle(id,cb){let el=document.getElementById(id);el.addEventListener('click',()=>{el.classList.toggle('on');cb(el.classList.contains('on'));});}
+toggle('invertToggle',v=>isInvert=v);
+toggle('grayToggle',v=>doGray=v);
+
+document.getElementById('colorMode').addEventListener('change',function(){
+  document.getElementById('customPalette').style.display=this.value==='custom'?'block':'none';
+});
+
+function status(m){document.getElementById('statusBar').textContent='◈ '+m;}
+
+// File load
+let dropZone=document.getElementById('dropZone'),fileInput=document.getElementById('fileInput');
+dropZone.addEventListener('click',()=>fileInput.click());
+dropZone.addEventListener('dragover',e=>{e.preventDefault();});
+dropZone.addEventListener('drop',e=>{e.preventDefault();let f=e.dataTransfer.files[0];if(f)loadFile(f);});
+fileInput.addEventListener('change',()=>{if(fileInput.files[0])loadFile(fileInput.files[0]);});
+
+function loadFile(file){
+  let reader=new FileReader();
+  reader.onload=e=>{
+    let img=new Image();
+    img.onload=()=>{
+      let area=document.getElementById('canvasArea');
+      let scale=Math.min((area.clientWidth-40)/img.width,(area.clientHeight-40)/img.height,1);
+      canvas.width=img.width; canvas.height=img.height;
+      canvas.style.width=(img.width*scale)+'px'; canvas.style.height=(img.height*scale)+'px';
+      ctx.drawImage(img,0,0);
+      origImageData=ctx.getImageData(0,0,canvas.width,canvas.height);
+      document.getElementById('canvasInfo').textContent=img.width+' × '+img.height+' px';
+      status('Image loaded');
+    };
+    img.src=e.target.result;
+  };
+  reader.readAsDataURL(file);
+}
+
+// Helpers
+function hexToRgb(hex){let r=parseInt(hex.slice(1,3),16),g=parseInt(hex.slice(3,5),16),b=parseInt(hex.slice(5,7),16);return[r,g,b];}
+function getBright(r,g,b){return 0.299*r+0.587*g+0.114*b;}
+function applyContrast(val,contrast){let f=(259*(contrast+255))/(255*(259-contrast));return Math.min(255,Math.max(0,f*(val-128)+128));}
+
+function getPalette(){
+  let mode=document.getElementById('colorMode').value;
+  if(mode==='bw') return [[0,0,0],[255,255,255]];
+  if(mode==='2bit') return[[0,0,0],[80,80,80],[160,160,160],[255,255,255]];
+  return [
+    hexToRgb(document.getElementById('col1').value),
+    hexToRgb(document.getElementById('col2').value),
+    hexToRgb(document.getElementById('col3').value),
+    hexToRgb(document.getElementById('col4').value),
+  ];
+}
+
+function nearestColor(r,g,b,palette){
+  let best=palette[0],bestD=Infinity;
+  for(let c of palette){let d=(r-c[0])**2+(g-c[1])**2+(b-c[2])**2;if(d<bestD){bestD=d;best=c;}}
+  return best;
+}
+
+// Bayer matrix 4x4
+const BAYER4=[[0,8,2,10],[12,4,14,6],[3,11,1,9],[15,7,13,5]].map(r=>r.map(v=>v/16));
+
+function applyDither(){
+  if(!origImageData){status('Load an image first');return;}
+  status('Processing...');
+  setTimeout(()=>{
+    let src=new ImageData(new Uint8ClampedArray(origImageData.data),origImageData.width,origImageData.height);
+    let data=src.data, W=src.width, H=src.height;
+    let algo=document.getElementById('algorithm').value;
+    let palette=getPalette();
+    let sc=parseInt(document.getElementById('scale').value);
+    let thresh=parseInt(document.getElementById('threshold').value);
+    let contrast=parseInt(document.getElementById('contrast').value);
+
+    // Preprocesar
+    for(let i=0;i<data.length;i+=4){
+      if(doGray){
+        let br=getBright(data[i],data[i+1],data[i+2]);
+        data[i]=data[i+1]=data[i+2]=applyContrast(br,contrast);
+      }
+      if(isInvert){data[i]=255-data[i];data[i+1]=255-data[i+1];data[i+2]=255-data[i+2];}
+    }
+
+    if(algo==='floyd'){
+      for(let y=0;y<H;y++){
+        for(let x=0;x<W;x++){
+          let idx=(y*W+x)*4;
+          let [nr,ng,nb]=nearestColor(data[idx],data[idx+1],data[idx+2],palette);
+          let er=data[idx]-nr, eg=data[idx+1]-ng, eb=data[idx+2]-nb;
+          data[idx]=nr; data[idx+1]=ng; data[idx+2]=nb;
+          // Distribuir error Floyd-Steinberg
+          const spread=[[1,0,7/16],[-1,1,3/16],[0,1,5/16],[1,1,1/16]];
+          for(let[dx,dy,w]of spread){
+            let nx2=x+dx,ny2=y+dy;
+            if(nx2>=0&&nx2<W&&ny2<H){let ni=(ny2*W+nx2)*4;data[ni]=Math.min(255,Math.max(0,data[ni]+er*w));data[ni+1]=Math.min(255,Math.max(0,data[ni+1]+eg*w));data[ni+2]=Math.min(255,Math.max(0,data[ni+2]+eb*w));}
+          }
+        }
+      }
+    } else if(algo==='atkinson'){
+      for(let y=0;y<H;y++){
+        for(let x=0;x<W;x++){
+          let idx=(y*W+x)*4;
+          let [nr,ng,nb]=nearestColor(data[idx],data[idx+1],data[idx+2],palette);
+          let er=(data[idx]-nr)/8, eg=(data[idx+1]-ng)/8, eb=(data[idx+2]-nb)/8;
+          data[idx]=nr; data[idx+1]=ng; data[idx+2]=nb;
+          const spread=[[1,0],[2,0],[-1,1],[0,1],[1,1],[0,2]];
+          for(let[dx,dy]of spread){
+            let nx2=x+dx,ny2=y+dy;
+            if(nx2>=0&&nx2<W&&ny2<H){let ni=(ny2*W+nx2)*4;data[ni]=Math.min(255,Math.max(0,data[ni]+er));data[ni+1]=Math.min(255,Math.max(0,data[ni+1]+eg));data[ni+2]=Math.min(255,Math.max(0,data[ni+2]+eb));}
+          }
+        }
+      }
+    } else if(algo==='ordered'){
+      for(let y=0;y<H;y++){
+        for(let x=0;x<W;x++){
+          let idx=(y*W+x)*4;
+          let bayer=BAYER4[y%4][x%4];
+          let r=Math.min(255,data[idx]+bayer*80);
+          let g=Math.min(255,data[idx+1]+bayer*80);
+          let b=Math.min(255,data[idx+2]+bayer*80);
+          let [nr,ng,nb]=nearestColor(r,g,b,palette);
+          data[idx]=nr; data[idx+1]=ng; data[idx+2]=nb;
+        }
+      }
+    } else if(algo==='random'){
+      for(let y=0;y<H;y++){
+        for(let x=0;x<W;x++){
+          let idx=(y*W+x)*4;
+          let noise=(Math.random()-0.5)*thresh;
+          let r=Math.min(255,Math.max(0,data[idx]+noise));
+          let g=Math.min(255,Math.max(0,data[idx+1]+noise));
+          let b=Math.min(255,Math.max(0,data[idx+2]+noise));
+          let [nr,ng,nb]=nearestColor(r,g,b,palette);
+          data[idx]=nr; data[idx+1]=ng; data[idx+2]=nb;
+        }
+      }
+    } else if(algo==='halftone'){
+      let dotSize=sc*3;
+      for(let y=0;y<H;y+=dotSize){
+        for(let x=0;x<W;x+=dotSize){
+          // Promedio del bloque
+          let tr=0,tg=0,tb=0,count=0;
+          for(let dy=0;dy<dotSize&&y+dy<H;dy++){for(let dx=0;dx<dotSize&&x+dx<W;dx++){let i=((y+dy)*W+(x+dx))*4;tr+=data[i];tg+=data[i+1];tb+=data[i+2];count++;}}
+          tr/=count; tg/=count; tb/=count;
+          let [nr,ng,nb]=nearestColor(tr,tg,tb,palette);
+          let bright=getBright(tr,tg,tb)/255;
+          let r2=Math.ceil(dotSize/2*bright);
+          // Rellenar bloque
+          for(let dy=0;dy<dotSize&&y+dy<H;dy++){
+            for(let dx=0;dx<dotSize&&x+dx<W;dx++){
+              let i=((y+dy)*W+(x+dx))*4;
+              let cx2=x+dotSize/2, cy2=y+dotSize/2;
+              let dist=Math.sqrt((x+dx-cx2)**2+(y+dy-cy2)**2);
+              if(dist<=r2){data[i]=nr;data[i+1]=ng;data[i+2]=nb;}
+              else{data[i]=palette[0][0];data[i+1]=palette[0][1];data[i+2]=palette[0][2];}
+            }
+          }
+        }
+      }
+    }
+
+    // Escala de bloque
+    if(sc>1){
+      let out=new ImageData(W,H);
+      for(let y=0;y<H;y++){for(let x=0;x<W;x++){let sy=Math.floor(y/sc)*sc,sx=Math.floor(x/sc)*sc;let si=(sy*W+sx)*4,di=(y*W+x)*4;out.data[di]=data[si];out.data[di+1]=data[si+1];out.data[di+2]=data[si+2];out.data[di+3]=255;}}
+      ctx.putImageData(out,0,0);
+    } else {
+      ctx.putImageData(src,0,0);
+    }
+    status('Done — '+algo);
+  },10);
+}
+
+document.getElementById('applyBtn').addEventListener('click',applyDither);
+
+function randomDither() {
+  if(!origImageData){status('Load an image first');return;}
+  let algos=['floyd','atkinson','ordered','random','halftone'];
+  let modes=['bw','2bit','custom'];
+  document.getElementById('algorithm').value = algos[Math.floor(Math.random()*algos.length)];
+  let mode = modes[Math.floor(Math.random()*modes.length)];
+  document.getElementById('colorMode').value = mode;
+  document.getElementById('customPalette').style.display = mode==='custom'?'block':'none';
+  document.getElementById('scale').value     = Math.floor(Math.random()*4+1);
+  document.getElementById('scaleVal').textContent = document.getElementById('scale').value+'x';
+  document.getElementById('threshold').value = Math.floor(Math.random()*180+40);
+  document.getElementById('thresholdVal').textContent = document.getElementById('threshold').value;
+  document.getElementById('contrast').value  = Math.floor(Math.random()*80-40);
+  document.getElementById('contrastVal').textContent = document.getElementById('contrast').value;
+  // Random custom colors
+  if(mode==='custom'){
+    ['col1','col2','col3','col4'].forEach(id=>{
+      document.getElementById(id).value='#'+Math.floor(Math.random()*16777215).toString(16).padStart(6,'0');
+    });
+  }
+  applyDither();
+}
+
+document.getElementById('randomBtn').addEventListener('click',randomDither);
+document.getElementById('resetBtn').addEventListener('click',()=>{if(origImageData){ctx.putImageData(origImageData,0,0);status('Reset');}});
+document.getElementById('exportBtn').addEventListener('click',()=>{
+  if(!origImageData){status('Nothing to export');return;}
+  let a=document.createElement('a');a.download='pudrus_dither_'+Date.now()+'.png';a.href=canvas.toDataURL();a.click();status('Exported!');
+});
+</script>
+</body>
+</html>

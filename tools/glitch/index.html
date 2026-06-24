@@ -1,0 +1,316 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Glitch FX — PUDRUS.XYZ</title>
+  <link rel="stylesheet" href="../../css/style.css">
+</head>
+<body>
+<nav>
+  <a href="../../index.html" class="nav-logo">PUDRUS<span>.xyz</span></a>
+  <ul class="nav-links"><li><a href="../../index.html#tools">All Tools</a></li></ul>
+</nav>
+
+<div class="tool-layout">
+  <div class="tool-panel">
+    <div class="tool-panel-header">
+      <a href="../../index.html" class="back">← Back</a>
+      <h2>▓ Glitch FX</h2>
+      <p>RGB shift, scanlines, block corruption and datamosh effects.</p>
+    </div>
+
+    <div class="tool-panel-body">
+      <div class="file-upload" id="dropZone">
+        <span class="icon">◈</span>
+        <span>Click or drop an image here</span>
+        <input type="file" id="fileInput" accept="image/*">
+      </div>
+
+      <hr class="divider">
+
+      <div class="control-group">
+        <span class="control-label">RGB Channel Shift</span>
+        <div class="control-row">
+          <label>Red Shift X</label>
+          <input type="range" id="rShiftX" min="-50" max="50" value="0">
+          <span class="val" id="rShiftXVal">0</span>
+        </div>
+        <div class="control-row">
+          <label>Green Shift X</label>
+          <input type="range" id="gShiftX" min="-50" max="50" value="0">
+          <span class="val" id="gShiftXVal">0</span>
+        </div>
+        <div class="control-row">
+          <label>Blue Shift X</label>
+          <input type="range" id="bShiftX" min="-50" max="50" value="0">
+          <span class="val" id="bShiftXVal">0</span>
+        </div>
+        <div class="control-row">
+          <label>Shift Y</label>
+          <input type="range" id="shiftY" min="-50" max="50" value="0">
+          <span class="val" id="shiftYVal">0</span>
+        </div>
+      </div>
+
+      <hr class="divider">
+
+      <div class="control-group">
+        <span class="control-label">Block Corruption</span>
+        <div class="control-row">
+          <label>Intensity</label>
+          <input type="range" id="blockIntensity" min="0" max="100" value="0">
+          <span class="val" id="blockIntensityVal">0%</span>
+        </div>
+        <div class="control-row">
+          <label>Block Size</label>
+          <input type="range" id="blockSize" min="5" max="200" value="40">
+          <span class="val" id="blockSizeVal">40</span>
+        </div>
+        <div class="control-row">
+          <label>Offset Range</label>
+          <input type="range" id="blockOffset" min="0" max="300" value="80">
+          <span class="val" id="blockOffsetVal">80</span>
+        </div>
+      </div>
+
+      <hr class="divider">
+
+      <div class="control-group">
+        <span class="control-label">Scanlines</span>
+        <div class="control-row">
+          <label>Density</label>
+          <input type="range" id="scanDensity" min="0" max="20" value="0">
+          <span class="val" id="scanDensityVal">0</span>
+        </div>
+        <div class="control-row">
+          <label>Opacity</label>
+          <input type="range" id="scanOpacity" min="0" max="100" value="30">
+          <span class="val" id="scanOpacityVal">30%</span>
+        </div>
+      </div>
+
+      <hr class="divider">
+
+      <div class="control-group">
+        <span class="control-label">Color Effects</span>
+        <div class="control-row">
+          <label>Hue Rotate</label>
+          <input type="range" id="hueRotate" min="0" max="360" value="0">
+          <span class="val" id="hueRotateVal">0°</span>
+        </div>
+        <div class="control-row">
+          <label>Saturation</label>
+          <input type="range" id="saturation" min="0" max="300" value="100">
+          <span class="val" id="saturationVal">100%</span>
+        </div>
+        <div class="control-row">
+          <label>Brightness</label>
+          <input type="range" id="brightness" min="0" max="300" value="100">
+          <span class="val" id="brightnessVal">100%</span>
+        </div>
+      </div>
+
+      <div class="control-group">
+        <span class="control-label">Options</span>
+        <div class="toggle-row">
+          <label>Invert Colors</label>
+          <div class="toggle" id="invertToggle"></div>
+        </div>
+        <div class="toggle-row">
+          <label>Row Shift Glitch</label>
+          <div class="toggle" id="rowGlitchToggle"></div>
+        </div>
+      </div>
+
+    </div>
+
+    <div class="status-bar" id="statusBar">◈ No image loaded</div>
+    <div class="action-btns">
+      <button class="btn btn-primary" id="applyBtn" style="width:100%">◈ Apply Glitch</button>
+      <button class="btn btn-outline"  id="randomBtn" style="width:100%">◈ Random Glitch</button>
+      <button class="btn btn-outline"  id="resetBtn"  style="width:100%">Reset</button>
+      <button class="btn btn-outline"  id="exportBtn" style="width:100%">Export PNG</button>
+    </div>
+  </div>
+
+  <div class="tool-canvas-area" id="canvasArea">
+    <canvas id="mainCanvas"></canvas>
+    <div class="canvas-info" id="canvasInfo">No image loaded</div>
+  </div>
+</div>
+
+<script>
+let origImageData=null, canvas=document.getElementById('mainCanvas'), ctx=canvas.getContext('2d');
+let isInvert=false, rowGlitch=false;
+
+// Sliders
+[['rShiftX','rShiftXVal'],['gShiftX','gShiftXVal'],['bShiftX','bShiftXVal'],['shiftY','shiftYVal'],
+ ['blockIntensity','blockIntensityVal','%'],['blockSize','blockSizeVal'],['blockOffset','blockOffsetVal'],
+ ['scanDensity','scanDensityVal'],['scanOpacity','scanOpacityVal','%'],
+ ['hueRotate','hueRotateVal','°'],['saturation','saturationVal','%'],['brightness','brightnessVal','%']
+].forEach(([id,vid,suf=''])=>{
+  document.getElementById(id).addEventListener('input',()=>{
+    document.getElementById(vid).textContent=document.getElementById(id).value+suf;
+  });
+});
+
+function toggle(id,cb){let el=document.getElementById(id);el.addEventListener('click',()=>{el.classList.toggle('on');cb(el.classList.contains('on'));});}
+toggle('invertToggle',v=>isInvert=v);
+toggle('rowGlitchToggle',v=>rowGlitch=v);
+
+function status(m){document.getElementById('statusBar').textContent='◈ '+m;}
+
+let dropZone=document.getElementById('dropZone'),fileInput=document.getElementById('fileInput');
+dropZone.addEventListener('click',()=>fileInput.click());
+dropZone.addEventListener('dragover',e=>e.preventDefault());
+dropZone.addEventListener('drop',e=>{e.preventDefault();let f=e.dataTransfer.files[0];if(f)loadFile(f);});
+fileInput.addEventListener('change',()=>{if(fileInput.files[0])loadFile(fileInput.files[0]);});
+
+function loadFile(file){
+  let reader=new FileReader();
+  reader.onload=e=>{
+    let img=new Image();
+    img.onload=()=>{
+      let area=document.getElementById('canvasArea');
+      let scale=Math.min((area.clientWidth-40)/img.width,(area.clientHeight-40)/img.height,1);
+      canvas.width=img.width; canvas.height=img.height;
+      canvas.style.width=(img.width*scale)+'px'; canvas.style.height=(img.height*scale)+'px';
+      ctx.drawImage(img,0,0);
+      origImageData=ctx.getImageData(0,0,canvas.width,canvas.height);
+      document.getElementById('canvasInfo').textContent=img.width+' × '+img.height+' px';
+      status('Image loaded');
+    };
+    img.src=e.target.result;
+  };
+  reader.readAsDataURL(file);
+}
+
+function applyGlitch(){
+  if(!origImageData){status('Load an image first');return;}
+  status('Processing...');
+  setTimeout(()=>{
+    let W=origImageData.width, H=origImageData.height;
+    let src=new ImageData(new Uint8ClampedArray(origImageData.data),W,H);
+    let out=new ImageData(W,H);
+    let s=src.data, d=out.data;
+
+    let rSX=parseInt(document.getElementById('rShiftX').value);
+    let gSX=parseInt(document.getElementById('gShiftX').value);
+    let bSX=parseInt(document.getElementById('bShiftX').value);
+    let sY =parseInt(document.getElementById('shiftY').value);
+    let bInt=parseInt(document.getElementById('blockIntensity').value)/100;
+    let bSz =parseInt(document.getElementById('blockSize').value);
+    let bOff=parseInt(document.getElementById('blockOffset').value);
+    let scD =parseInt(document.getElementById('scanDensity').value);
+    let scO =parseInt(document.getElementById('scanOpacity').value)/100;
+    let hue =parseInt(document.getElementById('hueRotate').value);
+    let sat =parseInt(document.getElementById('saturation').value)/100;
+    let bri =parseInt(document.getElementById('brightness').value)/100;
+
+    // RGB Shift
+    for(let y=0;y<H;y++){
+      let rowOff = rowGlitch && Math.random()<0.05 ? Math.floor(Math.random()*80-40) : 0;
+      for(let x=0;x<W;x++){
+        let di=(y*W+x)*4;
+        // Red
+        let rx=Math.min(W-1,Math.max(0,x+rSX+rowOff)), ry=Math.min(H-1,Math.max(0,y+sY));
+        let ri=(ry*W+rx)*4;
+        // Green
+        let gx=Math.min(W-1,Math.max(0,x+gSX)), gy=Math.min(H-1,Math.max(0,y));
+        let gi=(gy*W+gx)*4;
+        // Blue
+        let bx=Math.min(W-1,Math.max(0,x+bSX)), by2=Math.min(H-1,Math.max(0,y-sY));
+        let bi=(by2*W+bx)*4;
+
+        d[di]  =s[ri];
+        d[di+1]=s[gi+1];
+        d[di+2]=s[bi+2];
+        d[di+3]=255;
+      }
+    }
+
+    // Block corruption
+    if(bInt>0){
+      let numBlocks=Math.floor(bInt*30);
+      for(let n=0;n<numBlocks;n++){
+        let bx=Math.floor(Math.random()*W);
+        let by=Math.floor(Math.random()*H);
+        let bw=Math.floor(Math.random()*bSz+10);
+        let bh=Math.floor(Math.random()*bSz*0.3+5);
+        let off=Math.floor(Math.random()*bOff-(bOff/2));
+        for(let dy=0;dy<bh;dy++){
+          for(let dx=0;dx<bw;dx++){
+            let tx=bx+dx, ty=by+dy;
+            if(tx>=0&&tx<W&&ty>=0&&ty<H){
+              let sx2=Math.min(W-1,Math.max(0,tx+off));
+              let di=(ty*W+tx)*4, si=(ty*W+sx2)*4;
+              d[di]=d[si]; d[di+1]=d[si+1]; d[di+2]=d[si+2];
+            }
+          }
+        }
+      }
+    }
+
+    // Scanlines
+    if(scD>0){
+      for(let y=0;y<H;y+=scD){
+        for(let x=0;x<W;x++){
+          let i=(y*W+x)*4;
+          d[i]=Math.floor(d[i]*(1-scO));
+          d[i+1]=Math.floor(d[i+1]*(1-scO));
+          d[i+2]=Math.floor(d[i+2]*(1-scO));
+        }
+      }
+    }
+
+    // Color effects (brightness + saturation via CSS filter on offscreen canvas)
+    ctx.putImageData(out,0,0);
+    let filters=[];
+    if(bri!==1)   filters.push(`brightness(${bri})`);
+    if(sat!==1)   filters.push(`saturate(${sat})`);
+    if(hue!==0)   filters.push(`hue-rotate(${hue}deg)`);
+    if(isInvert)  filters.push('invert(1)');
+    if(filters.length>0){
+      let tmp=document.createElement('canvas');
+      tmp.width=W; tmp.height=H;
+      let tc=tmp.getContext('2d');
+      tc.filter=filters.join(' ');
+      tc.drawImage(canvas,0,0);
+      ctx.clearRect(0,0,W,H);
+      ctx.drawImage(tmp,0,0);
+    }
+
+    status('Done!');
+  },10);
+}
+
+function randomGlitch(){
+  if(!origImageData){status('Load an image first');return;}
+  document.getElementById('rShiftX').value=Math.floor(Math.random()*60-30);
+  document.getElementById('gShiftX').value=0;
+  document.getElementById('bShiftX').value=Math.floor(Math.random()*60-30);
+  document.getElementById('shiftY').value=Math.floor(Math.random()*20-10);
+  document.getElementById('blockIntensity').value=Math.floor(Math.random()*60);
+  document.getElementById('blockSize').value=Math.floor(Math.random()*100+20);
+  document.getElementById('blockOffset').value=Math.floor(Math.random()*200);
+  document.getElementById('scanDensity').value=Math.random()<0.5?Math.floor(Math.random()*10+2):0;
+  document.getElementById('hueRotate').value=Math.floor(Math.random()*360);
+  // Update labels
+  ['rShiftX','gShiftX','bShiftX','shiftY','blockIntensity','blockSize','blockOffset','scanDensity','hueRotate'].forEach(id=>{
+    let el=document.getElementById(id+'Val');
+    if(el) el.textContent=document.getElementById(id).value;
+  });
+  applyGlitch();
+}
+
+document.getElementById('applyBtn').addEventListener('click',applyGlitch);
+document.getElementById('randomBtn').addEventListener('click',randomGlitch);
+document.getElementById('resetBtn').addEventListener('click',()=>{if(origImageData){ctx.putImageData(origImageData,0,0);status('Reset');}});
+document.getElementById('exportBtn').addEventListener('click',()=>{
+  if(!origImageData){status('Nothing to export');return;}
+  let a=document.createElement('a');a.download='pudrus_glitch_'+Date.now()+'.png';a.href=canvas.toDataURL();a.click();status('Exported!');
+});
+</script>
+</body>
+</html>

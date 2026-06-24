@@ -1,0 +1,298 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PUDRUS — Creative Visual Tools</title>
+  <link rel="stylesheet" href="css/style.css">
+  <style>
+    /* Animación hero */
+    @keyframes fadeUp {
+      from { opacity:0; transform: translateY(20px); }
+      to   { opacity:1; transform: translateY(0); }
+    }
+    .hero-tag  { animation: fadeUp 0.6s ease 0.1s both; }
+    .hero h1   { animation: fadeUp 0.6s ease 0.2s both; }
+    .hero-sub  { animation: fadeUp 0.6s ease 0.3s both; }
+    .hero-cta  { animation: fadeUp 0.6s ease 0.4s both; }
+
+    /* Línea decorativa */
+    .hero-line {
+      width: 60px; height: 1px;
+      background: var(--c1);
+      margin: 30px auto;
+      animation: fadeUp 0.6s ease 0.5s both;
+    }
+
+    /* Stats */
+    .hero-stats {
+      display: flex; gap: 48px;
+      margin-top: 60px;
+      animation: fadeUp 0.6s ease 0.6s both;
+    }
+    .stat { text-align: center; }
+    .stat-num {
+      font-size: 28px; font-weight: bold;
+      color: var(--c1); letter-spacing: 2px;
+    }
+    .stat-label {
+      font-size: 9px; letter-spacing: 3px;
+      color: var(--text2); text-transform: uppercase;
+      margin-top: 4px;
+    }
+
+    /* Scanline effect en hero */
+    .hero::after {
+      content: '';
+      position: absolute; inset: 0;
+      background: repeating-linear-gradient(
+        0deg,
+        transparent,
+        transparent 3px,
+        rgba(0,0,0,0.08) 3px,
+        rgba(0,0,0,0.08) 4px
+      );
+      pointer-events: none;
+    }
+
+    /* Corner brackets en hero */
+    .hero-brackets {
+      position: absolute;
+      width: calc(100% - 80px);
+      height: calc(100% - 100px);
+      top: 80px; left: 40px;
+      pointer-events: none;
+    }
+    .corner {
+      position: absolute;
+      width: 30px; height: 30px;
+    }
+    .corner::before, .corner::after {
+      content: ''; position: absolute;
+      background: var(--c1); opacity: 0.4;
+    }
+    .corner::before { width: 100%; height: 1px; top: 0; left: 0; }
+    .corner::after  { width: 1px; height: 100%; top: 0; left: 0; }
+    .corner.tr { top: 0; right: 0; transform: rotate(90deg); }
+    .corner.bl { bottom: 0; left: 0; transform: rotate(270deg); }
+    .corner.br { bottom: 0; right: 0; transform: rotate(180deg); }
+
+    /* Sección about */
+    .about-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 60px; align-items: center;
+    }
+    .about-text p {
+      font-size: 12px; line-height: 2;
+      color: var(--text2); margin-bottom: 16px;
+    }
+    .about-features {
+      display: flex; flex-direction: column; gap: 16px;
+    }
+    .feature {
+      display: flex; gap: 16px;
+      padding: 16px; border: 1px solid var(--border);
+      background: var(--bg2);
+    }
+    .feature-icon { font-size: 20px; flex-shrink: 0; }
+    .feature-text h4 {
+      font-size: 11px; letter-spacing: 2px;
+      text-transform: uppercase; color: #fff;
+      margin-bottom: 4px;
+    }
+    .feature-text p {
+      font-size: 10px; color: var(--text2); line-height: 1.6;
+    }
+
+    @media (max-width: 768px) {
+      .about-grid { grid-template-columns: 1fr; }
+      .hero-stats { gap: 24px; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- ── NAV ───────────────────────────────────────────── -->
+<nav>
+  <a href="index.html" class="nav-logo">PUDRUS<span>.xyz</span></a>
+  <ul class="nav-links">
+    <li><a href="#tools">Tools</a></li>
+    <li><a href="#about">About</a></li>
+  </ul>
+</nav>
+
+<!-- ── HERO ──────────────────────────────────────────── -->
+<div class="hero">
+  <div class="hero-grid"></div>
+  <div class="hero-brackets">
+    <div class="corner tl"></div>
+    <div class="corner tr"></div>
+    <div class="corner bl"></div>
+    <div class="corner br"></div>
+  </div>
+
+  <p class="hero-tag">◈ Creative Visual Suite</p>
+  <h1>PUDRUS<span>.</span>XYZ</h1>
+  <p class="hero-sub">Browser-based image & video processing tools</p>
+
+  <div class="hero-line"></div>
+
+  <div class="hero-cta">
+    <a href="#tools" class="btn btn-primary">◈ Explore Tools</a>
+    <a href="#about" class="btn btn-outline">Learn More</a>
+  </div>
+
+  <div class="hero-stats">
+    <div class="stat">
+      <div class="stat-num">05</div>
+      <div class="stat-label">Tools</div>
+    </div>
+    <div class="stat">
+      <div class="stat-num">∞</div>
+      <div class="stat-label">Combinations</div>
+    </div>
+    <div class="stat">
+      <div class="stat-num">0</div>
+      <div class="stat-label">Install needed</div>
+    </div>
+  </div>
+</div>
+
+<!-- ── TOOLS ─────────────────────────────────────────── -->
+<section id="tools" style="max-width:1200px; margin:0 auto;">
+  <p class="section-tag">◈ 01 — Tools</p>
+  <h2 class="section-title">Visual <span>Processing</span> Suite</h2>
+  <p class="section-desc">
+    Each tool runs entirely in your browser. No uploads to servers,
+    no installations. Load an image or video and start creating.
+  </p>
+
+  <div class="tools-grid">
+
+    <!-- Pixel Sort -->
+    <a href="tools/pixel-sort/index.html" class="tool-card">
+      <span class="tool-icon">⟆</span>
+      <div class="tool-number">01 // TOOL</div>
+      <div class="tool-name">Pixel Sorter</div>
+      <div class="tool-desc">
+        Sort pixels by brightness, hue or saturation along horizontal,
+        vertical or diagonal axes. Classic glitch aesthetic.
+      </div>
+      <span class="tool-badge active">◈ Available</span>
+    </a>
+
+    <!-- Dithering -->
+    <a href="tools/dithering/index.html" class="tool-card">
+      <span class="tool-icon">⠿</span>
+      <div class="tool-number">02 // TOOL</div>
+      <div class="tool-name">Dithering</div>
+      <div class="tool-desc">
+        Apply classic dithering algorithms: Floyd-Steinberg, ordered,
+        Atkinson and more. Retro pixel aesthetics.
+      </div>
+      <span class="tool-badge active">◈ Available</span>
+    </a>
+
+    <!-- Glitch FX -->
+    <a href="tools/glitch/index.html" class="tool-card">
+      <span class="tool-icon">▓</span>
+      <div class="tool-number">03 // TOOL</div>
+      <div class="tool-name">Glitch FX</div>
+      <div class="tool-desc">
+        RGB channel shift, scanlines, block corruption, datamosh effects.
+        Full control over intensity and style.
+      </div>
+      <span class="tool-badge active">◈ Available</span>
+    </a>
+
+    <!-- Constellation -->
+    <a href="#" class="tool-card coming-soon">
+      <span class="tool-icon">✦</span>
+      <div class="tool-number">04 // TOOL</div>
+      <div class="tool-name">Constellation</div>
+      <div class="tool-desc">
+        Overlay generative star maps, technical diagrams and node networks
+        over your images. Export at high resolution.
+      </div>
+      <span class="tool-badge active">◈ Coming Soon</span>
+    </a>
+
+    <!-- Video FX -->
+    <a href="tools/video-fx/index.html" class="tool-card coming-soon">
+      <span class="tool-icon">◈</span>
+      <div class="tool-number">05 // TOOL</div>
+      <div class="tool-name">Video FX</div>
+      <div class="tool-desc">
+        Real-time effects on webcam or video files.
+        Coming soon.
+      </div>
+      <span class="tool-badge">⌛ Coming Soon</span>
+    </a>
+
+  </div>
+</section>
+
+<!-- ── ABOUT ─────────────────────────────────────────── -->
+<section id="about" style="max-width:1200px; margin:0 auto; padding-top:40px;">
+  <p class="section-tag">◈ 02 — About</p>
+  <h2 class="section-title">How it <span>Works</span></h2>
+
+  <div class="about-grid">
+    <div class="about-text">
+      <p>
+        PUDRUS.XYZ is a browser-based creative suite for image and video
+        processing. Every tool runs locally in your browser — your files
+        never leave your device.
+      </p>
+      <p>
+        Built with p5.js and vanilla JavaScript. No frameworks,
+        no subscriptions, no accounts needed.
+      </p>
+      <a href="#tools" class="btn btn-outline" style="margin-top:8px;">
+        Start Creating
+      </a>
+    </div>
+
+    <div class="about-features">
+      <div class="feature">
+        <div class="feature-icon">🔒</div>
+        <div class="feature-text">
+          <h4>100% Private</h4>
+          <p>All processing happens in your browser. Files never leave your device.</p>
+        </div>
+      </div>
+      <div class="feature">
+        <div class="feature-icon">⚡</div>
+        <div class="feature-text">
+          <h4>Real-time Preview</h4>
+          <p>See changes instantly as you adjust parameters.</p>
+        </div>
+      </div>
+      <div class="feature">
+        <div class="feature-icon">📤</div>
+        <div class="feature-text">
+          <h4>High-res Export</h4>
+          <p>Export results at full resolution as PNG.</p>
+        </div>
+      </div>
+      <div class="feature">
+        <div class="feature-icon">🎛️</div>
+        <div class="feature-text">
+          <h4>Full Control</h4>
+          <p>Every parameter is adjustable with real-time feedback.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ── FOOTER ────────────────────────────────────────── -->
+<footer style="margin-top:80px;">
+  <span>© 2026 PUDRUS.XYZ</span>
+  <span style="color:var(--c3)">◈ ◈ ◈</span>
+  <span>Built in the browser, for the browser</span>
+</footer>
+
+</body>
+</html>
