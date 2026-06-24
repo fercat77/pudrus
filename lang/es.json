@@ -1,0 +1,55 @@
+{
+  "nav": { "tools": "Tools", "about": "About" },
+  "hero": {
+    "tag": "◈ Suite Visual Creativa",
+    "title": "PUDRUS.XYZ",
+    "sub": "Herramientas de image & video processing en el browser",
+    "explore": "◈ Explorar Tools",
+    "learn": "Más info"
+  },
+  "stats": { "tools": "Tools", "combinations": "Combinaciones", "install": "Sin instalación" },
+  "tools": {
+    "sectionTag": "◈ 01 — Tools",
+    "title": "Visual Processing Suite",
+    "desc": "Cada tool corre en tu browser. Sin uploads, sin instalaciones.",
+    "pixel": { "name": "Pixel Sorter", "desc": "Ordena píxeles por brightness, hue o saturation." },
+    "dither": { "name": "Dithering", "desc": "Algoritmos clásicos: Floyd-Steinberg, Atkinson, ordered." },
+    "glitch": { "name": "Glitch FX", "desc": "RGB shifts, scanlines, block corruption." },
+    "constellation": { "name": "Constellation", "desc": "Overlay generative star maps y node networks." }
+  },
+  "constellation": {
+    "fileDrop": "Click o suelta una imagen aquí",
+    "overlayStyle": "Overlay Style",
+    "density": "Density",
+    "count": "Count",
+    "lineIntensity": "Line Intensity",
+    "opacity": "Opacity",
+    "lineSpread": "Line Spread",
+    "starStyle": "Star Style",
+    "size": "Size",
+    "glow": "Glow",
+    "vertexShape": "Vertex Shape",
+    "vertexOutline": "Vertex Outline",
+    "outlineSize": "Outline Size",
+    "outlineWidth": "Outline Width",
+    "color": "Color",
+    "options": "Options",
+    "showLines": "Show Lines",
+    "showStars": "Show Stars",
+    "highContrast": "High Contrast",
+    "statusNoImage": "◈ No image loaded",
+    "applyBtn": "◈ Apply Overlay",
+    "randomBtn": "◈ Randomize",
+    "resetBtn": "Reset",
+    "exportBtn": "Export PNG",
+    "canvasInfoNoImage": "No image loaded"
+  },
+  "about": {
+    "sectionTag": "◈ 02 — About",
+    "title": "Cómo funciona",
+    "p1": "PUDRUS.XYZ es una suite creativa que corre localmente en tu navegador.",
+    "p2": "Built with vanilla JavaScript. No frameworks ni accounts.",
+    "start": "Empezar"
+  },
+  "footer": { "copyright": "© 2026 PUDRUS.XYZ", "note": "Built in the browser, for the browser" }
+}

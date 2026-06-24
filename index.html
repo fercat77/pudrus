@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="es">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -117,9 +117,15 @@
 <nav>
   <a href="index.html" class="nav-logo">PUDRUS<span>.xyz</span></a>
   <ul class="nav-links">
-    <li><a href="#tools">Tools</a></li>
-    <li><a href="#about">About</a></li>
+    <li><a href="#tools" data-i18n="nav.tools">Tools</a></li>
+    <li><a href="#about" data-i18n="nav.about">About</a></li>
   </ul>
+  <div class="nav-lang">
+    <select id="langSelect" aria-label="Language selector">
+      <option value="es">ES</option>
+      <option value="en">EN</option>
+    </select>
+  </div>
 </nav>
 
 <!-- ── HERO ──────────────────────────────────────────── -->
@@ -132,38 +138,38 @@
     <div class="corner br"></div>
   </div>
 
-  <p class="hero-tag">◈ Creative Visual Suite</p>
-  <h1>PUDRUS<span>.</span>XYZ</h1>
-  <p class="hero-sub">Browser-based image & video processing tools</p>
+  <p class="hero-tag" data-i18n="hero.tag">◈ Creative Visual Suite</p>
+  <h1 data-i18n="hero.title">PUDRUS<span>.</span>XYZ</h1>
+  <p class="hero-sub" data-i18n="hero.sub">Browser-based image & video processing tools</p>
 
   <div class="hero-line"></div>
 
   <div class="hero-cta">
-    <a href="#tools" class="btn btn-primary">◈ Explore Tools</a>
-    <a href="#about" class="btn btn-outline">Learn More</a>
+    <a href="#tools" class="btn btn-primary" data-i18n="hero.explore">◈ Explore Tools</a>
+    <a href="#about" class="btn btn-outline" data-i18n="hero.learn">Learn More</a>
   </div>
 
   <div class="hero-stats">
     <div class="stat">
       <div class="stat-num">05</div>
-      <div class="stat-label">Tools</div>
+      <div class="stat-label" data-i18n="stats.tools">Tools</div>
     </div>
     <div class="stat">
       <div class="stat-num">∞</div>
-      <div class="stat-label">Combinations</div>
+      <div class="stat-label" data-i18n="stats.combinations">Combinations</div>
     </div>
     <div class="stat">
       <div class="stat-num">0</div>
-      <div class="stat-label">Install needed</div>
+      <div class="stat-label" data-i18n="stats.install">Install needed</div>
     </div>
   </div>
 </div>
 
 <!-- ── TOOLS ─────────────────────────────────────────── -->
 <section id="tools" style="max-width:1200px; margin:0 auto;">
-  <p class="section-tag">◈ 01 — Tools</p>
-  <h2 class="section-title">Visual <span>Processing</span> Suite</h2>
-  <p class="section-desc">
+  <p class="section-tag" data-i18n="tools.sectionTag">◈ 01 — Tools</p>
+  <h2 class="section-title" data-i18n="tools.title">Visual <span>Processing</span> Suite</h2>
+  <p class="section-desc" data-i18n="tools.desc">
     Each tool runs entirely in your browser. No uploads to servers,
     no installations. Load an image or video and start creating.
   </p>
@@ -174,8 +180,8 @@
     <a href="tools/pixel-sort/index.html" class="tool-card">
       <span class="tool-icon">⟆</span>
       <div class="tool-number">01 // TOOL</div>
-      <div class="tool-name">Pixel Sorter</div>
-      <div class="tool-desc">
+      <div class="tool-name" data-i18n="tools.pixel.name">Pixel Sorter</div>
+      <div class="tool-desc" data-i18n="tools.pixel.desc">
         Sort pixels by brightness, hue or saturation along horizontal,
         vertical or diagonal axes. Classic glitch aesthetic.
       </div>
@@ -186,8 +192,8 @@
     <a href="tools/dithering/index.html" class="tool-card">
       <span class="tool-icon">⠿</span>
       <div class="tool-number">02 // TOOL</div>
-      <div class="tool-name">Dithering</div>
-      <div class="tool-desc">
+      <div class="tool-name" data-i18n="tools.dither.name">Dithering</div>
+      <div class="tool-desc" data-i18n="tools.dither.desc">
         Apply classic dithering algorithms: Floyd-Steinberg, ordered,
         Atkinson and more. Retro pixel aesthetics.
       </div>
@@ -198,8 +204,8 @@
     <a href="tools/glitch/index.html" class="tool-card">
       <span class="tool-icon">▓</span>
       <div class="tool-number">03 // TOOL</div>
-      <div class="tool-name">Glitch FX</div>
-      <div class="tool-desc">
+      <div class="tool-name" data-i18n="tools.glitch.name">Glitch FX</div>
+      <div class="tool-desc" data-i18n="tools.glitch.desc">
         RGB channel shift, scanlines, block corruption, datamosh effects.
         Full control over intensity and style.
       </div>
@@ -207,15 +213,15 @@
     </a>
 
     <!-- Constellation -->
-    <a href="#" class="tool-card coming-soon">
+    <a href="tools/constellation/index.html" class="tool-card">
       <span class="tool-icon">✦</span>
       <div class="tool-number">04 // TOOL</div>
-      <div class="tool-name">Constellation</div>
-      <div class="tool-desc">
+      <div class="tool-name" data-i18n="tools.constellation.name">Constellation</div>
+      <div class="tool-desc" data-i18n="tools.constellation.desc">
         Overlay generative star maps, technical diagrams and node networks
         over your images. Export at high resolution.
       </div>
-      <span class="tool-badge">⌛ Coming Soon</span>
+      <span class="tool-badge active">◈ Available</span>
     </a>
 
     <!-- Video FX -->
@@ -235,21 +241,21 @@
 
 <!-- ── ABOUT ─────────────────────────────────────────── -->
 <section id="about" style="max-width:1200px; margin:0 auto; padding-top:40px;">
-  <p class="section-tag">◈ 02 — About</p>
-  <h2 class="section-title">How it <span>Works</span></h2>
+  <p class="section-tag" data-i18n="about.sectionTag">◈ 02 — About</p>
+  <h2 class="section-title" data-i18n="about.title">How it <span>Works</span></h2>
 
   <div class="about-grid">
     <div class="about-text">
-      <p>
+      <p data-i18n="about.p1">
         PUDRUS.XYZ is a browser-based creative suite for image and video
         processing. Every tool runs locally in your browser — your files
         never leave your device.
       </p>
-      <p>
+      <p data-i18n="about.p2">
         Built with p5.js and vanilla JavaScript. No frameworks,
         no subscriptions, no accounts needed.
       </p>
-      <a href="#tools" class="btn btn-outline" style="margin-top:8px;">
+      <a href="#tools" class="btn btn-outline" style="margin-top:8px;" data-i18n="about.start">
         Start Creating
       </a>
     </div>
@@ -289,10 +295,12 @@
 
 <!-- ── FOOTER ────────────────────────────────────────── -->
 <footer style="margin-top:80px;">
-  <span>© 2026 PUDRUS.XYZ</span>
+  <span data-i18n="footer.copyright">© 2026 PUDRUS.XYZ</span>
   <span style="color:var(--c3)">◈ ◈ ◈</span>
-  <span>Built in the browser, for the browser</span>
+  <span data-i18n="footer.note">Built in the browser, for the browser</span>
 </footer>
+
+<script src="js/i18n.js"></script>
 
 </body>
 </html>

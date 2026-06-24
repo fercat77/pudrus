@@ -1,0 +1,55 @@
+{
+  "nav": { "tools": "Tools", "about": "About" },
+  "hero": {
+    "tag": "◈ Creative Visual Suite",
+    "title": "PUDRUS.XYZ",
+    "sub": "Browser-based image & video processing tools",
+    "explore": "◈ Explore Tools",
+    "learn": "Learn More"
+  },
+  "stats": { "tools": "Tools", "combinations": "Combinations", "install": "No install" },
+  "tools": {
+    "sectionTag": "◈ 01 — Tools",
+    "title": "Visual Processing Suite",
+    "desc": "Each tool runs entirely in your browser. No uploads.",
+    "pixel": { "name": "Pixel Sorter", "desc": "Sort pixels by brightness, hue or saturation." },
+    "dither": { "name": "Dithering", "desc": "Floyd-Steinberg, ordered, Atkinson and more." },
+    "glitch": { "name": "Glitch FX", "desc": "RGB shift, scanlines, datamosh effects." },
+    "constellation": { "name": "Constellation", "desc": "Overlay generative star maps and node networks." }
+  },
+  "constellation": {
+    "fileDrop": "Click or drop an image here",
+    "overlayStyle": "Overlay Style",
+    "density": "Density",
+    "count": "Count",
+    "lineIntensity": "Line Intensity",
+    "opacity": "Opacity",
+    "lineSpread": "Line Spread",
+    "starStyle": "Star Style",
+    "size": "Size",
+    "glow": "Glow",
+    "vertexShape": "Vertex Shape",
+    "vertexOutline": "Vertex Outline",
+    "outlineSize": "Outline Size",
+    "outlineWidth": "Outline Width",
+    "color": "Color",
+    "options": "Options",
+    "showLines": "Show Lines",
+    "showStars": "Show Stars",
+    "highContrast": "High Contrast",
+    "statusNoImage": "◈ No image loaded",
+    "applyBtn": "◈ Apply Overlay",
+    "randomBtn": "◈ Randomize",
+    "resetBtn": "Reset",
+    "exportBtn": "Export PNG",
+    "canvasInfoNoImage": "No image loaded"
+  },
+  "about": {
+    "sectionTag": "◈ 02 — About",
+    "title": "How it Works",
+    "p1": "PUDRUS.XYZ is a browser-based creative suite for image and video processing.",
+    "p2": "Built with vanilla JavaScript. No frameworks, no accounts.",
+    "start": "Start Creating"
+  },
+  "footer": { "copyright": "© 2026 PUDRUS.XYZ", "note": "Built in the browser, for the browser" }
+}
