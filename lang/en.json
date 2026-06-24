@@ -15,7 +15,8 @@
     "pixel": { "name": "Pixel Sorter", "desc": "Sort pixels by brightness, hue or saturation." },
     "dither": { "name": "Dithering", "desc": "Floyd-Steinberg, ordered, Atkinson and more." },
     "glitch": { "name": "Glitch FX", "desc": "RGB shift, scanlines, datamosh effects." },
-    "constellation": { "name": "Constellation", "desc": "Overlay generative star maps and node networks." }
+    "constellation": { "name": "Constellation", "desc": "Overlay generative star maps and node networks." },
+    "ascii": { "name": "ASCII Canvas", "desc": "Transform images into creative ASCII art." }
   },
   "constellation": {
     "fileDrop": "Click or drop an image here",
@@ -43,6 +44,27 @@
     "resetBtn": "Reset",
     "exportBtn": "Export PNG",
     "canvasInfoNoImage": "No image loaded"
+  },
+  "ascii": {
+    "title": "ASCII Canvas",
+    "subtitle": "Transform images into creative ASCII art",
+    "controls": "Controls",
+    "dragDrop": "Drag image here or click to select",
+    "traditional": "Traditional",
+    "unicode": "Unicode",
+    "colored": "Colored",
+    "inverted": "Inverted",
+    "density": "Character Density",
+    "fontSize": "Font Size",
+    "contrast": "Contrast",
+    "width": "Max Width (chars)",
+    "invertImage": "Invert Image",
+    "generate": "Generate",
+    "clear": "Clear",
+    "exportPng": "Export PNG",
+    "exportTxt": "Export TXT",
+    "preview": "Preview",
+    "tip": "💡 Adjust parameters and click Generate to see the ASCII art"
   },
   "about": {
     "sectionTag": "◈ 02 — About",
