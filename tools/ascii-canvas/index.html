@@ -1,567 +1,414 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title data-i18n="ascii.title">ASCII Canvas</title>
-    <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ASCII Canvas — PUDRUS.XYZ</title>
+  <link rel="stylesheet" href="../../css/style.css">
+  <style>
+    #canvas {
+      background: #0a0a0a;
+      border: 2px solid #00d4ff;
+      display: block;
+      margin-top: 20px;
+      image-rendering: pixelated;
+      cursor: default;
+    }
 
-        body {
-            font-family: 'Courier New', monospace;
-            background: linear-gradient(135deg, #0f0c29, #302b63, #24243e);
-            color: #fff;
-            min-height: 100vh;
-            padding: 20px;
-        }
+    .char-preset {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 8px;
+      margin-top: 10px;
+    }
 
-        .container {
-            max-width: 1200px;
-            margin: 0 auto;
-        }
+    .preset-btn {
+      padding: 8px 12px;
+      background: #1a1a2e;
+      border: 1px solid #00d4ff;
+      color: #00d4ff;
+      cursor: pointer;
+      font-family: monospace;
+      font-size: 11px;
+      transition: all 0.2s;
+    }
 
-        header {
-            text-align: center;
-            margin-bottom: 40px;
-        }
+    .preset-btn:hover {
+      background: #00d4ff;
+      color: #0a0a0a;
+    }
 
-        h1 {
-            font-size: 2.5em;
-            margin-bottom: 10px;
-            text-shadow: 0 0 20px rgba(100, 200, 255, 0.5);
-        }
+    .preset-btn.active {
+      background: #00d4ff;
+      color: #0a0a0a;
+      font-weight: bold;
+    }
 
-        .subtitle {
-            font-size: 0.9em;
-            opacity: 0.8;
-            data-i18n: ascii.subtitle;
-        }
+    .button-group {
+      display: flex;
+      gap: 10px;
+      margin-top: 20px;
+      flex-wrap: wrap;
+    }
 
-        .main-grid {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 30px;
-            margin-bottom: 30px;
-        }
+    .btn {
+      flex: 1;
+      min-width: 100px;
+      padding: 10px;
+      background: #00d4ff;
+      color: #0a0a0a;
+      border: none;
+      cursor: pointer;
+      font-weight: bold;
+      transition: all 0.2s;
+    }
 
-        @media (max-width: 1024px) {
-            .main-grid {
-                grid-template-columns: 1fr;
-            }
-        }
+    .btn:hover {
+      background: #00b4d4;
+      transform: scale(1.02);
+    }
 
-        .panel {
-            background: rgba(0, 0, 0, 0.3);
-            border: 1px solid rgba(100, 200, 255, 0.3);
-            border-radius: 10px;
-            padding: 20px;
-            backdrop-filter: blur(10px);
-        }
+    .btn:active {
+      transform: scale(0.98);
+    }
 
-        .panel h2 {
-            font-size: 1.3em;
-            margin-bottom: 20px;
-            color: #64c8ff;
-            border-bottom: 2px solid rgba(100, 200, 255, 0.3);
-            padding-bottom: 10px;
-        }
-
-        .upload-area {
-            border: 2px dashed rgba(100, 200, 255, 0.5);
-            border-radius: 8px;
-            padding: 30px;
-            text-align: center;
-            cursor: pointer;
-            transition: all 0.3s;
-            background: rgba(100, 200, 255, 0.05);
-        }
-
-        .upload-area:hover {
-            border-color: #64c8ff;
-            background: rgba(100, 200, 255, 0.1);
-        }
-
-        .upload-area.dragover {
-            border-color: #64c8ff;
-            background: rgba(100, 200, 255, 0.2);
-        }
-
-        input[type="file"] {
-            display: none;
-        }
-
-        .upload-text {
-            font-size: 0.9em;
-            opacity: 0.7;
-        }
-
-        .controls {
-            display: grid;
-            gap: 15px;
-            margin-top: 20px;
-        }
-
-        .control-group {
-            display: flex;
-            flex-direction: column;
-            gap: 5px;
-        }
-
-        label {
-            font-size: 0.9em;
-            color: #64c8ff;
-            font-weight: bold;
-        }
-
-        select, input[type="range"], input[type="number"] {
-            background: rgba(0, 0, 0, 0.5);
-            border: 1px solid rgba(100, 200, 255, 0.3);
-            color: #fff;
-            padding: 8px;
-            border-radius: 5px;
-            font-family: 'Courier New', monospace;
-        }
-
-        select:focus, input:focus {
-            outline: none;
-            border-color: #64c8ff;
-            box-shadow: 0 0 10px rgba(100, 200, 255, 0.3);
-        }
-
-        input[type="range"] {
-            cursor: pointer;
-        }
-
-        .range-display {
-            font-size: 0.8em;
-            opacity: 0.7;
-            margin-top: 3px;
-        }
-
-        .button-group {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 10px;
-            margin-top: 20px;
-        }
-
-        button {
-            padding: 12px 20px;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            border: none;
-            color: #fff;
-            border-radius: 5px;
-            cursor: pointer;
-            font-weight: bold;
-            transition: all 0.3s;
-            font-family: 'Courier New', monospace;
-        }
-
-        button:hover:not(:disabled) {
-            transform: translateY(-2px);
-            box-shadow: 0 5px 20px rgba(102, 126, 234, 0.4);
-        }
-
-        button:disabled {
-            opacity: 0.5;
-            cursor: not-allowed;
-        }
-
-        .preview-container {
-            background: rgba(0, 0, 0, 0.5);
-            border-radius: 8px;
-            padding: 20px;
-            overflow: auto;
-            max-height: 500px;
-            border: 1px solid rgba(100, 200, 255, 0.2);
-        }
-
-        #asciiOutput {
-            white-space: pre;
-            font-size: 8px;
-            line-height: 1;
-            letter-spacing: 0;
-            color: #64c8ff;
-            text-shadow: 0 0 5px rgba(100, 200, 255, 0.3);
-            font-family: 'Courier New', monospace;
-        }
-
-        .info-text {
-            font-size: 0.8em;
-            opacity: 0.6;
-            margin-top: 10px;
-            text-align: center;
-        }
-
-        .tabs {
-            display: grid;
-            grid-template-columns: repeat(2, 1fr);
-            gap: 10px;
-            margin-bottom: 15px;
-        }
-
-        .tab-btn {
-            padding: 8px 12px;
-            background: rgba(100, 200, 255, 0.1);
-            border: 1px solid rgba(100, 200, 255, 0.2);
-            color: #64c8ff;
-            cursor: pointer;
-            border-radius: 5px;
-            transition: all 0.3s;
-        }
-
-        .tab-btn.active {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            border-color: #64c8ff;
-        }
-
-        .loading {
-            text-align: center;
-            padding: 20px;
-            opacity: 0.7;
-        }
-
-        .spinner {
-            display: inline-block;
-            width: 20px;
-            height: 20px;
-            border: 3px solid rgba(100, 200, 255, 0.3);
-            border-top-color: #64c8ff;
-            border-radius: 50%;
-            animation: spin 0.6s linear infinite;
-        }
-
-        @keyframes spin {
-            to { transform: rotate(360deg); }
-        }
-
-        .export-buttons {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 10px;
-        }
-
-        .success-msg {
-            color: #90ee90;
-            font-size: 0.85em;
-            margin-top: 10px;
-            text-align: center;
-        }
-
-        .error-msg {
-            color: #ff6b6b;
-            font-size: 0.85em;
-            margin-top: 10px;
-            text-align: center;
-        }
-    </style>
+    .tool-canvas {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      overflow: auto;
+      padding: 20px;
+      background: linear-gradient(135deg, #0a0a0a 0%, #1a1a2e 100%);
+    }
+  </style>
 </head>
 <body>
-    <div class="container">
-        <header>
-            <h1 data-i18n="ascii.title">ASCII Canvas</h1>
-            <p class="subtitle" data-i18n="ascii.subtitle">Transform images into creative ASCII art</p>
-        </header>
 
-        <div class="main-grid">
-            <!-- LEFT PANEL: Controls -->
-            <div class="panel">
-                <h2 data-i18n="ascii.controls">Controls</h2>
+<nav>
+  <a href="../../index.html" class="nav-logo">PUDRUS<span>.xyz</span></a>
+  <ul class="nav-links">
+    <li><a href="../../index.html#tools" data-i18n="nav.tools">All Tools</a></li>
+  </ul>
+</nav>
 
-                <!-- Upload Area -->
-                <div class="upload-area" id="uploadArea">
-                    <div class="upload-text">
-                        <div style="font-size: 2em; margin-bottom: 10px;">📸</div>
-                        <div data-i18n="ascii.dragDrop">Drag image here or click to select</div>
-                    </div>
-                    <input type="file" id="imageInput" accept="image/*">
-                </div>
-
-                <!-- Tabs for ASCII Modes -->
-                <div class="tabs" style="margin-top: 20px;">
-                    <button class="tab-btn active" data-mode="traditional" data-i18n="ascii.traditional">Traditional</button>
-                    <button class="tab-btn" data-mode="unicode" data-i18n="ascii.unicode">Unicode</button>
-                    <button class="tab-btn" data-mode="colored" data-i18n="ascii.colored">Colored</button>
-                    <button class="tab-btn" data-mode="inverted" data-i18n="ascii.inverted">Inverted</button>
-                </div>
-
-                <!-- Controls -->
-                <div class="controls">
-                    <!-- Density -->
-                    <div class="control-group">
-                        <label for="density" data-i18n="ascii.density">Character Density</label>
-                        <input type="range" id="density" min="1" max="100" value="50">
-                        <div class="range-display" id="densityDisplay">50%</div>
-                    </div>
-
-                    <!-- Font Size -->
-                    <div class="control-group">
-                        <label for="fontSize" data-i18n="ascii.fontSize">Font Size</label>
-                        <input type="range" id="fontSize" min="4" max="12" value="8">
-                        <div class="range-display" id="fontSizeDisplay">8px</div>
-                    </div>
-
-                    <!-- Contrast -->
-                    <div class="control-group">
-                        <label for="contrast" data-i18n="ascii.contrast">Contrast</label>
-                        <input type="range" id="contrast" min="0.5" max="2" step="0.1" value="1">
-                        <div class="range-display" id="contrastDisplay">1x</div>
-                    </div>
-
-                    <!-- Width -->
-                    <div class="control-group">
-                        <label for="width" data-i18n="ascii.width">Max Width (chars)</label>
-                        <input type="number" id="width" min="20" max="200" value="100">
-                    </div>
-
-                    <!-- Invert -->
-                    <div class="control-group">
-                        <label style="display: flex; align-items: center; gap: 8px;">
-                            <input type="checkbox" id="invertImage" style="width: auto; cursor: pointer;">
-                            <span data-i18n="ascii.invertImage">Invert Image</span>
-                        </label>
-                    </div>
-                </div>
-
-                <!-- Buttons -->
-                <div class="button-group">
-                    <button id="generateBtn" disabled data-i18n="ascii.generate">Generate</button>
-                    <button id="clearBtn" data-i18n="ascii.clear">Clear</button>
-                </div>
-
-                <div class="button-group" style="margin-top: 10px;">
-                    <button id="exportPngBtn" disabled data-i18n="ascii.exportPng">Export PNG</button>
-                    <button id="exportTxtBtn" disabled data-i18n="ascii.exportTxt">Export TXT</button>
-                </div>
-
-                <div id="message"></div>
-            </div>
-
-            <!-- RIGHT PANEL: Preview -->
-            <div class="panel">
-                <h2 data-i18n="ascii.preview">Preview</h2>
-                <div id="asciiStatus" class="info-text"></div>
-                <div class="preview-container">
-                    <pre id="asciiOutput"></pre>
-                </div>
-                <div class="info-text" data-i18n="ascii.tip">💡 Adjust parameters and click Generate to see the ASCII art</div>
-            </div>
-        </div>
+<div class="tool-layout">
+  <!-- PANEL -->
+  <div class="tool-panel">
+    <div class="tool-panel-header">
+      <a href="../../index.html" class="back">← Back</a>
+      <h2 data-i18n="tools.ascii.name">◊ ASCII Canvas</h2>
+      <p data-i18n="tools.ascii.desc">Transform images into creative ASCII art with custom characters and effects.</p>
     </div>
 
-    <!-- Hidden canvas for rendering -->
-    <canvas id="hiddenCanvas" style="display: none;"></canvas>
-    <canvas id="exportCanvas" style="display: none;"></canvas>
+    <div class="tool-panel-body">
+      <!-- Upload -->
+      <div class="file-upload" id="dropZone">
+        <span class="icon">◈</span>
+        <span data-i18n="ascii.fileDrop">Click or drop an image here</span>
+        <input type="file" id="fileInput" accept="image/*">
+      </div>
 
-    <script src="../../js/i18n.js"></script>
-    <script>
-        const ASCII_CHARS = {
-            traditional: ' .:-=+*#%@',
-            unicode: ' ░▒▓█',
-            extended: ' `.-\'":,;il1![I}101l!i<>\"?)([\\/|fJr{}jtnuvcszxkP0ZO$2&8%B#@',
-            inverted: ' .:-=+*#%@'.split('').reverse().join('')
-        };
+      <hr class="divider">
 
-        let state = {
-            image: null,
-            asciiOutput: '',
-            currentMode: 'traditional',
-            imageData: null
-        };
+      <!-- Granularity -->
+      <div class="control-group">
+        <span class="control-label" data-i18n="ascii.granularity">Granularity</span>
+        <div class="control-row">
+          <label data-i18n="ascii.charSize">Character Size</label>
+          <input type="range" id="charSize" min="2" max="16" value="6">
+          <span class="val" id="charSizeVal">6px</span>
+        </div>
+        <div class="control-row">
+          <label data-i18n="ascii.charSpacing">Line Spacing</label>
+          <input type="range" id="lineSpacing" min="0.8" max="1.6" step="0.1" value="1.2">
+          <span class="val" id="lineSpacingVal">1.2x</span>
+        </div>
+      </div>
 
-        const uploadArea = document.getElementById('uploadArea');
-        const imageInput = document.getElementById('imageInput');
-        const generateBtn = document.getElementById('generateBtn');
-        const clearBtn = document.getElementById('clearBtn');
-        const exportPngBtn = document.getElementById('exportPngBtn');
-        const exportTxtBtn = document.getElementById('exportTxt Btn');
-        const asciiOutput = document.getElementById('asciiOutput');
-        const asciiStatus = document.getElementById('asciiStatus');
-        const message = document.getElementById('message');
+      <div class="control-group">
+        <span class="control-label" data-i18n="ascii.charSet">Character Set</span>
+        <div class="char-preset">
+          <button class="preset-btn active" data-preset="standard" data-i18n="ascii.presetStandard">Standard</button>
+          <button class="preset-btn" data-preset="extended" data-i18n="ascii.presetExtended">Extended</button>
+          <button class="preset-btn" data-preset="minimal" data-i18n="ascii.presetMinimal">Minimal</button>
+          <button class="preset-btn" data-preset="blocks" data-i18n="ascii.presetBlocks">Blocks</button>
+          <button class="preset-btn" data-preset="dense" data-i18n="ascii.presetDense">Dense</button>
+          <button class="preset-btn" data-preset="custom" data-i18n="ascii.presetCustom">Custom</button>
+        </div>
+        <div class="control-row" id="customCharRow" style="display:none; margin-top:10px;">
+          <label data-i18n="ascii.customChars">Custom Chars</label>
+          <input type="text" id="customChars" placeholder="@%#*+=-:." maxlength="50">
+        </div>
+      </div>
 
-        // Upload handling
-        uploadArea.addEventListener('click', () => imageInput.click());
-        uploadArea.addEventListener('dragover', (e) => {
-            e.preventDefault();
-            uploadArea.classList.add('dragover');
-        });
-        uploadArea.addEventListener('dragleave', () => {
-            uploadArea.classList.remove('dragover');
-        });
-        uploadArea.addEventListener('drop', (e) => {
-            e.preventDefault();
-            uploadArea.classList.remove('dragover');
-            const file = e.dataTransfer.files[0];
-            if (file) loadImage(file);
-        });
+      <hr class="divider">
 
-        imageInput.addEventListener('change', (e) => {
-            if (e.target.files[0]) loadImage(e.target.files[0]);
-        });
+      <!-- Effects -->
+      <div class="control-group">
+        <span class="control-label" data-i18n="ascii.effects">Effects</span>
+        <div class="control-row">
+          <label data-i18n="ascii.contrast">Contrast</label>
+          <input type="range" id="contrast" min="-50" max="100" value="0">
+          <span class="val" id="contrastVal">0</span>
+        </div>
+        <div class="control-row">
+          <label data-i18n="ascii.brightness">Brightness</label>
+          <input type="range" id="brightness" min="-50" max="50" value="0">
+          <span class="val" id="brightnessVal">0</span>
+        </div>
+      </div>
 
-        function loadImage(file) {
-            const reader = new FileReader();
-            reader.onload = (e) => {
-                const img = new Image();
-                img.onload = () => {
-                    state.image = img;
-                    generateBtn.disabled = false;
-                    showMessage(`✅ Image loaded: ${img.width}×${img.height}px`, 'success');
-                };
-                img.src = e.target.result;
-            };
-            reader.readAsDataURL(file);
-        }
+      <div class="control-group">
+        <span class="control-label" data-i18n="ascii.colorMode">Color Mode</span>
+        <select id="colorMode">
+          <option value="mono" data-i18n="ascii.colorMono">Monochrome</option>
+          <option value="original" data-i18n="ascii.colorOriginal">Original Colors</option>
+          <option value="inverted" data-i18n="ascii.colorInverted">Inverted</option>
+          <option value="cyan" data-i18n="ascii.colorCyan">Cyan</option>
+          <option value="green" data-i18n="ascii.colorGreen">Green Terminal</option>
+        </select>
+      </div>
 
-        // Mode selection
-        document.querySelectorAll('.tab-btn').forEach(btn => {
-            btn.addEventListener('click', () => {
-                document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
-                btn.classList.add('active');
-                state.currentMode = btn.dataset.mode;
-            });
-        });
+      <hr class="divider">
 
-        // Range inputs
-        document.getElementById('density').addEventListener('input', (e) => {
-            document.getElementById('densityDisplay').textContent = e.target.value + '%';
-        });
-        document.getElementById('fontSize').addEventListener('input', (e) => {
-            document.getElementById('fontSizeDisplay').textContent = e.target.value + 'px';
-        });
-        document.getElementById('contrast').addEventListener('input', (e) => {
-            document.getElementById('contrastDisplay').textContent = e.target.value + 'x';
-        });
+      <!-- Resolution -->
+      <div class="control-group">
+        <span class="control-label" data-i18n="ascii.resolution">Output Resolution</span>
+        <div class="control-row">
+          <label data-i18n="ascii.width">Width (chars)</label>
+          <input type="range" id="width" min="40" max="200" value="100">
+          <span class="val" id="widthVal">100</span>
+        </div>
+      </div>
 
-        // Generate ASCII
-        generateBtn.addEventListener('click', generateASCII);
-        clearBtn.addEventListener('click', () => {
-            state = { ...state, image: null, asciiOutput: '' };
-            asciiOutput.textContent = '';
-            uploadArea.innerHTML = '<div class="upload-text"><div style="font-size: 2em; margin-bottom: 10px;">📸</div><div data-i18n="ascii.dragDrop">Drag image here or click to select</div></div>';
-            generateBtn.disabled = true;
-            exportPngBtn.disabled = true;
-            exportTxtBtn.disabled = true;
-            message.textContent = '';
-        });
+      <!-- Actions -->
+      <div class="button-group">
+        <button class="btn" id="randomizeBtn" data-i18n="ascii.randomize">Randomize Set</button>
+        <button class="btn" id="applyBtn" data-i18n="ascii.apply">Apply</button>
+      </div>
 
-        function generateASCII() {
-            if (!state.image) return;
+      <div class="button-group">
+        <button class="btn" id="downloadBtn" data-i18n="ascii.download">⬇ Download PNG</button>
+      </div>
+    </div>
 
-            const canvas = document.getElementById('hiddenCanvas');
-            const ctx = canvas.getContext('2d');
+    <div class="status-bar" id="statusBar">◈ <span data-i18n="ascii.ready">Ready</span></div>
+  </div>
 
-            const width = parseInt(document.getElementById('width').value);
-            const height = Math.floor((width * state.image.height) / state.image.width * 0.5);
+  <!-- CANVAS -->
+  <div class="tool-canvas">
+    <canvas id="canvas"></canvas>
+  </div>
+</div>
 
-            canvas.width = width;
-            canvas.height = height;
+<script src="../../js/i18n.js"></script>
+<script>
+  // Configuration & State
+  let imageData = null;
+  let currentPreset = 'standard';
+  let currentChars = '@%#*+=-:. ';
 
-            ctx.drawImage(state.image, 0, 0, width, height);
-            let imageData = ctx.getImageData(0, 0, width, height);
-            const data = imageData.data;
+  const charPresets = {
+    standard: '@%#*+=-:. ',
+    extended: '@%#*+=-:.\'"`,\'^"^"|/\\\\()[]{}',
+    minimal: '@#*:. ',
+    blocks: '████▓▒░  ',
+    dense: '@@@%%%###***+++===---:::...   ',
+  };
 
-            // Apply invert if checked
-            if (document.getElementById('invertImage').checked) {
-                for (let i = 0; i < data.length; i += 4) {
-                    data[i] = 255 - data[i];
-                    data[i + 1] = 255 - data[i + 1];
-                    data[i + 2] = 255 - data[i + 2];
-                }
-            }
+  const canvas = document.getElementById('canvas');
+  const ctx = canvas.getContext('2d', { willReadFrequently: true });
+  const fileInput = document.getElementById('fileInput');
+  const dropZone = document.getElementById('dropZone');
+  const statusBar = document.getElementById('statusBar');
 
-            const contrast = parseFloat(document.getElementById('contrast').value);
-            const density = parseInt(document.getElementById('density').value) / 100;
+  // File handling
+  dropZone.addEventListener('click', () => fileInput.click());
+  dropZone.addEventListener('dragover', (e) => {
+    e.preventDefault();
+    dropZone.style.opacity = '0.7';
+  });
+  dropZone.addEventListener('dragleave', () => {
+    dropZone.style.opacity = '1';
+  });
+  dropZone.addEventListener('drop', (e) => {
+    e.preventDefault();
+    dropZone.style.opacity = '1';
+    const file = e.dataTransfer.files[0];
+    if (file) loadImage(file);
+  });
 
-            let ascii = '';
-            const chars = getCharset();
+  fileInput.addEventListener('change', (e) => {
+    const file = e.target.files[0];
+    if (file) loadImage(file);
+  });
 
-            for (let i = 0; i < data.length; i += 4) {
-                if (Math.random() > density) continue;
+  function loadImage(file) {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const img = new Image();
+      img.onload = () => {
+        imageData = { img, width: img.width, height: img.height };
+        updateStatus('Image loaded. Click Apply.');
+        renderPreview();
+      };
+      img.src = e.target.result;
+    };
+    reader.readAsDataURL(file);
+  }
 
-                let r = data[i];
-                let g = data[i + 1];
-                let b = data[i + 2];
-                let gray = (r + g + b) / 3;
+  // Render ASCII
+  function renderPreview() {
+    if (!imageData) return;
 
-                // Apply contrast
-                gray = Math.min(255, Math.max(0, (gray - 128) * contrast + 128));
+    const width = parseInt(document.getElementById('width').value);
+    const height = Math.round(width * (imageData.height / imageData.width) * 0.5);
+    const charSize = parseInt(document.getElementById('charSize').value);
+    const lineSpacing = parseFloat(document.getElementById('lineSpacing').value);
+    const contrast = parseInt(document.getElementById('contrast').value);
+    const brightness = parseInt(document.getElementById('brightness').value);
+    const colorMode = document.getElementById('colorMode').value;
 
-                const charIndex = Math.floor((gray / 255) * (chars.length - 1));
-                const char = chars[charIndex];
+    canvas.width = width * charSize;
+    canvas.height = height * charSize * lineSpacing;
+    ctx.fillStyle = '#0a0a0a';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-                ascii += char;
+    // Resize and process image
+    const tempCanvas = document.createElement('canvas');
+    tempCanvas.width = width;
+    tempCanvas.height = height;
+    const tempCtx = tempCanvas.getContext('2d');
+    tempCtx.drawImage(imageData.img, 0, 0, width, height);
 
-                // Line break
-                if ((i / 4) % width === width - 1) {
-                    ascii += '\n';
-                }
-            }
+    const imgData = tempCtx.getImageData(0, 0, width, height);
+    const data = imgData.data;
 
-            state.asciiOutput = ascii;
-            asciiOutput.textContent = ascii;
-            asciiStatus.textContent = `Generated: ${width}×${height} chars`;
-            exportPngBtn.disabled = false;
-            exportTxtBtn.disabled = false;
-            showMessage('✅ ASCII generated successfully!', 'success');
-        }
+    ctx.font = `${charSize}px monospace`;
+    ctx.textBaseline = 'top';
 
-        function getCharset() {
-            switch (state.currentMode) {
-                case 'traditional': return ASCII_CHARS.traditional;
-                case 'unicode': return ASCII_CHARS.unicode;
-                case 'colored': return ASCII_CHARS.extended;
-                case 'inverted': return ASCII_CHARS.inverted;
-                default: return ASCII_CHARS.traditional;
-            }
-        }
+    for (let i = 0; i < width * height; i++) {
+      const r = data[i * 4];
+      const g = data[i * 4 + 1];
+      const b = data[i * 4 + 2];
+      const a = data[i * 4 + 3];
 
-        // Export PNG
-        exportPngBtn.addEventListener('click', () => {
-            const fontSize = parseInt(document.getElementById('fontSize').value);
-            const exportCanvas = document.getElementById('exportCanvas');
-            const ctx = exportCanvas.getContext('2d');
+      let gray = (r * 0.299 + g * 0.587 + b * 0.114);
+      gray = Math.max(0, Math.min(255, gray + brightness));
+      gray = Math.pow(gray / 255, 1 - contrast / 100) * 255;
 
-            const lines = state.asciiOutput.split('\n');
-            const charWidth = fontSize * 0.6;
-            const charHeight = fontSize;
+      const charIndex = Math.floor((gray / 255) * (currentChars.length - 1));
+      const char = currentChars[charIndex];
 
-            exportCanvas.width = Math.max(...lines.map(l => l.length)) * charWidth;
-            exportCanvas.height = lines.length * charHeight;
+      const x = (i % width) * charSize;
+      const y = Math.floor(i / width) * charSize * lineSpacing;
 
-            ctx.fillStyle = '#000';
-            ctx.fillRect(0, 0, exportCanvas.width, exportCanvas.height);
-            ctx.fillStyle = '#64c8ff';
-            ctx.font = `${fontSize}px 'Courier New', monospace`;
+      // Color
+      if (colorMode === 'mono') {
+        ctx.fillStyle = `rgba(0, 212, 255, ${a / 255})`;
+      } else if (colorMode === 'original') {
+        ctx.fillStyle = `rgba(${r}, ${g}, ${b}, ${a / 255})`;
+      } else if (colorMode === 'inverted') {
+        ctx.fillStyle = `rgba(${255 - r}, ${255 - g}, ${255 - b}, ${a / 255})`;
+      } else if (colorMode === 'cyan') {
+        const intensity = gray / 255;
+        ctx.fillStyle = `rgba(0, ${Math.round(212 * intensity)}, ${Math.round(255 * intensity)}, ${a / 255})`;
+      } else if (colorMode === 'green') {
+        const intensity = gray / 255;
+        ctx.fillStyle = `rgba(0, ${Math.round(255 * intensity)}, 0, ${a / 255})`;
+      }
 
-            lines.forEach((line, i) => {
-                ctx.fillText(line, 0, (i + 1) * charHeight);
-            });
+      ctx.fillText(char, x, y);
+    }
+  }
 
-            const link = document.createElement('a');
-            link.download = 'ascii-art.png';
-            link.href = exportCanvas.toDataURL();
-            link.click();
-            showMessage('✅ PNG exported!', 'success');
-        });
+  // Presets
+  document.querySelectorAll('.preset-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.preset-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
 
-        // Export TXT
-        exportTxtBtn.addEventListener('click', () => {
-            const link = document.createElement('a');
-            link.download = 'ascii-art.txt';
-            link.href = 'data:text/plain,' + encodeURIComponent(state.asciiOutput);
-            link.click();
-            showMessage('✅ TXT exported!', 'success');
-        });
+      const preset = btn.dataset.preset;
+      currentPreset = preset;
 
-        function showMessage(text, type = 'info') {
-            message.innerHTML = `<div class="${type}-msg">${text}</div>`;
-            setTimeout(() => message.innerHTML = '', 3000);
-        }
-    </script>
+      if (preset === 'custom') {
+        document.getElementById('customCharRow').style.display = 'flex';
+        currentChars = document.getElementById('customChars').value || '@%#*+=-:. ';
+      } else {
+        document.getElementById('customCharRow').style.display = 'none';
+        currentChars = charPresets[preset];
+      }
+
+      if (imageData) renderPreview();
+    });
+  });
+
+  document.getElementById('customChars').addEventListener('input', () => {
+    if (currentPreset === 'custom') {
+      currentChars = document.getElementById('customChars').value || '@%#*+=-:. ';
+      if (imageData) renderPreview();
+    }
+  });
+
+  // Controls
+  const controls = ['charSize', 'lineSpacing', 'contrast', 'brightness', 'colorMode', 'width'];
+  controls.forEach(id => {
+    const el = document.getElementById(id);
+    el.addEventListener('input', () => {
+      const valDisplay = document.getElementById(id + 'Val');
+      if (valDisplay) {
+        const val = el.value;
+        if (id === 'charSize') valDisplay.textContent = val + 'px';
+        else if (id === 'lineSpacing') valDisplay.textContent = val + 'x';
+        else valDisplay.textContent = val;
+      }
+      if (imageData) renderPreview();
+    });
+  });
+
+  // Buttons
+  document.getElementById('applyBtn').addEventListener('click', () => {
+    if (imageData) {
+      renderPreview();
+      updateStatus('ASCII art rendered! Ready to download.');
+    }
+  });
+
+  document.getElementById('randomizeBtn').addEventListener('click', () => {
+    const presets = Object.keys(charPresets);
+    const randomPreset = presets[Math.floor(Math.random() * presets.length)];
+    currentPreset = randomPreset;
+    currentChars = charPresets[randomPreset];
+
+    document.querySelectorAll('.preset-btn').forEach(b => b.classList.remove('active'));
+    document.querySelector(`[data-preset="${randomPreset}"]`).classList.add('active');
+
+    if (imageData) renderPreview();
+    updateStatus(`Randomized to ${randomPreset} preset.`);
+  });
+
+  document.getElementById('downloadBtn').addEventListener('click', () => {
+    if (!imageData) {
+      updateStatus('Please load an image first.');
+      return;
+    }
+
+    const link = document.createElement('a');
+    link.href = canvas.toDataURL('image/png');
+    link.download = `ascii-canvas-${Date.now()}.png`;
+    link.click();
+    updateStatus('Downloaded!');
+  });
+
+  function updateStatus(msg) {
+    statusBar.textContent = '◈ ' + msg;
+  }
+
+  // Load i18n
+  loadLang(localStorage.getItem('lang') || 'es');
+</script>
+
 </body>
 </html>
