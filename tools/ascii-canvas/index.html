@@ -5,84 +5,6 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>ASCII Canvas — PUDRUS.XYZ</title>
   <link rel="stylesheet" href="../../css/style.css">
-  <style>
-    #canvas {
-      background: #0a0a0a;
-      border: 2px solid #00d4ff;
-      display: block;
-      margin-top: 20px;
-      image-rendering: pixelated;
-      cursor: default;
-    }
-
-    .char-preset {
-      display: grid;
-      grid-template-columns: repeat(3, 1fr);
-      gap: 8px;
-      margin-top: 10px;
-    }
-
-    .preset-btn {
-      padding: 8px 12px;
-      background: #1a1a2e;
-      border: 1px solid #00d4ff;
-      color: #00d4ff;
-      cursor: pointer;
-      font-family: monospace;
-      font-size: 11px;
-      transition: all 0.2s;
-    }
-
-    .preset-btn:hover {
-      background: #00d4ff;
-      color: #0a0a0a;
-    }
-
-    .preset-btn.active {
-      background: #00d4ff;
-      color: #0a0a0a;
-      font-weight: bold;
-    }
-
-    .button-group {
-      display: flex;
-      gap: 10px;
-      margin-top: 20px;
-      flex-wrap: wrap;
-    }
-
-    .btn {
-      flex: 1;
-      min-width: 100px;
-      padding: 10px;
-      background: #00d4ff;
-      color: #0a0a0a;
-      border: none;
-      cursor: pointer;
-      font-weight: bold;
-      transition: all 0.2s;
-    }
-
-    .btn:hover {
-      background: #00b4d4;
-      transform: scale(1.02);
-    }
-
-    .btn:active {
-      transform: scale(0.98);
-    }
-
-    .tool-canvas {
-      flex: 1;
-      display: flex;
-      flex-direction: column;
-      justify-content: center;
-      align-items: center;
-      overflow: auto;
-      padding: 20px;
-      background: linear-gradient(135deg, #0a0a0a 0%, #1a1a2e 100%);
-    }
-  </style>
 </head>
 <body>
 
@@ -159,7 +81,7 @@
           <button class="preset-btn" data-preset="dense" data-i18n="ascii.presetDense">Dense</button>
           <button class="preset-btn" data-preset="custom" data-i18n="ascii.presetCustom">Custom</button>
         </div>
-        <div class="control-row" id="customCharRow" style="display:none; margin-top:10px;">
+        <div class="control-row custom-char-row" id="customCharRow">
           <label data-i18n="ascii.customChars">Custom Chars</label>
           <input type="text" id="customChars" placeholder="@%#*+=-:." maxlength="50">
         </div>
@@ -195,24 +117,12 @@
 
       <hr class="divider">
 
-      <!-- Resolution -->
-      <div class="control-group">
-        <span class="control-label" data-i18n="ascii.resolution">Output Resolution</span>
-        <div class="control-row">
-          <label data-i18n="ascii.width">Width (chars)</label>
-          <input type="range" id="width" min="40" max="200" value="100">
-          <span class="val" id="widthVal">100</span>
-        </div>
-      </div>
 
       <!-- Actions -->
-      <div class="button-group">
-        <button class="btn" id="randomizeBtn" data-i18n="ascii.randomize">Randomize Set</button>
-        <button class="btn" id="applyBtn" data-i18n="ascii.apply">Apply</button>
-      </div>
-
-      <div class="button-group">
-        <button class="btn" id="downloadBtn" data-i18n="ascii.download">⬇ Download PNG</button>
+      <div class="action-btns">
+        <button class="btn btn-primary" id="randomizeBtn" data-i18n="ascii.randomize">◈ Randomize Set</button>
+        <button class="btn btn-primary" id="applyBtn" data-i18n="ascii.apply">◈ Apply</button>
+        <button class="btn btn-outline" id="downloadBtn" data-i18n="ascii.download">⬇ Download PNG</button>
       </div>
     </div>
 
@@ -220,8 +130,9 @@
   </div>
 
   <!-- CANVAS -->
-  <div class="tool-canvas">
-    <canvas id="canvas"></canvas>
+  <div class="tool-canvas-area">
+    <canvas id="asciiCanvas"></canvas>
+    <div class="canvas-info" id="canvasInfo">No image loaded</div>
   </div>
 </div>
 
@@ -240,11 +151,12 @@
     dense: '@@@%%%###***+++===---:::...   ',
   };
 
-  const canvas = document.getElementById('canvas');
+  const canvas = document.getElementById('asciiCanvas');
   const ctx = canvas.getContext('2d', { willReadFrequently: true });
   const fileInput = document.getElementById('fileInput');
   const dropZone = document.getElementById('dropZone');
   const statusBar = document.getElementById('statusBar');
+  const canvasInfo = document.getElementById('canvasInfo');
 
   // File handling
   dropZone.addEventListener('click', () => fileInput.click());
@@ -273,6 +185,7 @@
       const img = new Image();
       img.onload = () => {
         imageData = { img, width: img.width, height: img.height };
+        canvasInfo.textContent = img.width + ' × ' + img.height + ' px';
         updateStatus('Image loaded. Click Apply.');
         renderPreview();
       };
@@ -285,16 +198,39 @@
   function renderPreview() {
     if (!imageData) return;
 
-    const width = parseInt(document.getElementById('width').value);
-    const height = Math.round(width * (imageData.height / imageData.width) * 0.5);
     const charSize = parseInt(document.getElementById('charSize').value);
     const lineSpacing = parseFloat(document.getElementById('lineSpacing').value);
     const contrast = parseInt(document.getElementById('contrast').value);
     const brightness = parseInt(document.getElementById('brightness').value);
     const colorMode = document.getElementById('colorMode').value;
 
+    // Get container size to fit canvas
+    const container = document.querySelector('.tool-canvas-area');
+    const maxW = container.clientWidth - 40;
+    const maxH = container.clientHeight - 40;
+
+    // Calculate grid dimensions based on container and char size
+    const gridW = Math.floor(maxW / charSize);
+    const gridH = Math.floor(maxH / (charSize * lineSpacing));
+
+    // Maintain image aspect ratio
+    const imgAspectRatio = imageData.height / imageData.width;
+    let width = gridW;
+    let height = Math.round(width * imgAspectRatio / lineSpacing);
+
+    if (height > gridH) {
+      height = gridH;
+      width = Math.round(height * lineSpacing / imgAspectRatio);
+    }
+
+    // Set canvas size
     canvas.width = width * charSize;
     canvas.height = height * charSize * lineSpacing;
+    
+    // Store the actual ASCII dimensions for export
+    canvas.asciiWidth = width;
+    canvas.asciiHeight = height;
+    
     ctx.fillStyle = '#0a0a0a';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
@@ -375,7 +311,7 @@
   });
 
   // Controls with real-time preview
-  const controls = ['charSize', 'lineSpacing', 'contrast', 'brightness', 'colorMode', 'width'];
+  const controls = ['charSize', 'lineSpacing', 'contrast', 'brightness', 'colorMode'];
   controls.forEach(id => {
     const el = document.getElementById(id);
     el.addEventListener('input', () => {
@@ -420,27 +356,41 @@
     let quality = document.getElementById('exportQuality').value;
     let aspectRatio = document.getElementById('aspectRatio').value;
     
-    let maxDim = quality === 'high' ? Math.max(canvas.width, canvas.height) : 
+    // Use the stored ASCII dimensions to maintain proper aspect ratio
+    let srcW = canvas.asciiWidth || canvas.width;
+    let srcH = canvas.asciiHeight || canvas.height;
+    
+    // Calculate the actual rendered dimensions
+    let renderedW = srcW * parseInt(document.getElementById('charSize').value);
+    let renderedH = srcH * parseInt(document.getElementById('charSize').value) * parseFloat(document.getElementById('lineSpacing').value);
+    
+    let maxDim = quality === 'high' ? Math.max(renderedW, renderedH) : 
                  quality === 'medium' ? 1080 : 720;
     let exportCanvas = document.createElement('canvas');
     let exportCtx = exportCanvas.getContext('2d');
     
-    let srcW = canvas.width, srcH = canvas.height;
-    
+    // Apply aspect ratio crop if needed
     if (aspectRatio !== 'free') {
       let [ratioW, ratioH] = aspectRatio.split(':').map(Number);
       let targetRatio = ratioW / ratioH;
-      let currentRatio = srcW / srcH;
-      if (currentRatio > targetRatio) srcW = srcH * targetRatio;
-      else srcH = srcW / targetRatio;
+      let currentRatio = renderedW / renderedH;
+      
+      if (currentRatio > targetRatio) {
+        // Wider than target - crop sides
+        renderedW = renderedH * targetRatio;
+      } else {
+        // Taller than target - crop top/bottom
+        renderedH = renderedW / targetRatio;
+      }
     }
     
-    let scale = Math.min(1, maxDim / Math.max(srcW, srcH));
-    exportCanvas.width = Math.floor(srcW * scale);
-    exportCanvas.height = Math.floor(srcH * scale);
+    // Scale to target quality
+    let scale = Math.min(1, maxDim / Math.max(renderedW, renderedH));
+    exportCanvas.width = Math.floor(renderedW * scale);
+    exportCanvas.height = Math.floor(renderedH * scale);
     
-    let sx = (canvas.width - srcW) / 2, sy = (canvas.height - srcH) / 2;
-    exportCtx.drawImage(canvas, sx, sy, srcW, srcH, 0, 0, exportCanvas.width, exportCanvas.height);
+    // Draw from the main canvas
+    exportCtx.drawImage(canvas, 0, 0, canvas.width, canvas.height, 0, 0, exportCanvas.width, exportCanvas.height);
     
     const link = document.createElement('a');
     link.href = exportCanvas.toDataURL('image/png');

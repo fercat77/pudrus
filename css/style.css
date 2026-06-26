@@ -394,6 +394,10 @@ select:focus { border-color: var(--c1); }
   border-top: 1px solid var(--border);
 }
 
+.action-btns .btn {
+  width: 100%;
+}
+
 .status-bar {
   padding: 8px 24px;
   border-top: 1px solid var(--border);
@@ -414,6 +418,60 @@ input[type="color"] {
   font-size: 9px; letter-spacing: 2px;
   color: rgba(0,212,255,0.4);
   text-transform: uppercase;
+}
+
+/* ── ASCII CANVAS SPECIFIC ──────────────────────────── */
+#asciiCanvas {
+  background: #0a0a0a;
+  border: 2px solid #00d4ff;
+  display: block;
+  margin-top: 20px;
+  image-rendering: pixelated;
+  cursor: default;
+}
+
+.char-preset {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.preset-btn {
+  padding: 8px 12px;
+  background: #1a1a2e;
+  border: 1px solid #00d4ff;
+  color: #00d4ff;
+  cursor: pointer;
+  font-family: monospace;
+  font-size: 11px;
+  transition: all 0.2s;
+}
+
+.preset-btn:hover {
+  background: #00d4ff;
+  color: #0a0a0a;
+}
+
+.preset-btn.active {
+  background: #00d4ff;
+  color: #0a0a0a;
+  font-weight: bold;
+}
+
+.ascii-tool-canvas {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  overflow: auto;
+  padding: 20px;
+  background: linear-gradient(135deg, #0a0a0a 0%, #1a1a2e 100%);
+}
+
+.custom-char-row {
+  margin-top: 10px;
 }
 
 /* ── RESPONSIVE ─────────────────────────────────────── */
