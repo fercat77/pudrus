@@ -3,113 +3,11 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Browser-based creative visual tools for image and video processing. No uploads, no installations. Pixel sorting, dithering, glitch effects, ASCII art and more.">
+  <meta name="keywords" content="image processing, video effects, pixel sort, dithering, glitch art, ASCII art, creative tools, browser-based">
+  <meta name="author" content="PUDRUS">
   <title>PUDRUS — Creative Visual Tools</title>
   <link rel="stylesheet" href="css/style.css">
-  <style>
-    /* Animación hero */
-    @keyframes fadeUp {
-      from { opacity:0; transform: translateY(20px); }
-      to   { opacity:1; transform: translateY(0); }
-    }
-    .hero-tag  { animation: fadeUp 0.6s ease 0.1s both; }
-    .hero h1   { animation: fadeUp 0.6s ease 0.2s both; }
-    .hero-sub  { animation: fadeUp 0.6s ease 0.3s both; }
-    .hero-cta  { animation: fadeUp 0.6s ease 0.4s both; }
-
-    /* Línea decorativa */
-    .hero-line {
-      width: 60px; height: 1px;
-      background: var(--c1);
-      margin: 30px auto;
-      animation: fadeUp 0.6s ease 0.5s both;
-    }
-
-    /* Stats */
-    .hero-stats {
-      display: flex; gap: 48px;
-      margin-top: 60px;
-      animation: fadeUp 0.6s ease 0.6s both;
-    }
-    .stat { text-align: center; }
-    .stat-num {
-      font-size: 28px; font-weight: bold;
-      color: var(--c1); letter-spacing: 2px;
-    }
-    .stat-label {
-      font-size: 9px; letter-spacing: 3px;
-      color: var(--text2); text-transform: uppercase;
-      margin-top: 4px;
-    }
-
-    /* Scanline effect en hero */
-    .hero::after {
-      content: '';
-      position: absolute; inset: 0;
-      background: repeating-linear-gradient(
-        0deg,
-        transparent,
-        transparent 3px,
-        rgba(0,0,0,0.08) 3px,
-        rgba(0,0,0,0.08) 4px
-      );
-      pointer-events: none;
-    }
-
-    /* Corner brackets en hero */
-    .hero-brackets {
-      position: absolute;
-      width: calc(100% - 80px);
-      height: calc(100% - 100px);
-      top: 80px; left: 40px;
-      pointer-events: none;
-    }
-    .corner {
-      position: absolute;
-      width: 30px; height: 30px;
-    }
-    .corner::before, .corner::after {
-      content: ''; position: absolute;
-      background: var(--c1); opacity: 0.4;
-    }
-    .corner::before { width: 100%; height: 1px; top: 0; left: 0; }
-    .corner::after  { width: 1px; height: 100%; top: 0; left: 0; }
-    .corner.tr { top: 0; right: 0; transform: rotate(90deg); }
-    .corner.bl { bottom: 0; left: 0; transform: rotate(270deg); }
-    .corner.br { bottom: 0; right: 0; transform: rotate(180deg); }
-
-    /* Sección about */
-    .about-grid {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 60px; align-items: center;
-    }
-    .about-text p {
-      font-size: 12px; line-height: 2;
-      color: var(--text2); margin-bottom: 16px;
-    }
-    .about-features {
-      display: flex; flex-direction: column; gap: 16px;
-    }
-    .feature {
-      display: flex; gap: 16px;
-      padding: 16px; border: 1px solid var(--border);
-      background: var(--bg2);
-    }
-    .feature-icon { font-size: 20px; flex-shrink: 0; }
-    .feature-text h4 {
-      font-size: 11px; letter-spacing: 2px;
-      text-transform: uppercase; color: #fff;
-      margin-bottom: 4px;
-    }
-    .feature-text p {
-      font-size: 10px; color: var(--text2); line-height: 1.6;
-    }
-
-    @media (max-width: 768px) {
-      .about-grid { grid-template-columns: 1fr; }
-      .hero-stats { gap: 24px; }
-    }
-  </style>
 </head>
 <body>
 
@@ -166,7 +64,7 @@
 </div>
 
 <!-- ── TOOLS ─────────────────────────────────────────── -->
-<section id="tools" style="max-width:1200px; margin:0 auto;">
+<section id="tools" class="section-tools">
   <p class="section-tag" data-i18n="tools.sectionTag">◈ 01 — Tools</p>
   <h2 class="section-title" data-i18n="tools.title">Visual <span>Processing</span> Suite</h2>
   <p class="section-desc" data-i18n="tools.desc">
@@ -236,7 +134,7 @@
     </a>
 
     <!-- Video FX -->
-    <a href="tools/video-fx/index.html" class="tool-card coming-soon">
+    <a href="#" class="tool-card coming-soon">
       <span class="tool-icon">◈</span>
       <div class="tool-number">06 // TOOL</div>
       <div class="tool-name">Video FX</div>
@@ -251,7 +149,7 @@
 </section>
 
 <!-- ── ABOUT ─────────────────────────────────────────── -->
-<section id="about" style="max-width:1200px; margin:0 auto; padding-top:40px;">
+<section id="about" class="section-about">
   <p class="section-tag" data-i18n="about.sectionTag">◈ 02 — About</p>
   <h2 class="section-title" data-i18n="about.title">How it <span>Works</span></h2>
 
@@ -266,7 +164,7 @@
         Built with p5.js and vanilla JavaScript. No frameworks,
         no subscriptions, no accounts needed.
       </p>
-      <a href="#tools" class="btn btn-outline" style="margin-top:8px;" data-i18n="about.start">
+      <a href="#tools" class="btn btn-outline btn-outline-start" data-i18n="about.start">
         Start Creating
       </a>
     </div>
@@ -305,9 +203,9 @@
 </section>
 
 <!-- ── FOOTER ────────────────────────────────────────── -->
-<footer style="margin-top:80px;">
+<footer class="custom-margin">
   <span data-i18n="footer.copyright">© 2026 PUDRUS.XYZ</span>
-  <span style="color:var(--c3)">◈ ◈ ◈</span>
+  <span class="footer-separator">◈ ◈ ◈</span>
   <span data-i18n="footer.note">Built in the browser, for the browser</span>
 </footer>
 

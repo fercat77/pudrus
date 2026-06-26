@@ -11,7 +11,7 @@
   "tools": {
     "sectionTag": "◈ 01 — Tools",
     "title": "Visual Processing Suite",
-    "desc": "Cada tool corre en tu browser. Sin uploads, sin instalaciones.",
+    "desc": "Cada tool corre en tu navegador. Sin uploads, sin instalaciones.",
     "pixel": { "name": "Pixel Sorter", "desc": "Ordena píxeles por brightness, hue o saturation." },
     "dither": { "name": "Dithering", "desc": "Algoritmos clásicos: Floyd-Steinberg, Atkinson, ordered." },
     "glitch": { "name": "Glitch FX", "desc": "RGB shifts, scanlines, block corruption." },

@@ -27,6 +27,28 @@
         <input type="file" id="fileInput" accept="image/*">
       </div>
 
+      <!-- Crop Controls -->
+      <div class="control-group">
+        <span class="control-label">Crop & Export</span>
+        <div class="control-row">
+          <label>Aspect Ratio</label>
+          <select id="aspectRatio">
+            <option value="free">Free</option>
+            <option value="1:1">Square (1:1)</option>
+            <option value="4:5">Portrait (4:5)</option>
+            <option value="9:16">Story (9:16)</option>
+          </select>
+        </div>
+        <div class="control-row">
+          <label>Quality</label>
+          <select id="exportQuality">
+            <option value="high">High (Original)</option>
+            <option value="medium">Medium (1080px)</option>
+            <option value="low">Low (720px)</option>
+          </select>
+        </div>
+      </div>
+
       <hr class="divider">
 
       <div class="control-group">
@@ -126,6 +148,13 @@ let isInvert=false, doGray=true;
 function toggle(id,cb){let el=document.getElementById(id);el.addEventListener('click',()=>{el.classList.toggle('on');cb(el.classList.contains('on'));});}
 toggle('invertToggle',v=>isInvert=v);
 toggle('grayToggle',v=>doGray=v);
+
+// Real-time preview
+['scale','threshold','contrast','algorithm','colorMode'].forEach(id=>{
+  document.getElementById(id).addEventListener('input',()=>{
+    if(origImageData) applyDither();
+  });
+});
 
 document.getElementById('colorMode').addEventListener('change',function(){
   document.getElementById('customPalette').style.display=this.value==='custom'?'block':'none';
@@ -325,7 +354,36 @@ document.getElementById('randomBtn').addEventListener('click',randomDither);
 document.getElementById('resetBtn').addEventListener('click',()=>{if(origImageData){ctx.putImageData(origImageData,0,0);status('Reset');}});
 document.getElementById('exportBtn').addEventListener('click',()=>{
   if(!origImageData){status('Nothing to export');return;}
-  let a=document.createElement('a');a.download='pudrus_dither_'+Date.now()+'.png';a.href=canvas.toDataURL();a.click();status('Exported!');
+  
+  let quality=document.getElementById('exportQuality').value;
+  let aspectRatio=document.getElementById('aspectRatio').value;
+  
+  let maxDim=quality==='high'?Math.max(canvas.width,canvas.height):quality==='medium'?1080:720;
+  let exportCanvas=document.createElement('canvas');
+  let exportCtx=exportCanvas.getContext('2d');
+  
+  let srcW=canvas.width, srcH=canvas.height;
+  
+  if(aspectRatio!=='free'){
+    let[ratioW,ratioH]=aspectRatio.split(':').map(Number);
+    let targetRatio=ratioW/ratioH;
+    let currentRatio=srcW/srcH;
+    if(currentRatio>targetRatio) srcW=srcH*targetRatio;
+    else srcH=srcW/targetRatio;
+  }
+  
+  let scale=Math.min(1,maxDim/Math.max(srcW,srcH));
+  exportCanvas.width=Math.floor(srcW*scale);
+  exportCanvas.height=Math.floor(srcH*scale);
+  
+  let sx=(canvas.width-srcW)/2, sy=(canvas.height-srcH)/2;
+  exportCtx.drawImage(canvas,sx,sy,srcW,srcH,0,0,exportCanvas.width,exportCanvas.height);
+  
+  let a=document.createElement('a');
+  a.download='pudrus_dither_'+Date.now()+'.png';
+  a.href=exportCanvas.toDataURL();
+  a.click();
+  status('Exported!');
 });
 </script>
 </body>

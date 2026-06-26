@@ -110,6 +110,28 @@
         <input type="file" id="fileInput" accept="image/*">
       </div>
 
+      <!-- Crop Controls -->
+      <div class="control-group">
+        <span class="control-label">Crop & Export</span>
+        <div class="control-row">
+          <label>Aspect Ratio</label>
+          <select id="aspectRatio">
+            <option value="free">Free</option>
+            <option value="1:1">Square (1:1)</option>
+            <option value="4:5">Portrait (4:5)</option>
+            <option value="9:16">Story (9:16)</option>
+          </select>
+        </div>
+        <div class="control-row">
+          <label>Quality</label>
+          <select id="exportQuality">
+            <option value="high">High (Original)</option>
+            <option value="medium">Medium (1080px)</option>
+            <option value="low">Low (720px)</option>
+          </select>
+        </div>
+      </div>
+
       <hr class="divider">
 
       <!-- Granularity -->
@@ -352,7 +374,7 @@
     }
   });
 
-  // Controls
+  // Controls with real-time preview
   const controls = ['charSize', 'lineSpacing', 'contrast', 'brightness', 'colorMode', 'width'];
   controls.forEach(id => {
     const el = document.getElementById(id);
@@ -395,8 +417,33 @@
       return;
     }
 
+    let quality = document.getElementById('exportQuality').value;
+    let aspectRatio = document.getElementById('aspectRatio').value;
+    
+    let maxDim = quality === 'high' ? Math.max(canvas.width, canvas.height) : 
+                 quality === 'medium' ? 1080 : 720;
+    let exportCanvas = document.createElement('canvas');
+    let exportCtx = exportCanvas.getContext('2d');
+    
+    let srcW = canvas.width, srcH = canvas.height;
+    
+    if (aspectRatio !== 'free') {
+      let [ratioW, ratioH] = aspectRatio.split(':').map(Number);
+      let targetRatio = ratioW / ratioH;
+      let currentRatio = srcW / srcH;
+      if (currentRatio > targetRatio) srcW = srcH * targetRatio;
+      else srcH = srcW / targetRatio;
+    }
+    
+    let scale = Math.min(1, maxDim / Math.max(srcW, srcH));
+    exportCanvas.width = Math.floor(srcW * scale);
+    exportCanvas.height = Math.floor(srcH * scale);
+    
+    let sx = (canvas.width - srcW) / 2, sy = (canvas.height - srcH) / 2;
+    exportCtx.drawImage(canvas, sx, sy, srcW, srcH, 0, 0, exportCanvas.width, exportCanvas.height);
+    
     const link = document.createElement('a');
-    link.href = canvas.toDataURL('image/png');
+    link.href = exportCanvas.toDataURL('image/png');
     link.download = `ascii-canvas-${Date.now()}.png`;
     link.click();
     updateStatus('Downloaded!');

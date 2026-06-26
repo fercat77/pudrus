@@ -17,7 +17,10 @@
     document.querySelectorAll('[data-i18n]').forEach(el=>{
       const key = el.getAttribute('data-i18n');
       const txt = key.split('.').reduce((o,k)=>o && o[k], dict);
-      if(txt === undefined) return;
+      if(txt === undefined){
+        console.warn('Missing translation for key:', key);
+        return;
+      }
       if(el.hasAttribute('data-i18n-html')) el.innerHTML = txt; else el.textContent = txt;
     });
   }
