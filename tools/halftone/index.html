@@ -515,7 +515,6 @@ toggle('previewToggle', v => {
 // File handling
 let dropZone = document.getElementById('dropZone');
 let fileInput = document.getElementById('fileInput');
-dropZone.addEventListener('click', () => fileInput.click());
 dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.style.borderColor = 'var(--c1)'; });
 dropZone.addEventListener('dragleave', () => dropZone.style.borderColor = '');
 dropZone.addEventListener('drop', e => { e.preventDefault(); dropZone.style.borderColor = ''; let file = e.dataTransfer.files[0]; if (file && file.type.startsWith('image/')) loadFile(file); });

@@ -165,7 +165,6 @@ function status(m){document.getElementById('statusBar').textContent='◈ '+m;}
 
 // File load
 let dropZone=document.getElementById('dropZone'),fileInput=document.getElementById('fileInput');
-dropZone.addEventListener('click',()=>fileInput.click());
 dropZone.addEventListener('dragover',e=>{e.preventDefault();});
 dropZone.addEventListener('drop',e=>{e.preventDefault();let f=e.dataTransfer.files[0];if(f)loadFile(f);});
 fileInput.addEventListener('change',()=>{if(fileInput.files[0])loadFile(fileInput.files[0]);});

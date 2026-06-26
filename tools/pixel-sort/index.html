@@ -207,7 +207,6 @@ function status(msg) {
 let dropZone = document.getElementById('dropZone');
 let fileInput = document.getElementById('fileInput');
 
-dropZone.addEventListener('click', () => fileInput.click());
 dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.style.borderColor='var(--c1)'; });
 dropZone.addEventListener('dragleave', () => dropZone.style.borderColor='');
 dropZone.addEventListener('drop', e => {
