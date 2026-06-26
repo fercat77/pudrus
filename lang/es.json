@@ -16,7 +16,8 @@
     "dither": { "name": "Dithering", "desc": "Algoritmos clásicos: Floyd-Steinberg, Atkinson, ordered." },
     "glitch": { "name": "Glitch FX", "desc": "RGB shifts, scanlines, block corruption." },
     "constellation": { "name": "Constellation", "desc": "Overlay generative star maps y node networks." },
-    "ascii": { "name": "ASCII Canvas", "desc": "Transforma imágenes en ASCII art creativo." }
+    "ascii": { "name": "ASCII Canvas", "desc": "Transforma imágenes en ASCII art creativo." },
+    "halftone": { "name": "Halftone", "desc": "Crea patrones de puntos, separaciones CMYK y efectos de impresión retro." }
   },
   "constellation": {
     "fileDrop": "Click o suelta una imagen aquí",
@@ -75,6 +76,35 @@
     "apply": "◈ Aplicar",
     "download": "⬇ Descargar PNG",
     "ready": "Listo"
+  },
+  "halftone": {
+    "fileDrop": "Click o suelta una imagen aquí",
+    "mode": "Modo Halftone",
+    "dotSettings": "Configuración de Puntos",
+    "dotSize": "Tamaño de Punto",
+    "spacing": "Espaciado",
+    "shape": "Forma",
+    "angles": "Ángulos de Canal",
+    "angle1": "Ángulo 1",
+    "angle2": "Ángulo 2",
+    "angle3": "Ángulo 3",
+    "angle4": "Ángulo 4",
+    "customChannel": "Canal Personalizado",
+    "colors": "Colores",
+    "bgColor": "Fondo",
+    "channel1": "Canal 1",
+    "channel2": "Canal 2",
+    "channel3": "Canal 3",
+    "channel4": "Canal 4",
+    "options": "Opciones",
+    "invert": "Invertir",
+    "preview": "Vista Previa en Tiempo Real",
+    "statusNoImage": "◈ No image loaded",
+    "applyBtn": "◈ Aplicar Efecto",
+    "randomBtn": "◈ Randomizar",
+    "resetBtn": "Reset",
+    "exportBtn": "Exportar PNG",
+    "canvasInfoNoImage": "No image loaded"
   },
   "about": {
     "sectionTag": "◈ 02 — About",

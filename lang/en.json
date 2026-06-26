@@ -16,7 +16,8 @@
     "dither": { "name": "Dithering", "desc": "Floyd-Steinberg, ordered, Atkinson and more." },
     "glitch": { "name": "Glitch FX", "desc": "RGB shift, scanlines, datamosh effects." },
     "constellation": { "name": "Constellation", "desc": "Overlay generative star maps and node networks." },
-    "ascii": { "name": "ASCII Canvas", "desc": "Transform images into creative ASCII art." }
+    "ascii": { "name": "ASCII Canvas", "desc": "Transform images into creative ASCII art." },
+    "halftone": { "name": "Halftone", "desc": "Create halftone dot patterns, CMYK separations, and retro print effects." }
   },
   "constellation": {
     "fileDrop": "Click or drop an image here",
@@ -75,6 +76,35 @@
     "apply": "◈ Apply",
     "download": "⬇ Download PNG",
     "ready": "Ready"
+  },
+  "halftone": {
+    "fileDrop": "Click or drop an image here",
+    "mode": "Halftone Mode",
+    "dotSettings": "Dot Settings",
+    "dotSize": "Dot Size",
+    "spacing": "Spacing",
+    "shape": "Shape",
+    "angles": "Channel Angles",
+    "angle1": "Angle 1",
+    "angle2": "Angle 2",
+    "angle3": "Angle 3",
+    "angle4": "Angle 4",
+    "customChannel": "Custom Channel",
+    "colors": "Colors",
+    "bgColor": "Background",
+    "channel1": "Channel 1",
+    "channel2": "Channel 2",
+    "channel3": "Channel 3",
+    "channel4": "Channel 4",
+    "options": "Options",
+    "invert": "Invert",
+    "preview": "Real-time Preview",
+    "statusNoImage": "◈ No image loaded",
+    "applyBtn": "◈ Apply Effect",
+    "randomBtn": "◈ Randomize",
+    "resetBtn": "Reset",
+    "exportBtn": "Export PNG",
+    "canvasInfoNoImage": "No image loaded"
   },
   "about": {
     "sectionTag": "◈ 02 — About",

@@ -155,10 +155,10 @@
 
     <div class="status-bar" id="statusBar" data-i18n="constellation.statusNoImage">◈ No image loaded</div>
     <div class="action-btns">
-      <button class="btn btn-primary" id="applyBtn" style="width:100%" data-i18n="constellation.applyBtn">◈ Apply Overlay</button>
-      <button class="btn btn-outline" id="randomBtn" style="width:100%" data-i18n="constellation.randomBtn">◈ Randomize</button>
-      <button class="btn btn-outline" id="resetBtn" style="width:100%" data-i18n="constellation.resetBtn">Reset</button>
-      <button class="btn btn-outline" id="exportBtn" style="width:100%" data-i18n="constellation.exportBtn">Export PNG</button>
+      <button class="btn btn-primary" id="applyBtn" data-i18n="constellation.applyBtn">◈ Apply Overlay</button>
+      <button class="btn btn-outline" id="randomBtn" data-i18n="constellation.randomBtn">◈ Randomize</button>
+      <button class="btn btn-outline" id="resetBtn" data-i18n="constellation.resetBtn">Reset</button>
+      <button class="btn btn-outline" id="exportBtn" data-i18n="constellation.exportBtn">Export PNG</button>
     </div>
   </div>
 
@@ -180,6 +180,8 @@ let highContrast = false;
 let currentStars = [];
 let currentLines = [];
 let currentMode = 'starfield';
+let renderScheduled = false;
+let cachedColorRGB = null;
 
 function updateLabel(id, value) {
   document.getElementById(id).textContent = value;
@@ -195,6 +197,7 @@ function updateLines() {
   currentLines = showLines && currentMode !== 'map'
     ? generateConnections(currentStars, parseInt(document.getElementById('lineSpread').value, 10))
     : [];
+  scheduleRender();
 }
 
 function updateStarCount() {
@@ -206,32 +209,62 @@ function updateStarCount() {
     currentStars = currentStars.slice(0, count);
   }
   updateLines();
+  scheduleRender();
 }
 
 document.getElementById('modeSelect').addEventListener('change', () => {
   currentMode = document.getElementById('modeSelect').value;
   updateLines();
-  if (currentStars.length) renderOverlay();
+  scheduleRender();
 });
-document.getElementById('starCount').addEventListener('input', () => {
+document.getElementById('starCount').addEventListener('input', debounce(() => {
   updateStarCount();
-  if (currentStars.length) renderOverlay();
-});
-document.getElementById('lineSpread').addEventListener('input', () => {
+}, 16));
+document.getElementById('lineSpread').addEventListener('input', debounce(() => {
   updateLines();
-  if (currentStars.length) renderOverlay();
-});
+}, 16));
 ['vertexShape','vertexOutline','accentColor','lineOpacity','starSize','starGlow','outlineSize','outlineWidth'].forEach(id => {
+  document.getElementById(id).addEventListener('input', debounce(() => {
+    if (currentStars.length) scheduleRender();
+  }, 16));
   document.getElementById(id).addEventListener('change', () => {
+    if (id === 'accentColor') updateCachedColor();
     if (currentStars.length) renderOverlay();
   });
 });
 function toggle(id, cb){ let el = document.getElementById(id); el.addEventListener('click', ()=>{ el.classList.toggle('on'); cb(el.classList.contains('on')); }); }
-toggle('showLinesToggle', v => { showLines = v; updateLines(); if (currentStars.length) renderOverlay(); });
-toggle('showStarsToggle', v => { showStars = v; if (currentStars.length) renderOverlay(); });
-toggle('contrastToggle', v => { highContrast = v; if (currentStars.length) renderOverlay(); });
+toggle('showLinesToggle', v => { showLines = v; updateLines(); scheduleRender(); });
+toggle('showStarsToggle', v => { showStars = v; scheduleRender(); });
+toggle('contrastToggle', v => { highContrast = v; scheduleRender(); });
 
 function status(msg) { document.getElementById('statusBar').textContent = '◈ ' + msg; }
+
+function updateCachedColor() {
+  let color = document.getElementById('accentColor').value;
+  cachedColorRGB = {
+    r: parseInt(color.slice(1,3),16),
+    g: parseInt(color.slice(3,5),16),
+    b: parseInt(color.slice(5,7),16)
+  };
+}
+
+function scheduleRender() {
+  if (!renderScheduled && currentStars.length) {
+    renderScheduled = true;
+    requestAnimationFrame(() => {
+      renderScheduled = false;
+      renderOverlay();
+    });
+  }
+}
+
+function debounce(fn, delay) {
+  let timer;
+  return function(...args) {
+    clearTimeout(timer);
+    timer = setTimeout(() => fn.apply(this, args), delay);
+  };
+}
 
 function prepareOverlay() {
   if (!origImageData) return;
@@ -239,6 +272,7 @@ function prepareOverlay() {
   let count = Math.min(120, parseInt(document.getElementById('starCount').value, 10));
   currentStars = generateStars(count, currentMode);
   updateLines();
+  scheduleRender();
 }
 
 let dropZone = document.getElementById('dropZone');
@@ -333,14 +367,26 @@ function generateStars(count, mode) {
 
 function generateConnections(stars, spread) {
   let lines = [];
+  let maxDist = Math.min(canvas.width, canvas.height) * 0.45;
+  let maxNeighbours = Math.min(2 + spread, 5);
+  
   for (let i = 0; i < stars.length; i++) {
     let a = stars[i];
-    let distances = stars.map((p, j) => ({ j, d: Math.hypot(p.x - a.x, p.y - a.y) }));
+    let distances = [];
+    for (let j = 0; j < stars.length; j++) {
+      if (i === j) continue;
+      let dx = stars[j].x - a.x;
+      let dy = stars[j].y - a.y;
+      distances.push({ j, d: dx * dx + dy * dy });
+    }
     distances.sort((a,b)=>a.d-b.d);
-    let neighbours = distances.slice(1, 1 + Math.min(2 + spread, 5));
-    neighbours.forEach(n => {
-      if (n.d < Math.min(canvas.width, canvas.height) * 0.45) lines.push([a, stars[n.j]]);
-    });
+    let count = 0;
+    for (let k = 0; k < distances.length && count < maxNeighbours; k++) {
+      if (distances[k].d < maxDist * maxDist) {
+        lines.push([a, stars[distances[k].j]]);
+        count++;
+      }
+    }
   }
   return lines;
 }
@@ -365,6 +411,9 @@ function renderMapGrid() {
 
 function renderOverlay() {
   if (!origImageData) return;
+  
+  if (!cachedColorRGB) updateCachedColor();
+  
   let base = new ImageData(new Uint8ClampedArray(origImageData.data), origImageData.width, origImageData.height);
   if (highContrast) base = applyContrastToImage(base);
   ctx.putImageData(base, 0, 0);
@@ -373,7 +422,6 @@ function renderOverlay() {
   let opacity = parseInt(document.getElementById('lineOpacity').value, 10) / 100;
   let size = parseInt(document.getElementById('starSize').value, 10);
   let glow = parseInt(document.getElementById('starGlow').value, 10);
-  let color = document.getElementById('accentColor').value;
   let shape = document.getElementById('vertexShape').value;
   let outlineType = document.getElementById('vertexOutline').value;
   let outlineSize = parseInt(document.getElementById('outlineSize').value, 10);
@@ -386,27 +434,28 @@ function renderOverlay() {
 
   ctx.save();
   ctx.globalCompositeOperation = 'screen';
-  ctx.strokeStyle = color;
-  ctx.fillStyle = color;
-  ctx.shadowColor = color;
+  ctx.strokeStyle = document.getElementById('accentColor').value;
+  ctx.fillStyle = document.getElementById('accentColor').value;
+  ctx.shadowColor = document.getElementById('accentColor').value;
   ctx.shadowBlur = glow;
   ctx.lineWidth = 1;
   ctx.globalAlpha = opacity;
 
   if (showLines && mode !== 'map') {
+    ctx.beginPath();
     lines.forEach(([a,b]) => {
-      ctx.beginPath();
       ctx.moveTo(a.x, a.y);
       ctx.lineTo(b.x, b.y);
-      ctx.stroke();
     });
+    ctx.stroke();
   }
 
   ctx.globalAlpha = 1;
+  let rgb = cachedColorRGB;
   stars.forEach(star => {
     if (outlineType !== 'none' && outlineSize > 0) {
       ctx.save();
-      ctx.strokeStyle = color;
+      ctx.strokeStyle = document.getElementById('accentColor').value;
       ctx.lineWidth = outlineWidth;
       ctx.shadowBlur = 0;
       ctx.globalAlpha = 0.28;
@@ -421,8 +470,8 @@ function renderOverlay() {
     }
 
     ctx.save();
-    ctx.strokeStyle = `rgba(${parseInt(color.slice(1,3),16)},${parseInt(color.slice(3,5),16)},${parseInt(color.slice(5,7),16)},${star.alpha})`;
-    ctx.shadowColor = color;
+    ctx.strokeStyle = `rgba(${rgb.r},${rgb.g},${rgb.b},${star.alpha})`;
+    ctx.shadowColor = document.getElementById('accentColor').value;
     ctx.shadowBlur = glow;
     ctx.lineWidth = 1.5;
     let starSize = size * star.r * star.sizeFactor;
@@ -469,6 +518,7 @@ function randomize() {
   updateLabel('starGlowVal', document.getElementById('starGlow').value);
   updateLabel('outlineSizeVal', document.getElementById('outlineSize').value);
   updateLabel('outlineWidthVal', document.getElementById('outlineWidth').value);
+  updateCachedColor();
   prepareOverlay();
   renderOverlay();
   status('Randomized overlay settings');
@@ -489,15 +539,16 @@ function exportImage() {
   status('Exported PNG');
 }
 
-// Real-time preview
+// Real-time preview with debouncing
 ['starCount', 'lineOpacity', 'lineSpread', 'starSize', 'starGlow', 'outlineSize', 'outlineWidth'].forEach(id => {
-  document.getElementById(id).addEventListener('input', () => {
-    if (currentStars.length) renderOverlay();
-  });
+  document.getElementById(id).addEventListener('input', debounce(() => {
+    if (currentStars.length) scheduleRender();
+  }, 16));
 });
 
 ['vertexShape', 'vertexOutline', 'accentColor'].forEach(id => {
   document.getElementById(id).addEventListener('change', () => {
+    if (id === 'accentColor') updateCachedColor();
     if (currentStars.length) renderOverlay();
   });
 });
