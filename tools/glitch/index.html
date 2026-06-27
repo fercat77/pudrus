@@ -22,49 +22,25 @@
     </div>
 
     <div class="tool-panel-body">
-      <!-- Crop Controls -->
-      <div class="control-group">
-        <span class="control-label">Crop & Export</span>
-        <div class="control-row">
-          <label>Aspect Ratio</label>
-          <select id="aspectRatio">
-            <option value="free">Free</option>
-            <option value="1:1">Square (1:1)</option>
-            <option value="4:5">Portrait (4:5)</option>
-            <option value="9:16">Story (9:16)</option>
-          </select>
-        </div>
-        <div class="control-row">
-          <label>Quality</label>
-          <select id="exportQuality">
-            <option value="high">High (Original)</option>
-            <option value="medium">Medium (1080px)</option>
-            <option value="low">Low (720px)</option>
-          </select>
-        </div>
-      </div>
-
-      <hr class="divider">
-
       <div class="control-group">
         <span class="control-label">RGB Channel Shift</span>
         <div class="control-row">
-          <label>Red Shift X</label>
+          <label>Red X</label>
           <input type="range" id="rShiftX" min="-50" max="50" value="0">
           <span class="val" id="rShiftXVal">0</span>
         </div>
         <div class="control-row">
-          <label>Green Shift X</label>
+          <label>Green X</label>
           <input type="range" id="gShiftX" min="-50" max="50" value="0">
           <span class="val" id="gShiftXVal">0</span>
         </div>
         <div class="control-row">
-          <label>Blue Shift X</label>
+          <label>Blue X</label>
           <input type="range" id="bShiftX" min="-50" max="50" value="0">
           <span class="val" id="bShiftXVal">0</span>
         </div>
         <div class="control-row">
-          <label>Shift Y</label>
+          <label>Y Shift</label>
           <input type="range" id="shiftY" min="-50" max="50" value="0">
           <span class="val" id="shiftYVal">0</span>
         </div>
@@ -80,12 +56,12 @@
           <span class="val" id="blockIntensityVal">0%</span>
         </div>
         <div class="control-row">
-          <label>Block Size</label>
+          <label>Size</label>
           <input type="range" id="blockSize" min="5" max="200" value="40">
           <span class="val" id="blockSizeVal">40</span>
         </div>
         <div class="control-row">
-          <label>Offset Range</label>
+          <label>Offset</label>
           <input type="range" id="blockOffset" min="0" max="300" value="80">
           <span class="val" id="blockOffsetVal">80</span>
         </div>
@@ -112,7 +88,7 @@
       <div class="control-group">
         <span class="control-label">Color Effects</span>
         <div class="control-row">
-          <label>Hue Rotate</label>
+          <label>Hue</label>
           <input type="range" id="hueRotate" min="0" max="360" value="0">
           <span class="val" id="hueRotateVal">0°</span>
         </div>
@@ -131,11 +107,11 @@
       <div class="control-group">
         <span class="control-label">Options</span>
         <div class="toggle-row">
-          <label>Invert Colors</label>
+          <label>Invert</label>
           <div class="toggle" id="invertToggle"></div>
         </div>
         <div class="toggle-row">
-          <label>Row Shift Glitch</label>
+          <label>Row Shift</label>
           <div class="toggle" id="rowGlitchToggle"></div>
         </div>
       </div>
@@ -157,12 +133,14 @@
       <span>Click or drop an image here</span>
       <input type="file" id="fileInput" accept="image/*">
     </div>
-    <canvas id="mainCanvas" style="display: none;"></canvas>
+    <canvas id="mainCanvas"></canvas>
     <div class="canvas-info" id="canvasInfo">No image loaded</div>
   </div>
 </div>
 
 <script>
+document.addEventListener('DOMContentLoaded', () => {
+
 let origImageData=null, canvas=document.getElementById('mainCanvas'), ctx=canvas.getContext('2d');
 let isInvert=false, rowGlitch=false;
 
@@ -170,10 +148,18 @@ let isInvert=false, rowGlitch=false;
 [['rShiftX','rShiftXVal'],['gShiftX','gShiftXVal'],['bShiftX','bShiftXVal'],['shiftY','shiftYVal'],
  ['blockIntensity','blockIntensityVal','%'],['blockSize','blockSizeVal'],['blockOffset','blockOffsetVal'],
  ['scanDensity','scanDensityVal'],['scanOpacity','scanOpacityVal','%'],
- ['hueRotate','hueRotateVal','°'],['saturation','saturationVal','%'],['brightness','brightnessVal','%']].forEach(([id,vid,suf=''])=>{
+ ['hueRotate','hueRotateVal','°'],['saturation','saturationVal','%'],['brightness','brightnessVal','%']
+].forEach(([id,vid,suf=''])=>{
   document.getElementById(id).addEventListener('input',()=>{
-    document.getElementById(vid).textContent=document.getElementById(id).value+suf;
+    const inputEl = document.getElementById(id);
+    const valEl = document.getElementById(vid);
+    if (inputEl && valEl) {
+      valEl.textContent = inputEl.value + suf;
+    }
   });
+  // Set initial value
+  const initialValEl = document.getElementById(vid);
+  if(initialValEl) initialValEl.textContent = document.getElementById(id).value + suf;
 });
 
 function toggle(id,cb){let el=document.getElementById(id);el.addEventListener('click',()=>{el.classList.toggle('on');cb(el.classList.contains('on'));});}
@@ -190,8 +176,9 @@ toggle('rowGlitchToggle',v=>rowGlitch=v);
 function status(m){document.getElementById('statusBar').textContent='◈ '+m;}
 
 let dropZone=document.querySelector('.tool-canvas-area'),fileInput=document.getElementById('fileInput');
-dropZone.addEventListener('dragover',e=>{e.preventDefault(); dropZone.style.borderColor='var(--c1)';});
-dropZone.addEventListener('drop',e=>{e.preventDefault(); dropZone.style.borderColor=''; let f=e.dataTransfer.files[0];if(f)loadFile(f);});
+dropZone.addEventListener('dragover',e=>{e.preventDefault(); dropZone.style.outline = '1px dashed var(--c1)';});
+dropZone.addEventListener('dragleave', () => { dropZone.style.outline = 'none'; });
+dropZone.addEventListener('drop',e=>{e.preventDefault(); dropZone.style.outline = 'none'; let f=e.dataTransfer.files[0];if(f)loadFile(f);});
 fileInput.addEventListener('change',()=>{if(fileInput.files[0])loadFile(fileInput.files[0]);});
 
 function loadFile(file){
@@ -372,6 +359,7 @@ document.getElementById('exportBtn').addEventListener('click',()=>{
   status('Exported!');
 });
 
+});
 </script>
 </body>
 </html>

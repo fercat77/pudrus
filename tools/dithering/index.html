@@ -22,30 +22,6 @@
     </div>
 
     <div class="tool-panel-body">
-      <!-- Crop Controls -->
-      <div class="control-group">
-        <span class="control-label">Crop & Export</span>
-        <div class="control-row">
-          <label>Aspect Ratio</label>
-          <select id="aspectRatio">
-            <option value="free">Free</option>
-            <option value="1:1">Square (1:1)</option>
-            <option value="4:5">Portrait (4:5)</option>
-            <option value="9:16">Story (9:16)</option>
-          </select>
-        </div>
-        <div class="control-row">
-          <label>Quality</label>
-          <select id="exportQuality">
-            <option value="high">High (Original)</option>
-            <option value="medium">Medium (1080px)</option>
-            <option value="low">Low (720px)</option>
-          </select>
-        </div>
-      </div>
-
-      <hr class="divider">
-
       <div class="control-group">
         <span class="control-label">Algorithm</span>
         <select id="algorithm">
@@ -129,12 +105,14 @@
       <span>Click or drop an image here</span>
       <input type="file" id="fileInput" accept="image/*">
     </div>
-    <canvas id="mainCanvas" style="display: none;"></canvas>
+    <canvas id="mainCanvas"></canvas>
     <div class="canvas-info" id="canvasInfo">No image loaded</div>
   </div>
 </div>
 
 <script>
+document.addEventListener('DOMContentLoaded', () => {
+
 let origImageData=null, canvas=document.getElementById('mainCanvas'), ctx=canvas.getContext('2d');
 let isInvert=false, doGray=true;
 
@@ -387,6 +365,8 @@ document.getElementById('exportBtn').addEventListener('click',()=>{
   a.href=exportCanvas.toDataURL();
   a.click();
   status('Exported!');
+});
+
 });
 </script>
 </body>

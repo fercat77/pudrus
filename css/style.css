@@ -362,15 +362,6 @@ input[type="file"] {
   z-index: 10;
 }
 
-.file-upload {
-  display: flex; flex-direction: column;
-  align-items: center; justify-content: center;
-  border: 1px dashed var(--c3);
-  padding: 24px; cursor: pointer;
-  transition: all 0.2s; margin-bottom: 20px;
-  text-align: center;
-  position: relative;
-}
 .file-upload:hover {
   border-color: var(--c1);
   background: rgba(0,212,255,0.04);
@@ -445,6 +436,32 @@ input[type="color"] {
   color: rgba(0,212,255,0.4);
   text-transform: uppercase;
 }
+
+/* ── FILE UPLOAD ────────────────────────────────────── */
+.tool-canvas-area .file-upload {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  border: 1px dashed var(--c3);
+  padding: 24px;
+  cursor: pointer;
+  transition: all 0.2s;
+  text-align: center;
+  position: relative;
+  width: 80%;
+  max-width: 400px;
+  min-height: 200px;
+}
+
+.tool-canvas-area #mainCanvas,
+.tool-canvas-area #asciiCanvas {
+  display: none; /* Hide canvas by default */
+}
+
+.tool-canvas-area.has-image .file-upload { display: none; }
+.tool-canvas-area.has-image #mainCanvas,
+.tool-canvas-area.has-image #asciiCanvas { display: block; }
 
 /* ── ASCII CANVAS SPECIFIC ──────────────────────────── */
 #asciiCanvas {
@@ -693,17 +710,6 @@ input[type="color"] {
     text-align: center;
     gap: 12px;
     padding: 30px 20px;
-  }
-  
-  /* File upload */
-  .file-upload {
-    padding: 20px 16px;
-  }
-  .file-upload .icon {
-    font-size: 20px;
-  }
-  .file-upload span {
-    font-size: 9px;
   }
 }
 
