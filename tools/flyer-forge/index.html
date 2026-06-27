@@ -1,0 +1,428 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Flyer Forge — PUDRUS.XYZ</title>
+  <link rel="icon" type="image/svg+xml" href="../../favicon.svg">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Major+Mono+Display&family=Roboto+Mono:wght@400;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../../css/style.css">
+</head>
+<body>
+
+<nav>
+  <a href="../../index.html" class="nav-logo">PUDRUS<span>.xyz</span></a>
+  <ul class="nav-links">
+    <li><a href="../../index.html#tools">All Tools</a></li>
+  </ul>
+</nav>
+
+<div class="tool-layout">
+
+  <!-- ── PANEL ── -->
+  <div class="tool-panel">
+    <div class="tool-panel-header">
+      <a href="../../index.html" class="back">← Back</a>
+      <h2>⎚ Flyer Forge</h2>
+      <p>Generate flyers with automatic compositions.</p>
+    </div>
+
+    <div class="tool-panel-body">
+
+      <!-- Event Info -->
+      <div class="control-group">
+        <span class="control-label">Event Information</span>
+        <input type="text" id="mainAct" placeholder="Main Act / Event Title" class="text-input">
+        <input type="text" id="supportActs" placeholder="Supporting Acts (comma separated)" class="text-input">
+        <input type="text" id="date" placeholder="Date & Time" class="text-input">
+        <input type="text" id="venue" placeholder="Venue & Address" class="text-input">
+      </div>
+
+      <hr class="divider">
+
+      <!-- Design Style -->
+      <div class="control-group">
+        <span class="control-label">Design Style</span>
+        <select id="designStyle">
+          <option value="swiss">Swiss</option>
+          <option value="constructivist">Constructivist</option>
+          <option value="american">American</option>
+          <option value="experimental">Experimental</option>
+        </select>
+      </div>
+
+      <!-- Text Style -->
+      <div class="control-group">
+        <span class="control-label">Text Style</span>
+        <div class="control-row">
+          <label>Color</label>
+          <input type="color" id="textColor" value="#ffffff">
+        </div>
+        <div class="control-row">
+          <label>Font Size</label>
+          <input type="range" id="fontSize" min="0.5" max="2.0" step="0.1" value="1.0">
+          <span class="val" id="fontSizeVal">1.0x</span>
+        </div>
+        <div class="control-row">
+          <label>Letter Spacing</label>
+          <input type="range" id="letterSpacing" min="-10" max="20" step="1" value="0">
+          <span class="val" id="letterSpacingVal">0px</span>
+        </div>
+        <div class="control-row">
+          <label>Line Height</label>
+          <input type="range" id="lineHeight" min="0.8" max="2.5" step="0.1" value="1.2">
+          <span class="val" id="lineHeightVal">1.2x</span>
+        </div>
+        <div class="control-row">
+          <label>Alignment</label>
+          <select id="textAlign">
+            <option value="smart">Smart</option>
+            <option value="left">Left</option>
+            <option value="center">Center</option>
+            <option value="right">Right</option>
+          </select>
+        </div>
+        <div class="control-row">
+          <label>Font Family</label>
+          <select id="fontFamily">
+            <option value="monospace">Courier New</option>
+            <option value="'Roboto Mono', monospace">Roboto Mono</option>
+            <option value="'Space Mono', monospace">Space Mono</option>
+            <option value="'Major Mono Display', monospace">Major Mono Display</option>
+          </select>
+        </div>
+      </div>
+
+    </div>
+
+    <div class="status-bar" id="statusBar">◈ No image loaded</div>
+
+    <div class="action-btns">
+      <button class="btn btn-primary" id="generateBtn" style="width:100%">◈ Generate Layout</button>
+      <button class="btn btn-outline" id="resetBtn" style="width:100%">Reset</button>
+      <button class="btn btn-outline" id="exportBtn" style="width:100%">Export PNG</button>
+    </div>
+  </div>
+
+  <!-- ── CANVAS ── -->
+  <div class="tool-canvas-area" id="canvasArea">
+    <div class="file-upload" id="dropZone">
+      <span class="icon">⎚</span>
+      <span>Click or drop an image here</span>
+      <input type="file" id="fileInput" accept="image/*">
+    </div>
+    <canvas id="mainCanvas"></canvas>
+    <div class="canvas-info" id="canvasInfo">No image loaded</div>
+  </div>
+
+</div>
+
+<style>
+  .text-input {
+    width: 100%;
+    background: var(--bg3);
+    border: 1px solid var(--c3);
+    color: var(--text);
+    padding: 8px 10px;
+    margin-bottom: 8px;
+    font-family: var(--font);
+  }
+</style>
+
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+
+  let img = null;
+  let canvas = document.getElementById('mainCanvas');
+  let ctx = canvas.getContext('2d');
+  let currentLayout = null;
+
+  // --- UI & File Load ---
+  const dropZone = document.querySelector('.tool-canvas-area');
+  const fileInput = document.getElementById('fileInput');
+  dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.style.borderColor = 'var(--c1)'; });
+  dropZone.addEventListener('dragleave', () => { dropZone.style.borderColor = ''; });
+  dropZone.addEventListener('drop', e => {
+    e.preventDefault(); dropZone.style.borderColor = '';
+    const file = e.dataTransfer.files[0];
+    if (file) loadFile(file);
+  });
+  fileInput.addEventListener('change', () => { if (fileInput.files[0]) loadFile(fileInput.files[0]); });
+
+  function loadFile(file) {
+    const reader = new FileReader();
+    reader.onload = e => {
+      img = new Image();
+      img.onload = () => {
+        const area = document.getElementById('canvasArea');
+        const scale = Math.min((area.clientWidth - 40) / img.width, (area.clientHeight - 40) / img.height, 1);
+        canvas.width = img.width;
+        canvas.height = img.height;
+        canvas.style.width = (img.width * scale) + 'px';
+        canvas.style.height = (img.height * scale) + 'px';
+        ctx.drawImage(img, 0, 0);
+        document.getElementById('canvasArea').classList.add('has-image');
+        document.getElementById('statusBar').textContent = '◈ Image loaded. Fill info and generate.';
+        currentLayout = null; // Invalidate layout on new image
+      };
+      img.src = e.target.result;
+    };
+    reader.readAsDataURL(file);
+  }
+
+  // --- Drawing Logic ---
+  function drawLayout() {
+    if (!img) {
+      document.getElementById('statusBar').textContent = '◈ Please load an image first.';
+      return;
+    }
+    if (!currentLayout) {
+      generateLayout();
+      return;
+    }
+
+    ctx.drawImage(img, 0, 0);
+
+    const color = document.getElementById('textColor').value;
+    const letterSpacing = document.getElementById('letterSpacing').value + 'px';
+    const fontFamily = document.getElementById('fontFamily').value;
+    const lineHeightMultiplier = parseFloat(document.getElementById('lineHeight').value);
+
+    ctx.fillStyle = color;
+    ctx.letterSpacing = letterSpacing;
+
+    currentLayout.elements.forEach(el => {
+        const currentFont = `${el.bold ? 'bold' : ''} ${el.size}px ${el.fontFamily || fontFamily}`;
+        ctx.font = currentFont;
+        ctx.textAlign = el.textAlign;
+        ctx.save();
+        ctx.translate(el.x, el.y);
+        ctx.rotate(el.rotation * Math.PI / 180);
+        el.lines.forEach((line, i) => ctx.fillText(line, 0, i * (el.size * 1.2))); // Use fixed interlineado for drawing
+        ctx.restore();
+    });
+  }
+
+  // --- Layout Calculation Logic ---
+  function generateLayout() {
+    if (!img) {
+      document.getElementById('statusBar').textContent = '◈ Please load an image first.';
+      return;
+    }
+
+    const W = canvas.width;
+    const H = canvas.height;
+    const mainAct = document.getElementById('mainAct').value.toUpperCase();
+    const supportActs = document.getElementById('supportActs').value.split(',').map(s => s.trim().toUpperCase());
+    const date = document.getElementById('date').value.toUpperCase();
+    const venue = document.getElementById('venue').value.toUpperCase();
+    const fontFamily = document.getElementById('fontFamily').value;
+    const designStyle = document.getElementById('designStyle').value;
+    
+    let success = false;
+    let currentSizeMultiplier = parseFloat(document.getElementById('fontSize').value);
+
+    for (let attempt = 0; attempt < 10 && !success; attempt++) {
+        const elementsToPlace = [];
+        if (mainAct) elementsToPlace.push({ id: 'main', text: mainAct, baseSize: W * 0.15, bold: true, wrapWidth: 0.8 });
+        if (supportActs.length > 0 && supportActs[0] !== '') {
+            supportActs.forEach((act, i) => elementsToPlace.push({ id: `support-${i}`, text: act, baseSize: W * 0.05, bold: false, wrapWidth: 0.6 }));
+        }
+        if (date) elementsToPlace.push({ id: 'date', text: date, baseSize: W * 0.04, bold: false, wrapWidth: 0.6 });
+        if (venue) elementsToPlace.push({ id: 'venue', text: venue, baseSize: W * 0.04, bold: false, wrapWidth: 0.6 });
+
+        currentLayout = { elements: [] };
+        let placedBBoxes = [];
+        let layoutPossible = true;
+        const elementSpacing = parseFloat(document.getElementById('lineHeight').value); // This is now for spacing between blocks
+        
+        if (designStyle === 'swiss') {
+            const margin = W * 0.08;
+            let yPos = H * 0.15;
+            const xPos = Math.random() < 0.5 ? margin : W - margin;
+            const align = xPos === margin ? 'left' : 'right';
+
+            for (const el of elementsToPlace) {
+                const size = el.baseSize * currentSizeMultiplier;
+                const font = `${el.bold ? 'bold' : ''} ${size}px ${fontFamily}`;
+                const lines = wrapText(el.text, W * el.wrapWidth, font);
+                const metrics = getMetrics(lines, size);
+                if (yPos + metrics.height > H - margin) { layoutPossible = false; break; }
+                currentLayout.elements.push({ ...el, lines, size, x: xPos, y: yPos, textAlign: align, rotation: 0 });
+                yPos += metrics.height * elementSpacing;
+            }
+        } else if (designStyle === 'constructivist') {
+            const main = elementsToPlace.shift();
+            if (main) {
+                const size = main.baseSize * currentSizeMultiplier;
+                const font = `${main.bold ? 'bold' : ''} ${size}px ${fontFamily}`;
+                const lines = wrapText(main.text, W * main.wrapWidth, font);
+                const metrics = getMetrics(lines, size);
+                const rotation = (Math.random() - 0.5) * 30;
+                const yPos = H/2 - (metrics.height/2);
+                currentLayout.elements.push({ ...main, lines, size, x: W/2, y: yPos, textAlign: 'center', rotation });
+                placedBBoxes.push(getBBox({ x: W/2, y: H/2, w: metrics.width, h: metrics.height, rotation }));
+            }
+            for (const el of elementsToPlace) {
+                if (!placeElementRandomly(el, placedBBoxes, currentSizeMultiplier)) { layoutPossible = false; break; }
+            }
+        } else if (designStyle === 'american') {
+            let yPos = H * 0.2;
+            for (const el of elementsToPlace) {
+                const size = el.baseSize * currentSizeMultiplier;
+                const font = `${el.bold ? 'bold' : ''} ${size}px ${fontFamily}`;
+                const lines = wrapText(el.text, W * el.wrapWidth, font);
+                const metrics = getMetrics(lines, size);
+                if (yPos + metrics.height > H - (H * 0.1)) { layoutPossible = false; break; }
+                currentLayout.elements.push({ ...el, lines, size, x: W/2, y: yPos, textAlign: 'center', rotation: 0 });
+                yPos += metrics.height * elementSpacing;
+            }
+        } else { // Experimental
+            const fontOptions = Array.from(document.getElementById('fontFamily').options).map(opt => opt.value);
+            for (const el of elementsToPlace) {
+                const randomFont = fontOptions[Math.floor(Math.random() * fontOptions.length)];
+                if (!placeElementRandomly(el, placedBBoxes, currentSizeMultiplier, randomFont)) { layoutPossible = false; break; }
+            }
+        }
+        
+        if (layoutPossible) {
+            success = true;
+        } else {
+            currentSizeMultiplier *= 0.9; // Reduce size and retry
+        }
+    }
+    
+    if (!success) {
+        document.getElementById('statusBar').textContent = "◈ Could not fit all text. Try reducing font size or text length.";
+    }
+
+    drawLayout();
+  }
+
+  function wrapText(text, maxWidth, font) {
+    ctx.font = font;
+    if (ctx.measureText(text).width < maxWidth) {
+      return [text];
+    }
+    const words = text.split(' ');
+    let lines = [];
+    let currentLine = words[0];
+    for (let i = 1; i < words.length; i++) {
+      const word = words[i];
+      const testLine = currentLine + ' ' + word;
+      if (ctx.measureText(testLine).width < maxWidth) {
+        currentLine = testLine;
+      } else {
+        lines.push(currentLine);
+        currentLine = word;
+      }
+    }
+    lines.push(currentLine);
+    return lines;
+  }
+
+  function getMetrics(lines, fontSize) {
+      const lineHeight = fontSize * 1.2; // Fixed interlineado for measurement
+      const height = lines.length * lineHeight;
+      const maxWidth = Math.max(...lines.map(line => ctx.measureText(line).width));
+      return { width: maxWidth, height: height };
+  }
+
+  function checkCollision(box, boxes) {
+      for (const other of boxes) {
+        if (box.x < other.x + other.w && box.x + box.w > other.x &&
+            box.y < other.y + other.h && box.y + box.h > other.y) {
+          return true; // Collision
+        }
+      }
+      return false; // No collision
+    }
+
+  function getBBox(el) {
+      return { x: el.x - el.w/2, y: el.y - el.h/2, w: el.w, h: el.h };
+  }
+
+  function placeElementRandomly(el, placedBBoxes, sizeMultiplier, randomFont = null) {
+    const W = canvas.width;
+    const H = canvas.height;
+    const fontFamily = randomFont || document.getElementById('fontFamily').value;
+    const textAlign = document.getElementById('textAlign').value;
+    const size = el.baseSize * sizeMultiplier;
+    const font = `${el.bold ? 'bold' : ''} ${size}px ${fontFamily}`;
+    const lines = wrapText(el.text, W * el.wrapWidth, font);
+    const metrics = getMetrics(lines, size);
+
+    for (let i = 0; i < 200; i++) { // Increased attempts
+        const margin = W * 0.05;
+        const x = Math.random() * (W - metrics.width - margin * 2) + margin;
+        const y = Math.random() * (H - metrics.height - margin * 2) + margin;
+        const bbox = { x: x - 10, y: y - 10, w: metrics.width + 20, h: metrics.height + 20 };
+
+        if (!checkCollision(bbox, placedBBoxes)) {
+            let align = 'left';
+            if (textAlign === 'smart') {
+                if (x < W * 0.2) align = 'left';
+                else if (x + metrics.width > W * 0.8) align = 'right';
+                else align = 'center';
+            } else {
+                align = textAlign;
+            }
+            
+            let drawX = x;
+            if (align === 'center') drawX = x + metrics.width / 2;
+            if (align === 'right') drawX = x + metrics.width;
+
+            currentLayout.elements.push({ ...el, lines, size, fontFamily, x: drawX, y: y, textAlign: align, rotation: 0 });
+            placedBBoxes.push(bbox);
+            return true;
+        }
+    }
+    console.warn(`Could not place: ${el.text}`);
+    return false;
+  }
+
+  // --- Event Listeners ---
+  document.getElementById('generateBtn').addEventListener('click', () => {
+    currentLayout = null;
+    generateLayout();
+  });
+  document.getElementById('resetBtn').addEventListener('click', () => {
+    img = null;
+    currentLayout = null;
+    document.getElementById('canvasArea').classList.remove('has-image');
+    ctx.clearRect(0,0,canvas.width, canvas.height);
+    document.getElementById('statusBar').textContent = '◈ No image loaded';
+    document.getElementById('canvasInfo').textContent = 'No image loaded';
+  });
+  document.getElementById('exportBtn').addEventListener('click', () => {
+    if (!img) return;
+    const link = document.createElement('a');
+    link.download = `pudrus_flyer_${Date.now()}.png`;
+    link.href = canvas.toDataURL('image/png');
+    link.click();
+  });
+
+  // Real-time update
+  ['textColor', 'letterSpacing'].forEach(id => {
+    document.getElementById(id).addEventListener('input', () => { if(currentLayout) drawLayout(); });
+  });
+  // Controls that require re-calculating the layout
+  ['fontSize', 'fontFamily', 'textAlign', 'lineHeight', 'designStyle'].forEach(id => {
+    document.getElementById(id).addEventListener('input', () => { currentLayout = null; if(img) generateLayout(); });
+  });
+  document.getElementById('fontSize').addEventListener('input', (e) => {
+    document.getElementById('fontSizeVal').textContent = e.target.value + 'x';
+  });
+  document.getElementById('letterSpacing').addEventListener('input', (e) => {
+    document.getElementById('letterSpacingVal').textContent = e.target.value + 'px';
+  });
+  document.getElementById('lineHeight').addEventListener('input', (e) => {
+    document.getElementById('lineHeightVal').textContent = e.target.value + 'x';
+  });
+
+});
+</script>
+</body>
+</html>

@@ -141,6 +141,7 @@ document.getElementById('colorMode').addEventListener('change',function(){
 // File load
 let dropZone=document.querySelector('.tool-canvas-area'),fileInput=document.getElementById('fileInput');
 dropZone.addEventListener('dragover',e=>{e.preventDefault(); dropZone.style.borderColor='var(--c1)';});
+dropZone.addEventListener('dragleave',e=>{e.preventDefault(); dropZone.style.borderColor='';});
 dropZone.addEventListener('drop',e=>{e.preventDefault(); dropZone.style.borderColor=''; let f=e.dataTransfer.files[0];if(f)loadFile(f);});
 fileInput.addEventListener('change',()=>{if(fileInput.files[0])loadFile(fileInput.files[0]);});
 

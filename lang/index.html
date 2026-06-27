@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Triangulation — PUDRUS.XYZ</title>
+  <title>Flyer Forge — PUDRUS.XYZ</title>
   <link rel="icon" type="image/svg+xml" href="../../favicon.svg">
   <link rel="stylesheet" href="../../css/style.css">
 </head>
@@ -22,62 +22,45 @@
   <div class="tool-panel">
     <div class="tool-panel-header">
       <a href="../../index.html" class="back">← Back</a>
-      <h2>△ Triangulation</h2>
-      <p>Reconstruct images into a low-poly vector style.</p>
+      <h2>⎚ Flyer Forge</h2>
+      <p>Generate flyers with automatic compositions.</p>
     </div>
 
     <div class="tool-panel-body">
 
-      <!-- Upload -->
-      <div class="file-upload" id="dropZone">
-        <span class="icon">◈</span>
-        <span>Click or drop an image here</span>
-        <input type="file" id="fileInput" accept="image/*">
-      </div>
-
-      <!-- Export Controls -->
+      <!-- Event Info -->
       <div class="control-group">
-        <span class="control-label">Export</span>
-        <div class="control-row">
-          <label>Quality</label>
-          <select id="exportQuality">
-            <option value="high">High (Original)</option>
-            <option value="medium">Medium (1080px)</option>
-            <option value="low">Low (720px)</option>
-          </select>
-        </div>
+        <span class="control-label">Event Information</span>
+        <input type="text" id="mainAct" placeholder="Main Act / Event Title" class="text-input">
+        <input type="text" id="supportActs" placeholder="Supporting Acts (comma separated)" class="text-input">
+        <input type="text" id="date" placeholder="Date & Time" class="text-input">
+        <input type="text" id="venue" placeholder="Venue & Address" class="text-input">
       </div>
 
       <hr class="divider">
 
-      <!-- Parameters -->
+      <!-- Layout Template -->
       <div class="control-group">
-        <span class="control-label">Parameters</span>
-        <div class="control-row">
-          <label>Point Count</label>
-          <input type="range" id="pointCount" min="50" max="2000" value="400">
-          <span class="val" id="pointCountVal">400</span>
-        </div>
-        <div class="control-row">
-          <label>Threshold</label>
-          <input type="range" id="edgeThreshold" min="1" max="100" value="20">
-          <span class="val" id="edgeThresholdVal">20</span>
-        </div>
+        <span class="control-label">Layout Template</span>
+        <select id="layoutTemplate">
+          <option value="topHeavy">Top Heavy</option>
+          <option value="centered">Centered</option>
+          <option value="bottomBar">Bottom Bar</option>
+          <option value="leftAlign">Left Align</option>
+        </select>
       </div>
 
+      <!-- Text Style -->
       <div class="control-group">
-        <span class="control-label">Render Style</span>
+        <span class="control-label">Text Style</span>
         <div class="control-row">
-          <select id="renderStyle">
-            <option value="fill">Solid Fill</option>
-            <option value="wireframe">Wireframe</option>
-            <option value="both">Fill + Wireframe</option>
-          </select>
+          <label>Color</label>
+          <input type="color" id="textColor" value="#ffffff">
         </div>
         <div class="control-row">
-          <label>Stroke Width</label>
-          <input type="range" id="strokeWidth" min="0.1" max="5" step="0.1" value="1">
-          <span class="val" id="strokeWidthVal">1</span>
+          <label>Font Size</label>
+          <input type="range" id="fontSize" min="0.5" max="2.0" step="0.1" value="1.0">
+          <span class="val" id="fontSizeVal">1.0x</span>
         </div>
       </div>
 
@@ -86,7 +69,7 @@
     <div class="status-bar" id="statusBar">◈ No image loaded</div>
 
     <div class="action-btns">
-      <button class="btn btn-primary" id="applyBtn" style="width:100%">◈ Triangulate</button>
+      <button class="btn btn-primary" id="applyBtn" style="width:100%">◈ Generate Flyer</button>
       <button class="btn btn-outline" id="resetBtn" style="width:100%">Reset</button>
       <button class="btn btn-outline" id="exportBtn" style="width:100%">Export PNG</button>
     </div>
@@ -94,196 +77,169 @@
 
   <!-- ── CANVAS ── -->
   <div class="tool-canvas-area" id="canvasArea">
+    <div class="file-upload" id="dropZone">
+      <span class="icon">⎚</span>
+      <span>Click or drop an image here</span>
+      <input type="file" id="fileInput" accept="image/*">
+    </div>
     <canvas id="mainCanvas"></canvas>
     <div class="canvas-info" id="canvasInfo">No image loaded</div>
   </div>
 
 </div>
 
-<script src="https://cdn.jsdelivr.net/npm/d3-delaunay@6"></script>
+<style>
+  .text-input {
+    width: 100%;
+    background: var(--bg3);
+    border: 1px solid var(--c3);
+    color: var(--text);
+    padding: 8px 10px;
+    margin-bottom: 8px;
+    font-family: var(--font);
+  }
+</style>
+
 <script>
 document.addEventListener('DOMContentLoaded', () => {
 
-let origImageData = null;
-let img = null;
-let canvas = document.getElementById('mainCanvas');
-let ctx = canvas.getContext('2d');
+  let img = null;
+  let canvas = document.getElementById('mainCanvas');
+  let ctx = canvas.getContext('2d');
 
-// UI Helpers
-function slider(id, valId, suffix='') {
-  let el = document.getElementById(id);
-  let vl = document.getElementById(valId);
-  el.addEventListener('input', () => { vl.textContent = el.value + suffix; });
-}
-slider('pointCount', 'pointCountVal');
-slider('edgeThreshold', 'edgeThresholdVal');
-slider('strokeWidth', 'strokeWidthVal');
+  // --- UI & File Load ---
+  const dropZone = document.querySelector('.tool-canvas-area');
+  const fileInput = document.getElementById('fileInput');
+  dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.style.borderColor = 'var(--c1)'; });
+  dropZone.addEventListener('dragleave', () => { dropZone.style.borderColor = ''; });
+  dropZone.addEventListener('drop', e => {
+    e.preventDefault(); dropZone.style.borderColor = '';
+    const file = e.dataTransfer.files[0];
+    if (file) loadFile(file);
+  });
+  fileInput.addEventListener('change', () => { if (fileInput.files[0]) loadFile(fileInput.files[0]); });
 
-function status(msg) {
-  document.getElementById('statusBar').textContent = '◈ ' + msg;
-}
-
-// File Load
-let dropZone = document.getElementById('dropZone');
-let fileInput = document.getElementById('fileInput');
-
-dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.style.borderColor='var(--c1)'; });
-dropZone.addEventListener('dragleave', () => dropZone.style.borderColor='');
-dropZone.addEventListener('drop', e => {
-  e.preventDefault(); dropZone.style.borderColor='';
-  let file = e.dataTransfer.files[0];
-  if (file && file.type.startsWith('image/')) loadFile(file);
-});
-fileInput.addEventListener('change', () => {
-  if (fileInput.files[0]) loadFile(fileInput.files[0]);
-});
-
-function loadFile(file) {
-  let reader = new FileReader();
-  reader.onload = e => {
-    img = new Image();
-    img.onload = () => {
-      let area = document.getElementById('canvasArea');
-      let maxW = area.clientWidth - 40;
-      let maxH = area.clientHeight - 40;
-      let scale = Math.min(maxW/img.width, maxH/img.height, 1);
-      canvas.width  = img.width;
-      canvas.height = img.height;
-      canvas.style.width  = (img.width  * scale) + 'px';
-      canvas.style.height = (img.height * scale) + 'px';
-      ctx.drawImage(img, 0, 0);
-      origImageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-      document.getElementById('canvasInfo').textContent = `${img.width} × ${img.height} px`;
-      status('Image loaded — click Triangulate');
+  function loadFile(file) {
+    const reader = new FileReader();
+    reader.onload = e => {
+      img = new Image();
+      img.onload = () => {
+        const area = document.getElementById('canvasArea');
+        const scale = Math.min((area.clientWidth - 40) / img.width, (area.clientHeight - 40) / img.height, 1);
+        canvas.width = img.width;
+        canvas.height = img.height;
+        canvas.style.width = (img.width * scale) + 'px';
+        canvas.style.height = (img.height * scale) + 'px';
+        ctx.drawImage(img, 0, 0);
+        document.getElementById('canvasArea').classList.add('has-image');
+        document.getElementById('statusBar').textContent = '◈ Image loaded. Fill info and generate.';
+      };
+      img.src = e.target.result;
     };
-    img.src = e.target.result;
-  };
-  reader.readAsDataURL(file);
-}
+    reader.readAsDataURL(file);
+  }
 
-// Triangulation Logic
-function applyTriangulation() {
-  if (!origImageData) { status('Load an image first'); return; }
-  status('Processing...');
+  // --- Flyer Generation Logic ---
+  function generateFlyer() {
+    if (!img) {
+      document.getElementById('statusBar').textContent = '◈ Please load an image first.';
+      return;
+    }
 
-  setTimeout(() => {
+    // Redraw original image
+    ctx.drawImage(img, 0, 0);
+
     const W = canvas.width;
     const H = canvas.height;
-    const pointCount = parseInt(document.getElementById('pointCount').value);
-    const edgeThreshold = parseInt(document.getElementById('edgeThreshold').value);
-    const renderStyle = document.getElementById('renderStyle').value;
-    const strokeWidth = parseFloat(document.getElementById('strokeWidth').value);
+    const mainAct = document.getElementById('mainAct').value.toUpperCase();
+    const supportActs = document.getElementById('supportActs').value.split(',').map(s => s.trim().toUpperCase());
+    const date = document.getElementById('date').value.toUpperCase();
+    const venue = document.getElementById('venue').value.toUpperCase();
+    const layout = document.getElementById('layoutTemplate').value;
+    const color = document.getElementById('textColor').value;
+    const sizeMultiplier = parseFloat(document.getElementById('fontSize').value);
 
-    // 1. Point Sampling (Sobel edge detection + random)
-    const gray = new Uint8ClampedArray(W * H);
-    const sobel = new Uint8ClampedArray(W * H);
-    for (let y = 0; y < H; y++) {
-      for (let x = 0; x < W; x++) {
-        const i = (y * W + x) * 4;
-        gray[y * W + x] = 0.299 * origImageData.data[i] + 0.587 * origImageData.data[i+1] + 0.114 * origImageData.data[i+2];
-      }
+    ctx.fillStyle = color;
+
+    // --- Layout Templates ---
+    if (layout === 'topHeavy') {
+      ctx.textAlign = 'center';
+      ctx.font = `bold ${W * 0.15 * sizeMultiplier}px monospace`;
+      ctx.fillText(mainAct, W / 2, H * 0.25);
+
+      ctx.font = `${W * 0.04 * sizeMultiplier}px monospace`;
+      let yPos = H * 0.75;
+      supportActs.forEach(act => {
+        ctx.fillText(act, W / 2, yPos);
+        yPos += W * 0.05 * sizeMultiplier;
+      });
+      ctx.fillText(date, W / 2, yPos);
+      ctx.fillText(venue, W / 2, yPos + W * 0.05 * sizeMultiplier);
+    } else if (layout === 'centered') {
+      ctx.textAlign = 'center';
+      let yPos = H * 0.3;
+      ctx.font = `bold ${W * 0.12 * sizeMultiplier}px monospace`;
+      ctx.fillText(mainAct, W / 2, yPos);
+      yPos += W * 0.15 * sizeMultiplier;
+
+      ctx.font = `${W * 0.035 * sizeMultiplier}px monospace`;
+      supportActs.forEach(act => {
+        ctx.fillText(act, W / 2, yPos);
+        yPos += W * 0.04 * sizeMultiplier;
+      });
+      yPos += W * 0.02 * sizeMultiplier;
+      ctx.fillText(date, W / 2, yPos);
+      ctx.fillText(venue, W / 2, yPos + W * 0.04 * sizeMultiplier);
+    } else if (layout === 'bottomBar') {
+      ctx.fillStyle = 'rgba(0,0,0,0.6)';
+      ctx.fillRect(0, H * 0.7, W, H * 0.3);
+      ctx.fillStyle = color;
+      ctx.textAlign = 'left';
+      ctx.font = `bold ${W * 0.08 * sizeMultiplier}px monospace`;
+      ctx.fillText(mainAct, W * 0.05, H * 0.8);
+      ctx.font = `${W * 0.03 * sizeMultiplier}px monospace`;
+      ctx.fillText(`${date} at ${venue}`, W * 0.05, H * 0.9);
+      ctx.textAlign = 'right';
+      ctx.fillText(supportActs.join(' / '), W * 0.95, H * 0.9);
+    } else if (layout === 'leftAlign') {
+      ctx.textAlign = 'left';
+      let xPos = W * 0.08;
+      let yPos = H * 0.2;
+      ctx.font = `bold ${W * 0.1 * sizeMultiplier}px monospace`;
+      ctx.fillText(mainAct, xPos, yPos);
+      yPos += W * 0.12 * sizeMultiplier;
+
+      ctx.font = `${W * 0.03 * sizeMultiplier}px monospace`;
+      supportActs.forEach(act => {
+        ctx.fillText(act, xPos, yPos);
+        yPos += W * 0.04 * sizeMultiplier;
+      });
+      yPos += W * 0.04 * sizeMultiplier;
+      ctx.fillText(date, xPos, yPos);
+      ctx.fillText(venue, xPos, yPos + W * 0.04 * sizeMultiplier);
     }
+  }
 
-    for (let y = 1; y < H - 1; y++) {
-      for (let x = 1; x < W - 1; x++) {
-        const gx = -gray[(y-1)*W+x-1] - 2*gray[y*W+x-1] - gray[(y+1)*W+x-1] +
-                    gray[(y-1)*W+x+1] + 2*gray[y*W+x+1] + gray[(y+1)*W+x+1];
-        const gy = -gray[(y-1)*W+x-1] - 2*gray[(y-1)*W+x] - gray[(y-1)*W+x+1] +
-                    gray[(y+1)*W+x-1] + 2*gray[(y+1)*W+x] + gray[(y+1)*W+x+1];
-        sobel[y * W + x] = Math.sqrt(gx*gx + gy*gy);
-      }
-    }
+  // --- Event Listeners ---
+  document.getElementById('applyBtn').addEventListener('click', generateFlyer);
+  document.getElementById('resetBtn').addEventListener('click', () => {
+    if (img) ctx.drawImage(img, 0, 0);
+  });
+  document.getElementById('exportBtn').addEventListener('click', () => {
+    if (!img) return;
+    const link = document.createElement('a');
+    link.download = `pudrus_flyer_${Date.now()}.png`;
+    link.href = canvas.toDataURL('image/png');
+    link.click();
+  });
 
-    const points = [[0,0], [W-1,0], [0,H-1], [W-1,H-1]];
-    for (let i = 0; i < pointCount; i++) {
-      const x = Math.floor(Math.random() * W);
-      const y = Math.floor(Math.random() * H);
-      if (sobel[y * W + x] > edgeThreshold) {
-        points.push([x, y]);
-      } else if (i % 4 === 0) { // Add some random points too
-        points.push([x, y]);
-      }
-    }
-
-    // 2. Delaunay Triangulation
-    const delaunay = d3.Delaunay.from(points);
-    const triangles = delaunay.triangles;
-
-    // 3. Render
-    ctx.clearRect(0, 0, W, H);
-    ctx.lineWidth = strokeWidth;
-    ctx.strokeStyle = 'rgba(255,255,255,0.5)';
-
-    for (let i = 0; i < triangles.length; i += 3) {
-      const p1 = points[triangles[i]];
-      const p2 = points[triangles[i+1]];
-      const p3 = points[triangles[i+2]];
-
-      // Centroid to sample color
-      const cx = Math.floor((p1[0] + p2[0] + p3[0]) / 3);
-      const cy = Math.floor((p1[1] + p2[1] + p3[1]) / 3);
-      const cIdx = (cy * W + cx) * 4;
-      const r = origImageData.data[cIdx];
-      const g = origImageData.data[cIdx+1];
-      const b = origImageData.data[cIdx+2];
-      ctx.fillStyle = `rgb(${r},${g},${b})`;
-
-      ctx.beginPath();
-      ctx.moveTo(p1[0], p1[1]);
-      ctx.lineTo(p2[0], p2[1]);
-      ctx.lineTo(p3[0], p3[1]);
-      ctx.closePath();
-
-      if (renderStyle === 'fill' || renderStyle === 'both') {
-        ctx.fill();
-      }
-      if (renderStyle === 'wireframe' || renderStyle === 'both') {
-        ctx.stroke();
-      }
-    }
-
-    status('Triangulation complete!');
-  }, 10);
-}
-
-// Buttons
-document.getElementById('applyBtn').addEventListener('click', applyTriangulation);
-
-document.getElementById('resetBtn').addEventListener('click', () => {
-  if (!origImageData) return;
-  ctx.putImageData(origImageData, 0, 0);
-  status('Reset to original');
-});
-
-document.getElementById('exportBtn').addEventListener('click', () => {
-  if (!origImageData) { status('Nothing to export'); return; }
-  
-  let quality = document.getElementById('exportQuality').value;
-  let maxDim = quality === 'high' ? Math.max(canvas.width, canvas.height) : 
-               quality === 'medium' ? 1080 : 720;
-  
-  let exportCanvas = document.createElement('canvas');
-  let exportCtx = exportCanvas.getContext('2d');
-  
-  let scale = Math.min(1, maxDim / Math.max(canvas.width, canvas.height));
-  exportCanvas.width = Math.floor(canvas.width * scale);
-  exportCanvas.height = Math.floor(canvas.height * scale);
-  
-  exportCtx.drawImage(canvas, 0, 0, exportCanvas.width, exportCanvas.height);
-  
-  let link = document.createElement('a');
-  link.download = `pudrus_triangulation_${Date.now()}.png`;
-  link.href = exportCanvas.toDataURL('image/png');
-  link.click();
-  status('Exported!');
-});
-
-// Real-time preview
-['pointCount', 'edgeThreshold', 'renderStyle', 'strokeWidth'].forEach(id => {
-    document.getElementById(id).addEventListener('input', () => {
-        if (origImageData) applyTriangulation();
-    });
-});
+  // Real-time update
+  ['layoutTemplate', 'textColor', 'fontSize'].forEach(id => {
+    document.getElementById(id).addEventListener('input', generateFlyer);
+  });
+  document.getElementById('fontSize').addEventListener('input', (e) => {
+    document.getElementById('fontSizeVal').textContent = e.target.value + 'x';
+  });
 
 });
 </script>

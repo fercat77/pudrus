@@ -18,7 +18,8 @@
     "constellation": { "name": "Constellation", "desc": "Overlay generative star maps, technical diagrams and node networks over your images. Export at high resolution." },
     "ascii": { "name": "ASCII Canvas", "desc": "Transform images into creative ASCII art with custom character sets and effects." },
     "halftone": { "name": "Halftone", "desc": "Create halftone dot patterns, CMYK separations, and retro print effects." },
-    "triangulation": { "name": "Triangulation", "desc": "Reconstruct images into a low-poly vector style using Delaunay triangulation." }
+    "triangulation": { "name": "Triangulation", "desc": "Reconstruct images into a low-poly vector style using Delaunay triangulation." },
+    "flyer": { "name": "Flyer Forge", "desc": "Generate flyers for music events with automatic, well-designed compositions." }
   },
   "constellation": {
     "fileDrop": "Click or drop an image here",
