@@ -165,8 +165,6 @@
 </div>
 
 <script>
-document.addEventListener('DOMContentLoaded', () => {
-
 // ── STATE ─────────────────────────────────────────────
 let origImageData = null;
 let currentImageData = null;
@@ -471,8 +469,6 @@ document.getElementById('exportBtn').addEventListener('click', () => {
   link.href = exportCanvas.toDataURL('image/png');
   link.click();
   status('Exported!');
-});
-
 });
 </script>
 </body>

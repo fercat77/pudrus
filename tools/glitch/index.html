@@ -139,8 +139,6 @@
 </div>
 
 <script>
-document.addEventListener('DOMContentLoaded', () => {
-
 let origImageData=null, canvas=document.getElementById('mainCanvas'), ctx=canvas.getContext('2d');
 let isInvert=false, rowGlitch=false;
 
@@ -357,8 +355,6 @@ document.getElementById('exportBtn').addEventListener('click',()=>{
   a.href=exportCanvas.toDataURL();
   a.click();
   status('Exported!');
-});
-
 });
 </script>
 </body>

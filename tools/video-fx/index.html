@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Video FX — PUDRUS.XYZ</title>
+  <link rel="icon" type="image/svg+xml" href="../../favicon.svg">
+  <link rel="stylesheet" href="../../css/style.css">
+</head>
+<body>
+
+<nav>
+  <a href="../../index.html" class="nav-logo">PUDRUS<span>.xyz</span></a>
+  <ul class="nav-links">
+    <li><a href="../../index.html#tools">All Tools</a></li>
+  </ul>
+</nav>
+
+<div class="tool-layout">
+
+  <!-- ── PANEL ── -->
+  <div class="tool-panel">
+    <div class="tool-panel-header">
+      <a href="../../index.html" class="back">← Back</a>
+      <h2>◈ Video FX</h2>
+      <p>Real-time effects using your webcam.</p>
+    </div>
+
+    <div class="tool-panel-body">
+
+      <!-- Source Selection -->
+      <div class="control-group">
+        <span class="control-label">Source</span>
+        <div class="action-btns" style="padding: 0; border: none;">
+          <button class="btn btn-primary" id="startCamBtn">◈ Use Webcam</button>
+        </div>
+      </div>
+
+      <hr class="divider">
+
+      <!-- Glitch Effect Controls -->
+      <div class="control-group">
+        <span class="control-label">Glitch FX</span>
+        <div class="control-row">
+          <label>Aberration</label>
+          <input type="range" id="aberration" min="0.0" max="0.05" step="0.001" value="0.005">
+          <span class="val" id="aberrationVal">0.005</span>
+        </div>
+        <div class="control-row">
+          <label>Noise</label>
+          <input type="range" id="noise" min="0.0" max="0.2" step="0.01" value="0.05">
+          <span class="val" id="noiseVal">0.05</span>
+        </div>
+        <div class="control-row">
+          <label>Scanlines</label>
+          <input type="range" id="scanlineIntensity" min="0.0" max="0.3" step="0.01" value="0.1">
+          <span class="val" id="scanlineIntensityVal">0.1</span>
+        </div>
+      </div>
+
+    </div>
+
+    <div class="status-bar" id="statusBar">◈ Waiting for camera</div>
+  </div>
+
+  <!-- ── CANVAS (WebGL) ── -->
+  <div class="tool-canvas-area" id="canvasArea">
+    <canvas id="mainCanvas"></canvas>
+    <video id="videoSource" playsinline autoplay style="display:none;"></video>
+    <div class="canvas-info" id="canvasInfo"></div>
+  </div>
+
+</div>
+
+<!-- Vertex Shader: Positions the video frame -->
+<script id="vertex-shader" type="x-shader/x-vertex">
+  attribute vec2 a_position;
+  attribute vec2 a_texCoord;
+  varying vec2 v_texCoord;
+  void main() {
+     gl_Position = vec4(a_position, 0.0, 1.0);
+     v_texCoord = a_texCoord;
+  }
+</script>
+
+<!-- Fragment Shader: Applies effects to each pixel -->
+<script id="fragment-shader" type="x-shader/x-fragment">
+  precision mediump float;
+  uniform sampler2D u_texture;
+  uniform float u_time;
+  uniform float u_aberration;
+  uniform float u_noise;
+  uniform float u_scanlineIntensity;
+  varying vec2 v_texCoord;
+
+  float rand(vec2 co){
+    return fract(sin(dot(co.xy ,vec2(12.9898,78.233))) * 43758.5453);
+  }
+
+  void main() {
+    // Chromatic Aberration
+    float r = texture2D(u_texture, vec2(v_texCoord.x + u_aberration, v_texCoord.y)).r;
+    float g = texture2D(u_texture, v_texCoord).g;
+    float b = texture2D(u_texture, vec2(v_texCoord.x - u_aberration, v_texCoord.y)).b;
+
+    vec3 color = vec3(r, g, b);
+
+    // Noise
+    float noise = (rand(v_texCoord + u_time) - 0.5) * u_noise;
+    color += noise;
+
+    // Scanlines
+    float scanline = sin(v_texCoord.y * 800.0) * u_scanlineIntensity;
+    color -= scanline;
+
+    gl_FragColor = vec4(color, 1.0);
+  }
+</script>
+
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+
+  const canvas = document.getElementById('mainCanvas');
+  const gl = canvas.getContext('webgl');
+  const video = document.getElementById('videoSource');
+  const statusBar = document.getElementById('statusBar');
+
+  if (!gl) {
+    statusBar.textContent = '◈ WebGL not supported!';
+    return;
+  }
+
+  // --- Shader Program Setup ---
+  function createShader(gl, type, source) {
+    const shader = gl.createShader(type);
+    gl.shaderSource(shader, source);
+    gl.compileShader(shader);
+    if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
+      console.error('Shader compile error:', gl.getShaderInfoLog(shader));
+      gl.deleteShader(shader);
+      return null;
+    }
+    return shader;
+  }
+
+  const vsSource = document.getElementById('vertex-shader').textContent;
+  const fsSource = document.getElementById('fragment-shader').textContent;
+  const vertexShader = createShader(gl, gl.VERTEX_SHADER, vsSource);
+  const fragmentShader = createShader(gl, gl.FRAGMENT_SHADER, fsSource);
+
+  const program = gl.createProgram();
+  gl.attachShader(program, vertexShader);
+  gl.attachShader(program, fragmentShader);
+  gl.linkProgram(program);
+  gl.useProgram(program);
+
+  // --- Geometry and Texture Buffers ---
+  const positionBuffer = gl.createBuffer();
+  gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
+  gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1,-1, 1,-1, -1,1, 1,1]), gl.STATIC_DRAW);
+  
+  const texCoordBuffer = gl.createBuffer();
+  gl.bindBuffer(gl.ARRAY_BUFFER, texCoordBuffer);
+  gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([0,1, 1,1, 0,0, 1,0]), gl.STATIC_DRAW);
+
+  // --- Attributes and Uniforms ---
+  const posAttr = gl.getAttribLocation(program, 'a_position');
+  gl.enableVertexAttribArray(posAttr);
+  gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
+  gl.vertexAttribPointer(posAttr, 2, gl.FLOAT, false, 0, 0);
+
+  const texAttr = gl.getAttribLocation(program, 'a_texCoord');
+  gl.enableVertexAttribArray(texAttr);
+  gl.bindBuffer(gl.ARRAY_BUFFER, texCoordBuffer);
+  gl.vertexAttribPointer(texAttr, 2, gl.FLOAT, false, 0, 0);
+
+  const timeUniform = gl.getUniformLocation(program, 'u_time');
+  const aberrationUniform = gl.getUniformLocation(program, 'u_aberration');
+  const noiseUniform = gl.getUniformLocation(program, 'u_noise');
+  const scanlineUniform = gl.getUniformLocation(program, 'u_scanlineIntensity');
+
+  // --- Texture for Video ---
+  const texture = gl.createTexture();
+  gl.bindTexture(gl.TEXTURE_2D, texture);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+
+  let videoPlaying = false;
+
+  // --- Render Loop ---
+  function render(time) {
+    // Check if the video has a valid frame to render
+    if (video.readyState >= video.HAVE_CURRENT_DATA) {
+      if (!videoPlaying) {
+        // This runs only once when the video starts
+        canvas.width = video.videoWidth;
+        canvas.height = video.videoHeight;
+        gl.viewport(0, 0, gl.canvas.width, gl.canvas.height);
+        statusBar.textContent = '◈ Camera Active';
+        document.getElementById('canvasInfo').textContent = `${video.videoWidth}x${video.videoHeight}`;
+        videoPlaying = true;
+      }
+
+      gl.uniform1f(timeUniform, time * 0.001);
+      gl.uniform1f(aberrationUniform, document.getElementById('aberration').value);
+      gl.uniform1f(noiseUniform, document.getElementById('noise').value);
+      gl.uniform1f(scanlineUniform, document.getElementById('scanlineIntensity').value);
+
+      gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, video);
+      gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+    }
+
+    requestAnimationFrame(render);
+  }
+
+  // --- UI and Camera Logic ---
+  document.getElementById('startCamBtn').addEventListener('click', async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+      video.srcObject = stream;
+      await video.play();
+      requestAnimationFrame(render); // Start the render loop immediately
+    } catch (err) {
+      statusBar.textContent = '◈ Camera access denied.';
+      console.error("Camera Error:", err);
+    }
+  });
+
+  // Sliders UI
+  ['aberration', 'noise', 'scanlineIntensity'].forEach(id => {
+    const sliderEl = document.getElementById(id);
+    const valEl = document.getElementById(id + 'Val');
+    if (sliderEl && valEl) {
+      valEl.textContent = sliderEl.value;
+      sliderEl.addEventListener('input', () => valEl.textContent = sliderEl.value);
+    }
+  });
+
+});
+</script>
+</body>
+</html>

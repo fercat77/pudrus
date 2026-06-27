@@ -18,8 +18,7 @@
     "constellation": { "name": "Constellation", "desc": "Overlay generative star maps y node networks." },
     "ascii": { "name": "ASCII Canvas", "desc": "Transforma imágenes en ASCII art creativo." },
     "halftone": { "name": "Halftone", "desc": "Crea patrones de puntos, separaciones CMYK y efectos de impresión retro." },
-    "triangulation": { "name": "Triangulation", "desc": "Reconstruye imágenes en un estilo vectorial low-poly usando triangulación de Delaunay." },
-    "crt": { "name": "CRT Bend", "desc": "Emula la curvatura de pantallas CRT, scanlines y distorsión de señal por circuit bending." }
+    "triangulation": { "name": "Triangulation", "desc": "Reconstruye imágenes en un estilo vectorial low-poly usando triangulación de Delaunay." }
   },
   "constellation": {
     "fileDrop": "Click o suelta una imagen aquí",
