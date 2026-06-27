@@ -1,12 +1,9 @@
 <!DOCTYPE html>
-<html lang="es">
+<html lang="en">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="description" content="Browser-based creative visual tools for image and video processing. No uploads, no installations. Pixel sorting, dithering, glitch effects, ASCII art and more.">
-  <meta name="keywords" content="image processing, video effects, pixel sort, dithering, glitch art, ASCII art, creative tools, browser-based">
-  <meta name="author" content="PUDRUS">
-  <title>PUDRUS — Creative Visual Tools</title>
+  <title>PUDRUS.XYZ — Creative Visual Suite</title>
   <link rel="icon" type="image/svg+xml" href="favicon.svg">
   <link rel="stylesheet" href="css/style.css">
 </head>
@@ -27,203 +24,188 @@
   </div>
 </nav>
 
-<!-- ── HERO ──────────────────────────────────────────── -->
-<div class="hero">
-  <div class="hero-grid"></div>
-  <div class="hero-brackets">
-    <div class="corner tl"></div>
-    <div class="corner tr"></div>
-    <div class="corner bl"></div>
-    <div class="corner br"></div>
-  </div>
-
-  <p class="hero-tag" data-i18n="hero.tag">◈ Creative Visual Suite</p>
-  <h1 data-i18n="hero.title">PUDRUS<span>.</span>XYZ</h1>
-  <p class="hero-sub" data-i18n="hero.sub">Browser-based image & video processing tools</p>
-
-  <div class="hero-line"></div>
-
-  <div class="hero-cta">
-    <a href="#tools" class="btn btn-primary" data-i18n="hero.explore">◈ Explore Tools</a>
-    <a href="#about" class="btn btn-outline" data-i18n="hero.learn">Learn More</a>
-  </div>
-
-  <div class="hero-stats">
-    <div class="stat">
-      <div class="stat-num">07</div>
-      <div class="stat-label" data-i18n="stats.tools">Tools</div>
+<main>
+  <!-- ── HERO ──────────────────────────────────────────── -->
+  <section class="hero">
+    <div class="hero-grid"></div>
+    <div class="hero-brackets">
+      <div class="corner tl"></div><div class="corner tr"></div>
+      <div class="corner bl"></div><div class="corner br"></div>
     </div>
-    <div class="stat">
-      <div class="stat-num">∞</div>
-      <div class="stat-label" data-i18n="stats.combinations">Combinations</div>
+    <div class="hero-tag" data-i18n="hero.tag">◈ Creative Visual Suite</div>
+    <h1>PUDRUS<span>.</span>XYZ</h1>
+    <div class="hero-sub" data-i18n="hero.sub">Browser-based image & video processing tools</div>
+    <div class="hero-cta">
+      <a href="#tools" class="btn btn-primary" data-i18n="hero.explore">◈ Explore Tools</a>
+      <a href="#about" class="btn btn-outline" data-i18n="hero.learn">Learn More</a>
     </div>
-    <div class="stat">
-      <div class="stat-num">0</div>
-      <div class="stat-label" data-i18n="stats.install">Install needed</div>
+    <div class="hero-line"></div>
+    <div class="hero-stats">
+      <div class="stat">
+        <div class="stat-num">08</div>
+        <div class="stat-label" data-i18n="stats.tools">Tools</div>
+      </div>
+      <div class="stat">
+        <div class="stat-num">∞</div>
+        <div class="stat-label" data-i18n="stats.combinations">Combinations</div>
+      </div>
+      <div class="stat">
+        <div class="stat-num">0</div>
+        <div class="stat-label" data-i18n="stats.install">No install</div>
+      </div>
     </div>
-  </div>
-</div>
+  </section>
 
-<!-- ── TOOLS ─────────────────────────────────────────── -->
-<section id="tools" class="section-tools">
-  <p class="section-tag" data-i18n="tools.sectionTag">◈ 01 — Tools</p>
-  <h2 class="section-title" data-i18n="tools.title">Visual <span>Processing</span> Suite</h2>
-  <p class="section-desc" data-i18n="tools.desc">
-    Each tool runs entirely in your browser. No uploads to servers,
-    no installations. Load an image or video and start creating.
-  </p>
+  <!-- ── TOOLS ─────────────────────────────────────────── -->
+  <section id="tools" class="section-tools">
+    <div class="section-tag" data-i18n="tools.sectionTag">◈ 01 — Tools</div>
+    <h2 class="section-title" data-i18n="tools.title">Visual Processing <span>Suite</span></h2>
+    <p class="section-desc" data-i18n="tools.desc">
+      Each tool runs entirely in your browser. No uploads to servers, no installations. Your files stay on your computer.
+    </p>
 
-  <div class="tools-grid">
+    <div class="tools-grid">
+      <!-- Pixel Sorter -->
+      <a href="tools/pixel-sort/index.html" class="tool-card">
+        <span class="tool-icon">⟆</span>
+        <div class="tool-number">01 // TOOL</div>
+        <div class="tool-name" data-i18n="tools.pixel.name">Pixel Sorter</div>
+        <div class="tool-desc" data-i18n="tools.pixel.desc">
+          Sort pixels by brightness, hue or saturation along horizontal, vertical or diagonal axes. Classic glitch aesthetic.
+        </div>
+        <span class="tool-badge active">◈ Available</span>
+      </a>
 
-    <!-- Pixel Sort -->
-    <a href="tools/pixel-sort/index.html" class="tool-card">
-      <span class="tool-icon">⟆</span>
-      <div class="tool-number">01 // TOOL</div>
-      <div class="tool-name" data-i18n="tools.pixel.name">Pixel Sorter</div>
-      <div class="tool-desc" data-i18n="tools.pixel.desc">
-        Sort pixels by brightness, hue or saturation along horizontal,
-        vertical or diagonal axes. Classic glitch aesthetic.
-      </div>
-      <span class="tool-badge active">◈ Available</span>
-    </a>
+      <!-- Dithering -->
+      <a href="tools/dithering/index.html" class="tool-card">
+        <span class="tool-icon">⠿</span>
+        <div class="tool-number">02 // TOOL</div>
+        <div class="tool-name" data-i18n="tools.dither.name">Dithering</div>
+        <div class="tool-desc" data-i18n="tools.dither.desc">
+          Apply classic dithering algorithms: Floyd-Steinberg, ordered, Atkinson and more. Retro pixel aesthetics.
+        </div>
+        <span class="tool-badge active">◈ Available</span>
+      </a>
 
-    <!-- Dithering -->
-    <a href="tools/dithering/index.html" class="tool-card">
-      <span class="tool-icon">⠿</span>
-      <div class="tool-number">02 // TOOL</div>
-      <div class="tool-name" data-i18n="tools.dither.name">Dithering</div>
-      <div class="tool-desc" data-i18n="tools.dither.desc">
-        Apply classic dithering algorithms: Floyd-Steinberg, ordered,
-        Atkinson and more. Retro pixel aesthetics.
-      </div>
-      <span class="tool-badge active">◈ Available</span>
-    </a>
+      <!-- Glitch FX -->
+      <a href="tools/glitch/index.html" class="tool-card">
+        <span class="tool-icon">▓</span>
+        <div class="tool-number">03 // TOOL</div>
+        <div class="tool-name" data-i18n="tools.glitch.name">Glitch FX</div>
+        <div class="tool-desc" data-i18n="tools.glitch.desc">
+          RGB channel shift, scanlines, block corruption, datamosh effects. Full control over intensity and style.
+        </div>
+        <span class="tool-badge active">◈ Available</span>
+      </a>
 
-    <!-- Glitch FX -->
-    <a href="tools/glitch/index.html" class="tool-card">
-      <span class="tool-icon">▓</span>
-      <div class="tool-number">03 // TOOL</div>
-      <div class="tool-name" data-i18n="tools.glitch.name">Glitch FX</div>
-      <div class="tool-desc" data-i18n="tools.glitch.desc">
-        RGB channel shift, scanlines, block corruption, datamosh effects.
-        Full control over intensity and style.
-      </div>
-      <span class="tool-badge active">◈ Available</span>
-    </a>
+      <!-- Constellation -->
+      <a href="tools/constellation/index.html" class="tool-card">
+        <span class="tool-icon">✦</span>
+        <div class="tool-number">04 // TOOL</div>
+        <div class="tool-name" data-i18n="tools.constellation.name">Constellation</div>
+        <div class="tool-desc" data-i18n="tools.constellation.desc">
+          Overlay generative star maps, technical diagrams and node networks over your images. Export at high resolution.
+        </div>
+        <span class="tool-badge active">◈ Available</span>
+      </a>
 
-    <!-- Constellation -->
-    <a href="tools/constellation/index.html" class="tool-card">
-      <span class="tool-icon">✦</span>
-      <div class="tool-number">04 // TOOL</div>
-      <div class="tool-name" data-i18n="tools.constellation.name">Constellation</div>
-      <div class="tool-desc" data-i18n="tools.constellation.desc">
-        Overlay generative star maps, technical diagrams and node networks
-        over your images. Export at high resolution.
-      </div>
-      <span class="tool-badge active">◈ Available</span>
-    </a>
+      <!-- ASCII Canvas -->
+      <a href="tools/ascii-canvas/index.html" class="tool-card">
+        <span class="tool-icon">◊</span>
+        <div class="tool-number">05 // TOOL</div>
+        <div class="tool-name" data-i18n="tools.ascii.name">ASCII Canvas</div>
+        <div class="tool-desc" data-i18n="tools.ascii.desc">
+          Transform images into creative ASCII art with custom character sets and effects.
+        </div>
+        <span class="tool-badge active">◈ Available</span>
+      </a>
 
-    <!-- ASCII Canvas -->
-    <a href="tools/ascii-canvas/index.html" class="tool-card">
-      <span class="tool-icon">◊</span>
-      <div class="tool-number">05 // TOOL</div>
-      <div class="tool-name" data-i18n="tools.ascii.name">ASCII Canvas</div>
-      <div class="tool-desc" data-i18n="tools.ascii.desc">
-        Transform images into creative ASCII art with custom character sets and effects.
-      </div>
-      <span class="tool-badge active">◈ Available</span>
-    </a>
+      <!-- Halftone -->
+      <a href="tools/halftone/index.html" class="tool-card">
+        <span class="tool-icon">◉</span>
+        <div class="tool-number">06 // TOOL</div>
+        <div class="tool-name" data-i18n="tools.halftone.name">Halftone</div>
+        <div class="tool-desc" data-i18n="tools.halftone.desc">
+          Create halftone dot patterns, CMYK separations, and retro print effects.
+        </div>
+        <span class="tool-badge active">◈ Available</span>
+      </a>
 
-    <!-- Halftone -->
-    <a href="tools/halftone/index.html" class="tool-card">
-      <span class="tool-icon">◉</span>
-      <div class="tool-number">06 // TOOL</div>
-      <div class="tool-name" data-i18n="tools.halftone.name">Halftone</div>
-      <div class="tool-desc" data-i18n="tools.halftone.desc">
-        Create halftone dot patterns, CMYK separations, and retro print effects.
-      </div>
-      <span class="tool-badge active">◈ Available</span>
-    </a>
+      <!-- Triangulation -->
+      <a href="tools/triangulation/index.html" class="tool-card">
+        <span class="tool-icon">△</span>
+        <div class="tool-number">07 // TOOL</div>
+        <div class="tool-name" data-i18n="tools.triangulation.name">Triangulation</div>
+        <div class="tool-desc" data-i18n="tools.triangulation.desc">
+          Reconstruct images into a low-poly vector style using Delaunay triangulation.
+        </div>
+        <span class="tool-badge active">◈ Available</span>
+      </a>
 
-    <!-- Triangulation -->
-    <a href="tools/triangulation/index.html" class="tool-card">
-      <span class="tool-icon">△</span>
-      <div class="tool-number">07 // TOOL</div>
-      <div class="tool-name" data-i18n="tools.triangulation.name">Triangulation</div>
-      <div class="tool-desc" data-i18n="tools.triangulation.desc">
-        Reconstruct images into a low-poly vector style using Delaunay triangulation.
-      </div>
-      <span class="tool-badge active">◈ Available</span>
-    </a>
+      <!-- CRT Bend -->
+      <a href="tools/crt-bend/index.html" class="tool-card">
+        <span class="tool-icon">📺</span>
+        <div class="tool-number">08 // TOOL</div>
+        <div class="tool-name" data-i18n="tools.crt.name">CRT Bend</div>
+        <div class="tool-desc" data-i18n="tools.crt.desc">
+          Emulate CRT screen curvature, scanlines, and circuit-bent signal distortion.
+        </div>
+        <span class="tool-badge active">◈ Available</span>
+      </a>
 
-    <!-- Video FX -->
-    <a href="#" class="tool-card coming-soon">
-      <span class="tool-icon">◈</span>
-      <div class="tool-number">08 // TOOL</div>
-      <div class="tool-name">Video FX</div>
-      <div class="tool-desc">
-        Real-time effects on webcam or video files.
-        Coming soon.
-      </div>
-      <span class="tool-badge">⌛ Coming Soon</span>
-    </a>
-
-  </div>
-</section>
-
-<!-- ── ABOUT ─────────────────────────────────────────── -->
-<section id="about" class="section-about">
-  <p class="section-tag" data-i18n="about.sectionTag">◈ 02 — About</p>
-  <h2 class="section-title" data-i18n="about.title">How it <span>Works</span></h2>
-
-  <div class="about-grid">
-    <div class="about-text">
-      <p data-i18n="about.p1">
-        PUDRUS.XYZ is a browser-based creative suite for image and video
-        processing. Every tool runs locally in your browser — your files
-        never leave your device.
-      </p>
-      <p data-i18n="about.p2">
-        Built with p5.js and vanilla JavaScript. No frameworks,
-        no subscriptions, no accounts needed.
-      </p>
-      <a href="#tools" class="btn btn-outline btn-outline-start" data-i18n="about.start">
-        Start Creating
+      <!-- Video FX -->
+      <a href="#" class="tool-card coming-soon">
+        <span class="tool-icon">◈</span>
+        <div class="tool-number">09 // TOOL</div>
+        <div class="tool-name">Video FX</div>
+        <div class="tool-desc">
+          Real-time effects on webcam or video files.
+        </div>
+        <span class="tool-badge">⌛ Coming Soon</span>
       </a>
     </div>
+  </section>
 
-    <div class="about-features">
-      <div class="feature">
-        <div class="feature-icon">🔒</div>
-        <div class="feature-text">
-          <h4>100% Private</h4>
-          <p>All processing happens in your browser. Files never leave your device.</p>
-        </div>
+  <!-- ── ABOUT ─────────────────────────────────────────── -->
+  <section id="about" class="section-about">
+    <div class="section-tag" data-i18n="about.sectionTag">◈ 02 — About</div>
+    <div class="about-grid">
+      <div class="about-text">
+        <h2 class="section-title" data-i18n="about.title">How it <span>Works</span></h2>
+        <p data-i18n="about.p1">
+          PUDRUS.XYZ is a browser-based creative suite for image and video processing. All tools run locally on your machine. Your files are never uploaded to a server, ensuring 100% privacy.
+        </p>
+        <p data-i18n="about.p2">
+          Built with vanilla JavaScript. No frameworks, no accounts. Just pure, fast, creative processing.
+        </p>
+        <a href="#tools" class="btn btn-outline btn-outline-start" data-i18n="about.start">Start Creating</a>
       </div>
-      <div class="feature">
-        <div class="feature-icon">⚡</div>
-        <div class="feature-text">
-          <h4>Real-time Preview</h4>
-          <p>See changes instantly as you adjust parameters.</p>
+      <div class="about-features">
+        <div class="feature">
+          <div class="feature-icon">🔒</div>
+          <div class="feature-text">
+            <h4>100% Private</h4>
+            <p>Your images are processed on your device and never leave your computer.</p>
+          </div>
         </div>
-      </div>
-      <div class="feature">
-        <div class="feature-icon">📤</div>
-        <div class="feature-text">
-          <h4>High-res Export</h4>
-          <p>Export results at full resolution as PNG.</p>
+        <div class="feature">
+          <div class="feature-icon">⚡</div>
+          <div class="feature-text">
+            <h4>Instant & Fast</h4>
+            <p>No installation required. Works on any modern browser, desktop or mobile.</p>
+          </div>
         </div>
-      </div>
-      <div class="feature">
-        <div class="feature-icon">🎛️</div>
-        <div class="feature-text">
-          <h4>Full Control</h4>
-          <p>Every parameter is adjustable with real-time feedback.</p>
+        <div class="feature">
+          <div class="feature-icon">🎨</div>
+          <div class="feature-text">
+            <h4>Creative Control</h4>
+            <p>Fine-tune every parameter with real-time previews for maximum creativity.</p>
+          </div>
         </div>
       </div>
     </div>
-  </div>
-</section>
+  </section>
+</main>
 
 <!-- ── FOOTER ────────────────────────────────────────── -->
 <footer class="custom-margin">
@@ -235,6 +217,5 @@
 </footer>
 
 <script src="js/i18n.js"></script>
-
 </body>
 </html>
