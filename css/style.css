@@ -23,6 +23,7 @@ html, body {
   font-family: var(--font);
   font-size: 13px;
   overflow-x: hidden;
+  visibility: hidden; /* Prevents FOUC */
 }
 
 /* ── SCROLLBAR ──────────────────────────────────────── */
@@ -69,6 +70,13 @@ nav {
 }
 
 .nav-links a:hover { color: var(--c1); }
+
+/* Hamburger Menu Logic (hidden on desktop) */
+.nav-toggle-checkbox,
+.nav-toggle-label {
+  display: none;
+  z-index: 101; /* Ensure it's above nav content */
+}
 
 /* ── HERO ───────────────────────────────────────────── */
 .hero {
