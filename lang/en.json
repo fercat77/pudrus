@@ -11,12 +11,12 @@
   "tools": {
     "sectionTag": "◈ 01 — Tools",
     "title": "Visual Processing Suite",
-    "desc": "Each tool runs entirely in your browser. No uploads.",
-    "pixel": { "name": "Pixel Sorter", "desc": "Sort pixels by brightness, hue or saturation." },
-    "dither": { "name": "Dithering", "desc": "Floyd-Steinberg, ordered, Atkinson and more." },
-    "glitch": { "name": "Glitch FX", "desc": "RGB shift, scanlines, datamosh effects." },
-    "constellation": { "name": "Constellation", "desc": "Overlay generative star maps and node networks." },
-    "ascii": { "name": "ASCII Canvas", "desc": "Transform images into creative ASCII art." },
+    "desc": "Each tool runs entirely in your browser. No uploads to servers, no installations.",
+    "pixel": { "name": "Pixel Sorter", "desc": "Sort pixels by brightness, hue or saturation along horizontal, vertical or diagonal axes. Classic glitch aesthetic." },
+    "dither": { "name": "Dithering", "desc": "Apply classic dithering algorithms: Floyd-Steinberg, ordered, Atkinson and more. Retro pixel aesthetics." },
+    "glitch": { "name": "Glitch FX", "desc": "RGB channel shift, scanlines, block corruption, datamosh effects. Full control over intensity and style." },
+    "constellation": { "name": "Constellation", "desc": "Overlay generative star maps, technical diagrams and node networks over your images. Export at high resolution." },
+    "ascii": { "name": "ASCII Canvas", "desc": "Transform images into creative ASCII art with custom character sets and effects." },
     "halftone": { "name": "Halftone", "desc": "Create halftone dot patterns, CMYK separations, and retro print effects." }
   },
   "constellation": {

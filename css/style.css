@@ -524,7 +524,7 @@ input[type="color"] {
   
   /* Hero */
   .hero {
-    padding: 120px 20px 60px;
+    padding: 80px 20px 60px; /* Reducido de 120px a 80px */
     min-height: auto;
     display: flex;
     flex-direction: column;
@@ -754,7 +754,7 @@ footer.custom-margin {
 }
 
 .footer-separator {
-  color: var(--c3);
+  color: var(--c2);
 }
 
 /* ── HERO ANIMATIONS (moved from index.html <style>) ── */
