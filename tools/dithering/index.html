@@ -22,12 +22,6 @@
     </div>
 
     <div class="tool-panel-body">
-      <div class="file-upload" id="dropZone">
-        <span class="icon">◈</span>
-        <span>Click or drop an image here</span>
-        <input type="file" id="fileInput" accept="image/*">
-      </div>
-
       <!-- Crop Controls -->
       <div class="control-group">
         <span class="control-label">Crop & Export</span>
@@ -130,7 +124,12 @@
   </div>
 
   <div class="tool-canvas-area" id="canvasArea">
-    <canvas id="mainCanvas"></canvas>
+    <div class="file-upload" id="dropZone">
+      <span class="icon">⠿</span>
+      <span>Click or drop an image here</span>
+      <input type="file" id="fileInput" accept="image/*">
+    </div>
+    <canvas id="mainCanvas" style="display: none;"></canvas>
     <div class="canvas-info" id="canvasInfo">No image loaded</div>
   </div>
 </div>
@@ -164,9 +163,9 @@ document.getElementById('colorMode').addEventListener('change',function(){
 });
 
 // File load
-let dropZone=document.getElementById('dropZone'),fileInput=document.getElementById('fileInput');
-dropZone.addEventListener('dragover',e=>{e.preventDefault();});
-dropZone.addEventListener('drop',e=>{e.preventDefault();let f=e.dataTransfer.files[0];if(f)loadFile(f);});
+let dropZone=document.querySelector('.tool-canvas-area'),fileInput=document.getElementById('fileInput');
+dropZone.addEventListener('dragover',e=>{e.preventDefault(); dropZone.style.borderColor='var(--c1)';});
+dropZone.addEventListener('drop',e=>{e.preventDefault(); dropZone.style.borderColor=''; let f=e.dataTransfer.files[0];if(f)loadFile(f);});
 fileInput.addEventListener('change',()=>{if(fileInput.files[0])loadFile(fileInput.files[0]);});
 
 function loadFile(file){
@@ -181,6 +180,7 @@ function loadFile(file){
       ctx.drawImage(img,0,0);
       origImageData=ctx.getImageData(0,0,canvas.width,canvas.height);
       document.getElementById('canvasInfo').textContent=img.width+' × '+img.height+' px';
+      document.getElementById('canvasArea').classList.add('has-image');
       status('Image loaded');
     };
     img.src=e.target.result;
@@ -351,7 +351,10 @@ function randomDither() {
 }
 
 document.getElementById('randomBtn').addEventListener('click',randomDither);
-document.getElementById('resetBtn').addEventListener('click',()=>{if(origImageData){ctx.putImageData(origImageData,0,0);status('Reset');}});
+document.getElementById('resetBtn').addEventListener('click',()=>{
+  if(origImageData){ctx.putImageData(origImageData,0,0);status('Reset');}
+  document.getElementById('canvasArea').classList.remove('has-image');
+});
 document.getElementById('exportBtn').addEventListener('click',()=>{
   if(!origImageData){status('Nothing to export');return;}
   
