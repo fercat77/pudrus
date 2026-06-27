@@ -21,27 +21,27 @@
   <!-- ── PANEL ── -->
   <div class="tool-panel">
     <div class="tool-panel-header">
-      <a href="../../index.html" class="back">← Back</a>
-      <h2>⟆ Pixel Sorter</h2>
-      <p>Sort pixels by brightness, hue or saturation. Load an image to start.</p>
+      <a href="../../index.html" class="back" data-i18n="nav.tools">← Back</a>
+      <h2 data-i18n="pixel.name">⟆ Pixel Sorter</h2>
+      <p data-i18n="pixel.desc">Sort pixels by brightness, hue or saturation. Load an image to start.</p>
     </div>
 
     <div class="tool-panel-body">
 
       <!-- Crop Controls -->
       <div class="control-group">
-        <span class="control-label">Crop & Export</span>
+        <span class="control-label" data-i18n="pixel.cropExport">Crop & Export</span>
         <div class="control-row">
-          <label>Aspect</label>
+          <label data-i18n="pixel.aspect">Aspect</label>
           <select id="aspectRatio">
-            <option value="free">Free</option>
-            <option value="1:1">Square (1:1)</option>
-            <option value="4:5">Portrait (4:5)</option>
-            <option value="9:16">Story (9:16)</option>
+            <option value="free" data-i18n="pixel.aspectFree">Free</option>
+            <option value="1:1" data-i18n="pixel.aspectSquare">Square (1:1)</option>
+            <option value="4:5" data-i18n="pixel.aspectPortrait">Portrait (4:5)</option>
+            <option value="9:16" data-i18n="pixel.aspectStory">Story (9:16)</option>
           </select>
         </div>
         <div class="control-row">
-          <label>Quality</label>
+          <label data-i18n="pixel.quality">Quality</label>
           <select id="exportQuality">
             <option value="high">High (Original)</option>
             <option value="medium">Medium (1080px)</option>
@@ -54,19 +54,19 @@
 
       <!-- Sort Direction -->
       <div class="control-group">
-        <span class="control-label">Sort Direction</span>
+        <span class="control-label" data-i18n="pixel.sortDir">Sort Direction</span>
         <div class="control-row">
           <select id="direction">
-            <option value="horizontal">Horizontal</option>
-            <option value="vertical">Vertical</option>
-            <option value="diagonal">Diagonal</option>
+            <option value="horizontal" data-i18n="pixel.dirHoriz">Horizontal</option>
+            <option value="vertical" data-i18n="pixel.dirVert">Vertical</option>
+            <option value="diagonal" data-i18n="pixel.dirDiag">Diagonal</option>
           </select>
         </div>
       </div>
 
       <!-- Sort By -->
       <div class="control-group">
-        <span class="control-label">Sort By</span>
+        <span class="control-label" data-i18n="pixel.sortBy">Sort By</span>
         <div class="control-row">
           <select id="sortBy">
             <option value="brightness">Brightness</option>
@@ -128,9 +128,9 @@
 
       <!-- Reverse -->
       <div class="control-group">
-        <span class="control-label">Options</span>
+        <span class="control-label" data-i18n="pixel.options">Options</span>
         <div class="toggle-row">
-          <label>Reverse</label>
+          <label data-i18n="pixel.reverse">Reverse</label>
           <div class="toggle" id="reverseToggle"></div>
         </div>
         <div class="toggle-row">
@@ -164,6 +164,7 @@
 
 </div>
 
+<script src="../../js/i18n.js"></script>
 <script>
 // ── STATE ─────────────────────────────────────────────
 let origImageData = null;

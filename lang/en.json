@@ -19,7 +19,29 @@
     "ascii": { "name": "ASCII Canvas", "desc": "Transform images into creative ASCII art with custom character sets and effects." },
     "halftone": { "name": "Halftone", "desc": "Create halftone dot patterns, CMYK separations, and retro print effects." },
     "triangulation": { "name": "Triangulation", "desc": "Reconstruct images into a low-poly vector style using Delaunay triangulation." },
-    "flyer": { "name": "Flyer Forge", "desc": "Generate flyers for music events with automatic, well-designed compositions." }
+    "flyer": { "name": "Flyer Forge", "desc": "Generate flyers for music events with automatic, well-designed compositions." },
+    "crt": { "name": "CRT Bend", "desc": "Emulate CRT screen curvature, scanlines, and circuit-bent signal distortion." }
+  },
+  "pixel": {
+    "name": "⟆ Pixel Sorter",
+    "desc": "Sort pixels by brightness, hue or saturation. Load an image to start.",
+    "cropExport": "Crop & Export",
+    "aspect": "Aspect",
+    "quality": "Quality",
+    "aspectFree": "Free",
+    "aspectSquare": "Square (1:1)",
+    "aspectPortrait": "Portrait (4:5)",
+    "aspectStory": "Story (9:16)",
+    "qualityHigh": "High (Original)",
+    "qualityMedium": "Medium (1080px)",
+    "qualityLow": "Low (720px)",
+    "sortDir": "Sort Direction",
+    "dirHoriz": "Horizontal",
+    "dirVert": "Vertical",
+    "dirDiag": "Diagonal",
+    "sortBy": "Sort By",
+    "options": "Options",
+    "reverse": "Reverse"
   },
   "constellation": {
     "fileDrop": "Click or drop an image here",
