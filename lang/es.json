@@ -17,7 +17,8 @@
     "glitch": { "name": "Glitch FX", "desc": "RGB shifts, scanlines, block corruption." },
     "constellation": { "name": "Constellation", "desc": "Overlay generative star maps y node networks." },
     "ascii": { "name": "ASCII Canvas", "desc": "Transforma imágenes en ASCII art creativo." },
-    "halftone": { "name": "Halftone", "desc": "Crea patrones de puntos, separaciones CMYK y efectos de impresión retro." }
+    "halftone": { "name": "Halftone", "desc": "Crea patrones de puntos, separaciones CMYK y efectos de impresión retro." },
+    "triangulation": { "name": "Triangulation", "desc": "Reconstruye imágenes en un estilo vectorial low-poly usando triangulación de Delaunay." }
   },
   "constellation": {
     "fileDrop": "Click o suelta una imagen aquí",
@@ -113,5 +114,5 @@
     "p2": "Built with vanilla JavaScript. No frameworks ni accounts.",
     "start": "Empezar"
   },
-  "footer": { "copyright": "© 2026 PUDRUS.XYZ", "note": "Built in the browser, for the browser" }
+  "footer": { "copyright": "© 2026 PUDRUS.XYZ", "donate": "Apoya este proyecto", "note": "Built in the browser, for the browser" }
 }
