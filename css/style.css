@@ -604,13 +604,16 @@ input[type="color"] {
   }
   /* Tool Layout - Stack vertically */
   .tool-layout {
-    grid-template-columns: 1fr;
-    grid-template-rows: auto 1fr;
-    height: auto;
-    min-height: 100vh;
+    /* Convert to a flex-based split-screen layout */
+    display: flex;
+    flex-direction: column-reverse; /* Puts canvas on top */
+    height: 100vh; /* Full viewport height */
+    padding-top: 48px; /* Offset for the nav bar */
   }
   .tool-panel {
-    max-height: none;
+    /* Panel ocupa la mitad inferior y es scrollable */
+    flex: 1 1 50%;
+    overflow-y: auto;
     border-right: none;
     border-bottom: 1px solid var(--border);
   }
@@ -618,8 +621,10 @@ input[type="color"] {
     padding: 16px;
   }
   .tool-canvas-area {
-    min-height: 300px;
+    /* Canvas area ocupa la mitad superior */
+    flex: 1 1 50%;
     padding: 16px;
+    min-height: 0; /* Override previous min-height */
   }
   #mainCanvas {
     max-height: 50vh;
