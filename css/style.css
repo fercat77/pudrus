@@ -23,7 +23,6 @@ html, body {
   font-family: var(--font);
   font-size: 13px;
   overflow-x: hidden;
-  visibility: hidden; /* Prevents FOUC */
 }
 
 /* ── SCROLLBAR ──────────────────────────────────────── */
@@ -70,13 +69,6 @@ nav {
 }
 
 .nav-links a:hover { color: var(--c1); }
-
-/* Hamburger Menu Logic (hidden on desktop) */
-.nav-toggle-checkbox,
-.nav-toggle-label {
-  display: none;
-  z-index: 101; /* Ensure it's above nav content */
-}
 
 /* ── HERO ───────────────────────────────────────────── */
 .hero {
@@ -333,8 +325,10 @@ footer a:hover { color: var(--c1); }
 }
 
 .control-row {
-  display: flex; align-items: center;
-  gap: 10px; margin-bottom: 10px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 10px;
 }
 
 .control-row label {
@@ -513,15 +507,15 @@ input[type="color"] {
     padding: 0 12px;
     height: 48px;
   }
-  .nav-logo {
-    font-size: 12px;
-    letter-spacing: 1px;
-  }
   .nav-links {
     gap: 12px;
   }
   .nav-links a {
     font-size: 9px;
+    letter-spacing: 1px;
+  }
+  .nav-logo {
+    font-size: 12px;
     letter-spacing: 1px;
   }
   .nav-lang {
@@ -532,7 +526,7 @@ input[type="color"] {
   
   /* Hero */
   .hero {
-    padding: 80px 20px 60px; /* Reducido de 120px a 80px */
+    padding: 120px 20px 60px;
     min-height: auto;
     display: flex;
     flex-direction: column;
@@ -552,8 +546,8 @@ input[type="color"] {
   }
   .hero-sub {
     font-size: 9px;
-    letter-spacing: 2px;
-    margin-bottom: 30px;
+    letter-spacing: 3px;
+    margin-bottom: 40px;
     padding: 0 10px;
   }
   .hero-cta {
@@ -561,7 +555,7 @@ input[type="color"] {
     margin-bottom: 30px;
   }
   .hero-stats {
-    flex-direction: column;
+    flex-direction: row;
     gap: 20px;
     margin-top: 30px;
     width: 100%;
@@ -710,7 +704,7 @@ input[type="color"] {
   }
   
   .hero {
-    padding: 40px 16px 30px;
+    padding: 80px 16px 40px;
   }
   .hero h1 {
     font-size: 24px;
@@ -745,6 +739,7 @@ input[type="color"] {
 .section-tools {
   max-width: 1200px;
   margin: 0 auto;
+  margin-top: 80px;
 }
 
 .section-about {
@@ -868,36 +863,4 @@ footer.custom-margin {
 @media (max-width: 768px) {
   .about-grid { grid-template-columns: 1fr; }
   .hero-stats { gap: 24px; }
-}
-
-/* ── PRESET BUTTONS ──────────────────────────────────── */
-.preset-buttons {
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 8px;
-  margin-top: 8px;
-}
-
-.btn-preset {
-  padding: 10px 12px;
-  background: var(--bg3);
-  border: 1px solid var(--c3);
-  color: var(--text2);
-  cursor: pointer;
-  font-family: var(--font);
-  font-size: 10px;
-  letter-spacing: 2px;
-  text-transform: uppercase;
-  transition: all 0.2s;
-}
-
-.btn-preset:hover {
-  background: rgba(0,212,255,0.08);
-  border-color: var(--c1);
-  color: var(--c1);
-  box-shadow: var(--glow);
-}
-
-.btn-preset:active {
-  transform: scale(0.98);
 }

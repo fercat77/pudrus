@@ -146,6 +146,8 @@ let isInvert=false, doGray=true;
   });
 });
 
+function status(m){document.getElementById('statusBar').textContent='◈ '+m;}
+
 function toggle(id,cb){let el=document.getElementById(id);el.addEventListener('click',()=>{el.classList.toggle('on');cb(el.classList.contains('on'));});}
 toggle('invertToggle',v=>isInvert=v);
 toggle('grayToggle',v=>doGray=v);
@@ -160,8 +162,6 @@ toggle('grayToggle',v=>doGray=v);
 document.getElementById('colorMode').addEventListener('change',function(){
   document.getElementById('customPalette').style.display=this.value==='custom'?'block':'none';
 });
-
-function status(m){document.getElementById('statusBar').textContent='◈ '+m;}
 
 // File load
 let dropZone=document.getElementById('dropZone'),fileInput=document.getElementById('fileInput');

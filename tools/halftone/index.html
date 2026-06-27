@@ -22,17 +22,17 @@
     </div>
 
     <div class="tool-panel-body">
-      <div class="file-upload" id="dropZone">
-        <span class="icon">◈</span>
-        <span data-i18n="halftone.fileDrop">Click or drop an image here</span>
-        <input type="file" id="fileInput" accept="image/*">
+      <div class="control-group">
+        <label for="fileInput" class="btn btn-outline" style="width: 100%; justify-content: center;" data-i18n="halftone.fileDrop">◈ Cargar Imagen</label>
+        <input type="file" id="fileInput" accept="image/*" style="display: none;">
       </div>
+      <hr class="divider">
 
       <!-- Export Controls -->
       <div class="control-group">
         <span class="control-label">Export</span>
         <div class="control-row">
-          <label>Aspect Ratio</label>
+          <label>Aspect</label>
           <select id="aspectRatio">
             <option value="free">Free</option>
             <option value="1:1">Square (1:1)</option>
@@ -67,7 +67,7 @@
       <div class="control-group">
         <span class="control-label" data-i18n="halftone.dotSettings">Dot Settings</span>
         <div class="control-row">
-          <label data-i18n="halftone.dotSize">Dot Size</label>
+          <label>Size</label>
           <input type="range" id="dotSize" min="2" max="20" value="8">
           <span class="val" id="dotSizeVal">8px</span>
         </div>
@@ -91,22 +91,22 @@
       <div class="control-group" id="angleControls">
         <span class="control-label" data-i18n="halftone.angles">Channel Angles</span>
         <div class="control-row">
-          <label data-i18n="halftone.angle1">Angle 1</label>
+          <label>Angle 1</label>
           <input type="range" id="angle1" min="0" max="90" value="15">
           <span class="val" id="angle1Val">15°</span>
         </div>
         <div class="control-row">
-          <label data-i18n="halftone.angle2">Angle 2</label>
+          <label>Angle 2</label>
           <input type="range" id="angle2" min="0" max="90" value="75">
           <span class="val" id="angle2Val">75°</span>
         </div>
         <div class="control-row">
-          <label data-i18n="halftone.angle3">Angle 3</label>
+          <label>Angle 3</label>
           <input type="range" id="angle3" min="0" max="90" value="0">
           <span class="val" id="angle3Val">0°</span>
         </div>
         <div class="control-row" id="angle4Row">
-          <label data-i18n="halftone.angle4">Angle 4</label>
+          <label>Angle 4</label>
           <input type="range" id="angle4" min="0" max="90" value="45">
           <span class="val" id="angle4Val">45°</span>
         </div>
@@ -127,23 +127,23 @@
       <div class="control-group">
         <span class="control-label" data-i18n="halftone.colors">Colors</span>
         <div class="control-row">
-          <label data-i18n="halftone.bgColor">Background</label>
+          <label>BG</label>
           <input type="color" id="bgColor" value="#ffffff">
         </div>
         <div class="control-row" id="channel1ColorRow">
-          <label data-i18n="halftone.channel1">Channel 1</label>
+          <label>Color 1</label>
           <input type="color" id="channel1Color" value="#000000">
         </div>
         <div class="control-row" id="channel2ColorRow" style="display: none;">
-          <label data-i18n="halftone.channel2">Channel 2</label>
+          <label>Color 2</label>
           <input type="color" id="channel2Color" value="#ff0000">
         </div>
         <div class="control-row" id="channel3ColorRow" style="display: none;">
-          <label data-i18n="halftone.channel3">Channel 3</label>
+          <label>Color 3</label>
           <input type="color" id="channel3Color" value="#00ff00">
         </div>
         <div class="control-row" id="channel4ColorRow" style="display: none;">
-          <label data-i18n="halftone.channel4">Channel 4</label>
+          <label>Color 4</label>
           <input type="color" id="channel4Color" value="#0000ff">
         </div>
       </div>
@@ -514,10 +514,10 @@ toggle('previewToggle', v => {
 
 // File handling
 let dropZone = document.getElementById('dropZone');
-let fileInput = document.getElementById('fileInput');
-dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.style.borderColor = 'var(--c1)'; });
-dropZone.addEventListener('dragleave', () => dropZone.style.borderColor = '');
-dropZone.addEventListener('drop', e => { e.preventDefault(); dropZone.style.borderColor = ''; let file = e.dataTransfer.files[0]; if (file && file.type.startsWith('image/')) loadFile(file); });
+let fileInput = document.querySelector('.tool-panel-body');
+dropZone.addEventListener('dragover', e => { e.preventDefault(); fileInput.style.outline = '1px dashed var(--c1)'; });
+dropZone.addEventListener('dragleave', () => { fileInput.style.outline = 'none'; });
+dropZone.addEventListener('drop', e => { e.preventDefault(); fileInput.style.outline = 'none'; let file = e.dataTransfer.files[0]; if (file && file.type.startsWith('image/')) loadFile(file); });
 fileInput.addEventListener('change', () => { if (fileInput.files[0]) loadFile(fileInput.files[0]); });
 
 function loadFile(file) {

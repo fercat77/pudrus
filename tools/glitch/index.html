@@ -171,8 +171,7 @@ let isInvert=false, rowGlitch=false;
 [['rShiftX','rShiftXVal'],['gShiftX','gShiftXVal'],['bShiftX','bShiftXVal'],['shiftY','shiftYVal'],
  ['blockIntensity','blockIntensityVal','%'],['blockSize','blockSizeVal'],['blockOffset','blockOffsetVal'],
  ['scanDensity','scanDensityVal'],['scanOpacity','scanOpacityVal','%'],
- ['hueRotate','hueRotateVal','°'],['saturation','saturationVal','%'],['brightness','brightnessVal','%']
-].forEach(([id,vid,suf=''])=>{
+ ['hueRotate','hueRotateVal','°'],['saturation','saturationVal','%'],['brightness','brightnessVal','%']].forEach(([id,vid,suf=''])=>{
   document.getElementById(id).addEventListener('input',()=>{
     document.getElementById(vid).textContent=document.getElementById(id).value+suf;
   });
@@ -369,6 +368,7 @@ document.getElementById('exportBtn').addEventListener('click',()=>{
   a.click();
   status('Exported!');
 });
+
 </script>
 </body>
 </html>

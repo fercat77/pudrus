@@ -22,17 +22,17 @@
     </div>
 
     <div class="tool-panel-body">
-      <div class="file-upload" id="dropZone">
-        <span class="icon">◈</span>
-        <span data-i18n="constellation.fileDrop">Click or drop an image here</span>
-        <input type="file" id="fileInput" accept="image/*">
+      <div class="control-group">
+        <label for="fileInput" class="btn btn-outline" style="width: 100%; justify-content: center;" data-i18n="constellation.fileDrop">◈ Cargar Imagen</label>
+        <input type="file" id="fileInput" accept="image/*" style="display: none;">
       </div>
+      <hr class="divider">
 
       <!-- Crop Controls -->
       <div class="control-group">
         <span class="control-label">Crop & Export</span>
         <div class="control-row">
-          <label>Aspect Ratio</label>
+          <label>Aspect</label>
           <select id="aspectRatio">
             <option value="free">Free</option>
             <option value="1:1">Square (1:1)</option>
@@ -79,7 +79,7 @@
           <span class="val" id="lineOpacityVal">38%</span>
         </div>
         <div class="control-row">
-          <label data-i18n="constellation.lineSpread">Line Spread</label>
+          <label>Spread</label>
           <input type="range" id="lineSpread" min="1" max="8" value="4">
           <span class="val" id="lineSpreadVal">4</span>
         </div>
@@ -115,12 +115,12 @@
           <option value="square">Square</option>
         </select>
         <div class="control-row">
-          <label data-i18n="constellation.outlineSize">Outline Size</label>
+          <label>Size</label>
           <input type="range" id="outlineSize" min="0" max="24" value="12">
           <span class="val" id="outlineSizeVal">12</span>
         </div>
         <div class="control-row">
-          <label data-i18n="constellation.outlineWidth">Outline Width</label>
+          <label>Width</label>
           <input type="range" id="outlineWidth" min="1" max="8" value="2">
           <span class="val" id="outlineWidthVal">2</span>
         </div>
@@ -139,11 +139,11 @@
       <div class="control-group">
         <span class="control-label" data-i18n="constellation.options">Options</span>
         <div class="toggle-row">
-          <label data-i18n="constellation.showLines">Show Lines</label>
+          <label>Lines</label>
           <div class="toggle on" id="showLinesToggle"></div>
         </div>
         <div class="toggle-row">
-          <label data-i18n="constellation.showStars">Show Stars</label>
+          <label>Stars</label>
           <div class="toggle on" id="showStarsToggle"></div>
         </div>
         <div class="toggle-row">
@@ -275,11 +275,11 @@ function prepareOverlay() {
   scheduleRender();
 }
 
-let dropZone = document.getElementById('dropZone');
+let dropZone = document.querySelector('.tool-panel-body');
 let fileInput = document.getElementById('fileInput');
-dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.style.borderColor = 'var(--c1)'; });
-dropZone.addEventListener('dragleave', () => dropZone.style.borderColor = '');
-dropZone.addEventListener('drop', e => { e.preventDefault(); dropZone.style.borderColor = ''; let file = e.dataTransfer.files[0]; if (file && file.type.startsWith('image/')) loadFile(file); });
+dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.style.outline = '1px dashed var(--c1)'; });
+dropZone.addEventListener('dragleave', () => { dropZone.style.outline = 'none'; });
+dropZone.addEventListener('drop', e => { e.preventDefault(); dropZone.style.outline = 'none'; let file = e.dataTransfer.files[0]; if (file && file.type.startsWith('image/')) loadFile(file); });
 fileInput.addEventListener('change', () => { if (fileInput.files[0]) loadFile(fileInput.files[0]); });
 
 function loadFile(file) {

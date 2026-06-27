@@ -9,7 +9,6 @@
       if(!res.ok) throw new Error('missing');
       return await res.json();
     }catch(e){
-      console.error(`Failed to load language file for code: ${code}`, e);
       return {};
     }
   }
@@ -33,13 +32,11 @@
 
   async function init(){
     const sel = document.getElementById(selectId);
-    const supportedLangs = ['es', 'en'];
     let code = localStorage.getItem(storageKey) || (navigator.language || 'es').slice(0, 2);
-    if (!supportedLangs.includes(code)) code = 'es'; // Use the constant here
+    if(!['es','en'].includes(code)) code = 'es';
     setSelector(code);
     const dict = await loadLang(code);
     applyTranslations(dict);
-    document.body.style.visibility = 'visible';
 
     if(sel){
       sel.addEventListener('change', async ()=>{
@@ -51,5 +48,5 @@
     }
   }
 
-  if (document.readyState === 'complete' || document.readyState === 'interactive') init(); else document.addEventListener('DOMContentLoaded', init);
+  document.addEventListener('DOMContentLoaded', init);
 })();
