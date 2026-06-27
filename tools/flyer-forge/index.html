@@ -47,7 +47,6 @@
         <span class="control-label">Design Style</span>
         <select id="designStyle">
           <option value="swiss">Swiss</option>
-          <option value="constructivist">Constructivist</option>
           <option value="american">American</option>
           <option value="experimental">Experimental</option>
         </select>
@@ -92,6 +91,36 @@
             <option value="'Space Mono', monospace">Space Mono</option>
             <option value="'Major Mono Display', monospace">Major Mono Display</option>
           </select>
+        </div>
+      </div>
+
+      <hr class="divider">
+
+      <!-- Advanced Style -->
+      <div class="control-group">
+        <span class="control-label">Stroke Style</span>
+        <div class="toggle-row">
+          <label>Enable Stroke</label>
+          <div class="toggle" id="strokeToggle"></div>
+        </div>
+        <div class="control-row">
+          <label>Stroke Color</label>
+          <input type="color" id="strokeColor" value="#000000">
+        </div>
+        <div class="control-row">
+          <label>Stroke Width</label>
+          <input type="range" id="strokeWidth" min="0.5" max="10" step="0.5" value="2">
+          <span class="val" id="strokeWidthVal">2px</span>
+        </div>
+      </div>
+
+      <!-- Layout Rules -->
+      <div class="control-group">
+        <span class="control-label">Layout Rules</span>
+        <div class="control-row">
+          <label>Margin</label>
+          <input type="range" id="margin" min="0" max="150" step="5" value="40">
+          <span class="val" id="marginVal">40px</span>
         </div>
       </div>
 
@@ -189,6 +218,9 @@ document.addEventListener('DOMContentLoaded', () => {
     const letterSpacing = document.getElementById('letterSpacing').value + 'px';
     const fontFamily = document.getElementById('fontFamily').value;
     const lineHeightMultiplier = parseFloat(document.getElementById('lineHeight').value);
+    const useStroke = document.getElementById('strokeToggle').classList.contains('on');
+    const strokeColor = document.getElementById('strokeColor').value;
+    const strokeWidth = parseFloat(document.getElementById('strokeWidth').value);
 
     ctx.fillStyle = color;
     ctx.letterSpacing = letterSpacing;
@@ -200,7 +232,14 @@ document.addEventListener('DOMContentLoaded', () => {
         ctx.save();
         ctx.translate(el.x, el.y);
         ctx.rotate(el.rotation * Math.PI / 180);
-        el.lines.forEach((line, i) => ctx.fillText(line, 0, i * (el.size * 1.2))); // Use fixed interlineado for drawing
+        el.lines.forEach((line, i) => {
+          if (useStroke) {
+            ctx.strokeStyle = strokeColor;
+            ctx.lineWidth = strokeWidth;
+            ctx.strokeText(line, 0, i * (el.size * 1.2));
+          }
+          ctx.fillText(line, 0, i * (el.size * 1.2)); // Use fixed interlineado for drawing
+        });
         ctx.restore();
     });
   }
@@ -237,9 +276,9 @@ document.addEventListener('DOMContentLoaded', () => {
         let placedBBoxes = [];
         let layoutPossible = true;
         const elementSpacing = parseFloat(document.getElementById('lineHeight').value); // This is now for spacing between blocks
+        const margin = parseInt(document.getElementById('margin').value);
         
         if (designStyle === 'swiss') {
-            const margin = W * 0.08;
             let yPos = H * 0.15;
             const xPos = Math.random() < 0.5 ? margin : W - margin;
             const align = xPos === margin ? 'left' : 'right';
@@ -253,21 +292,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 currentLayout.elements.push({ ...el, lines, size, x: xPos, y: yPos, textAlign: align, rotation: 0 });
                 yPos += metrics.height * elementSpacing;
             }
-        } else if (designStyle === 'constructivist') {
-            const main = elementsToPlace.shift();
-            if (main) {
-                const size = main.baseSize * currentSizeMultiplier;
-                const font = `${main.bold ? 'bold' : ''} ${size}px ${fontFamily}`;
-                const lines = wrapText(main.text, W * main.wrapWidth, font);
-                const metrics = getMetrics(lines, size);
-                const rotation = (Math.random() - 0.5) * 30;
-                const yPos = H/2 - (metrics.height/2);
-                currentLayout.elements.push({ ...main, lines, size, x: W/2, y: yPos, textAlign: 'center', rotation });
-                placedBBoxes.push(getBBox({ x: W/2, y: H/2, w: metrics.width, h: metrics.height, rotation }));
-            }
-            for (const el of elementsToPlace) {
-                if (!placeElementRandomly(el, placedBBoxes, currentSizeMultiplier)) { layoutPossible = false; break; }
-            }
         } else if (designStyle === 'american') {
             let yPos = H * 0.2;
             for (const el of elementsToPlace) {
@@ -275,7 +299,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 const font = `${el.bold ? 'bold' : ''} ${size}px ${fontFamily}`;
                 const lines = wrapText(el.text, W * el.wrapWidth, font);
                 const metrics = getMetrics(lines, size);
-                if (yPos + metrics.height > H - (H * 0.1)) { layoutPossible = false; break; }
+                if (yPos + metrics.height > H - margin) { layoutPossible = false; break; }
                 currentLayout.elements.push({ ...el, lines, size, x: W/2, y: yPos, textAlign: 'center', rotation: 0 });
                 yPos += metrics.height * elementSpacing;
             }
@@ -355,7 +379,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const metrics = getMetrics(lines, size);
 
     for (let i = 0; i < 200; i++) { // Increased attempts
-        const margin = W * 0.05;
+        const margin = parseInt(document.getElementById('margin').value);
         const x = Math.random() * (W - metrics.width - margin * 2) + margin;
         const y = Math.random() * (H - metrics.height - margin * 2) + margin;
         const bbox = { x: x - 10, y: y - 10, w: metrics.width + 20, h: metrics.height + 20 };
@@ -405,11 +429,16 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   // Real-time update
-  ['textColor', 'letterSpacing'].forEach(id => {
+  ['textColor', 'letterSpacing', 'strokeColor', 'strokeWidth'].forEach(id => {
     document.getElementById(id).addEventListener('input', () => { if(currentLayout) drawLayout(); });
   });
+  document.getElementById('strokeToggle').addEventListener('click', () => {
+      document.getElementById('strokeToggle').classList.toggle('on');
+      if(currentLayout) drawLayout();
+  });
+
   // Controls that require re-calculating the layout
-  ['fontSize', 'fontFamily', 'textAlign', 'lineHeight', 'designStyle'].forEach(id => {
+  ['fontSize', 'fontFamily', 'textAlign', 'lineHeight', 'designStyle', 'margin'].forEach(id => {
     document.getElementById(id).addEventListener('input', () => { currentLayout = null; if(img) generateLayout(); });
   });
   document.getElementById('fontSize').addEventListener('input', (e) => {
@@ -420,6 +449,12 @@ document.addEventListener('DOMContentLoaded', () => {
   });
   document.getElementById('lineHeight').addEventListener('input', (e) => {
     document.getElementById('lineHeightVal').textContent = e.target.value + 'x';
+  });
+  document.getElementById('strokeWidth').addEventListener('input', (e) => {
+    document.getElementById('strokeWidthVal').textContent = e.target.value + 'px';
+  });
+  document.getElementById('margin').addEventListener('input', (e) => {
+    document.getElementById('marginVal').textContent = e.target.value + 'px';
   });
 
 });
