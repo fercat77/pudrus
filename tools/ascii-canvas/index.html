@@ -29,7 +29,7 @@
       <!-- Upload -->
       <!-- Crop Controls -->
       <div class="control-group">
-        <span class="control-label">Crop & Export</span>
+        <span class="control-label">Aspect Ratio</span>
         <div class="control-row">
           <label>Aspect</label>
           <select id="aspectRatio">
@@ -40,12 +40,12 @@
           </select>
         </div>
         <div class="control-row">
-          <label>Quality</label>
-          <select id="exportQuality">
-            <option value="high">High (Original)</option>
-            <option value="medium">Medium (1080px)</option>
-            <option value="low">Low (720px)</option>
-          </select>
+          <label>Offset X</label>
+          <input type="range" id="cropOffsetX" min="-50" max="50" value="0"><span class="val" id="cropOffsetXVal">0%</span>
+        </div>
+        <div class="control-row">
+          <label>Offset Y</label>
+          <input type="range" id="cropOffsetY" min="-50" max="50" value="0"><span class="val" id="cropOffsetYVal">0%</span>
         </div>
       </div>
 
@@ -117,6 +117,7 @@
       <div class="action-btns">
         <button class="btn btn-primary" id="randomizeBtn" data-i18n="ascii.randomize">◈ Randomize Set</button>
         <button class="btn btn-primary" id="applyBtn" data-i18n="ascii.apply">◈ Apply</button>
+        <button class="btn btn-outline" id="sendToFlyerBtn" style="width:100%">→ Continue in Flyer Forge</button>
         <button class="btn btn-outline" id="downloadBtn" data-i18n="ascii.download">⬇ Download PNG</button>
       </div>
     </div>
@@ -142,6 +143,7 @@
   let imageData = null;
   let currentPreset = 'standard';
   let currentChars = '@%#*+=-:. ';
+  let cropRect = null;
 
   const charPresets = {
     standard: '@%#*+=-:. ',
@@ -157,6 +159,40 @@
   const dropZone = document.querySelector('.tool-canvas-area');
   const statusBar = document.getElementById('statusBar');
   const canvasInfo = document.getElementById('canvasInfo');
+
+  const WORKFLOW_STORAGE_KEY = 'pudrus_workflow_image';
+
+  // --- WORKFLOW ──────────────────────────────────────────
+  function sendTo(toolUrl, canvasElement) {
+      if (!canvasElement) {
+          console.error('Workflow Error: Canvas element not provided.');
+          return;
+      }
+      let exportCanvas = document.createElement('canvas');
+      let exportCtx = exportCanvas.getContext('2d');
+
+      let sx = cropRect ? cropRect.x : 0;
+      let sy = cropRect ? cropRect.y : 0;
+      let sWidth = cropRect ? cropRect.w : canvasElement.width;
+      let sHeight = cropRect ? cropRect.h : canvasElement.height;
+
+      exportCanvas.width = sWidth;
+      exportCanvas.height = sHeight;
+
+      exportCtx.drawImage(canvasElement, sx, sy, sWidth, sHeight, 0, 0, sWidth, sHeight);
+      const dataUrl = exportCanvas.toDataURL('image/png');
+      sessionStorage.setItem(WORKFLOW_STORAGE_KEY, dataUrl);
+      window.location.href = `../${toolUrl}/index.html`;
+  }
+
+  function receiveImage() {
+      const dataUrl = sessionStorage.getItem(WORKFLOW_STORAGE_KEY);
+      if (dataUrl) {
+          sessionStorage.removeItem(WORKFLOW_STORAGE_KEY);
+          return dataUrl;
+      }
+      return null;
+  }
 
   // File handling
   dropZone.addEventListener('dragover', (e) => {
@@ -177,19 +213,75 @@
   });
 
   function loadImage(file) {
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      const img = new Image();
-      img.onload = () => {
-        imageData = { img, width: img.width, height: img.height };
-        canvasInfo.textContent = img.width + ' × ' + img.height + ' px';
-        document.getElementById('canvasArea').classList.add('has-image');
-        updateStatus('Image loaded. Click Apply.');
-        renderPreview();
-      };
-      img.src = e.target.result;
+    const img = new Image();
+    img.onload = () => {
+      imageData = { img, width: img.width, height: img.height };
+      canvasInfo.textContent = img.width + ' × ' + img.height + ' px';
+      document.getElementById('canvasArea').classList.add('has-image');
+      setupCrop(imageData.width, imageData.height);
+      updateStatus('Image loaded. Click Apply.');
+      renderPreview();
     };
-    reader.readAsDataURL(file);
+
+    if (typeof file === 'string') {
+        img.src = file; // It's already a data URL
+    } else {
+      const reader = new FileReader();
+      reader.onload = e => { img.src = e.target.result; };
+      reader.readAsDataURL(file);
+    }
+  }
+
+  function setupCrop(W, H) {
+      const aspectRatioSelect = document.getElementById('aspectRatio');
+      const offsetXSlider = document.getElementById('cropOffsetX');
+      const offsetYSlider = document.getElementById('cropOffsetY');
+
+      function updateCropRect() {
+          const ratio = aspectRatioSelect.value;
+          if (ratio === 'free') {
+              cropRect = null;
+              offsetXSlider.disabled = true;
+              offsetYSlider.disabled = true;
+          } else {
+              offsetXSlider.disabled = false;
+              offsetYSlider.disabled = false;
+              const [w, h] = ratio.split(':').map(Number);
+              const targetRatio = w / h;
+              const currentRatio = W / H;
+              let cropW, cropH, cropX, cropY;
+              if (currentRatio > targetRatio) {
+                  cropH = H;
+                  cropW = H * targetRatio;
+                  cropX = (W - cropW) / 2 * (1 - offsetXSlider.value / 50);
+                  cropY = 0;
+              } else {
+                  cropW = W;
+                  cropH = W / targetRatio;
+                  cropX = 0;
+                  cropY = (H - cropH) / 2 * (1 - offsetYSlider.value / 50);
+              }
+              cropRect = { x: cropX, y: cropY, w: cropW, h: cropH };
+          }
+          renderPreview();
+      }
+      aspectRatioSelect.addEventListener('change', updateCropRect);
+      offsetXSlider.addEventListener('input', updateCropRect);
+      offsetYSlider.addEventListener('input', updateCropRect);
+      updateCropRect();
+  }
+
+  function drawCropOverlay() {
+      if (cropRect) {
+          // ASCII canvas is different, we can't just draw over it.
+          // This will be handled by only drawing inside the crop rect.
+          // For now, we'll just log it.
+          // A visual overlay would require a second canvas on top.
+      }
+  }
+
+  function updateLabel(id, value) {
+    document.getElementById(id).textContent = value;
   }
 
   // Render ASCII
@@ -202,6 +294,12 @@
     const brightness = parseInt(document.getElementById('brightness').value);
     const colorMode = document.getElementById('colorMode').value;
 
+    let sourceX = cropRect ? cropRect.x : 0;
+    let sourceY = cropRect ? cropRect.y : 0;
+    let sourceWidth = cropRect ? cropRect.w : imageData.width;
+    let sourceHeight = cropRect ? cropRect.h : imageData.height;
+
+
     // Get container size to fit canvas
     const container = document.querySelector('.tool-canvas-area');
     const maxW = container.clientWidth - 40;
@@ -212,7 +310,7 @@
     const gridH = Math.floor(maxH / (charSize * lineSpacing));
 
     // Maintain image aspect ratio
-    const imgAspectRatio = imageData.height / imageData.width;
+    const imgAspectRatio = sourceHeight / sourceWidth;
     let width = gridW;
     let height = Math.round(width * imgAspectRatio / lineSpacing);
 
@@ -237,7 +335,7 @@
     tempCanvas.width = width;
     tempCanvas.height = height;
     const tempCtx = tempCanvas.getContext('2d');
-    tempCtx.drawImage(imageData.img, 0, 0, width, height);
+    tempCtx.drawImage(imageData.img, sourceX, sourceY, sourceWidth, sourceHeight, 0, 0, width, height);
 
     const imgData = tempCtx.getImageData(0, 0, width, height);
     const data = imgData.data;
@@ -324,6 +422,11 @@
     });
   });
 
+  let cropXSlider = document.getElementById('cropOffsetX');
+  cropXSlider.addEventListener('input', () => { updateLabel('cropOffsetXVal', cropXSlider.value + '%'); renderPreview(); });
+  let cropYSlider = document.getElementById('cropOffsetY');
+  cropYSlider.addEventListener('input', () => { updateLabel('cropOffsetYVal', cropYSlider.value + '%'); renderPreview(); });
+
   // Buttons
   document.getElementById('applyBtn').addEventListener('click', () => {
     if (imageData) {
@@ -351,45 +454,14 @@
       return;
     }
 
-    let quality = document.getElementById('exportQuality').value;
-    let aspectRatio = document.getElementById('aspectRatio').value;
-    
-    // Use the stored ASCII dimensions to maintain proper aspect ratio
-    let srcW = canvas.asciiWidth || canvas.width;
-    let srcH = canvas.asciiHeight || canvas.height;
-    
-    // Calculate the actual rendered dimensions
-    let renderedW = srcW * parseInt(document.getElementById('charSize').value);
-    let renderedH = srcH * parseInt(document.getElementById('charSize').value) * parseFloat(document.getElementById('lineSpacing').value);
-    
-    let maxDim = quality === 'high' ? Math.max(renderedW, renderedH) : 
-                 quality === 'medium' ? 1080 : 720;
-    let exportCanvas = document.createElement('canvas');
-    let exportCtx = exportCanvas.getContext('2d');
-    
-    // Apply aspect ratio crop if needed
-    if (aspectRatio !== 'free') {
-      let [ratioW, ratioH] = aspectRatio.split(':').map(Number);
-      let targetRatio = ratioW / ratioH;
-      let currentRatio = renderedW / renderedH;
-      
-      if (currentRatio > targetRatio) {
-        // Wider than target - crop sides
-        renderedW = renderedH * targetRatio;
-      } else {
-        // Taller than target - crop top/bottom
-        renderedH = renderedW / targetRatio;
-      }
-    }
-    
-    // Scale to target quality
-    let scale = Math.min(1, maxDim / Math.max(renderedW, renderedH));
-    exportCanvas.width = Math.floor(renderedW * scale);
-    exportCanvas.height = Math.floor(renderedH * scale);
-    
-    // Draw from the main canvas
-    exportCtx.drawImage(canvas, 0, 0, canvas.width, canvas.height, 0, 0, exportCanvas.width, exportCanvas.height);
-    
+    // The canvas is already rendered with the crop applied, so we just export it.
+    const exportCanvas = document.createElement('canvas');
+    exportCanvas.width = canvas.width;
+    exportCanvas.height = canvas.height;
+    const exportCtx = exportCanvas.getContext('2d');
+    // We need to re-render to the export canvas at full res if needed, but for now, just copy
+    exportCtx.drawImage(canvas, 0, 0);
+
     const link = document.createElement('a');
     link.href = exportCanvas.toDataURL('image/png');
     link.download = `ascii-canvas-${Date.now()}.png`;
@@ -402,7 +474,12 @@
   }
 
   // Load i18n
-  loadLang(localStorage.getItem('lang') || 'es');
+  // This is handled by the global i18n.js script now
+
+  const incomingImageDataUrl = receiveImage();
+  if (incomingImageDataUrl) {
+      loadImage(incomingImageDataUrl);
+  }
 </script>
 
 </body>

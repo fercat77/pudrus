@@ -190,6 +190,17 @@ document.addEventListener('DOMContentLoaded', () => {
   let ctx = canvas.getContext('2d');
   let currentLayout = null;
 
+  const WORKFLOW_STORAGE_KEY = 'pudrus_workflow_image';
+
+  function receiveImage() {
+      const dataUrl = sessionStorage.getItem(WORKFLOW_STORAGE_KEY);
+      if (dataUrl) {
+          sessionStorage.removeItem(WORKFLOW_STORAGE_KEY);
+          return dataUrl;
+      }
+      return null;
+  }
+
   // --- UI & File Load ---
   const dropZone = document.querySelector('.tool-canvas-area');
   const fileInput = document.getElementById('fileInput');
@@ -203,24 +214,27 @@ document.addEventListener('DOMContentLoaded', () => {
   fileInput.addEventListener('change', () => { if (fileInput.files[0]) loadFile(fileInput.files[0]); });
 
   function loadFile(file) {
-    const reader = new FileReader();
-    reader.onload = e => {
-      img = new Image();
-      img.onload = () => {
-        const area = document.getElementById('canvasArea');
-        const scale = Math.min((area.clientWidth - 40) / img.width, (area.clientHeight - 40) / img.height, 1);
-        canvas.width = img.width;
-        canvas.height = img.height;
-        canvas.style.width = (img.width * scale) + 'px';
-        canvas.style.height = (img.height * scale) + 'px';
-        ctx.drawImage(img, 0, 0);
-        document.getElementById('canvasArea').classList.add('has-image');
-        document.getElementById('statusBar').textContent = '◈ Image loaded. Fill info and generate.';
-        currentLayout = null; // Invalidate layout on new image
-      };
-      img.src = e.target.result;
+    img = new Image();
+    img.onload = () => {
+      const area = document.getElementById('canvasArea');
+      const scale = Math.min((area.clientWidth - 40) / img.width, (area.clientHeight - 40) / img.height, 1);
+      canvas.width = img.width;
+      canvas.height = img.height;
+      canvas.style.width = (img.width * scale) + 'px';
+      canvas.style.height = (img.height * scale) + 'px';
+      ctx.drawImage(img, 0, 0);
+      document.getElementById('canvasArea').classList.add('has-image');
+      document.getElementById('statusBar').textContent = '◈ Image loaded. Fill info and generate.';
+      currentLayout = null; // Invalidate layout on new image
     };
-    reader.readAsDataURL(file);
+
+    if (typeof file === 'string') {
+        img.src = file; // It's already a data URL
+    } else {
+      const reader = new FileReader();
+      reader.onload = e => { img.src = e.target.result; };
+      reader.readAsDataURL(file);
+    }
   }
 
   // --- Drawing Logic ---
@@ -515,6 +529,12 @@ document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('margin').addEventListener('input', (e) => {
     document.getElementById('marginVal').textContent = e.target.value + 'px';
   });
+
+  // Check for incoming image from workflow
+  const incomingImageDataUrl = receiveImage();
+  if (incomingImageDataUrl) {
+      loadFile(incomingImageDataUrl);
+  }
 
 });
 </script>

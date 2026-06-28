@@ -30,7 +30,7 @@
 
       <!-- Crop Controls -->
       <div class="control-group">
-        <span class="control-label" data-i18n="pixel.cropExport">Crop & Export</span>
+        <span class="control-label">Aspect Ratio</span>
         <div class="control-row">
           <label data-i18n="pixel.aspect">Aspect</label>
           <select id="aspectRatio">
@@ -41,12 +41,12 @@
           </select>
         </div>
         <div class="control-row">
-          <label data-i18n="pixel.quality">Quality</label>
-          <select id="exportQuality">
-            <option value="high">High (Original)</option>
-            <option value="medium">Medium (1080px)</option>
-            <option value="low">Low (720px)</option>
-          </select>
+          <label>Offset X</label>
+          <input type="range" id="cropOffsetX" min="-50" max="50" value="0"><span class="val" id="cropOffsetXVal">0%</span>
+        </div>
+        <div class="control-row">
+          <label>Offset Y</label>
+          <input type="range" id="cropOffsetY" min="-50" max="50" value="0"><span class="val" id="cropOffsetYVal">0%</span>
         </div>
       </div>
 
@@ -147,6 +147,7 @@
       <button class="btn btn-primary" id="applyBtn" style="width:100%">◈ Apply Sort</button>
       <button class="btn btn-outline" id="randomBtn" style="width:100%">◈ Random Sort</button>
       <button class="btn btn-outline" id="resetBtn" style="width:100%">Reset</button>
+      <button class="btn btn-outline" id="sendToFlyerBtn" style="width:100%">→ Continue in Flyer Forge</button>
       <button class="btn btn-outline" id="exportBtn" style="width:100%">Export PNG</button>
     </div>
   </div>
@@ -173,7 +174,42 @@ let img = null;
 let canvas = document.getElementById('mainCanvas');
 let ctx = canvas.getContext('2d');
 let isReverse = false;
+let cropRect = null;
 let preserveEdges = false;
+
+const WORKFLOW_STORAGE_KEY = 'pudrus_workflow_image';
+
+// --- WORKFLOW ──────────────────────────────────────────
+function sendTo(toolUrl, canvasElement) {
+    if (!canvasElement) {
+        console.error('Workflow Error: Canvas element not provided.');
+        return;
+    }
+    let exportCanvas = document.createElement('canvas');
+    let exportCtx = exportCanvas.getContext('2d');
+
+    let sx = cropRect ? cropRect.x : 0;
+    let sy = cropRect ? cropRect.y : 0;
+    let sWidth = cropRect ? cropRect.w : canvasElement.width;
+    let sHeight = cropRect ? cropRect.h : canvasElement.height;
+
+    exportCanvas.width = sWidth;
+    exportCanvas.height = sHeight;
+
+    exportCtx.drawImage(canvasElement, sx, sy, sWidth, sHeight, 0, 0, sWidth, sHeight);
+    const dataUrl = exportCanvas.toDataURL('image/png');
+    sessionStorage.setItem(WORKFLOW_STORAGE_KEY, dataUrl);
+    window.location.href = `../${toolUrl}/index.html`;
+}
+
+function receiveImage() {
+    const dataUrl = sessionStorage.getItem(WORKFLOW_STORAGE_KEY);
+    if (dataUrl) {
+        sessionStorage.removeItem(WORKFLOW_STORAGE_KEY);
+        return dataUrl;
+    }
+    return null;
+}
 
 // ── UI HELPERS ────────────────────────────────────────
 function slider(id, valId, suffix='') {
@@ -192,6 +228,14 @@ slider('intervalMin',  'intervalMinVal');
 slider('intervalMax',  'intervalMaxVal');
 slider('coverage',     'coverageVal', '%');
 slider('randomness',   'randomnessVal', '%');
+let cropXSlider = document.getElementById('cropOffsetX');
+cropXSlider.addEventListener('input', () => { updateLabel('cropOffsetXVal', cropXSlider.value + '%'); applySort(); });
+let cropYSlider = document.getElementById('cropOffsetY');
+cropYSlider.addEventListener('input', () => { updateLabel('cropOffsetYVal', cropYSlider.value + '%'); applySort(); });
+
+function updateLabel(id, value) {
+  document.getElementById(id).textContent = value;
+}
 
 function toggle(id, callback) {
   let el = document.getElementById(id);
@@ -222,31 +266,80 @@ fileInput.addEventListener('change', () => {
   if (fileInput.files[0]) loadFile(fileInput.files[0]);
 });
 
+document.addEventListener('DOMContentLoaded', () => {
+    const incomingImageDataUrl = receiveImage();
+    if (incomingImageDataUrl) {
+        loadFile(incomingImageDataUrl);
+    }
+});
 function loadFile(file) {
-  let reader = new FileReader();
-  reader.onload = e => {
-    img = new Image();
-    img.onload = () => {
-      // Fit canvas to area
-      let area = document.getElementById('canvasArea');
-      let maxW = area.clientWidth - 40;
-      let maxH = area.clientHeight - 40;
-      let scale = Math.min(maxW/img.width, maxH/img.height, 1);
-      canvas.width  = img.width;
-      canvas.height = img.height;
-      canvas.style.width  = (img.width  * scale) + 'px';
-      canvas.style.height = (img.height * scale) + 'px';
-      ctx.drawImage(img, 0, 0);
-      origImageData    = ctx.getImageData(0, 0, canvas.width, canvas.height);
-      currentImageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-      document.getElementById('canvasInfo').textContent =
-        img.width + ' × ' + img.height + ' px';
-      document.getElementById('canvasArea').classList.add('has-image');
-      status('Image loaded — click Apply Sort');
-    };
-    img.src = e.target.result;
+  img = new Image();
+  img.onload = () => {
+    // Fit canvas to area
+    let area = document.getElementById('canvasArea');
+    let maxW = area.clientWidth - 40;
+    let maxH = area.clientHeight - 40;
+    let scale = Math.min(maxW/img.width, maxH/img.height, 1);
+    canvas.width  = img.width;
+    canvas.height = img.height;
+    canvas.style.width  = (img.width  * scale) + 'px';
+    canvas.style.height = (img.height * scale) + 'px';
+    ctx.drawImage(img, 0, 0);
+    origImageData    = ctx.getImageData(0, 0, canvas.width, canvas.height);
+    currentImageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+    document.getElementById('canvasInfo').textContent =
+      img.width + ' × ' + img.height + ' px';
+    document.getElementById('canvasArea').classList.add('has-image');
+    setupCrop(canvas.width, canvas.height);
+    status('Image loaded — click Apply Sort');
   };
-  reader.readAsDataURL(file);
+
+  if (typeof file === 'string') {
+      img.src = file; // It's already a data URL
+  } else {
+    const reader = new FileReader();
+    reader.onload = e => { img.src = e.target.result; };
+    reader.readAsDataURL(file);
+  }
+}
+
+function setupCrop(W, H) {
+    const aspectRatioSelect = document.getElementById('aspectRatio');
+    const offsetXSlider = document.getElementById('cropOffsetX');
+    const offsetYSlider = document.getElementById('cropOffsetY');
+
+    function updateCropRect() {
+        const ratio = aspectRatioSelect.value;
+        if (ratio === 'free') {
+            cropRect = null;
+            offsetXSlider.disabled = true;
+            offsetYSlider.disabled = true;
+        } else {
+            offsetXSlider.disabled = false;
+            offsetYSlider.disabled = false;
+            const [w, h] = ratio.split(':').map(Number);
+            const targetRatio = w / h;
+            const currentRatio = W / H;
+            let cropW, cropH, cropX, cropY;
+            if (currentRatio > targetRatio) {
+                cropH = H;
+                cropW = H * targetRatio;
+                cropX = (W - cropW) / 2 * (1 - offsetXSlider.value / 50);
+                cropY = 0;
+            } else {
+                cropW = W;
+                cropH = W / targetRatio;
+                cropX = 0;
+                cropY = (H - cropH) / 2 * (1 - offsetYSlider.value / 50);
+            }
+            cropRect = { x: cropX, y: cropY, w: cropW, h: cropH };
+        }
+        applySort();
+    }
+    aspectRatioSelect.addEventListener('change', updateCropRect);
+    offsetXSlider.addEventListener('input', updateCropRect);
+    offsetYSlider.addEventListener('input', updateCropRect);
+    updateCropRect();
 }
 
 // ── PIXEL SORT ────────────────────────────────────────
@@ -323,8 +416,20 @@ function applySort() {
 
     ctx.putImageData(src, 0, 0);
     currentImageData = ctx.getImageData(0, 0, W, H);
+    drawCropOverlay();
     status('Done — ' + W + '×' + H + ' px');
   }, 10);
+}
+
+function drawCropOverlay() {
+    if (!origImageData) return;
+    if (cropRect) {
+        ctx.fillStyle = 'rgba(0,0,0,0.5)';
+        ctx.fillRect(0, 0, cropRect.x, canvas.height);
+        ctx.fillRect(cropRect.x + cropRect.w, 0, canvas.width - (cropRect.x + cropRect.w), canvas.height);
+        ctx.fillRect(cropRect.x, 0, cropRect.w, cropRect.y);
+        ctx.fillRect(cropRect.x, cropRect.y + cropRect.h, cropRect.w, canvas.height - (cropRect.y + cropRect.h));
+    }
 }
 
 function sortLine(data, W, H, lineIdx, sortBy, tMin, tMax, iMin, iMax, rnd, axis) {
@@ -423,48 +528,33 @@ document.getElementById('resetBtn').addEventListener('click', () => {
   status('Reset to original');
 });
 
+document.getElementById('sendToFlyerBtn').addEventListener('click', () => {
+    if (!origImageData) { status('Nothing to send'); return; }
+    sendTo('flyer-forge', canvas);
+});
+
 // ── EXPORT WITH QUALITY & ASPECT RATIO ────────────────
 document.getElementById('exportBtn').addEventListener('click', () => {
   if (!origImageData) { status('Nothing to export'); return; }
-  
-  let quality = document.getElementById('exportQuality').value;
-  let aspectRatio = document.getElementById('aspectRatio').value;
-  
-  // Calculate dimensions
-  let maxDim = quality === 'high' ? Math.max(canvas.width, canvas.height) : 
-               quality === 'medium' ? 1080 : 720;
-  
+
   let exportCanvas = document.createElement('canvas');
   let exportCtx = exportCanvas.getContext('2d');
-  
-  let srcW = canvas.width;
-  let srcH = canvas.height;
-  
-  // Apply aspect ratio crop
-  if (aspectRatio !== 'free') {
-    let [ratioW, ratioH] = aspectRatio.split(':').map(Number);
-    let targetRatio = ratioW / ratioH;
-    let currentRatio = srcW / srcH;
-    
-    if (currentRatio > targetRatio) {
-      // Wider than target - crop sides
-      srcW = srcH * targetRatio;
-    } else {
-      // Taller than target - crop top/bottom
-      srcH = srcW / targetRatio;
-    }
-  }
-  
-  // Scale to target quality
-  let scale = Math.min(1, maxDim / Math.max(srcW, srcH));
-  exportCanvas.width = Math.floor(srcW * scale);
-  exportCanvas.height = Math.floor(srcH * scale);
-  
-  // Draw cropped and scaled
-  let sx = (canvas.width - srcW) / 2;
-  let sy = (canvas.height - srcH) / 2;
-  exportCtx.drawImage(canvas, sx, sy, srcW, srcH, 0, 0, exportCanvas.width, exportCanvas.height);
-  
+
+  let sx = cropRect ? cropRect.x : 0;
+  let sy = cropRect ? cropRect.y : 0;
+  let sWidth = cropRect ? cropRect.w : canvas.width;
+  let sHeight = cropRect ? cropRect.h : canvas.height;
+
+  exportCanvas.width = sWidth;
+  exportCanvas.height = sHeight;
+
+  // Draw the final sorted image data onto the export canvas
+  const finalImageData = ctx.getImageData(sx, sy, sWidth, sHeight);
+  const tempCanvas = document.createElement('canvas');
+  tempCanvas.width = sWidth; tempCanvas.height = sHeight;
+  tempCanvas.getContext('2d').putImageData(finalImageData, 0, 0);
+  exportCtx.drawImage(tempCanvas, 0, 0);
+
   let link = document.createElement('a');
   link.download = 'pudrus_pixelsort_' + Date.now() + '.png';
   link.href = exportCanvas.toDataURL('image/png');

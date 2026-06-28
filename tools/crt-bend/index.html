@@ -30,14 +30,23 @@
 
       <!-- Export Controls -->
       <div class="control-group">
-        <span class="control-label">Export</span>
+        <span class="control-label">Aspect Ratio</span>
         <div class="control-row">
-          <label>Quality</label>
-          <select id="exportQuality">
-            <option value="high">High (Original)</option>
-            <option value="medium">Medium (1080px)</option>
-            <option value="low">Low (720px)</option>
+          <label>Aspect</label>
+          <select id="aspectRatio">
+            <option value="free">Free</option>
+            <option value="1:1">Square (1:1)</option>
+            <option value="4:5">Portrait (4:5)</option>
+            <option value="9:16">Story (9:16)</option>
           </select>
+        </div>
+        <div class="control-row">
+          <label>Offset X</label>
+          <input type="range" id="cropOffsetX" min="-50" max="50" value="0"><span class="val" id="cropOffsetXVal">0%</span>
+        </div>
+        <div class="control-row">
+          <label>Offset Y</label>
+          <input type="range" id="cropOffsetY" min="-50" max="50" value="0"><span class="val" id="cropOffsetYVal">0%</span>
         </div>
       </div>
 
@@ -105,6 +114,7 @@
     <div class="action-btns">
       <button class="btn btn-primary" id="applyBtn" style="width:100%">◈ Apply FX</button>
       <button class="btn btn-outline" id="resetBtn" style="width:100%">Reset</button>
+      <button class="btn btn-outline" id="sendToFlyerBtn" style="width:100%">→ Continue in Flyer Forge</button>
       <button class="btn btn-outline" id="exportBtn" style="width:100%">Export PNG</button>
     </div>
   </div>
@@ -130,6 +140,41 @@ document.addEventListener('DOMContentLoaded', () => {
   let img = null;
   let canvas = document.getElementById('mainCanvas');
   let ctx = canvas.getContext('2d');
+  let cropRect = null;
+
+  const WORKFLOW_STORAGE_KEY = 'pudrus_workflow_image';
+
+  // --- WORKFLOW ──────────────────────────────────────────
+  function sendTo(toolUrl, canvasElement) {
+      if (!canvasElement) {
+          console.error('Workflow Error: Canvas element not provided.');
+          return;
+      }
+      let exportCanvas = document.createElement('canvas');
+      let exportCtx = exportCanvas.getContext('2d');
+
+      let sx = cropRect ? cropRect.x : 0;
+      let sy = cropRect ? cropRect.y : 0;
+      let sWidth = cropRect ? cropRect.w : canvasElement.width;
+      let sHeight = cropRect ? cropRect.h : canvasElement.height;
+
+      exportCanvas.width = sWidth;
+      exportCanvas.height = sHeight;
+
+      exportCtx.drawImage(canvasElement, sx, sy, sWidth, sHeight, 0, 0, sWidth, sHeight);
+      const dataUrl = exportCanvas.toDataURL('image/png');
+      sessionStorage.setItem(WORKFLOW_STORAGE_KEY, dataUrl);
+      window.location.href = `../${toolUrl}/index.html`;
+  }
+
+  function receiveImage() {
+      const dataUrl = sessionStorage.getItem(WORKFLOW_STORAGE_KEY);
+      if (dataUrl) {
+          sessionStorage.removeItem(WORKFLOW_STORAGE_KEY);
+          return dataUrl;
+      }
+      return null;
+  }
 
   // UI Helpers
   function setupSlider(id, valId, suffix = '') {
@@ -147,6 +192,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
   ['curvature', 'scanlines', 'vignette', 'noise', 'lineWarp', 'vsync', 'aberration', 'bloom'].forEach(id => {
     setupSlider(id, id + 'Val');
+  });
+  [['cropOffsetX','cropOffsetXVal','%'],['cropOffsetY','cropOffsetYVal','%']].forEach(([id,valId,suf])=>{
+    let el = document.getElementById(id);
+    el.addEventListener('input', ()=> { document.getElementById(valId).textContent = el.value + suf; scheduleRender(); });
   });
 
   function status(msg) {
@@ -170,27 +219,79 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   function loadFile(file) {
-    const reader = new FileReader();
-    reader.onload = e => {
-      img = new Image();
-      img.onload = () => {
-        const area = document.getElementById('canvasArea');
-        const maxW = area.clientWidth - 40;
-        const maxH = area.clientHeight - 40;
-        const scale = Math.min(maxW / img.width, maxH / img.height, 1);
-        canvas.width = img.width;
-        canvas.height = img.height;
-        canvas.style.width = (img.width * scale) + 'px';
-        canvas.style.height = (img.height * scale) + 'px';
-        ctx.drawImage(img, 0, 0);
-        origImageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-        document.getElementById('canvasInfo').textContent = `${img.width} × ${img.height} px`;
-        document.getElementById('canvasArea').classList.add('has-image');
-        status('Image loaded. Ready to apply effects.');
-      };
-      img.src = e.target.result;
+    img = new Image();
+    img.onload = () => {
+      const area = document.getElementById('canvasArea');
+      const maxW = area.clientWidth - 40;
+      const maxH = area.clientHeight - 40;
+      const scale = Math.min(maxW / img.width, maxH / img.height, 1);
+      canvas.width = img.width;
+      canvas.height = img.height;
+      canvas.style.width = (img.width * scale) + 'px';
+      canvas.style.height = (img.height * scale) + 'px';
+      ctx.drawImage(img, 0, 0);
+      origImageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+      document.getElementById('canvasInfo').textContent = `${img.width} × ${img.height} px`;
+      document.getElementById('canvasArea').classList.add('has-image');
+      setupCrop(canvas.width, canvas.height);
+      status('Image loaded. Ready to apply effects.');
     };
-    reader.readAsDataURL(file);
+
+    if (typeof file === 'string') {
+        img.src = file; // It's already a data URL
+    } else {
+      const reader = new FileReader();
+      reader.onload = e => { img.src = e.target.result; };
+      reader.readAsDataURL(file);
+    }
+  }
+  
+  function setupCrop(W, H) {
+      const aspectRatioSelect = document.getElementById('aspectRatio');
+      const offsetXSlider = document.getElementById('cropOffsetX');
+      const offsetYSlider = document.getElementById('cropOffsetY');
+      function updateCropRect() {
+          const ratio = aspectRatioSelect.value;
+          if (ratio === 'free') {
+              cropRect = null;
+              offsetXSlider.disabled = true;
+              offsetYSlider.disabled = true;
+          } else {
+              offsetXSlider.disabled = false;
+              offsetYSlider.disabled = false;
+              const [w, h] = ratio.split(':').map(Number);
+              const targetRatio = w / h;
+              const currentRatio = W / H;
+              let cropW, cropH, cropX, cropY;
+              if (currentRatio > targetRatio) {
+                  cropH = H;
+                  cropW = H * targetRatio;
+                  cropX = (W - cropW) / 2 * (1 - offsetXSlider.value / 50);
+                  cropY = 0;
+              } else {
+                  cropW = W;
+                  cropH = W / targetRatio;
+                  cropX = 0;
+                  cropY = (H - cropH) / 2 * (1 - offsetYSlider.value / 50);
+              }
+              cropRect = { x: cropX, y: cropY, w: cropW, h: cropH };
+          }
+          scheduleRender(); // Redraw with crop overlay
+      }
+      aspectRatioSelect.addEventListener('change', updateCropRect);
+      offsetXSlider.addEventListener('input', updateCropRect);
+      offsetYSlider.addEventListener('input', updateCropRect);
+      updateCropRect();
+  }
+
+  function drawCropOverlay() {
+      if (cropRect) {
+          ctx.fillStyle = 'rgba(0,0,0,0.5)';
+          ctx.fillRect(0, 0, cropRect.x, canvas.height);
+          ctx.fillRect(cropRect.x + cropRect.w, 0, canvas.width - (cropRect.x + cropRect.w), canvas.height);
+          ctx.fillRect(cropRect.x, 0, cropRect.w, cropRect.y);
+          ctx.fillRect(cropRect.x, cropRect.y + cropRect.h, cropRect.w, canvas.height - (cropRect.y + cropRect.h));
+      }
   }
 
   // --- Main CRT Effect Logic ---
@@ -290,6 +391,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
       }
       ctx.putImageData(out, 0, 0);
+      drawCropOverlay();
       status('CRT effects applied!');
     }, 0);
   }
@@ -304,17 +406,42 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   });
 
+  document.getElementById('sendToFlyerBtn').addEventListener('click', () => {
+      if (!origImageData) { status('Nothing to send'); return; }
+      sendTo('flyer-forge', canvas);
+  });
+
   document.getElementById('exportBtn').addEventListener('click', () => {
     if (!origImageData) {
       status('Nothing to export.');
       return;
     }
+    
+    let exportCanvas = document.createElement('canvas');
+    let exportCtx = exportCanvas.getContext('2d');
+
+    let sx = cropRect ? cropRect.x : 0;
+    let sy = cropRect ? cropRect.y : 0;
+    let sWidth = cropRect ? cropRect.w : canvas.width;
+    let sHeight = cropRect ? cropRect.h : canvas.height;
+
+    exportCanvas.width = sWidth;
+    exportCanvas.height = sHeight;
+
+    exportCtx.drawImage(canvas, sx, sy, sWidth, sHeight, 0, 0, sWidth, sHeight);
+
     const link = document.createElement('a');
     link.download = `pudrus_crt-bend_${Date.now()}.png`;
-    link.href = canvas.toDataURL('image/png');
+    link.href = exportCanvas.toDataURL('image/png');
     link.click();
     status('Exported!');
   });
+
+  // Check for incoming image from workflow
+  const incomingImageDataUrl = receiveImage();
+  if (incomingImageDataUrl) {
+      loadFile(incomingImageDataUrl);
+  }
 
 });
 </script>
