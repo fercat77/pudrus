@@ -11,7 +11,7 @@
   "tools": {
     "sectionTag": "◈ 01 — Tools",
     "title": "Visual Processing Suite",
-    "desc": "Each tool runs entirely in your browser. No uploads to servers, no installations.",
+    "desc": "Each tool runs entirely in your browser. No uploads to servers, installations.",
     "pixel": { "name": "Pixel Sorter", "desc": "Sort pixels by brightness, hue or saturation along horizontal, vertical or diagonal axes. Classic glitch aesthetic." },
     "dither": { "name": "Dithering", "desc": "Apply classic dithering algorithms: Floyd-Steinberg, ordered, Atkinson and more. Retro pixel aesthetics." },
     "glitch": { "name": "Glitch FX", "desc": "RGB channel shift, scanlines, block corruption, datamosh effects. Full control over intensity and style." },
@@ -261,5 +261,5 @@
     "p2": "Built with vanilla JavaScript. No frameworks, no accounts.",
     "start": "Start Creating"
   },
-  "footer": { "copyright": "© 2026 PUDRUS.XYZ", "donate": "Support this project", "note": "Built in the browser, for the browser" }
+  "footer": { "copyright": "© 2026 PUDRUS.XYZ", "donate": "Support this project", "note": "Jump into a digital disaster" }
 }
