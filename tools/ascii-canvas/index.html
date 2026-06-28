@@ -218,6 +218,7 @@
       imageData = { img, width: img.width, height: img.height };
       canvasInfo.textContent = img.width + ' × ' + img.height + ' px';
       document.getElementById('canvasArea').classList.add('has-image');
+      document.getElementById('canvasInfo').style.display = 'block';
       setupCrop(imageData.width, imageData.height);
       updateStatus('Image loaded. Click Apply.');
       renderPreview();

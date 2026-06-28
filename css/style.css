@@ -435,6 +435,7 @@ input[type="color"] {
   font-size: 9px; letter-spacing: 2px;
   color: rgba(0,212,255,0.4);
   text-transform: uppercase;
+  display: none;
 }
 
 /* ── FILE UPLOAD ────────────────────────────────────── */

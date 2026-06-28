@@ -233,6 +233,7 @@ document.addEventListener('DOMContentLoaded', () => {
       origImageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
       document.getElementById('canvasInfo').textContent = `${img.width} × ${img.height} px`;
       document.getElementById('canvasArea').classList.add('has-image');
+      document.getElementById('canvasInfo').style.display = 'block';
       setupCrop(canvas.width, canvas.height);
       status('Image loaded. Ready to apply effects.');
     };
