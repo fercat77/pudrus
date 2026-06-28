@@ -243,7 +243,7 @@
           currentUsers = 15;
         } else {
           const fluctuation = Math.floor(Math.random() * 5) - 2; // Fluctuate between -2 and +2
-          currentUsers = Math.max(0, Math.min(11, currentUsers + fluctuation)); // Clamp between 0 and 11
+          currentUsers = Math.max(1, Math.min(11, currentUsers + fluctuation)); // Clamp between 1 and 11
         }
         usersEl.textContent = currentUsers;
       }, 3500); // Update every 3.5 seconds
