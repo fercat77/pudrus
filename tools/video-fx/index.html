@@ -12,7 +12,7 @@
 <nav>
   <a href="../../index.html" class="nav-logo">PUDRUS<span>.xyz</span></a>
   <ul class="nav-links">
-    <li><a href="../../index.html#tools">All Tools</a></li>
+    <li><a href="../../index.html#tools" data-i18n="nav.tools">All Tools</a></li>
   </ul>
 </nav>
 
@@ -21,18 +21,18 @@
   <!-- ── PANEL ── -->
   <div class="tool-panel">
     <div class="tool-panel-header">
-      <a href="../../index.html" class="back">← Back</a>
-      <h2>◈ Video FX</h2>
-      <p>Real-time effects using your webcam.</p>
+      <a href="../../index.html" class="back" data-i18n="nav.tools">← Back</a>
+      <h2 data-i18n="tools.video.name">◈ Video FX</h2>
+      <p data-i18n="tools.video.desc">Real-time effects using your webcam.</p>
     </div>
 
     <div class="tool-panel-body">
 
       <!-- Source Selection -->
       <div class="control-group">
-        <span class="control-label">Source</span>
+        <span class="control-label" data-i18n="video.source">Source</span>
         <div class="action-btns" style="padding: 0; border: none;">
-          <button class="btn btn-primary" id="startCamBtn">◈ Use Webcam</button>
+          <button class="btn btn-primary" id="startCamBtn" data-i18n="video.useWebcam">◈ Use Webcam</button>
         </div>
       </div>
 
@@ -40,46 +40,67 @@
 
       <!-- Glitch Effect Controls -->
       <div class="control-group">
-        <span class="control-label">Glitch FX</span>
+        <span class="control-label" data-i18n="video.effects">Effects</span>
         <div class="control-row">
-          <label>Aberration</label>
-          <input type="range" id="aberration" min="0.0" max="0.05" step="0.001" value="0.005">
-          <span class="val" id="aberrationVal">0.005</span>
+          <label data-i18n="video.aberration">Aberration</label>
+          <input type="range" id="aberration" min="0.0" max="0.05" step="0.001" value="0.0">
+          <span class="val" id="aberrationVal">0.0</span>
         </div>
         <div class="control-row">
-          <label>Noise</label>
-          <input type="range" id="noise" min="0.0" max="0.2" step="0.01" value="0.05">
-          <span class="val" id="noiseVal">0.05</span>
+          <label data-i18n="video.noise">Noise</label>
+          <input type="range" id="noise" min="0.0" max="0.2" step="0.01" value="0.0">
+          <span class="val" id="noiseVal">0.0</span>
         </div>
         <div class="control-row">
-          <label>Scanlines</label>
-          <input type="range" id="scanlineIntensity" min="0.0" max="0.3" step="0.01" value="0.1">
-          <span class="val" id="scanlineIntensityVal">0.1</span>
+          <label data-i18n="video.scanlines">Scanlines</label>
+          <input type="range" id="scanlineIntensity" min="0.0" max="0.3" step="0.01" value="0.0">
+          <span class="val" id="scanlineIntensityVal">0.0</span>
+        </div>
+        <div class="control-row">
+          <label data-i18n="video.curvature">Curvature</label>
+          <input type="range" id="curvature" min="0.0" max="1.0" step="0.01" value="0.0">
+          <span class="val" id="curvatureVal">0.0</span>
+        </div>
+        <div class="control-row">
+          <label data-i18n="video.vignette">Vignette</label>
+          <input type="range" id="vignette" min="0.0" max="1.0" step="0.01" value="0.0">
+          <span class="val" id="vignetteVal">0.0</span>
+        </div>
+        <div class="control-row">
+          <label data-i18n="video.glitch">Block Glitch</label>
+          <input type="range" id="blockGlitch" min="0.0" max="1.0" step="0.01" value="0.0">
+          <span class="val" id="blockGlitchVal">0.0</span>
         </div>
       </div>
 
     </div>
 
-    <div class="status-bar" id="statusBar">◈ Waiting for camera</div>
+    <div class="status-bar" id="statusBar" data-i18n="video.statusWait">◈ Waiting for camera</div>
   </div>
 
   <!-- ── CANVAS (WebGL) ── -->
   <div class="tool-canvas-area" id="canvasArea">
     <canvas id="mainCanvas"></canvas>
     <video id="videoSource" playsinline autoplay style="display:none;"></video>
-    <div class="canvas-info" id="canvasInfo"></div>
+    <div class="canvas-info" id="canvasInfo">No source</div>
   </div>
 
 </div>
+
+<script src="../../js/i18n.js"></script>
 
 <!-- Vertex Shader: Positions the video frame -->
 <script id="vertex-shader" type="x-shader/x-vertex">
   attribute vec2 a_position;
   attribute vec2 a_texCoord;
+  uniform vec2 u_resolution;
   varying vec2 v_texCoord;
   void main() {
-     gl_Position = vec4(a_position, 0.0, 1.0);
-     v_texCoord = a_texCoord;
+    vec2 zeroToOne = a_position / u_resolution;
+    vec2 zeroToTwo = zeroToOne * 2.0;
+    vec2 clipSpace = zeroToTwo - 1.0;
+    gl_Position = vec4(clipSpace * vec2(1, -1), 0, 1);
+    v_texCoord = a_texCoord;
   }
 </script>
 
@@ -87,10 +108,15 @@
 <script id="fragment-shader" type="x-shader/x-fragment">
   precision mediump float;
   uniform sampler2D u_texture;
+  uniform vec2 u_resolution;
   uniform float u_time;
   uniform float u_aberration;
   uniform float u_noise;
   uniform float u_scanlineIntensity;
+  uniform float u_curvature;
+  uniform float u_vignette;
+  uniform float u_blockGlitch;
+
   varying vec2 v_texCoord;
 
   float rand(vec2 co){
@@ -98,20 +124,41 @@
   }
 
   void main() {
+    vec2 uv = v_texCoord;
+
+    // Curvature
+    vec2 centeredUV = uv - 0.5;
+    float dist = length(centeredUV);
+    uv = 0.5 + centeredUV / (1.0 - u_curvature * dist * dist);
+
+    // Block Glitch
+    if (rand(vec2(floor(uv.y * 100.0), u_time)) < u_blockGlitch * 0.1) {
+      uv.x += (rand(vec2(uv.y, u_time)) - 0.5) * 0.2 * u_blockGlitch;
+    }
+
+    if (uv.x < 0.0 || uv.x > 1.0 || uv.y < 0.0 || uv.y > 1.0) {
+      gl_FragColor = vec4(0.0, 0.0, 0.0, 1.0);
+      return;
+    }
+
     // Chromatic Aberration
-    float r = texture2D(u_texture, vec2(v_texCoord.x + u_aberration, v_texCoord.y)).r;
-    float g = texture2D(u_texture, v_texCoord).g;
-    float b = texture2D(u_texture, vec2(v_texCoord.x - u_aberration, v_texCoord.y)).b;
+    float r = texture2D(u_texture, vec2(uv.x + u_aberration, uv.y)).r;
+    float g = texture2D(u_texture, uv).g;
+    float b = texture2D(u_texture, vec2(uv.x - u_aberration, uv.y)).b;
 
     vec3 color = vec3(r, g, b);
 
     // Noise
-    float noise = (rand(v_texCoord + u_time) - 0.5) * u_noise;
+    float noise = (rand(uv + u_time) - 0.5) * u_noise;
     color += noise;
 
     // Scanlines
-    float scanline = sin(v_texCoord.y * 800.0) * u_scanlineIntensity;
+    float scanline = sin(uv.y * u_resolution.y * 0.8) * u_scanlineIntensity;
     color -= scanline;
+
+    // Vignette
+    float vignette = 1.0 - (dist * u_vignette);
+    color *= vignette;
 
     gl_FragColor = vec4(color, 1.0);
   }
@@ -121,12 +168,12 @@
 document.addEventListener('DOMContentLoaded', () => {
 
   const canvas = document.getElementById('mainCanvas');
-  const gl = canvas.getContext('webgl');
+  const gl = canvas.getContext('webgl', { preserveDrawingBuffer: true });
   const video = document.getElementById('videoSource');
   const statusBar = document.getElementById('statusBar');
 
   if (!gl) {
-    statusBar.textContent = '◈ WebGL not supported!';
+    statusBar.textContent = '◈ Error: WebGL not supported!';
     return;
   }
 
@@ -191,22 +238,31 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // --- Render Loop ---
   function render(time) {
-    // Check if the video has a valid frame to render
     if (video.readyState >= video.HAVE_CURRENT_DATA) {
       if (!videoPlaying) {
-        // This runs only once when the video starts
         canvas.width = video.videoWidth;
         canvas.height = video.videoHeight;
         gl.viewport(0, 0, gl.canvas.width, gl.canvas.height);
-        statusBar.textContent = '◈ Camera Active';
+        statusBar.textContent = '◈ Camera Active'; // i18n needed
         document.getElementById('canvasInfo').textContent = `${video.videoWidth}x${video.videoHeight}`;
         videoPlaying = true;
       }
 
+      gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
+      gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([0,0, canvas.width,0, 0,canvas.height, canvas.width,canvas.height]), gl.STATIC_DRAW);
+      gl.vertexAttribPointer(posAttr, 2, gl.FLOAT, false, 0, 0);
+
+      gl.bindBuffer(gl.ARRAY_BUFFER, texCoordBuffer);
+      gl.vertexAttribPointer(texAttr, 2, gl.FLOAT, false, 0, 0);
+
+      gl.uniform2f(resolutionUniform, canvas.width, canvas.height);
       gl.uniform1f(timeUniform, time * 0.001);
       gl.uniform1f(aberrationUniform, document.getElementById('aberration').value);
       gl.uniform1f(noiseUniform, document.getElementById('noise').value);
       gl.uniform1f(scanlineUniform, document.getElementById('scanlineIntensity').value);
+      gl.uniform1f(curvatureUniform, document.getElementById('curvature').value);
+      gl.uniform1f(vignetteUniform, document.getElementById('vignette').value);
+      gl.uniform1f(blockGlitchUniform, document.getElementById('blockGlitch').value);
 
       gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, video);
       gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
@@ -221,15 +277,15 @@ document.addEventListener('DOMContentLoaded', () => {
       const stream = await navigator.mediaDevices.getUserMedia({ video: true });
       video.srcObject = stream;
       await video.play();
-      requestAnimationFrame(render); // Start the render loop immediately
+      requestAnimationFrame(render);
     } catch (err) {
-      statusBar.textContent = '◈ Camera access denied.';
+      statusBar.textContent = '◈ Camera access denied.'; // i18n needed
       console.error("Camera Error:", err);
     }
   });
 
   // Sliders UI
-  ['aberration', 'noise', 'scanlineIntensity'].forEach(id => {
+  ['aberration', 'noise', 'scanlineIntensity', 'curvature', 'vignette', 'blockGlitch'].forEach(id => {
     const sliderEl = document.getElementById(id);
     const valEl = document.getElementById(id + 'Val');
     if (sliderEl && valEl) {

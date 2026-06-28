@@ -19,8 +19,8 @@
     "ascii": { "name": "ASCII Canvas", "desc": "Transforma imágenes en ASCII art creativo." },
     "halftone": { "name": "Halftone", "desc": "Crea patrones de puntos, separaciones CMYK y efectos de impresión retro." },
     "triangulation": { "name": "Triangulation", "desc": "Reconstruye imágenes en un estilo vectorial low-poly usando triangulación de Delaunay." },
-    "flyer": { "name": "Flyer Forge", "desc": "Genera flyers para eventos musicales con composiciones automáticas y de buen gusto." },
-    "crt": { "name": "CRT Bend", "desc": "Emula la curvatura de pantallas CRT, scanlines y distorsión de señal." }
+    "crt": { "name": "CRT Bend", "desc": "Emula la curvatura de pantallas CRT, scanlines y distorsión de señal." },
+    "flyer": { "name": "Flyer Forge", "desc": "Genera flyers para eventos musicales con composiciones automáticas." }
   },
   "pixel": {
     "name": "⟆ Pixel Sorter",
