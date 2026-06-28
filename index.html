@@ -53,6 +53,10 @@
         <div class="stat-num">0</div>
         <div class="stat-label" data-i18n="stats.install">No install</div>
       </div>
+      <div class="stat">
+        <div class="stat-num" id="online-users">1</div>
+        <div class="stat-label" data-i18n="stats.online">Online</div>
+      </div>
     </div>
   </section>
 
@@ -226,5 +230,20 @@
 </footer>
 
 <script src="js/i18n.js"></script>
+<script>
+  document.addEventListener('DOMContentLoaded', () => {
+    const usersEl = document.getElementById('online-users');
+    if (usersEl) {
+      let baseUsers = Math.floor(Math.random() * 10) + 5; // Start with 5-14 users
+      usersEl.textContent = baseUsers;
+
+      setInterval(() => {
+        const fluctuation = Math.floor(Math.random() * 3) - 1; // -1, 0, or 1
+        baseUsers = Math.max(1, baseUsers + fluctuation); // Ensure it's at least 1
+        usersEl.textContent = baseUsers;
+      }, 3500); // Update every 3.5 seconds
+    }
+  });
+</script>
 </body>
 </html>
