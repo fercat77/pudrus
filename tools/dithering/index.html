@@ -16,16 +16,16 @@
 <div class="tool-layout">
   <div class="tool-panel">
     <div class="tool-panel-header">
-      <a href="../../index.html" class="back">← Back</a>
-      <h2>⠿ Dithering</h2>
-      <p>Classic dithering algorithms with full color palette control.</p>
+      <a href="../../index.html" class="back" data-i18n="nav.tools">← Back</a>
+      <h2 data-i18n="dithering.name">⠿ Dithering</h2>
+      <p data-i18n="dithering.desc">Classic dithering algorithms with full color palette control.</p>
     </div>
 
     <div class="tool-panel-body">
       <div class="control-group">
-        <span class="control-label">Aspect Ratio</span>
+        <span class="control-label" data-i18n="dithering.aspectRatio">Aspect Ratio</span>
         <div class="control-row">
-          <label>Aspect</label>
+          <label data-i18n="dithering.aspect">Aspect</label>
           <select id="aspectRatio">
             <option value="free">Free</option>
             <option value="1:1">Square (1:1)</option>
@@ -34,18 +34,18 @@
           </select>
         </div>
         <div class="control-row">
-          <label>Offset X</label>
+          <label data-i18n="dithering.offsetX">Offset X</label>
           <input type="range" id="cropOffsetX" min="-50" max="50" value="0"><span class="val" id="cropOffsetXVal">0%</span>
         </div>
         <div class="control-row">
-          <label>Offset Y</label>
+          <label data-i18n="dithering.offsetY">Offset Y</label>
           <input type="range" id="cropOffsetY" min="-50" max="50" value="0"><span class="val" id="cropOffsetYVal">0%</span>
         </div>
       </div>
 
       <hr class="divider">
       <div class="control-group">
-        <span class="control-label">Algorithm</span>
+        <span class="control-label" data-i18n="dithering.algorithm">Algorithm</span>
         <select id="algorithm">
           <option value="floyd">Floyd-Steinberg</option>
           <option value="atkinson">Atkinson</option>
@@ -56,7 +56,7 @@
       </div>
 
       <div class="control-group">
-        <span class="control-label">Color Mode</span>
+        <span class="control-label" data-i18n="dithering.colorMode">Color Mode</span>
         <select id="colorMode">
           <option value="bw">Black & White</option>
           <option value="2bit">2-bit (4 colors)</option>
@@ -65,67 +65,67 @@
       </div>
 
       <div class="control-group" id="customPalette" style="display:none">
-        <span class="control-label">Custom Colors</span>
+        <span class="control-label" data-i18n="dithering.customColors">Custom Colors</span>
         <div class="control-row">
-          <label>Color 1</label>
+          <label data-i18n="dithering.color1">Color 1</label>
           <input type="color" id="col1" value="#000000">
-          <label>Color 2</label>
+          <label data-i18n="dithering.color2">Color 2</label>
           <input type="color" id="col2" value="#ffffff">
         </div>
         <div class="control-row">
-          <label>Color 3</label>
+          <label data-i18n="dithering.color3">Color 3</label>
           <input type="color" id="col3" value="#00d4ff">
-          <label>Color 4</label>
+          <label data-i18n="dithering.color4">Color 4</label>
           <input type="color" id="col4" value="#ff0080">
         </div>
       </div>
 
       <div class="control-group">
-        <span class="control-label">Parameters</span>
+        <span class="control-label" data-i18n="dithering.parameters">Parameters</span>
         <div class="control-row">
-          <label>Scale</label>
+          <label data-i18n="dithering.scale">Scale</label>
           <input type="range" id="scale" min="1" max="8" value="1">
           <span class="val" id="scaleVal">1x</span>
         </div>
         <div class="control-row">
-          <label>Threshold</label>
+          <label data-i18n="dithering.threshold">Threshold</label>
           <input type="range" id="threshold" min="0" max="255" value="128">
           <span class="val" id="thresholdVal">128</span>
         </div>
         <div class="control-row">
-          <label>Contrast</label>
+          <label data-i18n="dithering.contrast">Contrast</label>
           <input type="range" id="contrast" min="-100" max="100" value="0">
           <span class="val" id="contrastVal">0</span>
         </div>
       </div>
 
       <div class="control-group">
-        <span class="control-label">Options</span>
+        <span class="control-label" data-i18n="dithering.options">Options</span>
         <div class="toggle-row">
-          <label>Invert</label>
+          <label data-i18n="dithering.invert">Invert</label>
           <div class="toggle" id="invertToggle"></div>
         </div>
         <div class="toggle-row">
-          <label>Grayscale First</label>
+          <label data-i18n="dithering.grayscaleFirst">Grayscale First</label>
           <div class="toggle on" id="grayToggle"></div>
         </div>
       </div>
     </div>
 
-    <div class="status-bar" id="statusBar">◈ No image loaded</div>
+    <div class="status-bar" id="statusBar" data-i18n="dithering.statusNoImage">◈ No image loaded</div>
     <div class="action-btns">
-      <button class="btn btn-primary" id="applyBtn" style="width:100%">◈ Apply Dither</button>
-      <button class="btn btn-outline"  id="randomBtn" style="width:100%">◈ Random Dither</button>
-      <button class="btn btn-outline"  id="resetBtn"  style="width:100%">Reset</button>
-      <button class="btn btn-outline" id="sendToFlyerBtn" style="width:100%">→ Continue in Flyer Forge</button>
-      <button class="btn btn-outline"  id="exportBtn" style="width:100%">Export PNG</button>
+      <button class="btn btn-primary" id="applyBtn" style="width:100%" data-i18n="dithering.applyBtn">◈ Apply Dither</button>
+      <button class="btn btn-outline"  id="randomBtn" style="width:100%" data-i18n="dithering.randomBtn">◈ Random Dither</button>
+      <button class="btn btn-outline"  id="resetBtn"  style="width:100%" data-i18n="dithering.resetBtn">Reset</button>
+      <button class="btn btn-outline" id="sendToFlyerBtn" style="width:100%" data-i18n="dithering.continueBtn">→ Continue in Flyer Forge</button>
+      <button class="btn btn-outline"  id="exportBtn" style="width:100%" data-i18n="dithering.exportBtn">Export PNG</button>
     </div>
   </div>
 
   <div class="tool-canvas-area" id="canvasArea">
     <div class="file-upload" id="dropZone">
       <span class="icon">⠿</span>
-      <span>Click or drop an image here</span>
+      <span data-i18n="dithering.fileDrop">Click or drop an image here</span>
       <input type="file" id="fileInput" accept="image/*">
     </div>
     <canvas id="mainCanvas"></canvas>
@@ -133,6 +133,7 @@
   </div>
 </div>
 
+<script src="../../js/i18n.js"></script>
 <script>
 let origImageData=null, canvas=document.getElementById('mainCanvas'), ctx=canvas.getContext('2d');
 let isInvert=false, doGray=true;

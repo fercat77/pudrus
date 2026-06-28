@@ -21,18 +21,18 @@
   <!-- ── PANEL ── -->
   <div class="tool-panel">
     <div class="tool-panel-header">
-      <a href="../../index.html" class="back">← Back</a>
-      <h2>📺 CRT Bend</h2>
-      <p>Emulate CRT screens and analog signal distortion.</p>
+      <a href="../../index.html" class="back" data-i18n="nav.tools">← Atrás</a>
+      <h2 data-i18n="crt.name">⏎ CRT Bend</h2>
+      <p data-i18n="tools.crt.desc">Emulate CRT screens and analog signal distortion.</p>
     </div>
 
     <div class="tool-panel-body">
 
       <!-- Export Controls -->
       <div class="control-group">
-        <span class="control-label">Aspect Ratio</span>
+        <span class="control-label" data-i18n="crt.aspectRatio">Aspect Ratio</span>
         <div class="control-row">
-          <label>Aspect</label>
+          <label data-i18n="crt.aspect">Aspect</label>
           <select id="aspectRatio">
             <option value="free">Free</option>
             <option value="1:1">Square (1:1)</option>
@@ -41,11 +41,11 @@
           </select>
         </div>
         <div class="control-row">
-          <label>Offset X</label>
+          <label data-i18n="crt.offsetX">Offset X</label>
           <input type="range" id="cropOffsetX" min="-50" max="50" value="0"><span class="val" id="cropOffsetXVal">0%</span>
         </div>
         <div class="control-row">
-          <label>Offset Y</label>
+          <label data-i18n="crt.offsetY">Offset Y</label>
           <input type="range" id="cropOffsetY" min="-50" max="50" value="0"><span class="val" id="cropOffsetYVal">0%</span>
         </div>
       </div>
@@ -54,19 +54,19 @@
 
       <!-- CRT Screen Effects -->
       <div class="control-group">
-        <span class="control-label">CRT Screen FX</span>
+        <span class="control-label" data-i18n="crt.screenFx">CRT Screen FX</span>
         <div class="control-row">
-          <label>Curvature</label>
+          <label data-i18n="crt.curvature">Curvature</label>
           <input type="range" id="curvature" min="0" max="20" value="5">
           <span class="val" id="curvatureVal">5</span>
         </div>
         <div class="control-row">
-          <label>Scanlines</label>
+          <label data-i18n="crt.scanlines">Scanlines</label>
           <input type="range" id="scanlines" min="0" max="1" step="0.05" value="0.2">
           <span class="val" id="scanlinesVal">0.2</span>
         </div>
         <div class="control-row">
-          <label>Vignette</label>
+          <label data-i18n="crt.vignette">Vignette</label>
           <input type="range" id="vignette" min="0" max="1" step="0.05" value="0.3">
           <span class="val" id="vignetteVal">0.3</span>
         </div>
@@ -74,19 +74,19 @@
 
       <!-- Signal Distortion -->
       <div class="control-group">
-        <span class="control-label">Signal Distortion</span>
+        <span class="control-label" data-i18n="crt.distortion">Signal Distortion</span>
         <div class="control-row">
-          <label>Noise</label>
+          <label data-i18n="crt.noise">Noise</label>
           <input type="range" id="noise" min="0" max="0.5" step="0.01" value="0.1">
           <span class="val" id="noiseVal">0.1</span>
         </div>
         <div class="control-row">
-          <label>Line Warp</label>
+          <label data-i18n="crt.lineWarp">Line Warp</label>
           <input type="range" id="lineWarp" min="0" max="20" value="0">
           <span class="val" id="lineWarpVal">0</span>
         </div>
         <div class="control-row">
-          <label>V-Sync Roll</label>
+          <label data-i18n="crt.vsync">V-Sync Roll</label>
           <input type="range" id="vsync" min="0" max="1" step="0.01" value="0">
           <span class="val" id="vsyncVal">0</span>
         </div>
@@ -94,14 +94,14 @@
 
       <!-- Color Effects -->
       <div class="control-group">
-        <span class="control-label">Color FX</span>
+        <span class="control-label" data-i18n="crt.colorFx">Color FX</span>
         <div class="control-row">
-          <label>Aberration</label>
+          <label data-i18n="crt.aberration">Aberration</label>
           <input type="range" id="aberration" min="0" max="20" value="2">
           <span class="val" id="aberrationVal">2</span>
         </div>
         <div class="control-row">
-          <label>Bloom</label>
+          <label data-i18n="crt.bloom">Bloom</label>
           <input type="range" id="bloom" min="0" max="1" step="0.05" value="0.1">
           <span class="val" id="bloomVal">0.1</span>
         </div>
@@ -109,13 +109,13 @@
 
     </div>
 
-    <div class="status-bar" id="statusBar">◈ No image loaded</div>
+    <div class="status-bar" id="statusBar" data-i18n="crt.statusNoImage">◈ No image loaded</div>
 
     <div class="action-btns">
-      <button class="btn btn-primary" id="applyBtn" style="width:100%">◈ Apply FX</button>
-      <button class="btn btn-outline" id="resetBtn" style="width:100%">Reset</button>
-      <button class="btn btn-outline" id="sendToFlyerBtn" style="width:100%">→ Continue in Flyer Forge</button>
-      <button class="btn btn-outline" id="exportBtn" style="width:100%">Export PNG</button>
+      <button class="btn btn-primary" id="applyBtn" style="width:100%" data-i18n="crt.applyBtn">◈ Apply FX</button>
+      <button class="btn btn-outline" id="resetBtn" style="width:100%" data-i18n="crt.resetBtn">Reset</button>
+      <button class="btn btn-outline" id="sendToFlyerBtn" style="width:100%" data-i18n="crt.continueBtn">→ Continue in Flyer Forge</button>
+      <button class="btn btn-outline" id="exportBtn" style="width:100%" data-i18n="crt.exportBtn">Export PNG</button>
     </div>
   </div>
 
@@ -123,7 +123,7 @@
   <div class="tool-canvas-area" id="canvasArea">
     <div class="file-upload" id="dropZone">
       <span class="icon">📺</span>
-      <span>Click or drop an image here</span>
+      <span data-i18n="crt.fileDrop">Click or drop an image here</span>
       <input type="file" id="fileInput" accept="image/*">
     </div>
     <canvas id="mainCanvas"></canvas>

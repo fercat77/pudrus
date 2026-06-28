@@ -16,17 +16,17 @@
 <div class="tool-layout">
   <div class="tool-panel">
     <div class="tool-panel-header">
-      <a href="../../index.html" class="back">← Back</a>
-      <h2>▓ Glitch FX</h2>
-      <p>RGB shift, scanlines, block corruption and datamosh effects.</p>
+      <a href="../../index.html" class="back" data-i18n="nav.tools">← Back</a>
+      <h2 data-i18n="glitch.name">▓ Glitch FX</h2>
+      <p data-i18n="glitch.desc">RGB shift, scanlines, block corruption and datamosh effects.</p>
     </div>
 
     <div class="tool-panel-body">
       <!-- Crop Controls -->
       <div class="control-group">
-        <span class="control-label">Aspect Ratio</span>
+        <span class="control-label" data-i18n="glitch.aspectRatio">Aspect Ratio</span>
         <div class="control-row">
-          <label>Aspect</label>
+          <label data-i18n="glitch.aspect">Aspect</label>
           <select id="aspectRatio">
             <option value="free">Free</option>
             <option value="1:1">Square (1:1)</option>
@@ -35,34 +35,34 @@
           </select>
         </div>
         <div class="control-row">
-          <label>Offset X</label>
+          <label data-i18n="glitch.offsetX">Offset X</label>
           <input type="range" id="cropOffsetX" min="-50" max="50" value="0"><span class="val" id="cropOffsetXVal">0%</span>
         </div>
         <div class="control-row">
-          <label>Offset Y</label>
+          <label data-i18n="glitch.offsetY">Offset Y</label>
           <input type="range" id="cropOffsetY" min="-50" max="50" value="0"><span class="val" id="cropOffsetYVal">0%</span>
         </div>
       </div>
 
       <div class="control-group">
-        <span class="control-label">RGB Channel Shift</span>
+        <span class="control-label" data-i18n="glitch.channelShift">RGB Channel Shift</span>
         <div class="control-row">
-          <label>Red X</label>
+          <label data-i18n="glitch.redX">Red X</label>
           <input type="range" id="rShiftX" min="-50" max="50" value="0">
           <span class="val" id="rShiftXVal">0</span>
         </div>
         <div class="control-row">
-          <label>Green X</label>
+          <label data-i18n="glitch.greenX">Green X</label>
           <input type="range" id="gShiftX" min="-50" max="50" value="0">
           <span class="val" id="gShiftXVal">0</span>
         </div>
         <div class="control-row">
-          <label>Blue X</label>
+          <label data-i18n="glitch.blueX">Blue X</label>
           <input type="range" id="bShiftX" min="-50" max="50" value="0">
           <span class="val" id="bShiftXVal">0</span>
         </div>
         <div class="control-row">
-          <label>Y Shift</label>
+          <label data-i18n="glitch.yShift">Y Shift</label>
           <input type="range" id="shiftY" min="-50" max="50" value="0">
           <span class="val" id="shiftYVal">0</span>
         </div>
@@ -71,19 +71,19 @@
       <hr class="divider">
 
       <div class="control-group">
-        <span class="control-label">Block Corruption</span>
+        <span class="control-label" data-i18n="glitch.blockCorruption">Block Corruption</span>
         <div class="control-row">
-          <label>Intensity</label>
+          <label data-i18n="glitch.intensity">Intensity</label>
           <input type="range" id="blockIntensity" min="0" max="100" value="0">
           <span class="val" id="blockIntensityVal">0%</span>
         </div>
         <div class="control-row">
-          <label>Size</label>
+          <label data-i18n="glitch.size">Size</label>
           <input type="range" id="blockSize" min="5" max="200" value="40">
           <span class="val" id="blockSizeVal">40</span>
         </div>
         <div class="control-row">
-          <label>Offset</label>
+          <label data-i18n="glitch.offset">Offset</label>
           <input type="range" id="blockOffset" min="0" max="300" value="80">
           <span class="val" id="blockOffsetVal">80</span>
         </div>
@@ -92,14 +92,14 @@
       <hr class="divider">
 
       <div class="control-group">
-        <span class="control-label">Scanlines</span>
+        <span class="control-label" data-i18n="glitch.scanlines">Scanlines</span>
         <div class="control-row">
-          <label>Density</label>
+          <label data-i18n="glitch.density">Density</label>
           <input type="range" id="scanDensity" min="0" max="20" value="0">
           <span class="val" id="scanDensityVal">0</span>
         </div>
         <div class="control-row">
-          <label>Opacity</label>
+          <label data-i18n="glitch.opacity">Opacity</label>
           <input type="range" id="scanOpacity" min="0" max="100" value="30">
           <span class="val" id="scanOpacityVal">30%</span>
         </div>
@@ -108,52 +108,52 @@
       <hr class="divider">
 
       <div class="control-group">
-        <span class="control-label">Color Effects</span>
+        <span class="control-label" data-i18n="glitch.colorFx">Color Effects</span>
         <div class="control-row">
-          <label>Hue</label>
+          <label data-i18n="glitch.hue">Hue</label>
           <input type="range" id="hueRotate" min="0" max="360" value="0">
           <span class="val" id="hueRotateVal">0°</span>
         </div>
         <div class="control-row">
-          <label>Saturation</label>
+          <label data-i18n="glitch.saturation">Saturation</label>
           <input type="range" id="saturation" min="0" max="300" value="100">
           <span class="val" id="saturationVal">100%</span>
         </div>
         <div class="control-row">
-          <label>Brightness</label>
+          <label data-i18n="glitch.brightness">Brightness</label>
           <input type="range" id="brightness" min="0" max="300" value="100">
           <span class="val" id="brightnessVal">100%</span>
         </div>
       </div>
 
       <div class="control-group">
-        <span class="control-label">Options</span>
+        <span class="control-label" data-i18n="glitch.options">Options</span>
         <div class="toggle-row">
-          <label>Invert</label>
+          <label data-i18n="glitch.invert">Invert</label>
           <div class="toggle" id="invertToggle"></div>
         </div>
         <div class="toggle-row">
-          <label>Row Shift</label>
+          <label data-i18n="glitch.rowShift">Row Shift</label>
           <div class="toggle" id="rowGlitchToggle"></div>
         </div>
       </div>
 
     </div>
 
-    <div class="status-bar" id="statusBar">◈ No image loaded</div>
+    <div class="status-bar" id="statusBar" data-i18n="glitch.statusNoImage">◈ No image loaded</div>
     <div class="action-btns">
-      <button class="btn btn-primary" id="applyBtn" style="width:100%">◈ Apply Glitch</button>
-      <button class="btn btn-outline"  id="randomBtn" style="width:100%">◈ Random Glitch</button>
-      <button class="btn btn-outline"  id="resetBtn"  style="width:100%">Reset</button>
-      <button class="btn btn-outline" id="sendToFlyerBtn" style="width:100%">→ Continue in Flyer Forge</button>
-      <button class="btn btn-outline"  id="exportBtn" style="width:100%">Export PNG</button>
+      <button class="btn btn-primary" id="applyBtn" style="width:100%" data-i18n="glitch.applyBtn">◈ Apply Glitch</button>
+      <button class="btn btn-outline"  id="randomBtn" style="width:100%" data-i18n="glitch.randomBtn">◈ Random Glitch</button>
+      <button class="btn btn-outline"  id="resetBtn"  style="width:100%" data-i18n="glitch.resetBtn">Reset</button>
+      <button class="btn btn-outline" id="sendToFlyerBtn" style="width:100%" data-i18n="glitch.continueBtn">→ Continue in Flyer Forge</button>
+      <button class="btn btn-outline"  id="exportBtn" style="width:100%" data-i18n="glitch.exportBtn">Export PNG</button>
     </div>
   </div>
 
   <div class="tool-canvas-area" id="canvasArea">
     <div class="file-upload" id="dropZone">
       <span class="icon">▓</span>
-      <span>Click or drop an image here</span>
+      <span data-i18n="glitch.fileDrop">Click or drop an image here</span>
       <input type="file" id="fileInput" accept="image/*">
     </div>
     <canvas id="mainCanvas"></canvas>
@@ -161,6 +161,7 @@
   </div>
 </div>
 
+<script src="../../js/i18n.js"></script>
 <script>
 let origImageData=null, canvas=document.getElementById('mainCanvas'), ctx=canvas.getContext('2d');
 let isInvert=false, rowGlitch=false;

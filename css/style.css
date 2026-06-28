@@ -732,6 +732,11 @@ input[type="color"] {
     font-size: 24px;
     letter-spacing: 3px;
   }
+  .section-title {
+    font-size: 16px;
+    letter-spacing: 1px;
+    white-space: nowrap;
+  }
   .hero-sub {
     font-size: 9px;
   }
