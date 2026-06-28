@@ -234,13 +234,18 @@
   document.addEventListener('DOMContentLoaded', () => {
     const usersEl = document.getElementById('online-users');
     if (usersEl) {
-      let baseUsers = Math.floor(Math.random() * 10) + 5; // Start with 5-14 users
-      usersEl.textContent = baseUsers;
+      let currentUsers = Math.floor(Math.random() * 12); // Start with 0-11 users
+      usersEl.textContent = currentUsers;
 
       setInterval(() => {
-        const fluctuation = Math.floor(Math.random() * 3) - 1; // -1, 0, or 1
-        baseUsers = Math.max(1, baseUsers + fluctuation); // Ensure it's at least 1
-        usersEl.textContent = baseUsers;
+        // 5% chance to spike to 15
+        if (Math.random() < 0.05) {
+          currentUsers = 15;
+        } else {
+          const fluctuation = Math.floor(Math.random() * 5) - 2; // Fluctuate between -2 and +2
+          currentUsers = Math.max(0, Math.min(11, currentUsers + fluctuation)); // Clamp between 0 and 11
+        }
+        usersEl.textContent = currentUsers;
       }, 3500); // Update every 3.5 seconds
     }
   });
