@@ -259,7 +259,9 @@
     "title": "How it Works",
     "p1": "PUDRUS.XYZ is a browser-based creative suite for image and video processing.",
     "p2": "Built with vanilla JavaScript. No frameworks, no accounts.",
-    "start": "Start Creating"
+    "start": "Start Creating",
+    "p3": "This project was created by Fercat, a musician, visual artist and digital creator.",
+    "portfolio": "Check out my work"
   },
-  "footer": { "copyright": "© 2026 PUDRUS.XYZ", "donate": "Support this project", "note": "Jump into a digital disaster" }
+  "footer": { "copyright": "© 2026 PUDRUS.XYZ", "donate": "Buy me a coffee", "note": "Jump into a digital disaster" }
 }

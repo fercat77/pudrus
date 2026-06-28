@@ -888,6 +888,11 @@ footer.custom-margin {
   font-size: 10px; color: var(--text2); line-height: 1.6;
 }
 
+.about-link {
+  color: var(--c1);
+  text-decoration: underline;
+}
+
 @media (max-width: 768px) {
   .about-grid { grid-template-columns: 1fr; }
   .hero-stats { gap: 24px; }

@@ -1,13 +1,13 @@
 {
+  "nav": { "tools": "Herramientas", "about": "Acerca de" },
   "hero": {
-    "nav": { "tools": "Herramientas", "about": "Acerca de" },
     "tag": "◈ Suite Visual Creativa",
     "title": "PUDRUS.XYZ",
     "sub": "Herramientas de image & video processing en el navegador",
     "explore": "◈ Explorar Tools",
     "learn": "Más info"
   },
-  "stats": { "tools": "Tools", "combinations": "Combinaciones", "install": "Sin instalación" },
+  "stats": { "tools": "Tools", "combinations": "Combinaciones", "install": "instalación" },
   "tools": {
     "sectionTag": "◈ 01 — Tools",
     "title": "Visual Processing Suite",
@@ -258,8 +258,10 @@
     "sectionTag": "◈ 02 — About",
     "title": "Cómo funciona",
     "p1": "PUDRUS.XYZ es una suite creativa que corre localmente en tu navegador.",
-    "p2": "Built with vanilla JavaScript. No frameworks ni accounts.",
-    "start": "Empezar"
+    "p2": "Hecho con JavaScript puro. Sin frameworks ni cuentas.",
+    "start": "Empezar a Crear",
+    "p3": "Este proyecto fue creado por Fercat, un musico, artista visual y creador digital.",
+    "portfolio": "Mira mi trabajo"
   },
-  "footer": { "copyright": "© 2026 PUDRUS.XYZ", "donate": "Apoya este proyecto", "note": "Built in the browser, for the browser" }
+  "footer": { "copyright": "© 2026 PUDRUS.XYZ", "donate": "Apoya este proyecto", "note": "Jump into a digital disaster" }
 }
