@@ -12,22 +12,23 @@
 <nav>
   <a href="../../index.html" class="nav-logo">PUDRUS<span>.xyz</span></a>
   <ul class="nav-links">
-    <li><a href="../../index.html#tools" data-i18n="nav.tools">All Tools</a></li>
+    <li><a href="../../index.html#tools">All Tools</a></li>
   </ul>
 </nav>
 
 <div class="tool-layout">
-  <!-- PANEL -->
+
+  <!-- ── PANEL ── -->
   <div class="tool-panel">
     <div class="tool-panel-header">
-      <a href="../../index.html" class="back">← Back</a>
-      <h2 data-i18n="tools.ascii.name">◊ ASCII Canvas</h2>
-      <p data-i18n="tools.ascii.desc">Transform images into creative ASCII art with custom characters and effects.</p>
+      <a href="../../index.html" class="back" data-i18n="nav.tools">← Back</a>
+      <h2 data-i18n="ascii.name">◊ ASCII Canvas</h2>
+      <p data-i18n="ascii.desc">Transform images into creative ASCII art with custom characters and effects.</p>
     </div>
 
     <div class="tool-panel-body">
-      <!-- Upload -->
-      <!-- Crop Controls -->
+
+      <!-- Aspect Ratio -->
       <div class="control-group">
         <span class="control-label">Aspect Ratio</span>
         <div class="control-row">
@@ -49,36 +50,36 @@
         </div>
       </div>
 
-      <hr class="divider">
-
       <!-- Granularity -->
       <div class="control-group">
         <span class="control-label" data-i18n="ascii.granularity">Granularity</span>
         <div class="control-row">
-          <label>Size</label>
-          <input type="range" id="charSize" min="2" max="16" value="6">
-          <span class="val" id="charSizeVal">6px</span>
+          <label data-i18n="ascii.charSize">Character Size</label>
+          <input type="range" id="charSize" min="4" max="16" value="8">
+          <span class="val" id="charSizeVal">8px</span>
         </div>
         <div class="control-row">
-          <label>Spacing</label>
-          <input type="range" id="lineSpacing" min="0.8" max="1.6" step="0.1" value="1.2">
+          <label data-i18n="ascii.charSpacing">Line Spacing</label>
+          <input type="range" id="lineSpacing" min="0.5" max="2.0" step="0.1" value="1.2">
           <span class="val" id="lineSpacingVal">1.2x</span>
         </div>
       </div>
 
+      <hr class="divider">
+
+      <!-- Character Set -->
       <div class="control-group">
         <span class="control-label" data-i18n="ascii.charSet">Character Set</span>
-        <div class="char-preset">
-          <button class="preset-btn active" data-preset="standard" data-i18n="ascii.presetStandard">Standard</button>
-          <button class="preset-btn" data-preset="extended" data-i18n="ascii.presetExtended">Extended</button>
-          <button class="preset-btn" data-preset="minimal" data-i18n="ascii.presetMinimal">Minimal</button>
-          <button class="preset-btn" data-preset="blocks" data-i18n="ascii.presetBlocks">Blocks</button>
-          <button class="preset-btn" data-preset="dense" data-i18n="ascii.presetDense">Dense</button>
-          <button class="preset-btn" data-preset="custom" data-i18n="ascii.presetCustom">Custom</button>
+        <div class="preset-buttons" style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 10px;">
+          <button class="preset-btn active" data-preset="standard">Standard</button>
+          <button class="preset-btn" data-preset="extended">Extended</button>
+          <button class="preset-btn" data-preset="minimal">Minimal</button>
+          <button class="preset-btn" data-preset="blocks">Blocks</button>
+          <button class="preset-btn" data-preset="dense">Dense</button>
+          <button class="preset-btn" data-preset="custom">Custom</button>
         </div>
-        <div class="control-row custom-char-row" id="customCharRow" style="display: none;">
-          <label>Chars</label>
-          <input type="text" id="customChars" placeholder="@%#*+=-:." maxlength="50">
+        <div id="customCharRow" class="custom-char-row" style="display: none;">
+          <input type="text" id="customChars" class="text-input" placeholder="Custom characters..." value="@%#*+=-:. ">
         </div>
       </div>
 
@@ -89,56 +90,54 @@
         <span class="control-label" data-i18n="ascii.effects">Effects</span>
         <div class="control-row">
           <label data-i18n="ascii.contrast">Contrast</label>
-          <input type="range" id="contrast" min="-50" max="100" value="0">
+          <input type="range" id="contrast" min="-100" max="100" value="0">
           <span class="val" id="contrastVal">0</span>
         </div>
         <div class="control-row">
           <label data-i18n="ascii.brightness">Brightness</label>
-          <input type="range" id="brightness" min="-50" max="50" value="0">
+          <input type="range" id="brightness" min="-100" max="100" value="0">
           <span class="val" id="brightnessVal">0</span>
+        </div>
+        <div class="control-row">
+          <label data-i18n="ascii.colorMode">Color Mode</label>
+          <select id="colorMode">
+            <option value="mono">Monochrome</option>
+            <option value="original">Original Colors</option>
+            <option value="inverted">Inverted</option>
+            <option value="cyan">Cyan</option>
+            <option value="green">Green Terminal</option>
+          </select>
         </div>
       </div>
 
-      <div class="control-group">
-        <span class="control-label" data-i18n="ascii.colorMode">Color Mode</span>
-        <select id="colorMode">
-          <option value="mono" data-i18n="ascii.colorMono">Monochrome</option>
-          <option value="original" data-i18n="ascii.colorOriginal">Original Colors</option>
-          <option value="inverted" data-i18n="ascii.colorInverted">Inverted</option>
-          <option value="cyan" data-i18n="ascii.colorCyan">Cyan</option>
-          <option value="green" data-i18n="ascii.colorGreen">Green Terminal</option>
-        </select>
-      </div>
-
-      <hr class="divider">
-
-
-      <!-- Actions -->
-      <div class="action-btns">
-        <button class="btn btn-primary" id="randomizeBtn" data-i18n="ascii.randomize">◈ Randomize Set</button>
-        <button class="btn btn-primary" id="applyBtn" data-i18n="ascii.apply">◈ Apply</button>
-        <button class="btn btn-outline" id="sendToFlyerBtn" style="width:100%">→ Continue in Flyer Forge</button>
-        <button class="btn btn-outline" id="downloadBtn" data-i18n="ascii.download">⬇ Download PNG</button>
-      </div>
     </div>
 
-    <div class="status-bar" id="statusBar">◈ <span data-i18n="ascii.ready">Ready</span></div>
+    <div class="status-bar" id="statusBar">◈ Ready</div>
+
+    <div class="action-btns">
+      <button class="btn btn-primary" id="applyBtn" style="width:100%" data-i18n="ascii.apply">◈ Apply</button>
+      <button class="btn btn-outline" id="randomizeBtn" style="width:100%" data-i18n="ascii.randomize">◈ Randomize Set</button>
+      <button class="btn btn-outline" id="sendToFlyerBtn" style="width:100%" data-i18n="dithering.continueBtn">→ Continue in Flyer Forge</button>
+      <button class="btn btn-outline" id="downloadBtn" style="width:100%" data-i18n="ascii.download">⬇ Download PNG</button>
+    </div>
   </div>
 
-  <!-- CANVAS -->
+  <!-- ── CANVAS ── -->
   <div class="tool-canvas-area" id="canvasArea">
     <div class="file-upload" id="dropZone">
-        <span class="icon">◊</span>
-        <span data-i18n="ascii.fileDrop">Click or drop an image here</span>
-        <input type="file" id="fileInput" accept="image/*">
+      <span class="icon">◊</span>
+      <span data-i18n="ascii.fileDrop">Click or drop an image here</span>
+      <input type="file" id="fileInput" accept="image/*">
     </div>
-    <canvas id="asciiCanvas"></canvas>
-    <div class="canvas-info" id="canvasInfo">No image loaded</div>
+    <canvas id="asciiCanvas" style="display:none;"></canvas>
+    <div class="canvas-info" id="canvasInfo" style="display:none;">No image loaded</div>
   </div>
+
 </div>
 
 <script src="../../js/i18n.js"></script>
 <script>
+document.addEventListener('DOMContentLoaded', () => {
   // Configuration & State
   let imageData = null;
   let currentPreset = 'standard';
@@ -147,7 +146,7 @@
 
   const charPresets = {
     standard: '@%#*+=-:. ',
-    extended: '@%#*+=-:.\'"`,\'^"^"|/\\\\()[]{}',
+    extended: '@%#*+=-:.\'"`,\'^"^"|/\\()[]{}',
     minimal: '@#*:. ',
     blocks: '████▓▒░  ',
     dense: '@@@%%%###***+++===---:::...   ',
@@ -159,40 +158,6 @@
   const dropZone = document.querySelector('.tool-canvas-area');
   const statusBar = document.getElementById('statusBar');
   const canvasInfo = document.getElementById('canvasInfo');
-
-  const WORKFLOW_STORAGE_KEY = 'pudrus_workflow_image';
-
-  // --- WORKFLOW ──────────────────────────────────────────
-  function sendTo(toolUrl, canvasElement) {
-      if (!canvasElement) {
-          console.error('Workflow Error: Canvas element not provided.');
-          return;
-      }
-      let exportCanvas = document.createElement('canvas');
-      let exportCtx = exportCanvas.getContext('2d');
-
-      let sx = cropRect ? cropRect.x : 0;
-      let sy = cropRect ? cropRect.y : 0;
-      let sWidth = cropRect ? cropRect.w : canvasElement.width;
-      let sHeight = cropRect ? cropRect.h : canvasElement.height;
-
-      exportCanvas.width = sWidth;
-      exportCanvas.height = sHeight;
-
-      exportCtx.drawImage(canvasElement, sx, sy, sWidth, sHeight, 0, 0, sWidth, sHeight);
-      const dataUrl = exportCanvas.toDataURL('image/png');
-      sessionStorage.setItem(WORKFLOW_STORAGE_KEY, dataUrl);
-      window.location.href = `../${toolUrl}/index.html`;
-  }
-
-  function receiveImage() {
-      const dataUrl = sessionStorage.getItem(WORKFLOW_STORAGE_KEY);
-      if (dataUrl) {
-          sessionStorage.removeItem(WORKFLOW_STORAGE_KEY);
-          return dataUrl;
-      }
-      return null;
-  }
 
   // File handling
   dropZone.addEventListener('dragover', (e) => {
@@ -216,11 +181,12 @@
     const img = new Image();
     img.onload = () => {
       imageData = { img, width: img.width, height: img.height };
+      canvas.style.display = 'block';
       canvasInfo.textContent = img.width + ' × ' + img.height + ' px';
       document.getElementById('canvasArea').classList.add('has-image');
       document.getElementById('canvasInfo').style.display = 'block';
       setupCrop(imageData.width, imageData.height);
-      updateStatus('Image loaded. Click Apply.');
+      updateStatus('Image loaded. Adjust settings or click Apply.');
       renderPreview();
     };
 
@@ -233,54 +199,6 @@
     }
   }
 
-  function setupCrop(W, H) {
-      const aspectRatioSelect = document.getElementById('aspectRatio');
-      const offsetXSlider = document.getElementById('cropOffsetX');
-      const offsetYSlider = document.getElementById('cropOffsetY');
-
-      function updateCropRect() {
-          const ratio = aspectRatioSelect.value;
-          if (ratio === 'free') {
-              cropRect = null;
-              offsetXSlider.disabled = true;
-              offsetYSlider.disabled = true;
-          } else {
-              offsetXSlider.disabled = false;
-              offsetYSlider.disabled = false;
-              const [w, h] = ratio.split(':').map(Number);
-              const targetRatio = w / h;
-              const currentRatio = W / H;
-              let cropW, cropH, cropX, cropY;
-              if (currentRatio > targetRatio) {
-                  cropH = H;
-                  cropW = H * targetRatio;
-                  cropX = (W - cropW) / 2 * (1 - offsetXSlider.value / 50);
-                  cropY = 0;
-              } else {
-                  cropW = W;
-                  cropH = W / targetRatio;
-                  cropX = 0;
-                  cropY = (H - cropH) / 2 * (1 - offsetYSlider.value / 50);
-              }
-              cropRect = { x: cropX, y: cropY, w: cropW, h: cropH };
-          }
-          renderPreview();
-      }
-      aspectRatioSelect.addEventListener('change', updateCropRect);
-      offsetXSlider.addEventListener('input', updateCropRect);
-      offsetYSlider.addEventListener('input', updateCropRect);
-      updateCropRect();
-  }
-
-  function drawCropOverlay() {
-      if (cropRect) {
-          // ASCII canvas is different, we can't just draw over it.
-          // This will be handled by only drawing inside the crop rect.
-          // For now, we'll just log it.
-          // A visual overlay would require a second canvas on top.
-      }
-  }
-
   function updateLabel(id, value) {
     document.getElementById(id).textContent = value;
   }
@@ -288,6 +206,8 @@
   // Render ASCII
   function renderPreview() {
     if (!imageData) return;
+
+    updateCropRect(); // Ensure cropRect is up-to-date
 
     const charSize = parseInt(document.getElementById('charSize').value);
     const lineSpacing = parseFloat(document.getElementById('lineSpacing').value);
@@ -300,17 +220,13 @@
     let sourceWidth = cropRect ? cropRect.w : imageData.width;
     let sourceHeight = cropRect ? cropRect.h : imageData.height;
 
-
-    // Get container size to fit canvas
     const container = document.querySelector('.tool-canvas-area');
     const maxW = container.clientWidth - 40;
     const maxH = container.clientHeight - 40;
 
-    // Calculate grid dimensions based on container and char size
     const gridW = Math.floor(maxW / charSize);
     const gridH = Math.floor(maxH / (charSize * lineSpacing));
 
-    // Maintain image aspect ratio
     const imgAspectRatio = sourceHeight / sourceWidth;
     let width = gridW;
     let height = Math.round(width * imgAspectRatio / lineSpacing);
@@ -320,18 +236,15 @@
       width = Math.round(height * lineSpacing / imgAspectRatio);
     }
 
-    // Set canvas size
     canvas.width = width * charSize;
     canvas.height = height * charSize * lineSpacing;
     
-    // Store the actual ASCII dimensions for export
     canvas.asciiWidth = width;
     canvas.asciiHeight = height;
     
     ctx.fillStyle = '#0a0a0a';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-    // Resize and process image
     const tempCanvas = document.createElement('canvas');
     tempCanvas.width = width;
     tempCanvas.height = height;
@@ -360,7 +273,6 @@
       const x = (i % width) * charSize;
       const y = Math.floor(i / width) * charSize * lineSpacing;
 
-      // Color
       if (colorMode === 'mono') {
         ctx.fillStyle = `rgba(0, 212, 255, ${a / 255})`;
       } else if (colorMode === 'original') {
@@ -423,11 +335,6 @@
     });
   });
 
-  let cropXSlider = document.getElementById('cropOffsetX');
-  cropXSlider.addEventListener('input', () => { updateLabel('cropOffsetXVal', cropXSlider.value + '%'); renderPreview(); });
-  let cropYSlider = document.getElementById('cropOffsetY');
-  cropYSlider.addEventListener('input', () => { updateLabel('cropOffsetYVal', cropYSlider.value + '%'); renderPreview(); });
-
   // Buttons
   document.getElementById('applyBtn').addEventListener('click', () => {
     if (imageData) {
@@ -435,6 +342,44 @@
       updateStatus('ASCII art rendered! Ready to download.');
     }
   });
+
+  function setupCrop(W, H) {
+      updateCropRect();
+  }
+
+  function updateCropRect() {
+      if (!imageData) return;
+      const W = imageData.width, H = imageData.height;
+      const aspectRatioSelect = document.getElementById('aspectRatio');
+      const offsetXSlider = document.getElementById('cropOffsetX');
+      const offsetYSlider = document.getElementById('cropOffsetY');
+      const ratio = aspectRatioSelect.value;
+
+      if (ratio === 'free') {
+          cropRect = null;
+          offsetXSlider.disabled = true;
+          offsetYSlider.disabled = true;
+      } else {
+          offsetXSlider.disabled = false;
+          offsetYSlider.disabled = false;
+          const [w, h] = ratio.split(':').map(Number);
+          const targetRatio = w / h;
+          const currentRatio = W / H;
+          let cropW, cropH, cropX, cropY;
+          if (currentRatio > targetRatio) {
+              cropH = H;
+              cropW = H * targetRatio;
+              cropX = (W - cropW) / 2 * (1 - offsetXSlider.value / 50);
+              cropY = 0;
+          } else {
+              cropW = W;
+              cropH = W / targetRatio;
+              cropX = 0;
+              cropY = (H - cropH) / 2 * (1 - offsetYSlider.value / 50);
+          }
+          cropRect = { x: cropX, y: cropY, w: cropW, h: cropH };
+      }
+  }
 
   document.getElementById('randomizeBtn').addEventListener('click', () => {
     const presets = Object.keys(charPresets);
@@ -449,18 +394,21 @@
     updateStatus(`Randomized to ${randomPreset} preset.`);
   });
 
+  document.getElementById('sendToFlyerBtn').addEventListener('click', () => {
+    if (!imageData) { updateStatus('Please load an image first.'); return; }
+    sendTo('flyer-forge', canvas);
+  });
+
   document.getElementById('downloadBtn').addEventListener('click', () => {
     if (!imageData) {
       updateStatus('Please load an image first.');
       return;
     }
 
-    // The canvas is already rendered with the crop applied, so we just export it.
     const exportCanvas = document.createElement('canvas');
     exportCanvas.width = canvas.width;
     exportCanvas.height = canvas.height;
     const exportCtx = exportCanvas.getContext('2d');
-    // We need to re-render to the export canvas at full res if needed, but for now, just copy
     exportCtx.drawImage(canvas, 0, 0);
 
     const link = document.createElement('a');
@@ -470,18 +418,25 @@
     updateStatus('Downloaded!');
   });
 
+  document.getElementById('aspectRatio').addEventListener('change', () => { if(imageData) { updateCropRect(); renderPreview(); }});
+  document.getElementById('cropOffsetX').addEventListener('input', (e) => {
+    updateLabel('cropOffsetXVal', e.target.value + '%');
+    if(imageData) { updateCropRect(); renderPreview(); }
+  });
+  document.getElementById('cropOffsetY').addEventListener('input', (e) => {
+    updateLabel('cropOffsetYVal', e.target.value + '%');
+    if(imageData) { updateCropRect(); renderPreview(); }
+  });
+
   function updateStatus(msg) {
     statusBar.textContent = '◈ ' + msg;
   }
-
-  // Load i18n
-  // This is handled by the global i18n.js script now
 
   const incomingImageDataUrl = receiveImage();
   if (incomingImageDataUrl) {
       loadImage(incomingImageDataUrl);
   }
+});
 </script>
-
 </body>
 </html>

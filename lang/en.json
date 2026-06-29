@@ -20,8 +20,24 @@
     "halftone": { "name": "Halftone", "desc": "Create halftone dot patterns, CMYK separations, and retro print effects." },
     "triangulation": { "name": "Triangulation", "desc": "Reconstruct images into a low-poly vector style using Delaunay triangulation." },
     "crt": { "name": "CRT Bend", "desc": "Emulate CRT screen curvature, scanlines, and circuit-bent signal distortion." },
-    "flyer": { "name": "Flyer Forge", "desc": "Generate flyers for music events with automatic, well-designed compositions." }
-  },
+  "flyer": { "name": "Flyer Forge", "desc": "Generate flyers for music events with automatic, well-designed compositions." },
+  "video": {
+    "name": "◈ Video FX",
+    "desc": "Real-time effects using your webcam or video files.",
+    "source": "Source",
+    "useWebcam": "◈ Use Webcam",
+    "effects": "Effects",
+    "aberration": "Aberration",
+    "noise": "Noise",
+    "scanlines": "Scanlines",
+    "curvature": "Curvature",
+    "vignette": "Vignette",
+    "blockGlitch": "Block Glitch",
+    "statusWait": "◈ Waiting for camera",
+    "cameraActive": "◈ Camera Active",
+    "cameraDenied": "◈ Camera access denied."
+  }
+},
   "pixel": {
     "name": "⟆ Pixel Sorter",
     "desc": "Sort pixels by brightness, hue or saturation. Load an image to start.",

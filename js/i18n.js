@@ -50,3 +50,37 @@
 
   document.addEventListener('DOMContentLoaded', init);
 })();
+
+// --- WORKFLOW ---
+const WORKFLOW_STORAGE_KEY = 'pudrus_workflow_image';
+
+function sendTo(toolUrl, canvasElement, cropRect) {
+    if (!canvasElement) {
+        console.error('Workflow Error: Canvas element not provided.');
+        return;
+    }
+    let exportCanvas = document.createElement('canvas');
+    let exportCtx = exportCanvas.getContext('2d');
+
+    let sx = cropRect ? cropRect.x : 0;
+    let sy = cropRect ? cropRect.y : 0;
+    let sWidth = cropRect ? cropRect.w : canvasElement.width;
+    let sHeight = cropRect ? cropRect.h : canvasElement.height;
+
+    exportCanvas.width = sWidth;
+    exportCanvas.height = sHeight;
+
+    exportCtx.drawImage(canvasElement, sx, sy, sWidth, sHeight, 0, 0, sWidth, sHeight);
+    const dataUrl = exportCanvas.toDataURL('image/png');
+    sessionStorage.setItem(WORKFLOW_STORAGE_KEY, dataUrl);
+    window.location.href = `../${toolUrl}/index.html`;
+}
+
+function receiveImage() {
+    const dataUrl = sessionStorage.getItem(WORKFLOW_STORAGE_KEY);
+    if (dataUrl) {
+        sessionStorage.removeItem(WORKFLOW_STORAGE_KEY); // Clear after reading
+        return dataUrl;
+    }
+    return null;
+}

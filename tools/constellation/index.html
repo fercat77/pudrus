@@ -8,21 +8,40 @@
   <link rel="stylesheet" href="../../css/style.css">
 </head>
 <body>
+
 <nav>
   <a href="../../index.html" class="nav-logo">PUDRUS<span>.xyz</span></a>
-  <ul class="nav-links"><li><a href="../../index.html#tools" data-i18n="nav.tools">All Tools</a></li></ul>
+  <ul class="nav-links">
+    <li><a href="../../index.html#tools">All Tools</a></li>
+  </ul>
 </nav>
 
 <div class="tool-layout">
+
+  <!-- ── PANEL ── -->
   <div class="tool-panel">
     <div class="tool-panel-header">
-      <a href="../../index.html" class="back">← Back</a>
-      <h2 data-i18n="tools.constellation.name">✦ Constellation</h2>
-      <p data-i18n="tools.constellation.desc">Overlay star maps, node networks, and technical line art on any image.</p>
+      <a href="../../index.html" class="back" data-i18n="nav.tools">← Back</a>
+      <h2 data-i18n="constellation.name">Constellation</h2>
+      <p data-i18n="constellation.desc">Overlay generative star maps, technical diagrams and node networks over your images.</p>
     </div>
 
     <div class="tool-panel-body">
-      <!-- Crop Controls -->
+
+      <!-- Mode Selection -->
+      <div class="control-group">
+        <span class="control-label" data-i18n="constellation.overlayStyle">Overlay Style</span>
+        <div class="control-row">
+          <select id="modeSelect">
+            <option value="starfield">Starfield</option>
+            <option value="network">Network</option>
+            <option value="constellation">Constellation</option>
+            <option value="map">Map Grid</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- Aspect Ratio -->
       <div class="control-group">
         <span class="control-label">Aspect Ratio</span>
         <div class="control-row">
@@ -46,130 +65,131 @@
 
       <hr class="divider">
 
-      <div class="control-group">
-        <span class="control-label" data-i18n="constellation.overlayStyle">Overlay Style</span>
-        <select id="modeSelect">
-          <option value="starfield">Starfield</option>
-          <option value="network">Network</option>
-          <option value="constellation">Constellation</option>
-          <option value="map">Map Grid</option>
-        </select>
-      </div>
-
+      <!-- Density -->
       <div class="control-group">
         <span class="control-label" data-i18n="constellation.density">Density</span>
         <div class="control-row">
           <label data-i18n="constellation.count">Count</label>
-          <input type="range" id="starCount" min="20" max="220" value="100">
-          <span class="val" id="starCountVal">100</span>
+          <input type="range" id="starCount" min="10" max="120" value="60">
+          <span class="val" id="starCountVal">60</span>
         </div>
       </div>
 
+      <!-- Line Settings -->
       <div class="control-group">
         <span class="control-label" data-i18n="constellation.lineIntensity">Line Intensity</span>
         <div class="control-row">
           <label data-i18n="constellation.opacity">Opacity</label>
-          <input type="range" id="lineOpacity" min="0" max="100" value="38">
-          <span class="val" id="lineOpacityVal">38%</span>
+          <input type="range" id="lineOpacity" min="0" max="100" value="40">
+          <span class="val" id="lineOpacityVal">40%</span>
         </div>
         <div class="control-row">
-          <label>Spread</label>
-          <input type="range" id="lineSpread" min="1" max="8" value="4">
-          <span class="val" id="lineSpreadVal">4</span>
+          <label data-i18n="constellation.lineSpread">Line Spread</label>
+          <input type="range" id="lineSpread" min="1" max="5" value="2">
+          <span class="val" id="lineSpreadVal">2</span>
         </div>
       </div>
 
+      <hr class="divider">
+
+      <!-- Star Style -->
       <div class="control-group">
         <span class="control-label" data-i18n="constellation.starStyle">Star Style</span>
         <div class="control-row">
           <label data-i18n="constellation.size">Size</label>
-          <input type="range" id="starSize" min="1" max="12" value="3">
-          <span class="val" id="starSizeVal">3px</span>
+          <input type="range" id="starSize" min="1" max="20" value="4">
+          <span class="val" id="starSizeVal">4px</span>
         </div>
         <div class="control-row">
           <label data-i18n="constellation.glow">Glow</label>
-          <input type="range" id="starGlow" min="0" max="40" value="10">
+          <input type="range" id="starGlow" min="0" max="50" value="10">
           <span class="val" id="starGlowVal">10</span>
         </div>
-      </div>
-
-      <div class="control-group">
-        <span class="control-label" data-i18n="constellation.vertexShape">Vertex Shape</span>
-        <select id="vertexShape">
-          <option value="circle">Circle</option>
-          <option value="square">Square</option>
-        </select>
-      </div>
-
-      <div class="control-group">
-        <span class="control-label" data-i18n="constellation.vertexOutline">Vertex Outline</span>
-        <select id="vertexOutline">
-          <option value="none">None</option>
-          <option value="circle">Circle</option>
-          <option value="square">Square</option>
-        </select>
         <div class="control-row">
-          <label>Size</label>
-          <input type="range" id="outlineSize" min="0" max="24" value="12">
-          <span class="val" id="outlineSizeVal">12</span>
+          <label data-i18n="constellation.vertexShape">Vertex Shape</label>
+          <select id="vertexShape">
+            <option value="circle">Circle</option>
+            <option value="square">Square</option>
+          </select>
         </div>
         <div class="control-row">
-          <label>Width</label>
-          <input type="range" id="outlineWidth" min="1" max="8" value="2">
-          <span class="val" id="outlineWidthVal">2</span>
+          <label data-i18n="constellation.vertexOutline">Vertex Outline</label>
+          <select id="vertexOutline">
+            <option value="none">None</option>
+            <option value="circle">Circle</option>
+            <option value="square">Square</option>
+          </select>
+        </div>
+        <div class="control-row">
+          <label data-i18n="constellation.outlineSize">Outline Size</label>
+          <input type="range" id="outlineSize" min="0" max="20" value="8">
+          <span class="val" id="outlineSizeVal">8</span>
+        </div>
+        <div class="control-row">
+          <label data-i18n="constellation.outlineWidth">Outline Width</label>
+          <input type="range" id="outlineWidth" min="0.5" max="5" step="0.5" value="1.5">
+          <span class="val" id="outlineWidthVal">1.5</span>
         </div>
       </div>
 
+      <hr class="divider">
+
+      <!-- Color -->
       <div class="control-group">
         <span class="control-label" data-i18n="constellation.color">Color</span>
-        <select id="accentColor">
-          <option value="#ffffff">White</option>
-          <option value="#59ff00">Green</option>
-          <option value="#00d4ff">Cyan</option>
-          <option value="#ff4ecc">Magenta</option>
-        </select>
+        <div class="control-row">
+          <label>Accent</label>
+          <input type="color" id="accentColor" value="#59ff00">
+        </div>
       </div>
 
+      <!-- Options -->
       <div class="control-group">
         <span class="control-label" data-i18n="constellation.options">Options</span>
         <div class="toggle-row">
-          <label>Lines</label>
-          <div class="toggle on" id="showLinesToggle"></div>
+          <label data-i18n="constellation.showLines">Show Lines</label>
+          <div class="toggle" id="showLinesToggle"></div>
         </div>
         <div class="toggle-row">
-          <label>Stars</label>
-          <div class="toggle on" id="showStarsToggle"></div>
+          <label data-i18n="constellation.showStars">Show Stars</label>
+          <div class="toggle" id="showStarsToggle"></div>
         </div>
         <div class="toggle-row">
           <label data-i18n="constellation.highContrast">High Contrast</label>
           <div class="toggle" id="contrastToggle"></div>
         </div>
       </div>
+
     </div>
 
     <div class="status-bar" id="statusBar" data-i18n="constellation.statusNoImage">◈ No image loaded</div>
+
     <div class="action-btns">
-      <button class="btn btn-primary" id="applyBtn" data-i18n="constellation.applyBtn">◈ Apply Overlay</button>
-      <button class="btn btn-outline" id="randomBtn" data-i18n="constellation.randomBtn">◈ Randomize</button>
-      <button class="btn btn-outline" id="resetBtn" data-i18n="constellation.resetBtn">Reset</button>
-      <button class="btn btn-outline" id="sendToFlyerBtn" style="width:100%">→ Continue in Flyer Forge</button>
-      <button class="btn btn-outline" id="exportBtn" data-i18n="constellation.exportBtn">Export PNG</button>
+      <button class="btn btn-primary" id="applyBtn" style="width:100%" data-i18n="constellation.applyBtn">◈ Apply Overlay</button>
+      <button class="btn btn-outline" id="randomBtn" style="width:100%" data-i18n="constellation.randomBtn">◈ Randomize</button>
+      <button class="btn btn-outline" id="resetBtn" style="width:100%" data-i18n="constellation.resetBtn">Reset</button>
+      <button class="btn btn-outline" id="sendToFlyerBtn" style="width:100%" data-i18n="constellation.continueBtn">→ Continue in Flyer Forge</button>
+      <button class="btn btn-outline" id="exportBtn" style="width:100%" data-i18n="constellation.exportBtn">Export PNG</button>
     </div>
   </div>
 
-    <div class="tool-canvas-area" id="canvasArea">
+  <!-- ── CANVAS ── -->
+  <div class="tool-canvas-area" id="canvasArea">
     <div class="file-upload" id="dropZone">
       <span class="icon">✦</span>
       <span data-i18n="constellation.fileDrop">Click or drop an image here</span>
       <input type="file" id="fileInput" accept="image/*">
     </div>
     <canvas id="mainCanvas"></canvas>
-    <div class="canvas-info" id="canvasInfo" data-i18n="constellation.canvasInfoNoImage">No image loaded</div>
+    <div class="canvas-info" id="canvasInfo">No image loaded</div>
   </div>
-</div>
-<script src="../../js/i18n.js"></script>
 
+</div>
+
+<script src="../../js/i18n.js"></script>
 <script>
+// Este listener se asegura de que todo el código se ejecute después de que la página haya cargado.
+document.addEventListener('DOMContentLoaded', () => {
 let img = null;
 let origImageData = null;
 let canvas = document.getElementById('mainCanvas');
@@ -184,40 +204,26 @@ let renderScheduled = false;
 let cropRect = null;
 let cachedColorRGB = null;
 
-const WORKFLOW_STORAGE_KEY = 'pudrus_workflow_image';
+function updateControlStates() {
+    const linesOn = document.getElementById('showLinesToggle').classList.contains('on');
+    const starsOn = document.getElementById('showStarsToggle').classList.contains('on');
+    const outlineOn = document.getElementById('vertexOutline').value !== 'none';
+    const mode = document.getElementById('modeSelect').value;
 
-// --- WORKFLOW ──────────────────────────────────────────
-function sendTo(toolUrl, canvasElement) {
-    if (!canvasElement) {
-        console.error('Workflow Error: Canvas element not provided.');
-        return;
-    }
+    ['lineOpacity', 'lineSpread'].forEach(id => {
+        document.getElementById(id).disabled = !linesOn || mode === 'map';
+        document.getElementById(id).closest('.control-row').style.opacity = (!linesOn || mode === 'map') ? 0.5 : 1;
+    });
 
-    let exportCanvas = document.createElement('canvas');
-    let exportCtx = exportCanvas.getContext('2d');
+    ['starSize', 'starGlow', 'vertexShape', 'vertexOutline'].forEach(id => {
+        document.getElementById(id).disabled = !starsOn;
+        document.getElementById(id).closest('.control-group').style.opacity = !starsOn ? 0.5 : 1;
+    });
 
-    let sx = cropRect ? cropRect.x : 0;
-    let sy = cropRect ? cropRect.y : 0;
-    let sWidth = cropRect ? cropRect.w : canvasElement.width;
-    let sHeight = cropRect ? cropRect.h : canvasElement.height;
-
-    exportCanvas.width = sWidth;
-    exportCanvas.height = sHeight;
-
-    exportCtx.drawImage(canvasElement, sx, sy, sWidth, sHeight, 0, 0, sWidth, sHeight);
-
-    const dataUrl = exportCanvas.toDataURL('image/png');
-    sessionStorage.setItem(WORKFLOW_STORAGE_KEY, dataUrl);
-    window.location.href = `../${toolUrl}/index.html`;
-}
-
-function receiveImage() {
-    const dataUrl = sessionStorage.getItem(WORKFLOW_STORAGE_KEY);
-    if (dataUrl) {
-        sessionStorage.removeItem(WORKFLOW_STORAGE_KEY);
-        return dataUrl;
-    }
-    return null;
+    ['outlineSize', 'outlineWidth'].forEach(id => {
+        document.getElementById(id).disabled = !starsOn || !outlineOn;
+        document.getElementById(id).closest('.control-row').style.opacity = (!starsOn || !outlineOn) ? 0.5 : 1;
+    });
 }
 
 function updateLabel(id, value) {
@@ -228,10 +234,12 @@ function updateLabel(id, value) {
   let el = document.getElementById(id);
   el.addEventListener('input', ()=> updateLabel(val, el.value + suffix));
 });
-let cropXSlider = document.getElementById('cropOffsetX');
-cropXSlider.addEventListener('input', () => updateLabel('cropOffsetXVal', cropXSlider.value + '%'));
-let cropYSlider = document.getElementById('cropOffsetY');
-cropYSlider.addEventListener('input', () => updateLabel('cropOffsetYVal', cropYSlider.value + '%'));
+document.getElementById('cropOffsetX').addEventListener('input', (e) => {
+  updateLabel('cropOffsetXVal', e.target.value + '%'); if(origImageData) { updateCropRect(); scheduleRender(); }
+});
+document.getElementById('cropOffsetY').addEventListener('input', (e) => {
+  updateLabel('cropOffsetYVal', e.target.value + '%'); if(origImageData) { updateCropRect(); scheduleRender(); }
+});
 
 function updateLines() {
   if (!origImageData || !currentStars.length) return;
@@ -255,14 +263,14 @@ function updateStarCount() {
 
 document.getElementById('modeSelect').addEventListener('change', () => {
   currentMode = document.getElementById('modeSelect').value;
+  updateControlStates();
   updateLines();
   scheduleRender();
 });
-document.getElementById('starCount').addEventListener('input', debounce(() => {
-  updateStarCount();
-}, 16));
+document.getElementById('aspectRatio').addEventListener('change', () => { if(origImageData) { updateCropRect(); scheduleRender(); } });
+document.getElementById('starCount').addEventListener('input', debounce(updateStarCount, 16));
 document.getElementById('lineSpread').addEventListener('input', debounce(() => {
-  updateLines();
+  if (showLines) updateLines();
 }, 16));
 ['vertexShape','vertexOutline','accentColor','lineOpacity','starSize','starGlow','outlineSize','outlineWidth'].forEach(id => {
   document.getElementById(id).addEventListener('input', debounce(() => {
@@ -270,12 +278,13 @@ document.getElementById('lineSpread').addEventListener('input', debounce(() => {
   }, 16));
   document.getElementById(id).addEventListener('change', () => {
     if (id === 'accentColor') updateCachedColor();
+    if (id === 'vertexOutline') updateControlStates();
     if (currentStars.length) renderOverlay();
   });
 });
 function toggle(id, cb){ let el = document.getElementById(id); el.addEventListener('click', ()=>{ el.classList.toggle('on'); cb(el.classList.contains('on')); }); }
-toggle('showLinesToggle', v => { showLines = v; updateLines(); scheduleRender(); });
-toggle('showStarsToggle', v => { showStars = v; scheduleRender(); });
+toggle('showLinesToggle', v => { showLines = v; updateLines(); scheduleRender(); updateControlStates(); });
+toggle('showStarsToggle', v => { showStars = v; scheduleRender(); updateControlStates(); });
 toggle('contrastToggle', v => { highContrast = v; scheduleRender(); });
 
 function status(msg) { document.getElementById('statusBar').textContent = '◈ ' + msg; }
@@ -341,8 +350,9 @@ function loadFile(file) {
     origImageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
     document.getElementById('canvasInfo').textContent = img.width + ' × ' + img.height + ' px';
     document.getElementById('canvasArea').classList.add('has-image');
-    setupCrop(canvas.width, canvas.height);
-    status('Image loaded — Apply overlay to continue');
+    document.getElementById('canvasInfo').style.display = 'block';
+    setupCrop(img.width, img.height);
+    prepareOverlay();
   };
 
   if (typeof file === 'string') {
@@ -355,52 +365,50 @@ function loadFile(file) {
 }
 
 function setupCrop(W, H) {
-    const aspectRatioSelect = document.getElementById('aspectRatio');
-    const offsetXSlider = document.getElementById('cropOffsetX');
-    const offsetYSlider = document.getElementById('cropOffsetY');
-
-    function updateCropRect() {
-        const ratio = aspectRatioSelect.value;
-        if (ratio === 'free') {
-            cropRect = null;
-            offsetXSlider.disabled = true;
-            offsetYSlider.disabled = true;
-        } else {
-            offsetXSlider.disabled = false;
-            offsetYSlider.disabled = false;
-            const [w, h] = ratio.split(':').map(Number);
-            const targetRatio = w / h;
-            const currentRatio = W / H;
-            let cropW, cropH, cropX, cropY;
-            if (currentRatio > targetRatio) {
-                cropH = H;
-                cropW = H * targetRatio;
-                cropX = (W - cropW) / 2 * (1 - offsetXSlider.value / 50);
-                cropY = 0;
-            } else {
-                cropW = W;
-                cropH = W / targetRatio;
-                cropX = 0;
-                cropY = (H - cropH) / 2 * (1 - offsetYSlider.value / 50);
-            }
-            cropRect = { x: cropX, y: cropY, w: cropW, h: cropH };
-        }
-        scheduleRender(); // Redraw with crop overlay
-    }
-    aspectRatioSelect.addEventListener('change', updateCropRect);
-    offsetXSlider.addEventListener('input', updateCropRect);
-    offsetYSlider.addEventListener('input', updateCropRect);
     updateCropRect();
 }
 
-function drawCropOverlay() {
-    if (cropRect) {
-        ctx.fillStyle = 'rgba(0,0,0,0.5)';
-        ctx.fillRect(0, 0, cropRect.x, canvas.height);
-        ctx.fillRect(cropRect.x + cropRect.w, 0, canvas.width - (cropRect.x + cropRect.w), canvas.height);
-        ctx.fillRect(cropRect.x, 0, cropRect.w, cropRect.y);
-        ctx.fillRect(cropRect.x, cropRect.y + cropRect.h, cropRect.w, canvas.height - (cropRect.y + cropRect.h));
+function updateCropRect() {
+    if (!img) return;
+    const W = canvas.width, H = canvas.height;
+    const aspectRatioSelect = document.getElementById('aspectRatio');
+    const offsetXSlider = document.getElementById('cropOffsetX');
+    const offsetYSlider = document.getElementById('cropOffsetY');
+    const ratio = aspectRatioSelect.value;
+
+    if (ratio === 'free') {
+        cropRect = null;
+        offsetXSlider.disabled = true;
+        offsetYSlider.disabled = true;
+    } else {
+        offsetXSlider.disabled = false;
+        offsetYSlider.disabled = false;
+        const [w, h] = ratio.split(':').map(Number);
+        const targetRatio = w / h;
+        const currentRatio = W / H;
+        let cropW, cropH, cropX, cropY;
+        if (currentRatio > targetRatio) {
+            cropH = H;
+            cropW = H * targetRatio;
+            cropX = (W - cropW) / 2 * (1 - offsetXSlider.value / 50);
+            cropY = 0;
+        } else {
+            cropW = W;
+            cropH = W / targetRatio;
+            cropX = 0;
+            cropY = (H - cropH) / 2 * (1 - offsetYSlider.value / 50);
+        }
+        cropRect = { x: cropX, y: cropY, w: cropW, h: cropH };
     }
+}
+
+function drawCropOverlay() {
+    if (!cropRect) return;
+    ctx.fillStyle = 'rgba(0,0,0,0.5)';
+    ctx.fillRect(0, 0, cropRect.x, canvas.height);
+    ctx.fillRect(cropRect.x + cropRect.w, 0, canvas.width - (cropRect.x + cropRect.w), canvas.height);
+    ctx.fillRect(cropRect.x, 0, cropRect.w, cropRect.y);
+    ctx.fillRect(cropRect.x, cropRect.y + cropRect.h, cropRect.w, canvas.height - (cropRect.y + cropRect.h));
 }
 
 function applyContrastToImage(imageData) {
@@ -630,7 +638,6 @@ function randomize() {
 function resetTool() {
   if (!origImageData) { status('Load an image first'); return; }
   ctx.putImageData(origImageData, 0, 0);
-  document.getElementById('canvasArea').classList.remove('has-image');
   status('Reset to original image');
 }
 
@@ -643,26 +650,12 @@ function exportImage() {
   status('Exported PNG');
 }
 
-// Real-time preview with debouncing
-['starCount', 'lineOpacity', 'lineSpread', 'starSize', 'starGlow', 'outlineSize', 'outlineWidth'].forEach(id => {
-  document.getElementById(id).addEventListener('input', debounce(() => {
-    if (currentStars.length) scheduleRender();
-  }, 16));
-});
-
-['vertexShape', 'vertexOutline', 'accentColor'].forEach(id => {
-  document.getElementById(id).addEventListener('change', () => {
-    if (id === 'accentColor') updateCachedColor();
-    if (currentStars.length) renderOverlay();
-  });
-});
-
 document.getElementById('applyBtn').addEventListener('click', applyOverlay);
 document.getElementById('randomBtn').addEventListener('click', randomize);
 document.getElementById('resetBtn').addEventListener('click', resetTool);
 document.getElementById('sendToFlyerBtn').addEventListener('click', () => {
     if (!origImageData) { status('Nothing to send'); return; }
-    sendTo('flyer-forge', canvas);
+    sendTo('flyer-forge', canvas, cropRect);
 });
 
 document.getElementById('exportBtn').addEventListener('click', () => {
@@ -687,12 +680,12 @@ document.getElementById('exportBtn').addEventListener('click', () => {
   link.click();
   status('Exported PNG');
 });
-
-document.addEventListener('DOMContentLoaded', () => {
-    const incomingImageDataUrl = receiveImage();
-    if (incomingImageDataUrl) {
-        loadFile(incomingImageDataUrl);
-    }
+// Cargar imagen si viene de otra herramienta
+const incomingImageDataUrl = receiveImage();
+if (incomingImageDataUrl) {
+    loadFile(incomingImageDataUrl);
+}
+updateControlStates(); // Set initial state on load
 });
 </script>
 </body>

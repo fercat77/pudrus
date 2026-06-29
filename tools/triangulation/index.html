@@ -357,13 +357,12 @@ document.getElementById('applyBtn').addEventListener('click', applyTriangulation
 document.getElementById('resetBtn').addEventListener('click', () => {
   if (!origImageData) return;
   ctx.putImageData(origImageData, 0, 0);
-  document.getElementById('canvasArea').classList.remove('has-image');
   status('Reset to original');
 });
 
 document.getElementById('sendToFlyerBtn').addEventListener('click', () => {
     if (!origImageData) { status('Nothing to send'); return; }
-    sendTo('flyer-forge', canvas);
+    sendTo('flyer-forge', canvas, cropRect);
 });
 
 document.getElementById('exportBtn').addEventListener('click', () => {

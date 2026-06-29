@@ -314,9 +314,9 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     status('Processing...');
 
-    setTimeout(() => {
       const W = canvas.width;
       const H = canvas.height;
+
       const src = origImageData;
       const out = ctx.createImageData(W, H);
       const s = src.data;
@@ -394,22 +394,20 @@ document.addEventListener('DOMContentLoaded', () => {
       ctx.putImageData(out, 0, 0);
       drawCropOverlay();
       status('CRT effects applied!');
-    }, 0);
   }
 
-  document.getElementById('applyBtn').addEventListener('click', applyCrtEffects);
+  document.getElementById('applyBtn').addEventListener('click', scheduleRender);
 
   document.getElementById('resetBtn').addEventListener('click', () => {
     if (origImageData) {
       ctx.putImageData(origImageData, 0, 0);
-      document.getElementById('canvasArea').classList.remove('has-image');
       status('Image reset.');
     }
   });
 
   document.getElementById('sendToFlyerBtn').addEventListener('click', () => {
       if (!origImageData) { status('Nothing to send'); return; }
-      sendTo('flyer-forge', canvas);
+      sendTo('flyer-forge', canvas, cropRect);
   });
 
   document.getElementById('exportBtn').addEventListener('click', () => {

@@ -81,7 +81,7 @@
   <!-- ── CANVAS (WebGL) ── -->
   <div class="tool-canvas-area" id="canvasArea">
     <canvas id="mainCanvas"></canvas>
-    <video id="videoSource" playsinline autoplay style="display:none;"></video>
+    <video id="videoSource" playsinline autoplay></video>
     <div class="canvas-info" id="canvasInfo">No source</div>
   </div>
 
@@ -221,10 +221,14 @@ document.addEventListener('DOMContentLoaded', () => {
   gl.bindBuffer(gl.ARRAY_BUFFER, texCoordBuffer);
   gl.vertexAttribPointer(texAttr, 2, gl.FLOAT, false, 0, 0);
 
+  const resolutionUniform = gl.getUniformLocation(program, 'u_resolution');
   const timeUniform = gl.getUniformLocation(program, 'u_time');
   const aberrationUniform = gl.getUniformLocation(program, 'u_aberration');
   const noiseUniform = gl.getUniformLocation(program, 'u_noise');
   const scanlineUniform = gl.getUniformLocation(program, 'u_scanlineIntensity');
+  const curvatureUniform = gl.getUniformLocation(program, 'u_curvature');
+  const vignetteUniform = gl.getUniformLocation(program, 'u_vignette');
+  const blockGlitchUniform = gl.getUniformLocation(program, 'u_blockGlitch');
 
   // --- Texture for Video ---
   const texture = gl.createTexture();
@@ -242,9 +246,10 @@ document.addEventListener('DOMContentLoaded', () => {
       if (!videoPlaying) {
         canvas.width = video.videoWidth;
         canvas.height = video.videoHeight;
-        gl.viewport(0, 0, gl.canvas.width, gl.canvas.height);
+        gl.viewport(0, 0, canvas.width, canvas.height);
         statusBar.textContent = '◈ Camera Active'; // i18n needed
         document.getElementById('canvasInfo').textContent = `${video.videoWidth}x${video.videoHeight}`;
+        document.getElementById('canvasArea').classList.add('has-image');
         videoPlaying = true;
       }
 
