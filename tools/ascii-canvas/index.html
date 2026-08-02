@@ -136,6 +136,7 @@
 </div>
 
 <script src="../../js/i18n.js"></script>
+<script src="../../js/utils.js"></script>
 <script>
 document.addEventListener('DOMContentLoaded', () => {
   // Configuration & State
@@ -177,25 +178,27 @@ document.addEventListener('DOMContentLoaded', () => {
     if (file) loadImage(file);
   });
 
-  function loadImage(file) {
-    const img = new Image();
-    img.onload = () => {
-      imageData = { img, width: img.width, height: img.height };
+  async function loadImage(file) {
+    try {
+      const loadedData = await loadImageFile(file, canvas, ctx, 
+        document.getElementById('canvasArea'), 
+        document.getElementById('canvasInfo'),
+        document.querySelector('.file-upload')
+      );
+      
+      imageData = { 
+        img: loadedData.img, 
+        width: loadedData.width, 
+        height: loadedData.height,
+        data: loadedData.data
+      };
       canvas.style.display = 'block';
-      canvasInfo.textContent = img.width + ' × ' + img.height + ' px';
-      document.getElementById('canvasArea').classList.add('has-image');
-      document.getElementById('canvasInfo').style.display = 'block';
       setupCrop(imageData.width, imageData.height);
       updateStatus('Image loaded. Adjust settings or click Apply.');
       renderPreview();
-    };
-
-    if (typeof file === 'string') {
-        img.src = file; // It's already a data URL
-    } else {
-      const reader = new FileReader();
-      reader.onload = e => { img.src = e.target.result; };
-      reader.readAsDataURL(file);
+    } catch (error) {
+      updateStatus('Error loading image');
+      console.error(error);
     }
   }
 
@@ -206,8 +209,6 @@ document.addEventListener('DOMContentLoaded', () => {
   // Render ASCII
   function renderPreview() {
     if (!imageData) return;
-
-    updateCropRect(); // Ensure cropRect is up-to-date
 
     const charSize = parseInt(document.getElementById('charSize').value);
     const lineSpacing = parseFloat(document.getElementById('lineSpacing').value);
@@ -236,6 +237,7 @@ document.addEventListener('DOMContentLoaded', () => {
       width = Math.round(height * lineSpacing / imgAspectRatio);
     }
 
+    // Always resize canvas to ensure crop changes are applied
     canvas.width = width * charSize;
     canvas.height = height * charSize * lineSpacing;
     
@@ -344,41 +346,51 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   function setupCrop(W, H) {
-      updateCropRect();
-  }
-
-  function updateCropRect() {
-      if (!imageData) return;
-      const W = imageData.width, H = imageData.height;
       const aspectRatioSelect = document.getElementById('aspectRatio');
       const offsetXSlider = document.getElementById('cropOffsetX');
       const offsetYSlider = document.getElementById('cropOffsetY');
-      const ratio = aspectRatioSelect.value;
 
-      if (ratio === 'free') {
-          cropRect = null;
-          offsetXSlider.disabled = true;
-          offsetYSlider.disabled = true;
-      } else {
-          offsetXSlider.disabled = false;
-          offsetYSlider.disabled = false;
-          const [w, h] = ratio.split(':').map(Number);
-          const targetRatio = w / h;
-          const currentRatio = W / H;
-          let cropW, cropH, cropX, cropY;
-          if (currentRatio > targetRatio) {
-              cropH = H;
-              cropW = H * targetRatio;
-              cropX = (W - cropW) / 2 * (1 - offsetXSlider.value / 50);
-              cropY = 0;
+      function updateCropRect() {
+          const ratio = aspectRatioSelect.value;
+          if (ratio === 'free') {
+              cropRect = null;
+              offsetXSlider.disabled = true;
+              offsetYSlider.disabled = true;
           } else {
-              cropW = W;
-              cropH = W / targetRatio;
-              cropX = 0;
-              cropY = (H - cropH) / 2 * (1 - offsetYSlider.value / 50);
+              offsetXSlider.disabled = false;
+              offsetYSlider.disabled = false;
+              const [w, h] = ratio.split(':').map(Number);
+              const targetRatio = w / h;
+              const currentRatio = W / H;
+              let cropW, cropH, cropX, cropY;
+              if (currentRatio > targetRatio) {
+                  cropH = H;
+                  cropW = H * targetRatio;
+                  cropX = (W - cropW) / 2 * (1 + offsetXSlider.value / 50);
+                  cropY = 0;
+              } else {
+                  cropW = W;
+                  cropH = W / targetRatio;
+                  cropX = 0;
+                  cropY = (H - cropH) / 2 * (1 + offsetYSlider.value / 50);
+              }
+              cropRect = { x: cropX, y: cropY, w: cropW, h: cropH };
           }
-          cropRect = { x: cropX, y: cropY, w: cropW, h: cropH };
+          if (imageData) renderPreview();
       }
+      
+      aspectRatioSelect.addEventListener('change', updateCropRect);
+      offsetXSlider.addEventListener('input', () => {
+        document.getElementById('cropOffsetXVal').textContent = offsetXSlider.value + '%';
+        updateCropRect();
+      });
+      offsetYSlider.addEventListener('input', () => {
+        document.getElementById('cropOffsetYVal').textContent = offsetYSlider.value + '%';
+        updateCropRect();
+      });
+      
+      // Initial calculation
+      updateCropRect();
   }
 
   document.getElementById('randomizeBtn').addEventListener('click', () => {
@@ -396,7 +408,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   document.getElementById('sendToFlyerBtn').addEventListener('click', () => {
     if (!imageData) { updateStatus('Please load an image first.'); return; }
-    sendTo('flyer-forge', canvas);
+    sendTo('flyer-forge', canvas, cropRect);
   });
 
   document.getElementById('downloadBtn').addEventListener('click', () => {
@@ -404,28 +416,8 @@ document.addEventListener('DOMContentLoaded', () => {
       updateStatus('Please load an image first.');
       return;
     }
-
-    const exportCanvas = document.createElement('canvas');
-    exportCanvas.width = canvas.width;
-    exportCanvas.height = canvas.height;
-    const exportCtx = exportCanvas.getContext('2d');
-    exportCtx.drawImage(canvas, 0, 0);
-
-    const link = document.createElement('a');
-    link.href = exportCanvas.toDataURL('image/png');
-    link.download = `ascii-canvas-${Date.now()}.png`;
-    link.click();
+    exportToPNG(canvas, cropRect, 'ascii-canvas');
     updateStatus('Downloaded!');
-  });
-
-  document.getElementById('aspectRatio').addEventListener('change', () => { if(imageData) { updateCropRect(); renderPreview(); }});
-  document.getElementById('cropOffsetX').addEventListener('input', (e) => {
-    updateLabel('cropOffsetXVal', e.target.value + '%');
-    if(imageData) { updateCropRect(); renderPreview(); }
-  });
-  document.getElementById('cropOffsetY').addEventListener('input', (e) => {
-    updateLabel('cropOffsetYVal', e.target.value + '%');
-    if(imageData) { updateCropRect(); renderPreview(); }
   });
 
   function updateStatus(msg) {

@@ -166,6 +166,7 @@
 </div>
 
 <script src="../../js/i18n.js"></script>
+<script src="../../js/utils.js"></script>
 <script>
 // Este listener se asegura de que todo el código se ejecute después de que la página haya cargado.
 document.addEventListener('DOMContentLoaded', () => {
@@ -224,74 +225,70 @@ dropZone.addEventListener('drop', e => {
 fileInput.addEventListener('change', () => {
   if (fileInput.files[0]) loadFile(fileInput.files[0]);
 });
-function loadFile(file) {
-  img = new Image();
-  img.onload = () => {
-    // Fit canvas to area
-    const area = document.getElementById('canvasArea');
-    const maxW = area.clientWidth > 0 ? area.clientWidth - 40 : 400;
-    const maxH = area.clientHeight > 0 ? area.clientHeight - 40 : 300;
-    const scale = Math.min(maxW / img.width, maxH / img.height, 1);
-    canvas.width  = img.width;
-    canvas.height = img.height;
-    canvas.style.width  = `${img.width * scale}px`;
-    canvas.style.height = `${img.height * scale}px`;
-    ctx.drawImage(img, 0, 0);
-    origImageData    = ctx.getImageData(0, 0, canvas.width, canvas.height);
-    document.getElementById('canvasInfo').textContent =
-      img.width + ' × ' + img.height + ' px';
-    document.getElementById('canvasArea').classList.add('has-image');
-    document.getElementById('canvasInfo').style.display = 'block';
+async function loadFile(file) {
+  try {
+    const imageData = await loadImageFile(file, canvas, ctx, 
+      document.getElementById('canvasArea'), 
+      document.getElementById('canvasInfo'),
+      document.querySelector('.file-upload')
+    );
+    
+    img = imageData.img;
+    origImageData = imageData.data;
     setupCrop(canvas.width, canvas.height);
-  };
-
-  if (typeof file === 'string') {
-      img.src = file; // It's already a data URL
-  } else {
-    const reader = new FileReader();
-    reader.onload = e => { img.src = e.target.result; };
-    reader.readAsDataURL(file);
+    // Draw initial crop overlay
+    drawCropOverlay(ctx, canvas, cropRect);
+    status('Image loaded. Adjust parameters or click Apply Sort.');
+  } catch (error) {
+    status('Error loading image');
+    console.error(error);
   }
 }
 
 function setupCrop(W, H) {
-    updateCropRect();
-    drawCropOverlay(); // Draw the initial state (original image with crop overlay)
-    status('Image loaded. Adjust parameters or click Apply Sort.');
-}
-
-function updateCropRect() {
-    if (!img) return; // Don't run if there's no image
-    const W = canvas.width, H = canvas.height;
     const aspectRatioSelect = document.getElementById('aspectRatio');
     const offsetXSlider = document.getElementById('cropOffsetX');
     const offsetYSlider = document.getElementById('cropOffsetY');
-    const ratio = aspectRatioSelect.value;
 
-    if (ratio === 'free') {
-        cropRect = null;
-        offsetXSlider.disabled = true;
-        offsetYSlider.disabled = true;
-    } else {
-        offsetXSlider.disabled = false;
-        offsetYSlider.disabled = false;
-        const [w, h] = ratio.split(':').map(Number);
-        const targetRatio = w / h;
-        const currentRatio = W / H;
-        let cropW, cropH, cropX, cropY;
-        if (currentRatio > targetRatio) {
-            cropH = H;
-            cropW = H * targetRatio;
-            cropX = (W - cropW) / 2 * (1 - offsetXSlider.value / 50);
-            cropY = 0;
+    function updateCropRect() {
+        const ratio = aspectRatioSelect.value;
+        if (ratio === 'free') {
+            cropRect = null;
+            offsetXSlider.disabled = true;
+            offsetYSlider.disabled = true;
         } else {
-            cropW = W;
-            cropH = W / targetRatio;
-            cropX = 0;
-            cropY = (H - cropH) / 2 * (1 - offsetYSlider.value / 50);
+            offsetXSlider.disabled = false;
+            offsetYSlider.disabled = false;
+            const [w, h] = ratio.split(':').map(Number);
+            const targetRatio = w / h;
+            const currentRatio = W / H;
+            let cropW, cropH, cropX, cropY;
+            if (currentRatio > targetRatio) {
+                cropH = H;
+                cropW = H * targetRatio;
+                cropX = (W - cropW) / 2 * (1 + offsetXSlider.value / 50);
+                cropY = 0;
+            } else {
+                cropW = W;
+                cropH = W / targetRatio;
+                cropX = 0;
+                cropY = (H - cropH) / 2 * (1 + offsetYSlider.value / 50);
+            }
+            cropRect = { x: cropX, y: cropY, w: cropW, h: cropH };
         }
-        cropRect = { x: cropX, y: cropY, w: cropW, h: cropH };
+        // Redraw original image with new crop overlay
+        if (origImageData) {
+            ctx.putImageData(origImageData, 0, 0);
+            drawCropOverlay(ctx, canvas, cropRect);
+        }
     }
+    
+    aspectRatioSelect.addEventListener('change', updateCropRect);
+    offsetXSlider.addEventListener('input', updateCropRect);
+    offsetYSlider.addEventListener('input', updateCropRect);
+    
+    // Initial calculation
+    updateCropRect();
 }
 
 // ── PIXEL SORT ────────────────────────────────────────
@@ -373,20 +370,10 @@ function applySort() {
     }
 
     ctx.putImageData(src, 0, 0);
-    drawCropOverlay();
+    drawCropOverlay(ctx, canvas, cropRect);
     status('Done — ' + W + '×' + H + ' px');
 }
 
-function drawCropOverlay() {
-    if (!origImageData) return;
-    if (cropRect) {
-        ctx.fillStyle = 'rgba(0,0,0,0.5)';
-        ctx.fillRect(0, 0, cropRect.x, canvas.height);
-        ctx.fillRect(cropRect.x + cropRect.w, 0, canvas.width - (cropRect.x + cropRect.w), canvas.height);
-        ctx.fillRect(cropRect.x, 0, cropRect.w, cropRect.y);
-        ctx.fillRect(cropRect.x, cropRect.y + cropRect.h, cropRect.w, canvas.height - (cropRect.y + cropRect.h));
-    }
-}
 
 function sortLine(data, W, H, lineIdx, sortBy, tMin, tMax, iMin, iMax, rnd, axis) {
   let len = axis==='h' ? W : H;
@@ -435,12 +422,11 @@ function sortLine(data, W, H, lineIdx, sortBy, tMin, tMax, iMin, iMax, rnd, axis
 }
 
 // ── REAL-TIME PREVIEW ─────────────────────────────────
-const realTimeControls = ['direction', 'sortBy', 'threshMin', 'threshMax', 'intervalMin', 'intervalMax', 'coverage', 'randomness', 'aspectRatio', 'cropOffsetX', 'cropOffsetY'];
+const realTimeControls = ['direction', 'sortBy', 'threshMin', 'threshMax', 'intervalMin', 'intervalMax', 'coverage', 'randomness'];
 realTimeControls.forEach(id => {
     const el = document.getElementById(id);
     const eventType = el.tagName === 'SELECT' ? 'change' : 'input';
     el.addEventListener(eventType, () => {
-        updateCropRect(); // Update crop dimensions if needed
         scheduleRender(); // Then render
     });
 });
@@ -489,25 +475,7 @@ document.getElementById('sendToFlyerBtn').addEventListener('click', () => {
 // ── EXPORT WITH QUALITY & ASPECT RATIO ────────────────
 document.getElementById('exportBtn').addEventListener('click', () => {
   if (!origImageData) { status('Nothing to export'); return; }
-
-  const exportCanvas = document.createElement('canvas');
-  const exportCtx = exportCanvas.getContext('2d');
-
-  let sx = cropRect ? Math.round(cropRect.x) : 0;
-  let sy = cropRect ? Math.round(cropRect.y) : 0;
-  let sWidth = cropRect ? cropRect.w : canvas.width;
-  let sHeight = cropRect ? cropRect.h : canvas.height;
-
-  exportCanvas.width = sWidth;
-  exportCanvas.height = sHeight;
-
-  // Draw the final sorted image data onto the export canvas
-  exportCtx.drawImage(canvas, sx, sy, sWidth, sHeight, 0, 0, sWidth, sHeight);
-
-  const link = document.createElement('a');
-  link.download = 'pudrus_pixelsort_' + Date.now() + '.png';
-  link.href = exportCanvas.toDataURL('image/png');
-  link.click();
+  exportToPNG(canvas, cropRect, 'pudrus_pixelsort');
   status('Exported!');
 });
 // Cargar imagen si viene de otra herramienta

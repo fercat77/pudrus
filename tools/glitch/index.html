@@ -178,6 +178,7 @@
 </div>
 
 <script src="../../js/i18n.js"></script>
+<script src="../../js/utils.js"></script>
 <script>
 // Este listener se asegura de que todo el código se ejecute después de que la página haya cargado.
 document.addEventListener('DOMContentLoaded', () => {
@@ -229,28 +230,21 @@ dropZone.addEventListener('dragleave', () => { dropZone.style.outline = 'none'; 
 dropZone.addEventListener('drop',e=>{e.preventDefault(); dropZone.style.outline = 'none'; let f=e.dataTransfer.files[0];if(f)loadFile(f);});
 fileInput.addEventListener('change',()=>{if(fileInput.files[0])loadFile(fileInput.files[0]);});
 
-function loadFile(file){
-  let img=new Image();
-  img.onload=()=>{
-    let area=document.getElementById('canvasArea');
-    let scale=Math.min((area.clientWidth-40)/img.width,(area.clientHeight-40)/img.height,1);
-    canvas.width=img.width; canvas.height=img.height;
-    canvas.style.width=(img.width*scale)+'px'; canvas.style.height=(img.height*scale)+'px';
-    ctx.drawImage(img,0,0);
-    origImageData=ctx.getImageData(0,0,canvas.width,canvas.height);
-    document.getElementById('canvasInfo').textContent=img.width+' × '+img.height+' px';
-    document.getElementById('canvasArea').classList.add('has-image');
-    document.getElementById('canvasInfo').style.display = 'block';
+async function loadFile(file){
+  try {
+    const imageData = await loadImageFile(file, canvas, ctx, 
+      document.getElementById('canvasArea'), 
+      document.getElementById('canvasInfo'),
+      document.querySelector('.file-upload')
+    );
+    
+    img = imageData.img;
+    origImageData = imageData.data;
     setupCrop(canvas.width, canvas.height);
     status('Image loaded');
-  };
-
-  if (typeof file === 'string') {
-      img.src = file; // It's already a data URL
-  } else {
-    const reader = new FileReader();
-    reader.onload = e => { img.src = e.target.result; };
-    reader.readAsDataURL(file);
+  } catch (error) {
+    status('Error loading image');
+    console.error(error);
   }
 }
 
@@ -275,13 +269,13 @@ function setupCrop(W, H) {
             if (currentRatio > targetRatio) {
                 cropH = H;
                 cropW = H * targetRatio;
-                cropX = (W - cropW) / 2 * (1 - offsetXSlider.value / 50);
+                cropX = (W - cropW) / 2 * (1 + offsetXSlider.value / 50);
                 cropY = 0;
             } else {
                 cropW = W;
                 cropH = W / targetRatio;
                 cropX = 0;
-                cropY = (H - cropH) / 2 * (1 - offsetYSlider.value / 50);
+                cropY = (H - cropH) / 2 * (1 + offsetYSlider.value / 50);
             }
             cropRect = { x: cropX, y: cropY, w: cropW, h: cropH };
         }
@@ -443,24 +437,7 @@ document.getElementById('sendToFlyerBtn').addEventListener('click', () => {
 
 document.getElementById('exportBtn').addEventListener('click',()=>{
   if(!origImageData){status('Nothing to export');return;}
-
-  let exportCanvas=document.createElement('canvas');
-  let exportCtx=exportCanvas.getContext('2d');
-
-  let sx = cropRect ? cropRect.x : 0;
-  let sy = cropRect ? cropRect.y : 0;
-  let sWidth = cropRect ? cropRect.w : canvas.width;
-  let sHeight = cropRect ? cropRect.h : canvas.height;
-
-  exportCanvas.width = sWidth;
-  exportCanvas.height = sHeight;
-
-  exportCtx.drawImage(canvas, sx, sy, sWidth, sHeight, 0, 0, sWidth, sHeight);
-
-  let a=document.createElement('a');
-  a.download='pudrus_glitch_'+Date.now()+'.png';
-  a.href=exportCanvas.toDataURL();
-  a.click();
+  exportToPNG(canvas, cropRect, 'pudrus_glitch');
   status('Exported!');
 });
 // Cargar imagen si viene de otra herramienta

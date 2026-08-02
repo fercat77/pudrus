@@ -119,40 +119,6 @@ let canvas = document.getElementById('mainCanvas');
 let ctx = canvas.getContext('2d');
 let cropRect = null;
 
-const WORKFLOW_STORAGE_KEY = 'pudrus_workflow_image';
-
-// --- WORKFLOW ──────────────────────────────────────────
-function sendTo(toolUrl, canvasElement) {
-    if (!canvasElement) {
-        console.error('Workflow Error: Canvas element not provided.');
-        return;
-    }
-    let exportCanvas = document.createElement('canvas');
-    let exportCtx = exportCanvas.getContext('2d');
-
-    let sx = cropRect ? cropRect.x : 0;
-    let sy = cropRect ? cropRect.y : 0;
-    let sWidth = cropRect ? cropRect.w : canvasElement.width;
-    let sHeight = cropRect ? cropRect.h : canvasElement.height;
-
-    exportCanvas.width = sWidth;
-    exportCanvas.height = sHeight;
-
-    exportCtx.drawImage(canvasElement, sx, sy, sWidth, sHeight, 0, 0, sWidth, sHeight);
-    const dataUrl = exportCanvas.toDataURL('image/png');
-    sessionStorage.setItem(WORKFLOW_STORAGE_KEY, dataUrl);
-    window.location.href = `../${toolUrl}/index.html`;
-}
-
-function receiveImage() {
-    const dataUrl = sessionStorage.getItem(WORKFLOW_STORAGE_KEY);
-    if (dataUrl) {
-        sessionStorage.removeItem(WORKFLOW_STORAGE_KEY);
-        return dataUrl;
-    }
-    return null;
-}
-
 // UI Helpers
 function slider(id, valId, suffix='') {
   let el = document.getElementById(id);
@@ -237,13 +203,13 @@ function setupCrop(W, H) {
             if (currentRatio > targetRatio) {
                 cropH = H;
                 cropW = H * targetRatio;
-                cropX = (W - cropW) / 2 * (1 - offsetXSlider.value / 50);
+                cropX = (W - cropW) / 2 * (1 + offsetXSlider.value / 50);
                 cropY = 0;
             } else {
                 cropW = W;
                 cropH = W / targetRatio;
                 cropX = 0;
-                cropY = (H - cropH) / 2 * (1 - offsetYSlider.value / 50);
+                cropY = (H - cropH) / 2 * (1 + offsetYSlider.value / 50);
             }
             cropRect = { x: cropX, y: cropY, w: cropW, h: cropH };
         }

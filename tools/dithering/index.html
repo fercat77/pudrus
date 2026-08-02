@@ -150,10 +150,11 @@
 </div>
 
 <script src="../../js/i18n.js"></script>
+<script src="../../js/utils.js"></script>
 <script>
-// Este listener se asegura de que todo el código se ejecute después de que la página haya cargado.
+// Este listener se asegura de que todo el código se ejecute después de que que la página haya cargado.
 document.addEventListener('DOMContentLoaded', () => {
-let origImageData=null, canvas=document.getElementById('mainCanvas'), ctx=canvas.getContext('2d');
+let origImageData=null, img=null, canvas=document.getElementById('mainCanvas'), ctx=canvas.getContext('2d');
 let isInvert=false, doGray=true;
 let cropRect = null;
 
@@ -188,78 +189,69 @@ dropZone.addEventListener('dragleave',e=>{e.preventDefault(); dropZone.style.bor
 dropZone.addEventListener('drop',e=>{e.preventDefault(); dropZone.style.borderColor=''; let f=e.dataTransfer.files[0];if(f)loadFile(f);});
 fileInput.addEventListener('change',()=>{if(fileInput.files[0])loadFile(fileInput.files[0]);});
 
-function loadFile(file){
-  let img=new Image();
-  img.onload=()=>{
-    let area=document.getElementById('canvasArea');
-    let scale=Math.min((area.clientWidth-40)/img.width,(area.clientHeight-40)/img.height,1);
-    canvas.width=img.width; canvas.height=img.height;
-    canvas.style.width=(img.width*scale)+'px'; canvas.style.height=(img.height*scale)+'px';
-    ctx.drawImage(img,0,0);
-    origImageData=ctx.getImageData(0,0,canvas.width,canvas.height);
-    document.getElementById('canvasInfo').textContent=img.width+' × '+img.height+' px';
-    document.getElementById('canvasArea').classList.add('has-image');
-    document.getElementById('canvasInfo').style.display = 'block';
+async function loadFile(file){
+  try {
+    const imageData = await loadImageFile(file, canvas, ctx, 
+      document.getElementById('canvasArea'), 
+      document.getElementById('canvasInfo'),
+      document.querySelector('.file-upload')
+    );
+    
+    img = imageData.img;
+    origImageData = imageData.data;
     setupCrop(canvas.width, canvas.height);
-    drawCropOverlay(); // Draw initial crop overlay over the original image
     status('Image loaded');
-  };
-
-  if (typeof file === 'string') {
-      img.src = file; // It's already a data URL
-  } else {
-    const reader = new FileReader();
-    reader.onload = e => { img.src = e.target.result; };
-    reader.readAsDataURL(file);
+  } catch (error) {
+    status('Error loading image');
+    console.error(error);
   }
 }
 function setupCrop(W, H) {
-    updateCropRect();
-}
-
-function updateCropRect() {
-    if (!origImageData) return;
-    const W = canvas.width, H = canvas.height;
     const aspectRatioSelect = document.getElementById('aspectRatio');
     const offsetXSlider = document.getElementById('cropOffsetX');
     const offsetYSlider = document.getElementById('cropOffsetY');
-    const ratio = aspectRatioSelect.value;
 
-    if (ratio === 'free') {
-        cropRect = null;
-        offsetXSlider.disabled = true;
-        offsetYSlider.disabled = true;
-    } else {
-        offsetXSlider.disabled = false;
-        offsetYSlider.disabled = false;
-        const [w, h] = ratio.split(':').map(Number);
-        const targetRatio = w / h;
-        const currentRatio = W / H;
-        let cropW, cropH, cropX, cropY;
-        if (currentRatio > targetRatio) {
-            cropH = H;
-            cropW = H * targetRatio;
-            cropX = (W - cropW) / 2 * (1 - offsetXSlider.value / 50);
-            cropY = 0;
+    function updateCropRect() {
+        const ratio = aspectRatioSelect.value;
+        if (ratio === 'free') {
+            cropRect = null;
+            offsetXSlider.disabled = true;
+            offsetYSlider.disabled = true;
         } else {
-            cropW = W;
-            cropH = W / targetRatio;
-            cropX = 0;
-            cropY = (H - cropH) / 2 * (1 - offsetYSlider.value / 50);
+            offsetXSlider.disabled = false;
+            offsetYSlider.disabled = false;
+            const [w, h] = ratio.split(':').map(Number);
+            const targetRatio = w / h;
+            const currentRatio = W / H;
+            let cropW, cropH, cropX, cropY;
+            if (currentRatio > targetRatio) {
+                cropH = H;
+                cropW = H * targetRatio;
+                cropX = (W - cropW) / 2 * (1 + offsetXSlider.value / 50);
+                cropY = 0;
+            } else {
+                cropW = W;
+                cropH = W / targetRatio;
+                cropX = 0;
+                cropY = (H - cropH) / 2 * (1 + offsetYSlider.value / 50);
+            }
+            cropRect = { x: cropX, y: cropY, w: cropW, h: cropH };
         }
-        cropRect = { x: cropX, y: cropY, w: cropW, h: cropH };
+        // Redraw original image with new crop overlay
+        if (origImageData) {
+            ctx.putImageData(origImageData, 0, 0);
+            drawCropOverlay(ctx, canvas, cropRect);
+        }
     }
+    
+    aspectRatioSelect.addEventListener('change', updateCropRect);
+    offsetXSlider.addEventListener('input', updateCropRect);
+    offsetYSlider.addEventListener('input', updateCropRect);
+    
+    // Initial calculation
+    updateCropRect();
 }
 
-function drawCropOverlay() {
-    if (cropRect) {
-        ctx.fillStyle = 'rgba(0,0,0,0.5)';
-        ctx.fillRect(0, 0, cropRect.x, canvas.height);
-        ctx.fillRect(cropRect.x + cropRect.w, 0, canvas.width - (cropRect.x + cropRect.w), canvas.height);
-        ctx.fillRect(cropRect.x, 0, cropRect.w, cropRect.y);
-        ctx.fillRect(cropRect.x, cropRect.y + cropRect.h, cropRect.w, canvas.height - (cropRect.y + cropRect.h));
-    }
-}
 
 // Helpers
 function hexToRgb(hex){let r=parseInt(hex.slice(1,3),16),g=parseInt(hex.slice(3,5),16),b=parseInt(hex.slice(5,7),16);return[r,g,b];}
@@ -291,6 +283,7 @@ function applyDither(){
   if(!origImageData){status('Load an image first');return;}
   status('Processing...');
   setTimeout(()=>{
+    // Always work on the full image
     let src=new ImageData(new Uint8ClampedArray(origImageData.data),origImageData.width,origImageData.height);
     let data=src.data, W=src.width, H=src.height;
     let algo=document.getElementById('algorithm').value;
@@ -389,12 +382,14 @@ function applyDither(){
     // Escala de bloque
     if(sc>1){
       let out=new ImageData(W,H);
-      for(let y=0;y<H;y++){for(let x=0;x<W;x++){let sy=Math.floor(y/sc)*sc,sx=Math.floor(x/sc)*sc;let si=(sy*W+sx)*4,di=(y*W+x)*4;out.data[di]=data[si];out.data[di+1]=data[si+1];out.data[di+2]=data[si+2];out.data[di+3]=255;}}
+      for(let y=0;y<H;y++){for(let x=0;x<W;x++){let sy2=Math.floor(y/sc)*sc,sx2=Math.floor(x/sc)*sc;let si=(sy2*W+sx2)*4,di=(y*W+x)*4;out.data[di]=data[si];out.data[di+1]=data[si+1];out.data[di+2]=data[si+2];out.data[di+3]=255;}}
       ctx.putImageData(out,0,0);
     } else {
       ctx.putImageData(src,0,0);
     }
-    drawCropOverlay();
+    
+    // Draw crop overlay on top
+    drawCropOverlay(ctx, canvas, cropRect);
     status('Done — '+algo);
   },10);
 }
@@ -436,37 +431,19 @@ document.getElementById('sendToFlyerBtn').addEventListener('click', () => {
 
 document.getElementById('exportBtn').addEventListener('click',()=>{
   if(!origImageData){status('Nothing to export');return;}
-
-  let exportCanvas=document.createElement('canvas');
-  let exportCtx=exportCanvas.getContext('2d');
-
-  let sx = cropRect ? cropRect.x : 0;
-  let sy = cropRect ? cropRect.y : 0;
-  let sWidth = cropRect ? cropRect.w : canvas.width;
-  let sHeight = cropRect ? cropRect.h : canvas.height;
-
-  exportCanvas.width = sWidth;
-  exportCanvas.height = sHeight;
-
-  exportCtx.drawImage(canvas, sx, sy, sWidth, sHeight, 0, 0, sWidth, sHeight);
-
-  let a=document.createElement('a');
-  a.download='pudrus_dither_'+Date.now()+'.png';
-  a.href=exportCanvas.toDataURL();
-  a.click();
+  exportToPNG(canvas, cropRect, 'pudrus_dither');
   status('Exported!');
 });
 
-// Crop Control Listeners
-document.getElementById('aspectRatio').addEventListener('change', () => { if(origImageData) { updateCropRect(); applyDither(); }});
+// Update crop slider value displays
 document.getElementById('cropOffsetX').addEventListener('input', (e) => {
   document.getElementById('cropOffsetXVal').textContent = e.target.value + '%';
-  if(origImageData) { updateCropRect(); applyDither(); }
 });
 document.getElementById('cropOffsetY').addEventListener('input', (e) => {
   document.getElementById('cropOffsetYVal').textContent = e.target.value + '%';
-  if(origImageData) { updateCropRect(); applyDither(); }
 });
+
+// Cargar imagen si viene de otra herramienta
 // Cargar imagen si viene de otra herramienta
 const incomingImageDataUrl = receiveImage();
 if (incomingImageDataUrl) {

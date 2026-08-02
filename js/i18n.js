@@ -23,6 +23,17 @@
       }
       if(el.hasAttribute('data-i18n-html')) el.innerHTML = txt; else el.textContent = txt;
     });
+    
+    // Handle placeholder translations
+    document.querySelectorAll('[data-i18n-placeholder]').forEach(el=>{
+      const key = el.getAttribute('data-i18n-placeholder');
+      const txt = key.split('.').reduce((o,k)=>o && o[k], dict);
+      if(txt !== undefined) {
+        el.setAttribute('placeholder', txt);
+      } else {
+        console.warn('Missing placeholder translation for key:', key);
+      }
+    });
   }
 
   function setSelector(code){

@@ -1,0 +1,664 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Pattern Generator — PUDRUS.XYZ</title>
+  <link rel="icon" type="image/svg+xml" href="../../favicon.svg">
+  <link rel="stylesheet" href="../../css/style.css">
+  <style>
+    .slider-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 8px;
+    }
+    .slider-row label {
+      min-width: 70px;
+      font-size: 12px;
+      color: var(--text2);
+    }
+    .slider-row input[type="range"] {
+      flex: 1;
+    }
+    .slider-row .val {
+      min-width: 45px;
+      text-align: right;
+      font-size: 11px;
+      color: var(--c1);
+      font-weight: bold;
+    }
+    .btn {
+      pointer-events: auto;
+      cursor: pointer;
+    }
+    .param-group {
+      display: none;
+    }
+    .palette-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 6px;
+    }
+    .palette-btn {
+      height: 20px;
+      border: 2px solid transparent;
+      cursor: pointer;
+      transition: border-color 0.2s;
+      display: flex;
+      border-radius: 3px;
+      overflow: hidden;
+    }
+    .palette-btn.active { border-color: var(--c1); }
+    .palette-color {
+      flex: 1;
+    }
+  </style>
+</head>
+<body>
+
+<nav>
+  <a href="../../index.html" class="nav-logo">PUDRUS<span>.xyz</span></a>
+  <ul class="nav-links">
+    <li><a href="../../index.html#tools">All Tools</a></li>
+  </ul>
+</nav>
+
+<div class="tool-layout">
+
+  <!-- ── PANEL ── -->
+  <div class="tool-panel">
+    <div class="tool-panel-header">
+      <a href="../../index.html" class="back" data-i18n="nav.tools">← Back</a>
+      <h2 data-i18n="pattern.name">◉ Generador de Patrones</h2>
+      <p data-i18n="pattern.desc">Render patrones generativos con algoritmos clásicos en tiempo real.</p>
+    </div>
+
+    <div class="tool-panel-body">
+
+      <!-- Transform -->
+      <div class="control-group">
+        <span class="control-label" data-i18n="pattern.transform">Transform</span>
+        <button class="btn btn-outline" id="rotateBtn" style="width:100%;">Rotar 90°</button>
+      </div>
+      <hr class="divider">
+      <!-- Seed -->
+      <div class="control-group">
+        <span class="control-label" data-i18n="pattern.seed">Seed</span>
+        <div class="control-row">
+          <input type="number" id="seedInput" value="12345" style="flex: 1;">
+          <button class="btn btn-outline" id="newSeedBtn" style="padding: 4px 8px;">🎲</button>
+        </div>
+      </div>
+
+      <hr class="divider">
+
+      <!-- Algorithm Selection -->
+      <div class="control-group">
+        <span class="control-label" data-i18n="pattern.algorithm">Algorithm</span>
+        <div class="algo-tabs" id="algoTabs">
+          <button class="algo-tab" data-algo="voronoi" data-i18n="pattern.voronoi">Voronoi</button>
+          <button class="algo-tab" data-algo="cellular" data-i18n="pattern.cellular">Cellular</button>
+          <button class="algo-tab" data-algo="particles" data-i18n="pattern.particles">Particles</button>
+          <button class="algo-tab active" data-algo="geometric" data-i18n="pattern.geometric">Geometric</button>
+        </div>
+      </div>
+
+      <hr class="divider">
+
+      <!-- Algorithm Parameters -->
+      <div class="control-group">
+        <span class="control-label" data-i18n="pattern.parameters">Parameters</span>
+        <div id="algoParamsContainer" style="max-height: 300px; overflow-y: auto;">
+          <div class="param-group" data-algo="voronoi">
+            <!-- Voronoi Params -->
+          </div>
+          <div class="param-group" data-algo="cellular">
+            <!-- Cellular Params -->
+          </div>
+          <div class="param-group" data-algo="particles">
+            <!-- Particles Params -->
+          </div>
+          <div class="param-group" data-algo="geometric">
+            <!-- Geometric Params -->
+          </div>
+        </div>
+      </div>
+
+      <hr class="divider">
+
+      <!-- Color Palette -->
+      <div class="control-group">
+        <span class="control-label">Color Palette</span>
+        <div id="palette-selector" class="palette-grid">
+          <!-- Palettes will be added here by JS -->
+        </div>
+      </div>
+
+      <hr class="divider">
+
+      <!-- Animation -->
+      <div class="control-group">
+        <span class="control-label" data-i18n="pattern.animation">Animation</span>
+        <div class="toggle-row">
+          <label data-i18n="pattern.animate">Animate</label>
+          <div class="toggle" id="animateToggle"></div>
+        </div>
+        <div id="animControls" style="display:none;">
+          <div class="slider-row">
+            <label data-i18n="pattern.speed">Speed</label>
+            <input type="range" id="animSpeed" min="0.1" max="5" step="0.1" value="1">
+            <span class="val" id="animSpeedVal">1x</span>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <div class="status-bar" id="statusBar" data-i18n="pattern.statusReady">◈ Ready</div>
+
+    <div class="action-btns">
+      <button class="btn btn-primary" id="renderBtn" style="width:100%" data-i18n="pattern.renderBtn">◈ Render</button>
+      <button class="btn btn-outline" id="randomBtn" style="width:100%" data-i18n="pattern.randomBtn">🎲 Randomize</button>
+      <button class="btn btn-outline" id="downloadPngBtn" style="width:100%" data-i18n="pattern.pngBtn">⬇ PNG</button>
+      <button class="btn btn-outline" id="exportAnimBtn" style="width:100%" data-i18n="pattern.animBtn">🎬 Animation</button>
+      <button class="btn btn-outline" id="sendToFlyerBtn" style="width:100%" data-i18n="pattern.continueBtn">→ Continue in Flyer Forge</button>
+    </div>
+  </div>
+
+  <!-- ── CANVAS ── -->
+  <div class="tool-canvas-area has-image" id="canvasArea">
+    <canvas id="mainCanvas" style="display: block;"></canvas>
+    <div class="canvas-info" id="canvasInfo" data-i18n="pattern.canvasInfo">◉ Pattern Generator</div>
+  </div>
+
+</div>
+
+<script src="../../js/i18n.js"></script>
+<script src="../../js/utils.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+
+    const canvas = document.getElementById('mainCanvas');
+    const ctx = canvas.getContext('2d', { willReadFrequently: true });
+    const canvasArea = document.getElementById('canvasArea');
+    const offscreenCanvas = document.createElement('canvas');
+    const offscreenCtx = offscreenCanvas.getContext('2d', { willReadFrequently: true });
+    const statusBar = document.getElementById('statusBar');
+
+    let currentAlgo = 'geometric';
+    let animating = false;
+    let animTime = 0;
+    let seed = 12345;
+    let algorithmState = {};
+    let rotation = 0;
+    let baseWidth, baseHeight;
+    let tempVoronoiCanvas = null; // Canvas for Voronoi optimization
+
+    const palettes = {
+        neon: ['#000000', '#050508', '#00662c', '#00bb16', '#59ff00'],
+        ember: ['#260C0C', '#731717', '#BF311A', '#F27405', '#F2B705'],
+        ocean: ['#022140', '#033E73', '#0468BF', '#049DD9', '#04D9D9'],
+        mono: ['#000000', '#444444', '#888888', '#CCCCCC', '#FFFFFF'],
+    };
+    let currentPalette = 'neon';
+
+
+    const params = {
+        voronoi: { sites: 40, lineWidth: 1, downscale: 4 },
+        cellular: { cellSize: 8, generations: 5, fillPercent: 35 },
+        particles: { count: 500, speed: 1.5, size: 1, turbulence: 0.01 },
+        geometric: { a: 1.4, b: 1.56, c: 1.4, d: -2.8, iterations: 50000, scale: 0.5, offsetX: 0, offsetY: 0 },
+    };
+
+    const algoSpec = {
+    voronoi: [
+        { name: 'sites', min: 10, max: 150, step: 10, i18n: 'pattern.params.sites' },
+        { name: 'lineWidth', min: 0, max: 5, step: 1, i18n: 'pattern.params.lineWidth' },
+    ],
+    cellular: [
+        { name: 'cellSize', min: 2, max: 20, step: 1, i18n: 'pattern.params.cellSize' },
+        { name: 'generations', min: 1, max: 20, step: 1, i18n: 'pattern.params.generations' },
+        { name: 'fillPercent', min: 10, max: 80, step: 5, i18n: 'pattern.params.fillPercent' },
+    ],
+    particles: [
+        { name: 'count', min: 50, max: 1500, step: 50, i18n: 'pattern.params.count' },
+        { name: 'speed', min: 0.5, max: 5, step: 0.5, i18n: 'pattern.params.speed' },
+        { name: 'size', min: 1, max: 5, step: 0.5, i18n: 'pattern.params.size' },
+        { name: 'turbulence', min: 0.001, max: 0.05, step: 0.001, i18n: 'pattern.params.turbulence' },
+    ],
+    geometric: [
+        { name: 'a', min: -3, max: 3, step: 0.02, i18n: 'pattern.params.a' },
+        { name: 'b', min: -3, max: 3, step: 0.02, i18n: 'pattern.params.b' },
+        { name: 'c', min: -3, max: 3, step: 0.02, i18n: 'pattern.params.c' },
+        { name: 'd', min: -3, max: 3, step: 0.02, i18n: 'pattern.params.d' },
+        { name: 'iterations', min: 10000, max: 200000, step: 1000, i18n: 'pattern.params.iterations' },
+        { name: 'scale', min: 0.1, max: 1.5, step: 0.05, i18n: 'pattern.params.scale' },
+        { name: 'offsetX', min: -1, max: 1, step: 0.05, i18n: 'pattern.params.offsetX' },
+        { name: 'offsetY', min: -1, max: 1, step: 0.05, i18n: 'pattern.params.offsetY' },
+    ],
+    };
+
+    function getColor(value, palette = palettes[currentPalette]) {
+        // value is normalized 0-1
+        const index = Math.floor(value * (palette.length - 1));
+        const t = (value * (palette.length - 1)) - index;
+        const color1 = palette[index];
+        const color2 = palette[index + 1] || palette[index];
+        return lerpColor(color1, color2, t);
+    }
+    // --- RENDER LOGIC ---
+    const renderFunctions = {
+        voronoi: () => {
+            const p = params.voronoi;
+            const downscale = p.downscale;
+            const w = Math.floor(offscreenCanvas.width / downscale);
+            const h = Math.floor(offscreenCanvas.height / downscale);
+
+            // Use a smaller temp canvas for calculation, create it only once
+            if (!tempVoronoiCanvas) {
+                tempVoronoiCanvas = document.createElement('canvas');
+            }
+            tempVoronoiCanvas.width = w;
+            tempVoronoiCanvas.height = h;
+            const tempCtx = tempVoronoiCanvas.getContext('2d');
+
+            if (!algorithmState.sites || algorithmState.seed !== seed) {
+                algorithmState.sites = [];
+                for (let i = 0; i < p.sites; i++) {
+                    const s = seed + i;
+                    algorithmState.sites.push({
+                        x: ((Math.sin(s * 1.2) + 1) / 2) * w,
+                        y: ((Math.cos(s * 1.7) + 1) / 2) * h,
+                    });
+                }
+                algorithmState.seed = seed;
+            }
+
+            const sites = algorithmState.sites;
+            const imageData = tempCtx.getImageData(0, 0, w, h);
+            const data = imageData.data;
+
+            for (let y = 0; y < h; y++) {
+                for (let x = 0; x < w; x++) {
+                    let minDist = Infinity, closestSite = null;
+                    for (const site of sites) {
+                        const dist = Math.hypot(site.x - x, site.y - y);
+                        if (dist < minDist) { minDist = dist; }
+                    }
+                    const idx = (y * w + x) * 4;
+                    const normalizedValue = Math.max(0, Math.min(1, minDist / (w / 3)));
+                    const color = getColor(normalizedValue);
+                    data[idx] = color[0]; data[idx+1] = color[1]; data[idx+2] = color[2];
+                    data[idx + 3] = 255;
+                }
+            }
+            tempCtx.putImageData(imageData, 0, 0);
+            offscreenCtx.fillStyle = palettes[currentPalette][0];
+            offscreenCtx.fillRect(0, 0, offscreenCanvas.width, offscreenCanvas.height);
+            offscreenCtx.imageSmoothingEnabled = false;
+            offscreenCtx.drawImage(tempVoronoiCanvas, 0, 0, offscreenCanvas.width, offscreenCanvas.height);
+        },
+        cellular: () => {
+            const p = params.cellular;
+            const cs = p.cellSize;
+            const cols = Math.ceil(offscreenCanvas.width / cs);
+            const rows = Math.ceil(offscreenCanvas.height / cs);
+            
+            if (!algorithmState.cellularGrid || algorithmState.seed !== seed) {
+                const rng = () => (Math.sin(++algorithmState.rngSeed) * 10000) % 1;
+                algorithmState.rngSeed = seed;
+                algorithmState.cellularGrid = Array(rows).fill(null).map(() => Array(cols).fill(null).map(() => rng() * 100 < p.fillPercent ? 1 : 0));
+                algorithmState.seed = seed;
+            }
+
+            let grid = algorithmState.cellularGrid;
+            for (let gen = 0; gen < p.generations; gen++) {
+                const newGrid = Array(rows).fill(null).map(() => Array(cols).fill(0));
+                for (let y = 0; y < rows; y++) {
+                    for (let x = 0; x < cols; x++) {
+                        let neighbors = 0;
+                        for (let dy = -1; dy <= 1; dy++) {
+                            for (let dx = -1; dx <= 1; dx++) {
+                                if (dy === 0 && dx === 0) continue;
+                                const ny = (y + dy + rows) % rows;
+                                const nx = (x + dx + cols) % cols;
+                                if(grid[ny] && grid[ny][nx]) neighbors += grid[ny][nx];
+                            }
+                        }
+                        if (grid[y][x] && (neighbors === 2 || neighbors === 3)) newGrid[y][x] = 1;
+                        if (!grid[y][x] && neighbors === 3) newGrid[y][x] = 1;
+                    }
+                }
+                grid = newGrid;
+            }
+            algorithmState.cellularGrid = grid;
+
+            offscreenCtx.fillStyle = palettes[currentPalette][0];
+            offscreenCtx.fillRect(0, 0, offscreenCanvas.width, offscreenCanvas.height);
+            offscreenCtx.fillStyle = palettes[currentPalette][4];
+            for (let y = 0; y < rows; y++) {
+                for (let x = 0; x < cols; x++) {
+                    if (grid[y][x]) {
+                        offscreenCtx.fillRect(x * cs, y * cs, cs, cs);
+                    }
+                }
+            }
+        },
+        particles: () => {
+            const p = params.particles;
+            if (!algorithmState.particles || algorithmState.seed !== seed) {
+                const rng = () => (Math.sin(++algorithmState.rngSeed) * 10000) % 1;
+                algorithmState.rngSeed = seed;
+                algorithmState.particles = [];
+                for (let i = 0; i < p.count; i++) {
+                    algorithmState.particles.push({
+                        x: rng() * offscreenCanvas.width, y: rng() * offscreenCanvas.height,
+                        prevX: -1, prevY: -1,
+                    });
+                }
+                algorithmState.seed = seed;
+            }
+            
+            if (animating) {
+                offscreenCtx.fillStyle = `rgba(${hexToRgb(palettes[currentPalette][0])}, 0.1)`;
+            } else {
+                offscreenCtx.fillStyle = palettes[currentPalette][0];
+            }
+            offscreenCtx.fillRect(0, 0, offscreenCanvas.width, offscreenCanvas.height);
+            
+            const particleColor = palettes[currentPalette][4];
+            offscreenCtx.fillStyle = particleColor;
+            offscreenCtx.strokeStyle = particleColor;
+            offscreenCtx.lineWidth = 0.5;
+
+            algorithmState.particles.forEach(pt => {
+                const angle = (Math.sin(pt.x * p.turbulence + seed) + Math.cos(pt.y * p.turbulence + seed)) * Math.PI;
+                const vx = Math.cos(angle) * p.speed;
+                const vy = Math.sin(angle) * p.speed;
+                
+                pt.prevX = pt.x;
+                pt.prevY = pt.y;
+                pt.x += vx;
+                pt.y += vy;
+
+                if (pt.x < 0) { pt.x = offscreenCanvas.width; pt.prevX = pt.x; }
+                if (pt.x > offscreenCanvas.width) { pt.x = 0; pt.prevX = pt.x; }
+                if (pt.y < 0) { pt.y = offscreenCanvas.height; pt.prevY = pt.y; }
+                if (pt.y > offscreenCanvas.height) { pt.y = 0; pt.prevY = pt.y; }
+
+                offscreenCtx.beginPath();
+                offscreenCtx.arc(pt.x, pt.y, p.size, 0, Math.PI * 2);
+                offscreenCtx.fill();
+            });
+        },
+        geometric: () => {
+            const p = params.geometric;
+            offscreenCtx.fillStyle = palettes[currentPalette][0];
+            offscreenCtx.fillRect(0, 0, offscreenCanvas.width, offscreenCanvas.height);
+            offscreenCtx.strokeStyle = palettes[currentPalette][4];
+            
+            const cx = offscreenCanvas.width / 2 + (p.offsetX * offscreenCanvas.width / 2);
+            const cy = offscreenCanvas.height / 2 + (p.offsetY * offscreenCanvas.height / 2);
+            const scale = Math.min(offscreenCanvas.width, offscreenCanvas.height) * p.scale;
+            let x = 0.1, y = 0.1;
+
+            offscreenCtx.fillStyle = palettes[currentPalette][4];
+
+            for (let i = 0; i < p.iterations; i++) {
+                const prevX = x;
+                const prevY = y;
+
+                x = Math.sin(p.a * prevY) - Math.cos(p.b * prevX);
+                y = Math.sin(p.c * prevX) - Math.cos(p.d * prevY);
+
+                const px = cx + x * scale / 2.5;
+                const py = cy + y * scale / 2.5;
+                offscreenCtx.fillRect(px, py, 1, 1);
+            }
+        },
+    };
+
+    function render() {
+        if (renderFunctions[currentAlgo]) {
+            // Render the pattern to the offscreen canvas
+            renderFunctions[currentAlgo]();
+
+            // Now draw the offscreen canvas to the main canvas with rotation
+            ctx.fillStyle = palettes[currentPalette][0];
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            ctx.save();
+            ctx.translate(canvas.width / 2, canvas.height / 2);
+            ctx.rotate(rotation * Math.PI / 180);
+            ctx.drawImage(offscreenCanvas, -offscreenCanvas.width / 2, -offscreenCanvas.height / 2);
+            ctx.restore();
+            drawCropOverlay(ctx, canvas, null);
+        } else {
+            ctx.fillStyle = 'red';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            ctx.fillStyle = 'white';
+            ctx.fillText(`Algorithm '${currentAlgo}' not implemented.`, 10, 20);
+        }
+    }
+
+    function animate() {
+        if (animating) {
+            const speed = parseFloat(document.getElementById('animSpeed').value || 1);
+            animTime += 0.016 * speed;
+            render();
+        }
+        requestAnimationFrame(animate);
+    }
+    // --- UI & INITIALIZATION ---
+    function initialize() {
+        // Create parameter sliders
+        Object.keys(algoSpec).forEach(algo => {
+            const container = document.querySelector(`.param-group[data-algo="${algo}"]`);
+            if (!container) return;
+            container.innerHTML = ''; // Clear previous
+            const specs = algoSpec[algo] || [];
+            specs.forEach(spec => {
+                const val = params[algo][spec.name];
+                const row = document.createElement('div');
+                row.className = 'slider-row';
+                row.innerHTML = `
+                  <label data-i18n="${spec.i18n || ''}">${spec.name}</label>
+                  <input type="range" min="${spec.min}" max="${spec.max}" step="${spec.step}" value="${val}" data-param="${spec.name}">
+                  <span class="val">${val}</span>
+                `;
+                container.appendChild(row);
+                
+                const input = row.querySelector('input');
+                const valSpan = row.querySelector('.val');
+                input.addEventListener('input', (e) => {
+                    const newValue = parseFloat(e.target.value);
+                    params[algo][spec.name] = newValue;
+                    valSpan.textContent = newValue.toFixed(spec.step < 1 ? 3 : 0);
+                    if (!animating) render();
+                });
+            });
+        });
+
+        // Build palette UI
+        const paletteContainer = document.getElementById('palette-selector');
+        Object.keys(palettes).forEach(name => {
+            const palette = palettes[name];
+            const btn = document.createElement('div');
+            btn.className = 'palette-btn';
+            if (name === currentPalette) btn.classList.add('active');
+            btn.dataset.palette = name;
+            btn.innerHTML = palette.map(color => `<div class="palette-color" style="background-color:${color}"></div>`).join('');
+            btn.addEventListener('click', () => {
+                document.querySelector('.palette-btn.active').classList.remove('active');
+                btn.classList.add('active');
+                currentPalette = name;
+                render();
+            });
+            paletteContainer.appendChild(btn);
+        });
+        // Set up event listeners
+        document.querySelectorAll('.algo-tab').forEach(tab => {
+            tab.addEventListener('click', () => {
+                document.querySelector('.algo-tab.active').classList.remove('active');
+                tab.classList.add('active');
+                currentAlgo = tab.dataset.algo;
+                updateParamsUI();
+                render();
+            });
+        });
+
+        document.getElementById('renderBtn').addEventListener('click', render);
+        document.getElementById('downloadPngBtn').addEventListener('click', () => {
+            exportToPNG(canvas, null, `pudrus_pattern_${currentAlgo}_${seed}`);
+        });
+
+        document.getElementById('seedInput').addEventListener('change', (e) => {
+            seed = parseInt(e.target.value) || 12345;
+            algorithmState = {};
+            render();
+            statusBar.textContent = `◈ Seed: ${seed}`;
+        });
+
+        document.getElementById('newSeedBtn').addEventListener('click', () => {
+            seed = Math.floor(Math.random() * 100000);
+            document.getElementById('seedInput').value = seed;
+            algorithmState = {};
+            render();
+            statusBar.textContent = `◈ Seed: ${seed}`;
+        });
+
+        document.getElementById('randomBtn').addEventListener('click', () => {
+            const specs = algoSpec[currentAlgo] || [];
+            specs.forEach(spec => {
+                const range = spec.max - spec.min;
+                let randomVal = spec.min + Math.random() * range;
+                // Snap to step
+                randomVal = Math.round(randomVal / spec.step) * spec.step;
+                params[currentAlgo][spec.name] = randomVal;
+            });
+            algorithmState = {};
+            updateAllParamUIs(); // ONLY update the UI, don't re-initialize everything
+            render();
+            statusBar.textContent = '◈ Randomized';
+        });
+
+        const animToggle = document.getElementById('animateToggle');
+        animToggle.addEventListener('click', () => {
+            animToggle.classList.toggle('on');
+            animating = animToggle.classList.contains('on');
+            document.getElementById('animControls').style.display = animating ? 'block' : 'none';
+            statusBar.textContent = animating ? '◈ Animating...' : '◈ Animation paused';
+        });
+
+        document.getElementById('animSpeed').addEventListener('input', (e) => {
+            document.getElementById('animSpeedVal').textContent = e.target.value + 'x';
+        });
+
+        document.getElementById('rotateBtn').addEventListener('click', () => {
+            rotation = (rotation + 90) % 360;
+            applyRotationToDimensions(); // This will also trigger a render
+        });
+
+        document.getElementById('exportAnimBtn').addEventListener('click', () => {
+            statusBar.textContent = '◈ Rendering animation...';
+            const frames = 60;
+            const frameData = [];
+            for (let f = 0; f < frames; f++) {
+                animTime = (f / frames) * 5; // 5 seconds animation
+                render();
+                frameData.push(canvas.toDataURL('image/png', 0.8));
+            }
+            const blob = new Blob([JSON.stringify({ frames: frameData, fps: 30 })], { type: 'application/json' });
+            const link = document.createElement('a');
+            link.download = `pudrus_anim_${currentAlgo}_${seed}.json`;
+            link.href = URL.createObjectURL(blob);
+            link.click();
+            statusBar.textContent = '◈ Animation exported (60 frames)';
+        });
+
+        document.getElementById('sendToFlyerBtn').addEventListener('click', () => {
+            sendTo('flyer-forge', canvas, null);
+            statusBar.textContent = '◈ Sent to Flyer Forge';
+        });
+
+        // Initial setup
+        resizeCanvas();
+        updateParamsUI();
+        render();
+        statusBar.textContent = `◈ Ready - Seed: ${seed}`;
+    }
+
+    function updateAllParamUIs() {
+        Object.keys(algoSpec).forEach(algo => {
+            const specs = algoSpec[algo] || [];
+            specs.forEach(spec => {
+                const input = document.querySelector(`.param-group[data-algo="${algo}"] input[data-param="${spec.name}"]`);
+                const valSpan = document.querySelector(`.param-group[data-algo="${algo}"] input[data-param="${spec.name}"] + .val`);
+                if (input && valSpan) {
+                    const newValue = params[algo][spec.name];
+                    input.value = newValue;
+                    valSpan.textContent = newValue.toFixed(spec.step < 1 ? 3 : 0);
+                }
+            });
+        });
+    }
+    function updateParamsUI() {
+        document.querySelectorAll('.param-group').forEach(group => {
+            group.style.display = group.dataset.algo === currentAlgo ? 'block' : 'none';
+        });
+    }
+
+    function resizeCanvas() {
+        baseWidth = canvasArea.clientWidth > 0 ? canvasArea.clientWidth - 20 : 600;
+        baseHeight = canvasArea.clientHeight > 0 ? canvasArea.clientHeight - 40 : 600;
+        applyRotationToDimensions();
+    }
+
+    function applyRotationToDimensions() {
+        let newWidth, newHeight;
+
+        if (rotation === 90 || rotation === 270) {
+            newWidth = baseHeight;
+            newHeight = baseWidth;
+        } else {
+            newWidth = baseWidth;
+            newHeight = baseHeight;
+        }
+
+        canvas.width = newWidth;
+        canvas.height = newHeight;
+        
+        const diagonal = Math.hypot(baseWidth, baseHeight);
+        offscreenCanvas.width = offscreenCanvas.height = diagonal;
+        algorithmState = {}; // Invalidate state as canvas size changed
+        render();
+    }
+
+    window.addEventListener('resize', resizeCanvas);
+
+    initialize();
+    animate();
+
+    // --- HELPERS ---
+    function lerpColor(a, b, amount) {
+        const ah = parseInt(a.replace(/#/g, ''), 16),
+              ar = ah >> 16, ag = ah >> 8 & 0xff, ab = ah & 0xff,
+              bh = parseInt(b.replace(/#/g, ''), 16),
+              br = bh >> 16, bg = bh >> 8 & 0xff, bb = bh & 0xff,
+              rr = ar + amount * (br - ar),
+              rg = ag + amount * (bg - ag),
+              rb = ab + amount * (bb - ab);
+
+        return [Math.round(rr), Math.round(rg), Math.round(rb)];
+    }
+
+    function hexToRgb(hex) {
+        const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+        return result ? `${parseInt(result[1], 16)},${parseInt(result[2], 16)},${parseInt(result[3], 16)}` : '0,0,0';
+    }
+
+});
+
+</script>
+</body>
+</html>

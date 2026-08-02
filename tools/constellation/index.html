@@ -187,6 +187,7 @@
 </div>
 
 <script src="../../js/i18n.js"></script>
+<script src="../../js/utils.js"></script>
 <script>
 // Este listener se asegura de que todo el código se ejecute después de que la página haya cargado.
 document.addEventListener('DOMContentLoaded', () => {
@@ -337,78 +338,68 @@ dropZone.addEventListener('dragleave', () => { dropZone.style.borderColor = ''; 
 dropZone.addEventListener('drop', e => { e.preventDefault(); dropZone.style.borderColor = ''; let file = e.dataTransfer.files[0]; if (file && file.type.startsWith('image/')) loadFile(file); });
 fileInput.addEventListener('change', () => { if (fileInput.files[0]) loadFile(fileInput.files[0]); });
 
-function loadFile(file) {
-  img = new Image();
-  img.onload = () => {
-    let area = document.getElementById('canvasArea');
-    let scale = Math.min((area.clientWidth - 40) / img.width, (area.clientHeight - 40) / img.height, 1);
-    canvas.width = img.width;
-    canvas.height = img.height;
-    canvas.style.width = (img.width * scale) + 'px';
-    canvas.style.height = (img.height * scale) + 'px';
-    ctx.drawImage(img, 0, 0);
-    origImageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-    document.getElementById('canvasInfo').textContent = img.width + ' × ' + img.height + ' px';
-    document.getElementById('canvasArea').classList.add('has-image');
-    document.getElementById('canvasInfo').style.display = 'block';
+async function loadFile(file) {
+  try {
+    const imageData = await loadImageFile(file, canvas, ctx, 
+      document.getElementById('canvasArea'), 
+      document.getElementById('canvasInfo'),
+      document.querySelector('.file-upload')
+    );
+    
+    img = imageData.img;
+    origImageData = imageData.data;
     setupCrop(img.width, img.height);
     prepareOverlay();
-  };
-
-  if (typeof file === 'string') {
-      img.src = file; // It's already a data URL
-  } else {
-    const reader = new FileReader();
-    reader.onload = e => { img.src = e.target.result; };
-    reader.readAsDataURL(file);
+  } catch (error) {
+    status('Error loading image');
+    console.error(error);
   }
 }
 
 function setupCrop(W, H) {
-    updateCropRect();
-}
-
-function updateCropRect() {
-    if (!img) return;
-    const W = canvas.width, H = canvas.height;
     const aspectRatioSelect = document.getElementById('aspectRatio');
     const offsetXSlider = document.getElementById('cropOffsetX');
     const offsetYSlider = document.getElementById('cropOffsetY');
-    const ratio = aspectRatioSelect.value;
 
-    if (ratio === 'free') {
-        cropRect = null;
-        offsetXSlider.disabled = true;
-        offsetYSlider.disabled = true;
-    } else {
-        offsetXSlider.disabled = false;
-        offsetYSlider.disabled = false;
-        const [w, h] = ratio.split(':').map(Number);
-        const targetRatio = w / h;
-        const currentRatio = W / H;
-        let cropW, cropH, cropX, cropY;
-        if (currentRatio > targetRatio) {
-            cropH = H;
-            cropW = H * targetRatio;
-            cropX = (W - cropW) / 2 * (1 - offsetXSlider.value / 50);
-            cropY = 0;
+    function updateCropRect() {
+        const ratio = aspectRatioSelect.value;
+        if (ratio === 'free') {
+            cropRect = null;
+            offsetXSlider.disabled = true;
+            offsetYSlider.disabled = true;
         } else {
-            cropW = W;
-            cropH = W / targetRatio;
-            cropX = 0;
-            cropY = (H - cropH) / 2 * (1 - offsetYSlider.value / 50);
+            offsetXSlider.disabled = false;
+            offsetYSlider.disabled = false;
+            const [w, h] = ratio.split(':').map(Number);
+            const targetRatio = w / h;
+            const currentRatio = W / H;
+            let cropW, cropH, cropX, cropY;
+            if (currentRatio > targetRatio) {
+                cropH = H;
+                cropW = H * targetRatio;
+                cropX = (W - cropW) / 2 * (1 + offsetXSlider.value / 50);
+                cropY = 0;
+            } else {
+                cropW = W;
+                cropH = W / targetRatio;
+                cropX = 0;
+                cropY = (H - cropH) / 2 * (1 + offsetYSlider.value / 50);
+            }
+            cropRect = { x: cropX, y: cropY, w: cropW, h: cropH };
         }
-        cropRect = { x: cropX, y: cropY, w: cropW, h: cropH };
+        // Redraw original image with new crop overlay
+        if (origImageData) {
+            ctx.putImageData(origImageData, 0, 0);
+            drawCropOverlay(ctx, canvas, cropRect);
+        }
     }
-}
-
-function drawCropOverlay() {
-    if (!cropRect) return;
-    ctx.fillStyle = 'rgba(0,0,0,0.5)';
-    ctx.fillRect(0, 0, cropRect.x, canvas.height);
-    ctx.fillRect(cropRect.x + cropRect.w, 0, canvas.width - (cropRect.x + cropRect.w), canvas.height);
-    ctx.fillRect(cropRect.x, 0, cropRect.w, cropRect.y);
-    ctx.fillRect(cropRect.x, cropRect.y + cropRect.h, cropRect.w, canvas.height - (cropRect.y + cropRect.h));
+    
+    aspectRatioSelect.addEventListener('change', updateCropRect);
+    offsetXSlider.addEventListener('input', updateCropRect);
+    offsetYSlider.addEventListener('input', updateCropRect);
+    
+    // Initial calculation
+    updateCropRect();
 }
 
 function applyContrastToImage(imageData) {
@@ -523,7 +514,8 @@ function renderOverlay() {
   
   let base = new ImageData(new Uint8ClampedArray(origImageData.data), origImageData.width, origImageData.height);
   if (highContrast) base = applyContrastToImage(base);
-  ctx.putImageData(base, 0, 0);
+      ctx.putImageData(base, 0, 0);
+      drawCropOverlay(ctx, canvas, cropRect);
 
   let mode = currentMode;
   let opacity = parseInt(document.getElementById('lineOpacity').value, 10) / 100;
@@ -595,7 +587,7 @@ function renderOverlay() {
 
   ctx.restore();
 
-  drawCropOverlay();
+  drawCropOverlay(ctx, canvas, cropRect);
 }
 
 
@@ -641,15 +633,6 @@ function resetTool() {
   status('Reset to original image');
 }
 
-function exportImage() {
-  if (!origImageData) { status('Load an image first'); return; }
-  let link = document.createElement('a');
-  link.download = 'pudrus_constellation_' + Date.now() + '.png';
-  link.href = canvas.toDataURL('image/png');
-  link.click();
-  status('Exported PNG');
-}
-
 document.getElementById('applyBtn').addEventListener('click', applyOverlay);
 document.getElementById('randomBtn').addEventListener('click', randomize);
 document.getElementById('resetBtn').addEventListener('click', resetTool);
@@ -660,24 +643,7 @@ document.getElementById('sendToFlyerBtn').addEventListener('click', () => {
 
 document.getElementById('exportBtn').addEventListener('click', () => {
   if (!origImageData) { status('Nothing to export'); return; }
-
-  let exportCanvas = document.createElement('canvas');
-  let exportCtx = exportCanvas.getContext('2d');
-
-  let sx = cropRect ? cropRect.x : 0;
-  let sy = cropRect ? cropRect.y : 0;
-  let sWidth = cropRect ? cropRect.w : canvas.width;
-  let sHeight = cropRect ? cropRect.h : canvas.height;
-
-  exportCanvas.width = sWidth;
-  exportCanvas.height = sHeight;
-
-  exportCtx.drawImage(canvas, sx, sy, sWidth, sHeight, 0, 0, sWidth, sHeight);
-
-  let link = document.createElement('a');
-  link.download = 'pudrus_constellation_' + Date.now() + '.png';
-  link.href = exportCanvas.toDataURL('image/png');
-  link.click();
+  exportToPNG(canvas, cropRect, 'pudrus_constellation');
   status('Exported PNG');
 });
 // Cargar imagen si viene de otra herramienta

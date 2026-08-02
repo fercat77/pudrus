@@ -33,80 +33,109 @@
 
       <!-- Event Info -->
       <div class="control-group">
-        <span class="control-label">Event Information</span>
-        <input type="text" id="mainAct" placeholder="Main Act / Event Title" class="text-input">
-        <input type="text" id="supportActs" placeholder="Supporting Acts (comma separated)" class="text-input">
-        <input type="text" id="date" placeholder="Date & Time" class="text-input">
-        <input type="text" id="venue" placeholder="Venue & Address" class="text-input">
+        <span class="control-label" data-i18n="flyer.eventInfo">Event Information</span>
+        <input type="text" id="mainAct" placeholder="" data-i18n-placeholder="flyer.mainAct" class="text-input">
+        <input type="text" id="supportActs" placeholder="" data-i18n-placeholder="flyer.supportActs" class="text-input">
+        <input type="text" id="date" placeholder="" data-i18n-placeholder="flyer.date" class="text-input">
+        <input type="text" id="venue" placeholder="" data-i18n-placeholder="flyer.venue" class="text-input">
       </div>
 
       <hr class="divider">
 
       <!-- Crop Controls -->
       <div class="control-group">
-        <span class="control-label">Crop & Export</span>
+        <span class="control-label" data-i18n="pixel.cropExport">Crop & Export</span>
         <div class="control-row">
-          <label>Aspect</label>
+          <label data-i18n="pixel.aspect">Aspect</label>
           <select id="aspectRatio">
-            <option value="free">Free</option>
-            <option value="1:1">Square (1:1)</option>
-            <option value="4:5">Portrait (4:5)</option>
-            <option value="9:16">Story (9:16)</option>
+            <option value="free" data-i18n="pixel.aspectFree">Free</option>
+            <option value="1:1" data-i18n="pixel.aspectSquare">Square (1:1)</option>
+            <option value="4:5" data-i18n="pixel.aspectPortrait">Portrait (4:5)</option>
+            <option value="9:16" data-i18n="pixel.aspectStory">Story (9:16)</option>
           </select>
         </div>
         <div class="control-row">
-          <label>Quality</label>
+          <label>Offset X</label>
+          <input type="range" id="cropOffsetX" min="-50" max="50" value="0"><span class="val" id="cropOffsetXVal">0%</span>
+        </div>
+        <div class="control-row">
+          <label>Offset Y</label>
+          <input type="range" id="cropOffsetY" min="-50" max="50" value="0"><span class="val" id="cropOffsetYVal">0%</span>
+        </div>
+        <div class="control-row">
+          <label data-i18n="pixel.quality">Quality</label>
           <select id="exportQuality">
-            <option value="high">High (Original)</option>
-            <option value="medium">Medium (1080px)</option>
-            <option value="low">Low (720px)</option>
+            <option value="high" data-i18n="pixel.qualityHigh">High (Original)</option>
+            <option value="medium" data-i18n="pixel.qualityMedium">Medium (1080px)</option>
+            <option value="low" data-i18n="pixel.qualityLow">Low (720px)</option>
           </select>
+        </div>
+      </div>
+
+      <!-- Layout Positioning -->
+      <div class="control-group">
+        <span class="control-label">Text Placement</span>
+        <div class="control-row">
+          <label>Offset X</label>
+          <input type="range" id="textOffsetX" min="-100" max="100" step="5" value="0"><span class="val" id="textOffsetXVal">0%</span>
+        </div>
+        <div class="control-row">
+          <label>Offset Y</label>
+          <input type="range" id="textOffsetY" min="-100" max="100" step="5" value="0"><span class="val" id="textOffsetYVal">0%</span>
+        </div>
+        <div class="control-row">
+          <label>Rotation</label>
+          <input type="range" id="textRotation" min="-45" max="45" step="1" value="0"><span class="val" id="textRotationVal">0°</span>
+        </div>
+        <div class="control-row">
+          <label>Block Spacing</label>
+          <input type="range" id="blockSpacing" min="0.5" max="2.5" step="0.1" value="1.0"><span class="val" id="blockSpacingVal">1.0x</span>
         </div>
       </div>
 
       <!-- Design Style -->
-      <div class="control-group">
-        <span class="control-label">Design Style</span>
+      <div class="control-group" style="display:none;">
+        <span class="control-label" data-i18n="flyer.designStyle">Design Style</span>
         <select id="designStyle">
-          <option value="swiss">Swiss</option>
-          <option value="american">American</option>
-          <option value="experimental">Experimental</option>
+          <option value="swiss" data-i18n="flyer.styleSwiss">Swiss</option>
+          <option value="american" data-i18n="flyer.styleAmerican">American</option>
+          <option value="experimental" data-i18n="flyer.styleExperimental">Experimental</option>
         </select>
       </div>
 
       <!-- Text Style -->
-      <div class="control-group">
-        <span class="control-label">Text Style</span>
+      <div class="control-group" style="display:none;">
+        <span class="control-label" data-i18n="flyer.textStyle">Text Style</span>
         <div class="control-row">
-          <label>Color</label>
+          <label data-i18n="flyer.color">Color</label>
           <input type="color" id="textColor" value="#ffffff">
         </div>
         <div class="control-row">
-          <label>Font Size</label>
+          <label data-i18n="flyer.fontSize">Font Size</label>
           <input type="range" id="fontSize" min="0.5" max="2.0" step="0.1" value="1.0">
           <span class="val" id="fontSizeVal">1.0x</span>
         </div>
         <div class="control-row">
-          <label>Letter Spacing</label>
-          <input type="range" id="letterSpacing" min="-10" max="20" step="1" value="0">
-          <span class="val" id="letterSpacingVal">0px</span>
-        </div>
-        <div class="control-row">
-          <label>Line Height</label>
+          <label data-i18n="flyer.lineHeight">Line Height</label>
           <input type="range" id="lineHeight" min="0.8" max="2.5" step="0.1" value="1.2">
           <span class="val" id="lineHeightVal">1.2x</span>
         </div>
         <div class="control-row">
-          <label>Alignment</label>
+          <label data-i18n="flyer.letterSpacing">Letter Spacing</label>
+          <input type="range" id="letterSpacing" min="-2" max="10" step="0.5" value="0">
+          <span class="val" id="letterSpacingVal">0px</span>
+        </div>
+        <div class="control-row">
+          <label data-i18n="flyer.alignment">Alignment</label>
           <select id="textAlign">
-            <option value="smart">Smart</option>
-            <option value="left">Left</option>
-            <option value="center">Center</option>
-            <option value="right">Right</option>
+            <option value="smart" data-i18n="flyer.alignSmart">Smart</option>
+            <option value="left" data-i18n="flyer.alignLeft">Left</option>
+            <option value="center" data-i18n="flyer.alignCenter">Center</option>
+            <option value="right" data-i18n="flyer.alignRight">Right</option>
           </select>
         </div>
         <div class="control-row">
-          <label>Font Family</label>
+          <label data-i18n="flyer.fontFamily">Font Family</label>
           <select id="fontFamily">
             <option value="monospace">Courier New</option>
             <option value="'Roboto Mono', monospace">Roboto Mono</option>
@@ -118,31 +147,63 @@
 
       <hr class="divider">
 
-      <!-- Advanced Style -->
+      <!-- Text Background -->
       <div class="control-group">
-        <span class="control-label">Stroke Style</span>
+        <span class="control-label" data-i18n="flyer.textBackground">Text Background</span>
         <div class="toggle-row">
-          <label>Enable Stroke</label>
+          <label data-i18n="flyer.enableBg">Enable Background</label>
+          <div class="toggle" id="textBgToggle"></div>
+        </div>
+        <div class="control-row">
+          <label data-i18n="flyer.bgColor">Background Color</label>
+          <input type="color" id="bgColor" value="#000000">
+        </div>
+        <div class="control-row">
+          <label data-i18n="flyer.bgOpacity">Background Opacity</label>
+          <input type="range" id="bgOpacity" min="0" max="0.9" step="0.1" value="0.4">
+          <span class="val" id="bgOpacityVal">40%</span>
+        </div>
+      </div>
+
+      <!-- Advanced Style -->
+      <div class="control-group" style="display:none;">
+        <span class="control-label" data-i18n="flyer.strokeStyle">Stroke Style</span>
+        <div class="toggle-row">
+          <label data-i18n="flyer.enableStroke">Enable Stroke</label>
           <div class="toggle" id="strokeToggle"></div>
         </div>
         <div class="control-row">
-          <label>Stroke Color</label>
+          <label data-i18n="flyer.strokeColor">Stroke Color</label>
           <input type="color" id="strokeColor" value="#000000">
         </div>
         <div class="control-row">
-          <label>Stroke Width</label>
+          <label data-i18n="flyer.strokeWidth">Stroke Width</label>
           <input type="range" id="strokeWidth" min="0.5" max="10" step="0.5" value="2">
           <span class="val" id="strokeWidthVal">2px</span>
         </div>
       </div>
 
       <!-- Layout Rules -->
-      <div class="control-group">
-        <span class="control-label">Layout Rules</span>
+      <div class="control-group" style="display:none;">
+        <span class="control-label" data-i18n="flyer.layoutRules">Layout Rules</span>
         <div class="control-row">
-          <label>Margin</label>
+          <label data-i18n="flyer.margin">Margin</label>
           <input type="range" id="margin" min="0" max="150" step="5" value="40">
           <span class="val" id="marginVal">40px</span>
+        </div>
+        <div class="control-row">
+          <label data-i18n="flyer.opacity">Opacity</label>
+          <input type="range" id="textOpacity" min="0.3" max="1.0" step="0.1" value="1.0">
+          <span class="val" id="textOpacityVal">100%</span>
+        </div>
+      </div>
+
+      <!-- Text Options -->
+      <div class="control-group" style="display:none;">
+        <span class="control-label" data-i18n="flyer.textOptions">Text Options</span>
+        <div class="toggle-row">
+          <label data-i18n="flyer.uppercase">Uppercase Text</label>
+          <div class="toggle on" id="uppercaseToggle"></div>
         </div>
       </div>
 
@@ -151,9 +212,9 @@
     <div class="status-bar" id="statusBar">◈ No image loaded</div>
 
     <div class="action-btns">
-      <button class="btn btn-primary" id="generateBtn" style="width:100%">◈ Generate Layout</button>
-      <button class="btn btn-outline" id="resetBtn" style="width:100%">Reset</button>
-      <button class="btn btn-outline" id="exportBtn" style="width:100%">Export PNG</button>
+      <button class="btn btn-primary" id="generateBtn" style="width:100%" data-i18n="flyer.generateBtn">◈ Generate Layout</button>
+      <button class="btn btn-outline" id="resetBtn" style="width:100%" data-i18n="flyer.resetBtn">Reset</button>
+      <button class="btn btn-outline" id="exportBtn" style="width:100%" data-i18n="flyer.exportBtn">Export PNG</button>
     </div>
   </div>
 
@@ -170,25 +231,16 @@
 
 </div>
 
-<style>
-  .text-input {
-    width: 100%;
-    background: var(--bg3);
-    border: 1px solid var(--c3);
-    color: var(--text);
-    padding: 8px 10px;
-    margin-bottom: 8px;
-    font-family: var(--font);
-  }
-</style>
 
 <script src="../../js/i18n.js"></script>
+<script src="../../js/utils.js"></script>
 <script>
 document.addEventListener('DOMContentLoaded', () => {
 
   let img = null;
   let canvas = document.getElementById('mainCanvas');
   let ctx = canvas.getContext('2d');
+  let cropRect = null;
   let currentLayout = null;
 
   const WORKFLOW_STORAGE_KEY = 'pudrus_workflow_image';
@@ -204,39 +256,59 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // --- UI & File Load ---
   const dropZone = document.querySelector('.tool-canvas-area');
+  const fileUpload = document.querySelector('.tool-canvas-area .file-upload');
   const fileInput = document.getElementById('fileInput');
   dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.style.borderColor = 'var(--c1)'; });
   dropZone.addEventListener('dragleave', () => { dropZone.style.borderColor = ''; });
   dropZone.addEventListener('drop', e => {
     e.preventDefault(); dropZone.style.borderColor = '';
     const file = e.dataTransfer.files[0];
-    if (file) loadFile(file);
+    if (file && file.type && file.type.startsWith('image/')) {
+      loadFile(file);
+    } else if (file) {
+      document.getElementById('statusBar').textContent = '◈ Please drop an image file.';
+    }
   });
-  fileInput.addEventListener('change', () => { if (fileInput.files[0]) loadFile(fileInput.files[0]); });
+  fileInput.addEventListener('change', () => {
+    const file = fileInput.files[0];
+    if (file && file.type && file.type.startsWith('image/')) {
+      loadFile(file);
+    } else if (file) {
+      document.getElementById('statusBar').textContent = '◈ Please select an image file.';
+    }
+  });
 
-  function loadFile(file) {
-    img = new Image();
-    img.onload = () => {
-      const area = document.getElementById('canvasArea');
-      const scale = Math.min((area.clientWidth - 40) / img.width, (area.clientHeight - 40) / img.height, 1);
-      canvas.width = img.width;
-      canvas.height = img.height;
-      canvas.style.width = (img.width * scale) + 'px';
-      canvas.style.height = (img.height * scale) + 'px';
-      ctx.drawImage(img, 0, 0);
-      document.getElementById('canvasArea').classList.add('has-image');
-      document.getElementById('statusBar').textContent = '◈ Image loaded. Fill info and generate.';
+  async function loadFile(file) {
+    try {
+      const imageData = await loadImageFile(file, canvas, ctx, 
+        document.getElementById('canvasArea'), 
+        document.getElementById('canvasInfo'),
+        document.querySelector('.file-upload')
+      );
+      
+      img = imageData.img;
+      document.getElementById('statusBar').textContent = '◈ Image loaded. Flyer is being generated automatically.';
+      setupCrop(img.width, img.height);
       currentLayout = null; // Invalidate layout on new image
-    };
-
-    if (typeof file === 'string') {
-        img.src = file; // It's already a data URL
-    } else {
-      const reader = new FileReader();
-      reader.onload = e => { img.src = e.target.result; };
-      reader.readAsDataURL(file);
+      scheduleGenerate();
+    } catch (error) {
+      document.getElementById('statusBar').textContent = '◈ Error loading image';
+      console.error(error);
     }
   }
+
+  function debounce(func, delay) {
+      let timeout;
+      return function(...args) {
+          const context = this;
+          clearTimeout(timeout);
+          timeout = setTimeout(() => func.apply(context, args), delay);
+      };
+  }
+
+  const scheduleGenerate = debounce(() => {
+      if (img) generateLayout();
+  }, 100);
 
   // --- Drawing Logic ---
   function drawLayout() {
@@ -249,49 +321,83 @@ document.addEventListener('DOMContentLoaded', () => {
       return;
     }
 
+    updateLayoutText();
+    updateCropRect(); // Make sure crop is up to date
+
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
     ctx.drawImage(img, 0, 0);
 
     const color = document.getElementById('textColor').value;
-    const letterSpacing = document.getElementById('letterSpacing').value + 'px';
     const fontFamily = document.getElementById('fontFamily').value;
-    const lineHeightMultiplier = parseFloat(document.getElementById('lineHeight').value);
     const useStroke = document.getElementById('strokeToggle').classList.contains('on');
     const strokeColor = document.getElementById('strokeColor').value;
     const strokeWidth = parseFloat(document.getElementById('strokeWidth').value);
+    const textOpacity = parseFloat(document.getElementById('textOpacity').value);
 
+    const useBg = document.getElementById('textBgToggle').classList.contains('on');
+    const bgColor = document.getElementById('bgColor').value;
+    const bgOpacity = parseFloat(document.getElementById('bgOpacity').value);
     ctx.fillStyle = color;
-    ctx.letterSpacing = letterSpacing;
+
+    const lineHeightFactor = parseFloat(document.getElementById('lineHeight').value);
+    const letterSpacing = parseFloat(document.getElementById('letterSpacing').value);
 
     currentLayout.elements.forEach(el => {
-        const currentFont = `${el.bold ? 'bold' : ''} ${el.size}px ${el.fontFamily || fontFamily}`;
+        const resolvedFamily = (el.fontFamily || fontFamily);
+        const currentFont = `${el.bold ? 'bold ' : ''}${el.size}px ${resolvedFamily}`;
         ctx.font = currentFont;
-        ctx.textAlign = el.textAlign;
+        ctx.textAlign = 'left';
         ctx.save();
+        ctx.globalAlpha = textOpacity;
         ctx.translate(el.x, el.y);
         ctx.rotate(el.rotation * Math.PI / 180);
-        el.lines.forEach((line, i) => {
+        
+        const lines = el.lines;
+        const padding = 10;
+        
+        lines.forEach((line, i) => {
+          const yPos = i * (el.size * lineHeightFactor);
+          const lineWidth = getTextWidth(line, currentFont, letterSpacing);
+          let xStart = 0;
+          if (el.textAlign === 'center') xStart = -lineWidth / 2;
+          if (el.textAlign === 'right') xStart = -lineWidth;
+
+          if (useBg) {
+            ctx.save();
+            ctx.globalAlpha = bgOpacity;
+            ctx.fillStyle = bgColor;
+            ctx.fillRect(xStart - padding, yPos - el.size * 0.85, lineWidth + padding * 2, el.size * 1.15);
+            ctx.restore();
+          }
+
           if (useStroke) {
             ctx.strokeStyle = strokeColor;
             ctx.lineWidth = strokeWidth;
-            ctx.strokeText(line, 0, i * (el.size * 1.2));
+            ctx.strokeText(line, xStart, yPos);
           }
-          ctx.fillText(line, 0, i * (el.size * 1.2)); // Use fixed interlineado for drawing
+          if (letterSpacing !== 0) {
+            let currentX = xStart;
+            for (let char of line) {
+                ctx.fillText(char, currentX, yPos);
+                currentX += getTextWidth(char, currentFont, letterSpacing);
+            }
+          } else {
+            ctx.fillText(line, xStart, yPos);
+          }
         });
         ctx.restore();
     });
 
-    // Add watermark
+    // Add watermark (always visible)
     const watermarkSize = canvas.width * 0.015;
     const watermarkMargin = canvas.width * 0.02;
     ctx.font = `${watermarkSize}px monospace`;
     ctx.textAlign = 'left';
     ctx.globalAlpha = 0.7;
-    if (useStroke) {
-      ctx.lineWidth = strokeWidth * 0.5; // Thinner stroke for watermark
-      ctx.strokeText('pudrus.xyz', watermarkMargin, canvas.height - watermarkMargin);
-    }
     ctx.fillText('pudrus.xyz', watermarkMargin, canvas.height - watermarkMargin);
     ctx.globalAlpha = 1.0;
+
+    drawCropOverlay();
   }
 
   // --- Layout Calculation Logic ---
@@ -301,63 +407,92 @@ document.addEventListener('DOMContentLoaded', () => {
       return;
     }
 
+    updateCropRect(); // Ensure crop is updated before generating
     const W = canvas.width;
     const H = canvas.height;
-    const mainAct = document.getElementById('mainAct').value.toUpperCase();
-    const supportActs = document.getElementById('supportActs').value.split(',').map(s => s.trim().toUpperCase());
-    const date = document.getElementById('date').value.toUpperCase();
-    const venue = document.getElementById('venue').value.toUpperCase();
+    const bounds = {
+        x: cropRect ? cropRect.x : 0,
+        y: cropRect ? cropRect.y : 0,
+        w: cropRect ? cropRect.w : canvas.width,
+        h: cropRect ? cropRect.h : canvas.height
+    };
+
+    const useUppercase = document.getElementById('uppercaseToggle').classList.contains('on');
+    const mainAct = document.getElementById('mainAct').value;
+    const supportActs = document.getElementById('supportActs').value.split(',').map(s => s.trim()).filter(s => s !== '');
+    const date = document.getElementById('date').value;
+    const venue = document.getElementById('venue').value;
     const fontFamily = document.getElementById('fontFamily').value;
-    const designStyle = document.getElementById('designStyle').value;
+    const designStyle = 'experimental';
+    const textOffsetX = parseFloat(document.getElementById('textOffsetX').value);
+    const textOffsetY = parseFloat(document.getElementById('textOffsetY').value);
+    const textRotation = parseFloat(document.getElementById('textRotation').value);
+    const blockSpacing = parseFloat(document.getElementById('blockSpacing').value);
     
     let success = false;
     let currentSizeMultiplier = parseFloat(document.getElementById('fontSize').value);
 
     for (let attempt = 0; attempt < 10 && !success; attempt++) {
+        const letterSpacing = parseFloat(document.getElementById('letterSpacing').value);
+        const lineHeightFactor = parseFloat(document.getElementById('lineHeight').value);
+        ctx.font = `10px ${fontFamily}`; // Set a base font for measurements
         const elementsToPlace = [];
-        if (mainAct) elementsToPlace.push({ id: 'main', text: mainAct, baseSize: W * 0.15, bold: true, wrapWidth: 0.8 });
-        if (supportActs.length > 0 && supportActs[0] !== '') {
-            supportActs.forEach((act, i) => elementsToPlace.push({ id: `support-${i}`, text: act, baseSize: W * 0.05, bold: false, wrapWidth: 0.6 }));
+        if (mainAct) {
+            const text = useUppercase ? mainAct.toUpperCase() : mainAct;
+            elementsToPlace.push({ id: 'main', text: text, baseSize: W * 0.15, bold: true, wrapWidth: 0.8 });
         }
-        if (date) elementsToPlace.push({ id: 'date', text: date, baseSize: W * 0.04, bold: false, wrapWidth: 0.6 });
-        if (venue) elementsToPlace.push({ id: 'venue', text: venue, baseSize: W * 0.04, bold: false, wrapWidth: 0.6 });
+        if (supportActs.length > 0 && supportActs[0] !== '') {
+            supportActs.forEach((act, i) => {
+                const text = useUppercase ? act.toUpperCase() : act;
+                elementsToPlace.push({ id: `support-${i}`, text: text, baseSize: W * 0.05, bold: false, wrapWidth: 0.6 });
+            });
+        }
+        if (date) {
+            const text = useUppercase ? date.toUpperCase() : date;
+            elementsToPlace.push({ id: 'date', text: text, baseSize: W * 0.04, bold: false, wrapWidth: 0.6 });
+        }
+        if (venue) {
+            const text = useUppercase ? venue.toUpperCase() : venue;
+            elementsToPlace.push({ id: 'venue', text: text, baseSize: W * 0.04, bold: false, wrapWidth: 0.6 });
+        }
 
         currentLayout = { elements: [] };
         let placedBBoxes = [];
         let layoutPossible = true;
-        const elementSpacing = parseFloat(document.getElementById('lineHeight').value); // This is now for spacing between blocks
         const margin = parseInt(document.getElementById('margin').value);
+        const xShift = bounds.w * (textOffsetX / 100);
+        const yShift = bounds.h * (textOffsetY / 100);
         
         if (designStyle === 'swiss') {
-            let yPos = H * 0.15;
-            const xPos = Math.random() < 0.5 ? margin : W - margin;
-            const align = xPos === margin ? 'left' : 'right';
+            let yPos = bounds.y + H * 0.15 + yShift;
+            const xPos = Math.random() < 0.5 ? bounds.x + margin + xShift : bounds.x + bounds.w - margin + xShift;
+            const align = xPos === bounds.x + margin + xShift ? 'left' : 'right';
 
             for (const el of elementsToPlace) {
-                const size = el.baseSize * currentSizeMultiplier;
-                const font = `${el.bold ? 'bold' : ''} ${size}px ${fontFamily}`;
-                const lines = wrapText(el.text, W * el.wrapWidth, font);
-                const metrics = getMetrics(lines, size);
-                if (yPos + metrics.height > H - margin) { layoutPossible = false; break; }
-                currentLayout.elements.push({ ...el, lines, size, x: xPos, y: yPos, textAlign: align, rotation: 0 });
-                yPos += metrics.height * elementSpacing;
+                const initialSize = el.baseSize * currentSizeMultiplier;
+                const fit = fitTextToElement({ ...el, size: initialSize }, el.text, fontFamily, letterSpacing, lineHeightFactor, bounds, margin, bounds.h - (yPos - bounds.y) - margin);
+                if (!fit.lines.length || fit.size < 12) { layoutPossible = false; break; }
+                const metrics = getMetrics(fit.lines, `${el.bold ? 'bold ' : ''}${fit.size}px ${fontFamily}`, fit.size, letterSpacing, lineHeightFactor);
+                if (yPos + metrics.height > bounds.y + bounds.h - margin) { layoutPossible = false; break; }
+                currentLayout.elements.push({ ...el, lines: fit.lines, size: fit.size, x: xPos, y: yPos, textAlign: align, rotation: textRotation });
+                yPos += metrics.height * blockSpacing;
             }
         } else if (designStyle === 'american') {
-            let yPos = H * 0.2;
+            let yPos = bounds.y + H * 0.2 + yShift;
             for (const el of elementsToPlace) {
-                const size = el.baseSize * currentSizeMultiplier;
-                const font = `${el.bold ? 'bold' : ''} ${size}px ${fontFamily}`;
-                const lines = wrapText(el.text, W * el.wrapWidth, font);
-                const metrics = getMetrics(lines, size);
-                if (yPos + metrics.height > H - margin) { layoutPossible = false; break; }
-                currentLayout.elements.push({ ...el, lines, size, x: W/2, y: yPos, textAlign: 'center', rotation: 0 });
-                yPos += metrics.height * elementSpacing;
+                const initialSize = el.baseSize * currentSizeMultiplier;
+                const fit = fitTextToElement({ ...el, size: initialSize }, el.text, fontFamily, letterSpacing, lineHeightFactor, bounds, margin, bounds.h - (yPos - bounds.y) - margin);
+                if (!fit.lines.length || fit.size < 12) { layoutPossible = false; break; }
+                const metrics = getMetrics(fit.lines, `${el.bold ? 'bold ' : ''}${fit.size}px ${fontFamily}`, fit.size, letterSpacing, lineHeightFactor);
+                if (yPos + metrics.height > bounds.y + bounds.h - margin) { layoutPossible = false; break; }
+                currentLayout.elements.push({ ...el, lines: fit.lines, size: fit.size, x: bounds.x + bounds.w / 2 + xShift, y: yPos, textAlign: 'center', rotation: textRotation });
+                yPos += metrics.height * blockSpacing;
             }
         } else { // Experimental
             const fontOptions = Array.from(document.getElementById('fontFamily').options).map(opt => opt.value);
             for (const el of elementsToPlace) {
                 const randomFont = fontOptions[Math.floor(Math.random() * fontOptions.length)];
-                if (!placeElementRandomly(el, placedBBoxes, currentSizeMultiplier, randomFont)) { layoutPossible = false; break; }
+                if (!placeElementRandomly(el, placedBBoxes, currentSizeMultiplier, randomFont, bounds, letterSpacing, lineHeightFactor, margin, textOffsetX, textOffsetY, textRotation)) { layoutPossible = false; break; }
             }
         }
         
@@ -370,38 +505,142 @@ document.addEventListener('DOMContentLoaded', () => {
     
     if (!success) {
         document.getElementById('statusBar').textContent = "◈ Could not fit all text. Try reducing font size or text length.";
+    } else {
+        document.getElementById('statusBar').textContent = currentLayout.elements.length ? '◈ Layout generated.' : '◈ Image ready. Add text and regenerate for a flyer layout.';
     }
 
     drawLayout();
   }
 
-  function wrapText(text, maxWidth, font) {
+  function getTextWidth(text, font, letterSpacing = 0) {
     ctx.font = font;
-    if (ctx.measureText(text).width < maxWidth) {
-      return [text];
+    if (letterSpacing === 0) return ctx.measureText(text).width;
+    let width = 0;
+    for (let i = 0; i < text.length; i++) {
+      width += ctx.measureText(text[i]).width;
+      if (i < text.length - 1) width += letterSpacing;
     }
-    const words = text.split(' ');
-    let lines = [];
-    let currentLine = words[0];
-    for (let i = 1; i < words.length; i++) {
-      const word = words[i];
-      const testLine = currentLine + ' ' + word;
-      if (ctx.measureText(testLine).width < maxWidth) {
-        currentLine = testLine;
+    return width;
+  }
+
+  function breakWord(word, maxWidth, font, letterSpacing) {
+    let chunk = '';
+    const parts = [];
+    for (let char of word) {
+      const next = chunk + char;
+      if (getTextWidth(next, font, letterSpacing) <= maxWidth) {
+        chunk = next;
       } else {
-        lines.push(currentLine);
-        currentLine = word;
+        if (chunk.length === 0) {
+          parts.push(char);
+          chunk = '';
+        } else {
+          parts.push(chunk);
+          chunk = char;
+        }
       }
     }
-    lines.push(currentLine);
+    if (chunk) parts.push(chunk);
+    return parts;
+  }
+
+  function wrapText(text, maxWidth, font, letterSpacing = 0) {
+    ctx.font = font;
+    if (!text) return [''];
+    const words = text.split(' ');
+    let lines = [];
+    let currentLine = '';
+    for (let i = 0; i < words.length; i++) {
+      const word = words[i];
+      const testLine = currentLine ? `${currentLine} ${word}` : word;
+      if (getTextWidth(testLine, font, letterSpacing) <= maxWidth) {
+        currentLine = testLine;
+      } else {
+        if (getTextWidth(word, font, letterSpacing) > maxWidth) {
+          const broken = breakWord(word, maxWidth, font, letterSpacing);
+          if (currentLine) {
+            lines.push(currentLine);
+            currentLine = '';
+          }
+          for (let j = 0; j < broken.length - 1; j++) {
+            lines.push(broken[j]);
+          }
+          currentLine = broken[broken.length - 1];
+        } else {
+          if (currentLine) lines.push(currentLine);
+          currentLine = word;
+        }
+      }
+    }
+    if (currentLine) lines.push(currentLine);
     return lines;
   }
 
-  function getMetrics(lines, fontSize) {
-      const lineHeight = fontSize * 1.2; // Fixed interlineado for measurement
+  function getMetrics(lines, font, fontSize, letterSpacing = 0, lineHeightFactor = 1.2) {
+      const lineHeight = fontSize * lineHeightFactor;
       const height = lines.length * lineHeight;
-      const maxWidth = Math.max(...lines.map(line => ctx.measureText(line).width));
+      const maxWidth = Math.max(...lines.map(line => getTextWidth(line, font, letterSpacing)));
       return { width: maxWidth, height: height };
+  }
+
+  function fitTextToElement(el, text, fontFamily, letterSpacing, lineHeightFactor, bounds, margin, maxHeightOverride = null) {
+      const resolvedFamily = el.fontFamily || fontFamily;
+      let size = el.size;
+      const minSize = Math.max(12, size * 0.75);
+      const maxWidth = Math.max(0, bounds.w * (el.wrapWidth || 1) - margin * 2);
+      const availableHeight = maxHeightOverride !== null ? maxHeightOverride : Math.max(0, bounds.y + bounds.h - el.y - margin);
+      let font = `${el.bold ? 'bold ' : ''}${size}px ${resolvedFamily}`;
+      let lines = wrapText(text, maxWidth, font, letterSpacing);
+      let metrics = getMetrics(lines, font, size, letterSpacing, lineHeightFactor);
+
+      while ((metrics.width > maxWidth || metrics.height > availableHeight) && size > minSize) {
+          size *= 0.9;
+          font = `${el.bold ? 'bold ' : ''}${size}px ${resolvedFamily}`;
+          lines = wrapText(text, maxWidth, font, letterSpacing);
+          metrics = getMetrics(lines, font, size, letterSpacing, lineHeightFactor);
+      }
+
+      return { size, lines, metrics };
+  }
+
+  function updateLayoutText() {
+      if (!currentLayout) return;
+      const useUppercase = document.getElementById('uppercaseToggle').classList.contains('on');
+      const letterSpacing = parseFloat(document.getElementById('letterSpacing').value);
+      const fontFamily = document.getElementById('fontFamily').value;
+      const lineHeightFactor = parseFloat(document.getElementById('lineHeight').value);
+      const margin = parseInt(document.getElementById('margin').value);
+      const bounds = {
+          x: cropRect ? cropRect.x : 0,
+          y: cropRect ? cropRect.y : 0,
+          w: cropRect ? cropRect.w : canvas.width,
+          h: cropRect ? cropRect.h : canvas.height
+      };
+
+      const textMap = {
+          main: useUppercase ? document.getElementById('mainAct').value.toUpperCase() : document.getElementById('mainAct').value,
+          date: useUppercase ? document.getElementById('date').value.toUpperCase() : document.getElementById('date').value,
+          venue: useUppercase ? document.getElementById('venue').value.toUpperCase() : document.getElementById('venue').value
+      };
+      const supportActs = document.getElementById('supportActs').value.split(',').map(s => s.trim()).filter(s => s !== '');
+      let supportIndex = 0;
+
+      currentLayout.elements.forEach(el => {
+          let text = textMap[el.id];
+          if (text === undefined && el.id.startsWith('support-')) {
+              text = supportActs[supportIndex] ? (useUppercase ? supportActs[supportIndex].toUpperCase() : supportActs[supportIndex]) : el.text;
+              supportIndex += 1;
+          }
+          if (text === undefined) text = el.text;
+          el.text = text;
+          const fitted = fitTextToElement(el, el.text, fontFamily, letterSpacing, lineHeightFactor, bounds, margin);
+          el.size = fitted.size;
+          el.lines = fitted.lines;
+      });
+  }
+
+  function clamp(value, min, max) {
+      return Math.max(min, Math.min(max, value));
   }
 
   function checkCollision(box, boxes) {
@@ -418,27 +657,37 @@ document.addEventListener('DOMContentLoaded', () => {
       return { x: el.x - el.w/2, y: el.y - el.h/2, w: el.w, h: el.h };
   }
 
-  function placeElementRandomly(el, placedBBoxes, sizeMultiplier, randomFont = null) {
+  function placeElementRandomly(el, placedBBoxes, sizeMultiplier, randomFont = null, bounds, letterSpacing, lineHeightFactor, margin, offsetX = 0, offsetY = 0, rotation = 0) {
     const W = canvas.width;
     const H = canvas.height;
     const fontFamily = randomFont || document.getElementById('fontFamily').value;
     const textAlign = document.getElementById('textAlign').value;
-    const size = el.baseSize * sizeMultiplier;
-    const font = `${el.bold ? 'bold' : ''} ${size}px ${fontFamily}`;
-    const lines = wrapText(el.text, W * el.wrapWidth, font);
-    const metrics = getMetrics(lines, size);
+    const initialSize = el.baseSize * sizeMultiplier;
+    const fit = fitTextToElement({ ...el, size: initialSize }, el.text, fontFamily, letterSpacing, lineHeightFactor, bounds, margin, (bounds ? bounds.h : H) - margin * 2);
+    const size = fit.size;
+    const font = `${el.bold ? 'bold ' : ''}${size}px ${fontFamily}`;
+    const lines = fit.lines;
+    const metrics = getMetrics(lines, font, size, letterSpacing, lineHeightFactor);
+    
+    if (metrics.width > (bounds ? bounds.w : W) - margin * 2 || metrics.height > (bounds ? bounds.h : H) - margin * 2) {
+      return false;
+    }
 
-    for (let i = 0; i < 200; i++) { // Increased attempts
-        const margin = parseInt(document.getElementById('margin').value);
-        const x = Math.random() * (W - metrics.width - margin * 2) + margin;
-        const y = Math.random() * (H - metrics.height - margin * 2) + margin;
+    const baseX = (bounds ? bounds.x + bounds.w / 2 : W / 2) + ((bounds ? bounds.w : W) * offsetX / 100);
+    const baseY = (bounds ? bounds.y + bounds.h / 2 : H / 2) + ((bounds ? bounds.h : H) * offsetY / 100);
+    const availableWidth = Math.max(0, (bounds ? bounds.w : W) - metrics.width - margin * 2);
+    const availableHeight = Math.max(0, (bounds ? bounds.h : H) - metrics.height - margin * 2);
+
+    for (let i = 0; i < 200; i++) {
+        const x = clamp(baseX + (Math.random() - 0.5) * Math.max(0, availableWidth), (bounds ? bounds.x : 0) + margin, (bounds ? bounds.x + bounds.w : W) - margin - metrics.width);
+        const y = clamp(baseY + (Math.random() - 0.5) * Math.max(0, availableHeight), (bounds ? bounds.y : 0) + margin, (bounds ? bounds.y + bounds.h : H) - margin - metrics.height);
         const bbox = { x: x - 10, y: y - 10, w: metrics.width + 20, h: metrics.height + 20 };
 
         if (!checkCollision(bbox, placedBBoxes)) {
             let align = 'left';
             if (textAlign === 'smart') {
-                if (x < W * 0.2) align = 'left';
-                else if (x + metrics.width > W * 0.8) align = 'right';
+                if (x < bounds.x + bounds.w * 0.2) align = 'left';
+                else if (x + metrics.width > bounds.x + bounds.w * 0.8) align = 'right';
                 else align = 'center';
             } else {
                 align = textAlign;
@@ -448,7 +697,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if (align === 'center') drawX = x + metrics.width / 2;
             if (align === 'right') drawX = x + metrics.width;
 
-            currentLayout.elements.push({ ...el, lines, size, fontFamily, x: drawX, y: y, textAlign: align, rotation: 0 });
+            currentLayout.elements.push({ ...el, lines, size, fontFamily, x: drawX, y: y, textAlign: align, rotation: rotation });
             placedBBoxes.push(bbox);
             return true;
         }
@@ -457,44 +706,159 @@ document.addEventListener('DOMContentLoaded', () => {
     return false;
   }
 
+  function setupCrop(W, H) {
+      const aspectRatioSelect = document.getElementById('aspectRatio');
+      const offsetXSlider = document.getElementById('cropOffsetX');
+      const offsetYSlider = document.getElementById('cropOffsetY');
+
+      function updateCropRect() {
+          if (!img) return;
+          const W = canvas.width, H = canvas.height;
+          const ratio = aspectRatioSelect.value;
+
+          if (ratio === 'free') {
+              cropRect = null;
+              offsetXSlider.disabled = true;
+              offsetYSlider.disabled = true;
+          } else {
+              offsetXSlider.disabled = false;
+              offsetYSlider.disabled = false;
+              const [w, h] = ratio.split(':').map(Number);
+              const targetRatio = w / h;
+              const currentRatio = W / H;
+              let cropW, cropH, cropX, cropY;
+              if (currentRatio > targetRatio) {
+                  cropH = H;
+                  cropW = H * targetRatio;
+                  cropX = (W - cropW) / 2 * (1 + offsetXSlider.value / 50);
+                  cropY = 0;
+              } else {
+                  cropW = W;
+                  cropH = W / targetRatio;
+                  cropX = 0;
+                  cropY = (H - cropH) / 2 * (1 + offsetYSlider.value / 50);
+              }
+              cropRect = { x: cropX, y: cropY, w: cropW, h: cropH };
+          }
+          // Redraw image with new crop overlay
+          if (img) {
+              ctx.drawImage(img, 0, 0);
+              drawCropOverlay();
+          }
+      }
+      
+      aspectRatioSelect.addEventListener('change', updateCropRect);
+      offsetXSlider.addEventListener('input', updateCropRect);
+      offsetYSlider.addEventListener('input', updateCropRect);
+      
+      // Initial calculation
+      updateCropRect();
+  }
+
+  function drawCropOverlay() {
+      if (!cropRect) return;
+      ctx.save();
+      ctx.fillStyle = 'rgba(0,0,0,0.4)';
+      ctx.fillRect(0, 0, cropRect.x, canvas.height);
+      ctx.fillRect(cropRect.x + cropRect.w, 0, canvas.width - (cropRect.x + cropRect.w), canvas.height);
+      ctx.fillRect(cropRect.x, 0, cropRect.w, cropRect.y);
+      ctx.fillRect(cropRect.x, cropRect.y + cropRect.h, cropRect.w, canvas.height - (cropRect.y + cropRect.h));
+      ctx.strokeStyle = 'rgba(89,255,0,0.85)';
+      ctx.lineWidth = 2;
+      ctx.setLineDash([8, 6]);
+      ctx.strokeRect(cropRect.x + 1, cropRect.y + 1, cropRect.w - 2, cropRect.h - 2);
+      ctx.restore();
+  }
+
   // --- Event Listeners ---
   document.getElementById('generateBtn').addEventListener('click', () => {
     currentLayout = null;
     generateLayout();
   });
   document.getElementById('resetBtn').addEventListener('click', () => {
-    img = null;
     currentLayout = null;
+    cropRect = null;
+    img = null;
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    canvas.style.display = 'none';
     document.getElementById('canvasArea').classList.remove('has-image');
-    ctx.clearRect(0,0,canvas.width, canvas.height);
-    document.getElementById('statusBar').textContent = '◈ No image loaded';
+    if (fileUpload) fileUpload.style.display = 'flex';
     document.getElementById('canvasInfo').textContent = 'No image loaded';
+    document.getElementById('statusBar').textContent = '◈ Reset complete. Drop a new image to start again.';
   });
   document.getElementById('exportBtn').addEventListener('click', () => {
     if (!img) return;
 
     let quality = document.getElementById('exportQuality').value;
-    let aspectRatio = document.getElementById('aspectRatio').value;
     let maxDim = quality === 'high' ? Math.max(canvas.width, canvas.height) :
                  quality === 'medium' ? 1080 : 720;
 
     let exportCanvas = document.createElement('canvas');
     let exportCtx = exportCanvas.getContext('2d');
-    let srcW = canvas.width, srcH = canvas.height;
-
-    if (aspectRatio !== 'free') {
-      let [ratioW, ratioH] = aspectRatio.split(':').map(Number);
-      let targetRatio = ratioW / ratioH;
-      let currentRatio = srcW / srcH;
-      if (currentRatio > targetRatio) srcW = srcH * targetRatio;
-      else srcH = srcW / targetRatio;
-    }
+    
+    let sx = cropRect ? cropRect.x : 0;
+    let sy = cropRect ? cropRect.y : 0;
+    let srcW = cropRect ? cropRect.w : canvas.width;
+    let srcH = cropRect ? cropRect.h : canvas.height;
 
     let scale = Math.min(1, maxDim / Math.max(srcW, srcH));
     exportCanvas.width = Math.floor(srcW * scale);
     exportCanvas.height = Math.floor(srcH * scale);
-    let sx = (canvas.width - srcW) / 2, sy = (canvas.height - srcH) / 2;
-    exportCtx.drawImage(canvas, sx, sy, srcW, srcH, 0, 0, exportCanvas.width, exportCanvas.height);
+    exportCtx.drawImage(img, sx, sy, srcW, srcH, 0, 0, exportCanvas.width, exportCanvas.height);
+
+    if (currentLayout) {
+      const exportScale = exportCanvas.width / srcW;
+      exportCtx.globalAlpha = 1;
+      currentLayout.elements.forEach(el => {
+        const resolvedFamily = (el.fontFamily || document.getElementById('fontFamily').value);
+        exportCtx.font = `${el.bold ? 'bold ' : ''}${el.size * exportScale}px ${resolvedFamily}`;
+        exportCtx.fillStyle = document.getElementById('textColor').value;
+        exportCtx.textAlign = 'left';
+        exportCtx.save();
+        exportCtx.translate((el.x - sx) * exportScale, (el.y - sy) * exportScale);
+        exportCtx.rotate(el.rotation * Math.PI / 180);
+        const lines = el.lines;
+        const letterSpacing = parseFloat(document.getElementById('letterSpacing').value) * exportScale;
+        const lineHeightFactorExport = parseFloat(document.getElementById('lineHeight').value);
+        const useBgExport = document.getElementById('textBgToggle').classList.contains('on');
+        const bgColorExport = document.getElementById('bgColor').value;
+        const bgOpacityExport = parseFloat(document.getElementById('bgOpacity').value);
+        const padding = 10 * exportScale;
+        lines.forEach((line, i) => {
+          const yPos = i * (el.size * lineHeightFactorExport) * exportScale;
+          const lineWidth = letterSpacing !== 0 ?
+              Array.from(line).reduce((sum, char) => sum + exportCtx.measureText(char).width, 0) + Math.max(0, letterSpacing * (line.length - 1)) :
+              exportCtx.measureText(line).width;
+          let xStart = 0;
+          if (el.textAlign === 'center') xStart = -lineWidth / 2;
+          if (el.textAlign === 'right') xStart = -lineWidth;
+
+          if (useBgExport) {
+            exportCtx.save();
+            exportCtx.globalAlpha = bgOpacityExport;
+            exportCtx.fillStyle = bgColorExport;
+            exportCtx.fillRect(xStart - padding, yPos - el.size * 0.85 * exportScale, lineWidth + padding * 2, el.size * 1.15 * exportScale);
+            exportCtx.restore();
+          }
+
+          if (document.getElementById('strokeToggle').classList.contains('on')) {
+            exportCtx.strokeStyle = document.getElementById('strokeColor').value;
+            exportCtx.lineWidth = parseFloat(document.getElementById('strokeWidth').value) * exportScale;
+            exportCtx.strokeText(line, xStart, yPos);
+          }
+          if (letterSpacing !== 0) {
+            let currentX = xStart;
+            for (let char of line) {
+              exportCtx.fillText(char, currentX, yPos);
+              currentX += exportCtx.measureText(char).width + letterSpacing;
+            }
+          } else {
+            exportCtx.fillText(line, xStart, yPos);
+          }
+        });
+        exportCtx.restore();
+      });
+    }
 
     const link = document.createElement('a');
     link.download = `pudrus_flyer_${Date.now()}.png`;
@@ -503,23 +867,39 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   // Real-time update
-  ['textColor', 'letterSpacing', 'strokeColor', 'strokeWidth'].forEach(id => {
-    document.getElementById(id).addEventListener('input', () => { if(currentLayout) drawLayout(); });
+  ['textColor', 'strokeColor', 'strokeWidth', 'textOpacity', 'letterSpacing'].forEach(id => {
+    document.getElementById(id).addEventListener('input', () => { if (currentLayout) drawLayout(); });
   });
   document.getElementById('strokeToggle').addEventListener('click', () => {
       document.getElementById('strokeToggle').classList.toggle('on');
-      if(currentLayout) drawLayout();
+      if (currentLayout) drawLayout();
+  });
+  document.getElementById('mainAct').addEventListener('input', () => { if (currentLayout) drawLayout(); });
+  document.getElementById('supportActs').addEventListener('input', () => { if (currentLayout) drawLayout(); });
+  document.getElementById('date').addEventListener('input', () => { if (currentLayout) drawLayout(); });
+  document.getElementById('venue').addEventListener('input', () => { if (currentLayout) drawLayout(); });
+  document.getElementById('uppercaseToggle').addEventListener('click', () => {
+      document.getElementById('uppercaseToggle').classList.toggle('on');
+      if (currentLayout) drawLayout();
+  });
+  document.getElementById('textBgToggle').addEventListener('click', () => {
+      document.getElementById('textBgToggle').classList.toggle('on');
+      if (currentLayout) drawLayout();
+  });
+  ['bgColor', 'bgOpacity'].forEach(id => {
+    document.getElementById(id).addEventListener('input', () => { if (currentLayout) drawLayout(); });
   });
 
   // Controls that require re-calculating the layout
-  ['fontSize', 'fontFamily', 'textAlign', 'lineHeight', 'designStyle', 'margin'].forEach(id => {
-    document.getElementById(id).addEventListener('input', () => { currentLayout = null; if(img) generateLayout(); });
+  ['fontSize', 'fontFamily', 'textAlign', 'lineHeight', 'designStyle', 'margin', 'aspectRatio', 'cropOffsetX', 'cropOffsetY', 'textOffsetX', 'textOffsetY', 'textRotation', 'blockSpacing'].forEach(id => {
+    const el = document.getElementById(id);
+    el.addEventListener(el.tagName === 'SELECT' ? 'change' : 'input', () => { 
+      currentLayout = null; 
+      scheduleGenerate(); 
+    });
   });
   document.getElementById('fontSize').addEventListener('input', (e) => {
     document.getElementById('fontSizeVal').textContent = e.target.value + 'x';
-  });
-  document.getElementById('letterSpacing').addEventListener('input', (e) => {
-    document.getElementById('letterSpacingVal').textContent = e.target.value + 'px';
   });
   document.getElementById('lineHeight').addEventListener('input', (e) => {
     document.getElementById('lineHeightVal').textContent = e.target.value + 'x';
@@ -530,12 +910,28 @@ document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('margin').addEventListener('input', (e) => {
     document.getElementById('marginVal').textContent = e.target.value + 'px';
   });
+  document.getElementById('textOpacity').addEventListener('input', (e) => {
+    document.getElementById('textOpacityVal').textContent = Math.round(e.target.value * 100) + '%';
+  });
+  document.getElementById('letterSpacing').addEventListener('input', (e) => {
+    document.getElementById('letterSpacingVal').textContent = e.target.value + 'px';
+  });
+  document.getElementById('cropOffsetX').addEventListener('input', (e) => { document.getElementById('cropOffsetXVal').textContent = e.target.value + '%'; });
+  document.getElementById('cropOffsetY').addEventListener('input', (e) => { document.getElementById('cropOffsetYVal').textContent = e.target.value + '%'; });
+  document.getElementById('textOffsetX').addEventListener('input', (e) => { document.getElementById('textOffsetXVal').textContent = e.target.value + '%'; });
+  document.getElementById('textOffsetY').addEventListener('input', (e) => { document.getElementById('textOffsetYVal').textContent = e.target.value + '%'; });
+  document.getElementById('textRotation').addEventListener('input', (e) => { document.getElementById('textRotationVal').textContent = e.target.value + '°'; });
+  document.getElementById('blockSpacing').addEventListener('input', (e) => { document.getElementById('blockSpacingVal').textContent = e.target.value + 'x'; });
 
   // Check for incoming image from workflow
-  const incomingImageDataUrl = receiveImage();
-  if (incomingImageDataUrl) {
-      loadFile(incomingImageDataUrl);
-  }
+  document.fonts.ready.then(() => {
+    const incomingImageDataUrl = receiveImage();
+    if (incomingImageDataUrl) {
+        loadFile(incomingImageDataUrl);
+    } else {
+      // If no image is coming, we can still trigger a layout if there's text
+    }
+  });
 
 });
 </script>
