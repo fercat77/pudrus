@@ -2,441 +2,162 @@
 <html lang="es">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="theme-color" content="#050508">
   <title>Glitch FX — PUDRUS.XYZ</title>
   <link rel="icon" type="image/svg+xml" href="../../favicon.svg">
   <link rel="stylesheet" href="../../css/style.css">
+  <link rel="stylesheet" href="../../css/tool-shell.css">
 </head>
 <body>
 
 <nav>
   <a href="../../index.html" class="nav-logo">PUDRUS<span>.xyz</span></a>
   <ul class="nav-links">
-    <li><a href="../../index.html#tools">All Tools</a></li>
+    <li><a href="../../index.html#tools" data-i18n="nav.tools">Tools</a></li>
   </ul>
+  <div class="nav-lang">
+    <select id="langSelect" aria-label="Language selector">
+      <option value="es">ES</option>
+      <option value="en">EN</option>
+    </select>
+  </div>
 </nav>
 
-<div class="tool-layout">
-
-  <!-- ── PANEL ── -->
-  <div class="tool-panel">
-    <div class="tool-panel-header">
-      <a href="../../index.html" class="back" data-i18n="nav.tools">← Back</a>
-      <h2 data-i18n="glitch.name">▓ Glitch FX</h2>
-      <p data-i18n="glitch.desc">RGB shift, scanlines, block corruption and datamosh effects.</p>
-    </div>
-
-    <div class="tool-panel-body">
-
-      <!-- Aspect Ratio -->
-      <div class="control-group">
-        <span class="control-label" data-i18n="glitch.aspectRatio">Aspect Ratio</span>
-        <div class="control-row">
-          <label data-i18n="glitch.aspect">Aspect</label>
-          <select id="aspectRatio">
-            <option value="free" data-i18n="glitch.aspectFree">Free</option>
-            <option value="1:1" data-i18n="glitch.aspectSquare">Square (1:1)</option>
-            <option value="4:5" data-i18n="glitch.aspectPortrait">Portrait (4:5)</option>
-            <option value="9:16" data-i18n="glitch.aspectStory">Story (9:16)</option>
-          </select>
-        </div>
-        <div class="control-row">
-          <label data-i18n="glitch.offsetX">Offset X</label>
-          <input type="range" id="cropOffsetX" min="-50" max="50" value="0"><span class="val" id="cropOffsetXVal">0%</span>
-        </div>
-        <div class="control-row">
-          <label data-i18n="glitch.offsetY">Offset Y</label>
-          <input type="range" id="cropOffsetY" min="-50" max="50" value="0"><span class="val" id="cropOffsetYVal">0%</span>
-        </div>
-      </div>
-
-      <hr class="divider">
-
-      <!-- RGB Shift -->
-      <div class="control-group">
-        <span class="control-label" data-i18n="glitch.channelShift">RGB Channel Shift</span>
-        <div class="control-row">
-          <label data-i18n="glitch.redX">Red X</label>
-          <input type="range" id="rShiftX" min="-50" max="50" value="0">
-          <span class="val" id="rShiftXVal">0</span>
-        </div>
-        <div class="control-row">
-          <label data-i18n="glitch.greenX">Green X</label>
-          <input type="range" id="gShiftX" min="-50" max="50" value="0">
-          <span class="val" id="gShiftXVal">0</span>
-        </div>
-        <div class="control-row">
-          <label data-i18n="glitch.blueX">Blue X</label>
-          <input type="range" id="bShiftX" min="-50" max="50" value="0">
-          <span class="val" id="bShiftXVal">0</span>
-        </div>
-        <div class="control-row">
-          <label data-i18n="glitch.yShift">Y Shift</label>
-          <input type="range" id="shiftY" min="-50" max="50" value="0">
-          <span class="val" id="shiftYVal">0</span>
-        </div>
-      </div>
-
-      <hr class="divider">
-
-      <!-- Block Corruption -->
-      <div class="control-group">
-        <span class="control-label" data-i18n="glitch.blockCorruption">Block Corruption</span>
-        <div class="control-row">
-          <label data-i18n="glitch.intensity">Intensity</label>
-          <input type="range" id="blockIntensity" min="0" max="100" value="0">
-          <span class="val" id="blockIntensityVal">0%</span>
-        </div>
-        <div class="control-row">
-          <label data-i18n="glitch.size">Size</label>
-          <input type="range" id="blockSize" min="10" max="200" value="50">
-          <span class="val" id="blockSizeVal">50</span>
-        </div>
-        <div class="control-row">
-          <label data-i18n="glitch.offset">Offset</label>
-          <input type="range" id="blockOffset" min="0" max="100" value="20">
-          <span class="val" id="blockOffsetVal">20</span>
-        </div>
-      </div>
-
-      <hr class="divider">
-
-      <!-- Scanlines -->
-      <div class="control-group">
-        <span class="control-label" data-i18n="glitch.scanlines">Scanlines</span>
-        <div class="control-row">
-          <label data-i18n="glitch.density">Density</label>
-          <input type="range" id="scanDensity" min="0" max="20" value="0">
-          <span class="val" id="scanDensityVal">0</span>
-        </div>
-        <div class="control-row">
-          <label data-i18n="glitch.opacity">Opacity</label>
-          <input type="range" id="scanOpacity" min="0" max="100" value="50">
-          <span class="val" id="scanOpacityVal">50%</span>
-        </div>
-      </div>
-
-      <hr class="divider">
-
-      <!-- Color Effects -->
-      <div class="control-group">
-        <span class="control-label" data-i18n="glitch.colorFx">Color Effects</span>
-        <div class="control-row">
-          <label data-i18n="glitch.hue">Hue</label>
-          <input type="range" id="hueRotate" min="0" max="360" value="0">
-          <span class="val" id="hueRotateVal">0°</span>
-        </div>
-        <div class="control-row">
-          <label data-i18n="glitch.saturation">Saturation</label>
-          <input type="range" id="saturation" min="0" max="200" value="100">
-          <span class="val" id="saturationVal">100%</span>
-        </div>
-        <div class="control-row">
-          <label data-i18n="glitch.brightness">Brightness</label>
-          <input type="range" id="brightness" min="0" max="200" value="100">
-          <span class="val" id="brightnessVal">100%</span>
-        </div>
-      </div>
-
-      <!-- Options -->
-      <div class="control-group">
-        <span class="control-label" data-i18n="glitch.options">Options</span>
-        <div class="toggle-row">
-          <label data-i18n="glitch.invert">Invert</label>
-          <div class="toggle" id="invertToggle"></div>
-        </div>
-        <div class="toggle-row">
-          <label data-i18n="glitch.rowShift">Row Shift</label>
-          <div class="toggle" id="rowGlitchToggle"></div>
-        </div>
-      </div>
-
-    </div>
-
-    <div class="status-bar" id="statusBar" data-i18n="glitch.statusNoImage">◈ No image loaded</div>
-
-    <div class="action-btns">
-      <button class="btn btn-primary" id="applyBtn" style="width:100%" data-i18n="glitch.applyBtn">◈ Apply Glitch</button>
-      <button class="btn btn-outline" id="randomBtn" style="width:100%" data-i18n="glitch.randomBtn">◈ Random Glitch</button>
-      <button class="btn btn-outline" id="resetBtn" style="width:100%" data-i18n="glitch.resetBtn">Reset</button>
-      <button class="btn btn-outline" id="sendToFlyerBtn" style="width:100%" data-i18n="glitch.continueBtn">→ Continue in Flyer Forge</button>
-      <button class="btn btn-outline" id="exportBtn" style="width:100%" data-i18n="glitch.exportBtn">Export PNG</button>
-    </div>
-  </div>
-
-  <!-- ── CANVAS ── -->
-  <div class="tool-canvas-area" id="canvasArea">
-    <div class="file-upload" id="dropZone">
-      <span class="icon">▓</span>
-      <span data-i18n="glitch.fileDrop">Click or drop an image here</span>
-      <input type="file" id="fileInput" accept="image/*">
-    </div>
-    <canvas id="mainCanvas"></canvas>
-    <div class="canvas-info" id="canvasInfo">No image loaded</div>
-  </div>
-
-</div>
+<main id="tool"></main>
 
 <script src="../../js/i18n.js"></script>
 <script src="../../js/utils.js"></script>
+<script src="../../js/tool-shell.js"></script>
 <script>
-// Este listener se asegura de que todo el código se ejecute después de que la página haya cargado.
-document.addEventListener('DOMContentLoaded', () => {
-let origImageData=null, canvas=document.getElementById('mainCanvas'), ctx=canvas.getContext('2d');
-let isInvert=false, rowGlitch=false;
-let cropRect = null;
-let blockCorruptionData = null;
+(function () {
+  const clamp = (v, lo, hi) => (v < lo ? lo : v > hi ? hi : v);
 
-// Sliders
-[['rShiftX','rShiftXVal'],['gShiftX','gShiftXVal'],['bShiftX','bShiftXVal'],['shiftY','shiftYVal'],
- ['blockIntensity','blockIntensityVal','%'],['blockSize','blockSizeVal'],['blockOffset','blockOffsetVal'],
- ['scanDensity','scanDensityVal'],['scanOpacity','scanOpacityVal','%'],
- ['hueRotate','hueRotateVal','°'],['saturation','saturationVal','%'],['brightness','brightnessVal','%']
-].forEach(([id,vid,suf=''])=>{
-  document.getElementById(id).addEventListener('input',()=>{
-    const inputEl = document.getElementById(id);
-    const valEl = document.getElementById(vid);
-    if (inputEl && valEl) {
-      valEl.textContent = inputEl.value + suf;
-    }
-  });
-  // Set initial value
-  const initialValEl = document.getElementById(vid);
-  if(initialValEl) initialValEl.textContent = document.getElementById(id).value + suf;
-});
-[['cropOffsetX','cropOffsetXVal','%'],['cropOffsetY','cropOffsetYVal','%']].forEach(([id,vid,suf])=>{
-  let el = document.getElementById(id);
-  el.addEventListener('input', ()=> { document.getElementById(vid).textContent = el.value + suf; applyGlitch(); });
-});
-
-function toggle(id,cb){let el=document.getElementById(id);el.addEventListener('click',()=>{el.classList.toggle('on');cb(el.classList.contains('on'));});}
-toggle('invertToggle',v=>isInvert=v);
-toggle('rowGlitchToggle',v=>rowGlitch=v);
-
-// Real-time preview listeners
-const allControls = ['rShiftX','gShiftX','bShiftX','shiftY','scanDensity','scanOpacity','hueRotate','saturation','brightness'];
-const blockControls = ['blockIntensity','blockSize','blockOffset'];
-
-// Todos los controles ahora aplican el glitch en tiempo real, regenerando los bloques si es necesario.
-allControls.concat(blockControls).forEach(id => {
-    document.getElementById(id).addEventListener('input', () => { if(origImageData) applyGlitch(true); });
-});
-
-function status(m){document.getElementById('statusBar').textContent='◈ '+m;}
-
-let dropZone=document.querySelector('.tool-canvas-area'),fileInput=document.getElementById('fileInput');
-dropZone.addEventListener('dragover',e=>{e.preventDefault(); dropZone.style.outline = '1px dashed var(--c1)';});
-dropZone.addEventListener('dragleave', () => { dropZone.style.outline = 'none'; });
-dropZone.addEventListener('drop',e=>{e.preventDefault(); dropZone.style.outline = 'none'; let f=e.dataTransfer.files[0];if(f)loadFile(f);});
-fileInput.addEventListener('change',()=>{if(fileInput.files[0])loadFile(fileInput.files[0]);});
-
-async function loadFile(file){
-  try {
-    const imageData = await loadImageFile(file, canvas, ctx, 
-      document.getElementById('canvasArea'), 
-      document.getElementById('canvasInfo'),
-      document.querySelector('.file-upload')
-    );
-    
-    img = imageData.img;
-    origImageData = imageData.data;
-    setupCrop(canvas.width, canvas.height);
-    status('Image loaded');
-  } catch (error) {
-    status('Error loading image');
-    console.error(error);
+  // 3x3 colour matrix for brightness · hue-rotate · saturate (same maths as the CSS filters)
+  function colorMatrix(bri, hueDeg, sat) {
+    const a = hueDeg * Math.PI / 180, c = Math.cos(a), s = Math.sin(a);
+    const H = [
+      0.213 + c * 0.787 - s * 0.213, 0.715 - c * 0.715 - s * 0.715, 0.072 - c * 0.072 + s * 0.928,
+      0.213 - c * 0.213 + s * 0.143, 0.715 + c * 0.285 + s * 0.140, 0.072 - c * 0.072 - s * 0.283,
+      0.213 - c * 0.213 - s * 0.787, 0.715 - c * 0.715 + s * 0.715, 0.072 + c * 0.928 + s * 0.072,
+    ];
+    const S = [
+      0.213 + 0.787 * sat, 0.715 - 0.715 * sat, 0.072 - 0.072 * sat,
+      0.213 - 0.213 * sat, 0.715 + 0.285 * sat, 0.072 - 0.072 * sat,
+      0.213 - 0.213 * sat, 0.715 - 0.715 * sat, 0.072 + 0.928 * sat,
+    ];
+    const M = new Float32Array(9);
+    for (let r = 0; r < 3; r++)
+      for (let k = 0; k < 3; k++)
+        M[r * 3 + k] = bri * (H[r * 3] * S[k] + H[r * 3 + 1] * S[3 + k] + H[r * 3 + 2] * S[6 + k]);
+    return M;
   }
-}
 
-function setupCrop(W, H) {
-    const aspectRatioSelect = document.getElementById('aspectRatio');
-    const offsetXSlider = document.getElementById('cropOffsetX');
-    const offsetYSlider = document.getElementById('cropOffsetY');
+  function render({ src, out, W, H, p, rng }) {
+    const s = src.data, o = out.data;
 
-    function updateCropRect() {
-        const ratio = aspectRatioSelect.value;
-        if (ratio === 'free') {
-            cropRect = null;
-            offsetXSlider.disabled = true;
-            offsetYSlider.disabled = true;
-        } else {
-            offsetXSlider.disabled = false;
-            offsetYSlider.disabled = false;
-            const [w, h] = ratio.split(':').map(Number);
-            const targetRatio = w / h;
-            const currentRatio = W / H;
-            let cropW, cropH, cropX, cropY;
-            if (currentRatio > targetRatio) {
-                cropH = H;
-                cropW = H * targetRatio;
-                cropX = (W - cropW) / 2 * (1 + offsetXSlider.value / 50);
-                cropY = 0;
-            } else {
-                cropW = W;
-                cropH = W / targetRatio;
-                cropX = 0;
-                cropY = (H - cropH) / 2 * (1 + offsetYSlider.value / 50);
-            }
-            cropRect = { x: cropX, y: cropY, w: cropW, h: cropH };
-        }
-        applyGlitch(false); // On crop change, don't regenerate blocks
-    }
-    aspectRatioSelect.addEventListener('change', updateCropRect);
-    offsetXSlider.addEventListener('input', updateCropRect);
-    offsetYSlider.addEventListener('input', updateCropRect);
-    updateCropRect();
-}
-
-
-function applyGlitch(regenerateBlocks = true){
-  if(!origImageData){status('Load an image first');return;}
-  status('Processing...');
-  setTimeout(()=>{
-    const W = origImageData.width, H = origImageData.height;
-
-    let rSX=parseInt(document.getElementById('rShiftX').value);
-    let gSX=parseInt(document.getElementById('gShiftX').value);
-    let bSX=parseInt(document.getElementById('bShiftX').value);
-    let sY =parseInt(document.getElementById('shiftY').value);
-    let bInt=parseInt(document.getElementById('blockIntensity').value)/100;
-    let bSz =parseInt(document.getElementById('blockSize').value);
-    let bOff=parseInt(document.getElementById('blockOffset').value);
-    let scD =parseInt(document.getElementById('scanDensity').value);
-    let scO =parseInt(document.getElementById('scanOpacity').value)/100;
-    let hue =parseInt(document.getElementById('hueRotate').value);
-    let sat =parseInt(document.getElementById('saturation').value)/100;
-    let bri =parseInt(document.getElementById('brightness').value)/100;
-
-    let workingImageData = ctx.createImageData(W, H);
-
-    // RGB Shift
-    for(let y=0;y<H;y++){
-      let rowOff = rowGlitch && Math.random()<0.05 ? Math.floor(Math.random()*80-40) : 0;
-      for(let x=0;x<W;x++){
-        let di=(y*W+x)*4;
-        // Red
-        let rx=Math.min(W-1,Math.max(0,x+rSX+rowOff)), ry=Math.min(H-1,Math.max(0,y+sY));
-        let ri=(ry*W+rx)*4;
-        // Green
-        let gx=Math.min(W-1,Math.max(0,x+gSX)), gy=Math.min(H-1,Math.max(0,y));
-        let gi=(gy*W+gx)*4;
-        // Blue
-        let bx=Math.min(W-1,Math.max(0,x+bSX)), by2=Math.min(H-1,Math.max(0,y-sY));
-        let bi=(by2*W+bx)*4;
-
-        workingImageData.data[di]   = origImageData.data[ri];
-        workingImageData.data[di+1] = origImageData.data[gi+1];
-        workingImageData.data[di+2] = origImageData.data[bi+2];
-        workingImageData.data[di+3] = 255;
+    // 1) Row tearing: horizontal bands shifted sideways
+    const rowOff = new Int32Array(H);
+    if (p.rows > 0) {
+      const amt = p.rows / 100;
+      for (let y = 0; y < H;) {
+        const band = Math.max(1, Math.round(H * (0.003 + rng() * 0.03)));
+        const off = rng() < amt * 0.5 ? Math.round((rng() - 0.5) * 0.2 * W * amt) : 0;
+        for (let i = 0; i < band && y < H; i++, y++) rowOff[y] = off;
       }
     }
 
-    // Block corruption
-    if (bInt > 0) {
-        if (regenerateBlocks || !blockCorruptionData) {
-            // Generate new corruption data based on the CURRENTLY shifted image
-            let dataToCorrupt = new ImageData(new Uint8ClampedArray(workingImageData.data), W, H);
-            let d = dataToCorrupt.data;
-            let numBlocks = Math.floor(bInt * 30);
-            for (let n = 0; n < numBlocks; n++) {
-                let bx = Math.floor(Math.random() * W);
-                let by = Math.floor(Math.random() * H);
-                let bw = Math.floor(Math.random() * bSz + 10);
-                let bh = Math.floor(Math.random() * bSz * 0.3 + 5);
-                let off = Math.floor(Math.random() * bOff - (bOff / 2));
-                for (let dy = 0; dy < bh; dy++) {
-                    for (let dx = 0; dx < bw; dx++) {
-                        let tx = bx + dx, ty = by + dy;
-                        if (tx >= 0 && tx < W && ty >= 0 && ty < H) {
-                            let sx2 = Math.min(W - 1, Math.max(0, tx + off));
-                            let di = (ty * W + tx) * 4, si = (ty * W + sx2) * 4;
-                            d[di] = d[si]; d[di+1] = d[si+1]; d[di+2] = d[si+2];
-                        }
-                    }
-                }
-            }
-            blockCorruptionData = dataToCorrupt; // Cache the result
+    // 2) RGB split + colour, one pass over the pixels
+    const dist = (p.rgb / 100) * 0.05 * W;
+    const ang = p.angle * Math.PI / 180;
+    const dx = Math.round(Math.cos(ang) * dist), dy = Math.round(Math.sin(ang) * dist);
+    const useMatrix = p.hue !== 0 || p.saturation !== 100 || p.brightness !== 100;
+    const M = colorMatrix(p.brightness / 100, p.hue, p.saturation / 100);
+    const inv = p.invert;
+    const W1 = W - 1, H1 = H - 1;
+
+    for (let y = 0; y < H; y++) {
+      const ro = rowOff[y];
+      const rowR = clamp(y + dy, 0, H1) * W, rowG = y * W, rowB = clamp(y - dy, 0, H1) * W;
+      let i = y * W * 4;
+      for (let x = 0; x < W; x++, i += 4) {
+        let r = s[(rowR + clamp(x + dx + ro, 0, W1)) * 4];
+        let g = s[(rowG + clamp(x + ro, 0, W1)) * 4 + 1];
+        let b = s[(rowB + clamp(x - dx + ro, 0, W1)) * 4 + 2];
+        if (useMatrix) {
+          const r2 = M[0] * r + M[1] * g + M[2] * b;
+          const g2 = M[3] * r + M[4] * g + M[5] * b;
+          b = M[6] * r + M[7] * g + M[8] * b;
+          r = r2; g = g2;
         }
-        // If corruption data exists, apply it on top of the current RGB shift
-        if (blockCorruptionData) {
-            workingImageData.data.set(blockCorruptionData.data);
-        }
+        if (inv) { r = 255 - r; g = 255 - g; b = 255 - b; }
+        o[i] = r; o[i + 1] = g; o[i + 2] = b; o[i + 3] = 255;
+      }
     }
 
-    ctx.putImageData(workingImageData, 0, 0);
-
-    // Color effects (brightness + saturation via CSS filter on offscreen canvas)
-    let filters=[];
-    if(bri!==1)   filters.push(`brightness(${bri})`);
-    if(sat!==1)   filters.push(`saturate(${sat})`);
-    if(hue!==0)   filters.push(`hue-rotate(${hue}deg)`);
-    if(isInvert)  filters.push('invert(1)');
-    if(filters.length>0){
-      let tmp=document.createElement('canvas');
-      tmp.width = W; tmp.height = H;
-      let tc = tmp.getContext('2d');
-      tc.filter = filters.join(' ');
-      tc.drawImage(canvas, 0, 0);
-      ctx.clearRect(0, 0, W, H);
-      ctx.drawImage(tmp, 0, 0);
-    }
-
-    if (scD > 0) {
-        let scanvas = document.createElement('canvas');
-        scanvas.width = W; scanvas.height = H;
-        let sctx = scanvas.getContext('2d');
-        sctx.fillStyle = `rgba(0,0,0,${scO})`;
-        for(let y=0; y < H; y += scD) {
-            sctx.fillRect(0, y, W, 1);
+    // 3) Block corruption: copy displaced rectangles (sometimes a single channel)
+    const n = Math.round((p.blocks / 100) * 35);
+    if (n > 0) {
+      const snap = o.slice();
+      const size = p.blockSize / 50, shift = p.blockShift / 100;
+      for (let k = 0; k < n; k++) {
+        const bw = Math.round(W * (0.05 + rng() * 0.35) * size);
+        const bh = Math.max(1, Math.round(H * (0.004 + rng() * 0.04) * size));
+        const bx = Math.round(rng() * W - bw / 2), by = Math.round(rng() * H);
+        const off = Math.round((rng() - 0.5) * 2 * W * 0.15 * shift);
+        const ch = rng() < 0.25 ? Math.floor(rng() * 3) : -1;
+        for (let y = Math.max(0, by); y < Math.min(H, by + bh); y++) {
+          for (let x = Math.max(0, bx); x < Math.min(W, bx + bw); x++) {
+            const di = (y * W + x) * 4, si = (y * W + clamp(x + off, 0, W1)) * 4;
+            if (ch < 0) { o[di] = snap[si]; o[di + 1] = snap[si + 1]; o[di + 2] = snap[si + 2]; }
+            else o[di + ch] = snap[si + ch];
+          }
         }
-        ctx.drawImage(scanvas, 0, 0);
+      }
     }
-    drawCropOverlay(ctx, canvas, cropRect);
 
-    status('Done!');
-  },10);
-}
+    // 4) Scanlines: darken thin rows at a spacing relative to the image height
+    if (p.scan > 0) {
+      const spacing = H / (80 + p.scanDensity * 6);
+      const keep = 1 - p.scan / 100;
+      for (let y = 0; y < H; y++) {
+        if ((y / spacing) % 1 >= 0.4) continue;
+        for (let i = y * W * 4, end = i + W * 4; i < end; i += 4) {
+          o[i] *= keep; o[i + 1] *= keep; o[i + 2] *= keep;
+        }
+      }
+    }
+  }
 
-function randomGlitch(){
-  if(!origImageData){status('Load an image first');return;}
-  document.getElementById('rShiftX').value=Math.floor(Math.random()*60-30);
-  document.getElementById('gShiftX').value=0;
-  document.getElementById('bShiftX').value=Math.floor(Math.random()*60-30);
-  document.getElementById('shiftY').value=Math.floor(Math.random()*20-10);
-  document.getElementById('blockIntensity').value=Math.floor(Math.random()*60);
-  document.getElementById('blockSize').value=Math.floor(Math.random()*100+20);
-  document.getElementById('blockOffset').value=Math.floor(Math.random()*200);
-  document.getElementById('scanDensity').value=Math.random()<0.5?Math.floor(Math.random()*10+2):0;
-  document.getElementById('hueRotate').value=Math.floor(Math.random()*360);
-  // Update labels
-  ['rShiftX','gShiftX','bShiftX','shiftY','blockIntensity','blockSize','blockOffset','scanDensity','hueRotate'].forEach(id=>{
-    let el=document.getElementById(id+'Val');
-    if(el) el.textContent=document.getElementById(id).value;
+  PudrusTool.create({
+    id: 'glitch',
+    i18n: 'glitch',
+    icon: '▓',
+    name: '▓ Glitch FX',
+    desc: 'RGB shift, scanlines, block corruption and datamosh effects.',
+    controls: [
+      { key: 'rgb',        label: 'glitch.rgb',        fallback: 'RGB split',   min: 0, max: 100, value: 0,   unit: '%', rand: [10, 60] },
+      { key: 'rows',       label: 'glitch.rows',       fallback: 'Tearing',     min: 0, max: 100, value: 0,   unit: '%', rand: [0, 60] },
+      { key: 'blocks',     label: 'glitch.blocks',     fallback: 'Blocks',      min: 0, max: 100, value: 0,   unit: '%', rand: [0, 70] },
+      { key: 'scan',       label: 'glitch.scan',       fallback: 'Scanlines',   min: 0, max: 100, value: 0,   unit: '%', rand: [0, 60] },
+      { key: 'hue',        label: 'glitch.hue',        fallback: 'Hue',         min: 0, max: 360, value: 0,   unit: '°', rand: [0, 360] },
+      { key: 'angle',      label: 'glitch.angle',      fallback: 'RGB angle',   min: 0, max: 360, value: 0,   unit: '°', advanced: true, rand: [0, 360] },
+      { key: 'blockSize',  label: 'glitch.blockSize',  fallback: 'Block size',  min: 5, max: 100, value: 40,  advanced: true, rand: [15, 80] },
+      { key: 'blockShift', label: 'glitch.blockShift', fallback: 'Block shift', min: 0, max: 100, value: 40,  unit: '%', advanced: true, rand: [10, 90] },
+      { key: 'scanDensity',label: 'glitch.scanDensity',fallback: 'Scanline density', min: 1, max: 100, value: 40, advanced: true, rand: [10, 80] },
+      { key: 'saturation', label: 'glitch.saturation', fallback: 'Saturation',  min: 0, max: 200, value: 100, unit: '%', advanced: true, rand: [80, 170] },
+      { key: 'brightness', label: 'glitch.brightness', fallback: 'Brightness',  min: 50, max: 150, value: 100, unit: '%', advanced: true, rand: [90, 115] },
+      { key: 'invert',     label: 'glitch.invert',     fallback: 'Invert', type: 'toggle', value: false, advanced: true, randChance: 0.1 },
+    ],
+    presets: [
+      { label: 'glitch.presetSoft',    fallback: 'Soft',    values: { rgb: 15, scan: 20, scanDensity: 50 } },
+      { label: 'glitch.presetVhs',     fallback: 'VHS',     values: { rgb: 35, rows: 30, scan: 45, scanDensity: 30, saturation: 130, blocks: 10, blockSize: 20 } },
+      { label: 'glitch.presetBroken',  fallback: 'Broken',  values: { rgb: 50, rows: 55, blocks: 70, blockSize: 60, blockShift: 70 } },
+      { label: 'glitch.presetAcid',    fallback: 'Acid',    values: { rgb: 40, hue: 200, saturation: 190, angle: 45, blocks: 25 } },
+    ],
+    render,
   });
-  applyGlitch(true);
-}
-
-document.getElementById('applyBtn').addEventListener('click', () => applyGlitch(true));
-document.getElementById('randomBtn').addEventListener('click',randomGlitch);
-document.getElementById('resetBtn').addEventListener('click',()=>{
-  if(origImageData){ctx.putImageData(origImageData,0,0);status('Reset');}
-});
-document.getElementById('sendToFlyerBtn').addEventListener('click', () => {
-    if (!origImageData) { status('Nothing to send'); return; }
-    sendTo('flyer-forge', canvas, cropRect);
-});
-
-document.getElementById('exportBtn').addEventListener('click',()=>{
-  if(!origImageData){status('Nothing to export');return;}
-  exportToPNG(canvas, cropRect, 'pudrus_glitch');
-  status('Exported!');
-});
-// Cargar imagen si viene de otra herramienta
-const incomingImageDataUrl = receiveImage();
-if (incomingImageDataUrl) {
-    loadFile(incomingImageDataUrl);
-}
-});
+})();
 </script>
 </body>
 </html>

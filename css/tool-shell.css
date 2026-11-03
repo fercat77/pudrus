@@ -1,0 +1,249 @@
+/* ── PUDRUS TOOL SHELL ─────────────────────────────────
+   Layout for tools built with js/tool-shell.js.
+   Desktop: side panel left, image right.
+   Phone:   image on top, controls below, action bar pinned to the bottom. */
+
+.ts-page { overflow: hidden; }
+.ts-page footer { display: none; }
+
+.ts {
+  --ts-side: 360px;
+  --ts-touch: 44px;
+  position: fixed;
+  inset: var(--nav-height) 0 0 0;
+  display: grid;
+  grid-template-columns: var(--ts-side) minmax(0, 1fr);
+  grid-template-rows: minmax(0, 1fr);
+  grid-template-areas: "side stage";
+  padding: 0; /* main has a bottom padding meant for the home page */
+  background: var(--bg);
+}
+
+/* ── Stage (image) ── */
+.ts-stage {
+  grid-area: stage;
+  position: relative;
+  display: flex; align-items: center; justify-content: center;
+  min-width: 0; min-height: 0;
+  padding: 24px;
+  background:
+    radial-gradient(circle at 50% 40%, rgba(102,255,51,0.04), transparent 60%),
+    var(--bg);
+  overflow: hidden;
+}
+.ts-stage.is-drag { outline: 2px dashed var(--c1); outline-offset: -12px; }
+
+.ts-canvas {
+  display: none;
+  max-width: 100%; max-height: 100%;
+  box-shadow: 0 0 0 1px var(--border), 0 12px 40px rgba(0,0,0,0.6);
+}
+.ts-stage.has-image .ts-canvas { display: block; }
+.ts-stage.is-cropping .ts-canvas { cursor: grab; touch-action: none; }
+.ts-stage.is-cropping .ts-canvas:active { cursor: grabbing; }
+
+.ts-empty {
+  display: flex; flex-direction: column; align-items: center; gap: 10px;
+  width: min(420px, 100%);
+  padding: 48px 24px;
+  background: transparent;
+  border: 1px dashed var(--c3);
+  border-radius: 12px;
+  color: var(--text);
+  font-family: var(--font);
+  cursor: pointer;
+  transition: border-color .2s, background .2s;
+}
+.ts-empty:hover, .ts-empty:focus-visible { border-color: var(--c1); background: rgba(102,255,51,0.04); outline: none; }
+.ts-empty-icon { font-size: 40px; color: var(--c1); }
+.ts-empty-title { font-size: 15px; letter-spacing: 2px; text-transform: uppercase; color: #fff; }
+.ts-empty-hint { font-size: 12px; color: var(--text2); line-height: 1.5; text-align: center; }
+.ts-stage.has-image .ts-empty { display: none; }
+
+.ts-badge {
+  position: absolute; top: 16px; left: 50%; transform: translateX(-50%);
+  padding: 6px 14px; border-radius: 99px;
+  background: rgba(5,5,8,0.85); border: 1px solid var(--c1);
+  color: var(--c1); font-size: 12px; letter-spacing: 2px; text-transform: uppercase;
+  opacity: 0; pointer-events: none; transition: opacity .15s;
+}
+.ts-stage.is-comparing .ts-badge { opacity: 1; }
+
+.ts-status {
+  position: absolute; bottom: 12px; left: 50%; transform: translate(-50%, 8px);
+  max-width: calc(100% - 24px);
+  padding: 6px 12px; border-radius: 6px;
+  background: rgba(5,5,8,0.85); border: 1px solid var(--border);
+  color: var(--text); font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  opacity: 0; pointer-events: none; transition: opacity .2s, transform .2s;
+}
+.ts-status.is-on { opacity: 1; transform: translate(-50%, 0); }
+
+/* ── Side panel ── */
+.ts-side {
+  grid-area: side;
+  display: flex; flex-direction: column;
+  min-height: 0;
+  background: var(--bg2);
+  border-right: 1px solid var(--border);
+}
+
+.ts-head { padding: 18px 20px 12px; }
+.ts-back {
+  display: inline-block; margin-bottom: 10px;
+  font-size: 12px; letter-spacing: 1px; color: var(--text2); text-decoration: none;
+}
+.ts-back:hover { color: var(--c1); }
+.ts-head h1 { font-size: 16px; letter-spacing: 3px; text-transform: uppercase; color: #fff; font-weight: 600; }
+.ts-desc { margin-top: 6px; font-size: 12px; line-height: 1.5; color: var(--text2); }
+
+.ts-tabs {
+  display: flex; gap: 4px;
+  padding: 0 20px;
+  border-bottom: 1px solid var(--border);
+}
+.ts-tab {
+  flex: 1;
+  min-height: var(--ts-touch);
+  background: none; border: 0; border-bottom: 2px solid transparent;
+  color: var(--text2); font-family: var(--font); font-size: 12px; letter-spacing: 1.5px; text-transform: uppercase;
+  cursor: pointer;
+}
+.ts-tab:hover { color: var(--text); }
+.ts-tab.is-on { color: var(--c1); border-bottom-color: var(--c1); }
+
+.ts-panels { flex: 1; min-height: 0; overflow-y: auto; padding: 16px 20px 8px; overscroll-behavior: contain; }
+
+.ts-presets { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 18px; }
+.ts-chip {
+  min-height: 36px; padding: 0 14px;
+  background: var(--bg3); border: 1px solid var(--c3); border-radius: 99px;
+  color: var(--text); font-family: var(--font); font-size: 12px; letter-spacing: 0.5px;
+  cursor: pointer; transition: border-color .15s, background .15s, color .15s;
+}
+.ts-chip:hover { border-color: var(--c1); }
+.ts-chip:active, .ts-chip.is-on { background: var(--c1); border-color: var(--c1); color: var(--bg); }
+
+.ts-row { margin-bottom: 14px; }
+.ts-row-head { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+.ts-row label { font-size: 12px; letter-spacing: 1px; color: var(--text); cursor: default; user-select: none; }
+.ts-val { font-size: 12px; color: var(--c1); font-variant-numeric: tabular-nums; }
+
+/* Range: big invisible hit area, thin visible track */
+.ts input[type="range"] {
+  -webkit-appearance: none; appearance: none;
+  display: block; width: 100%; min-width: 0;
+  height: 32px; margin: 2px 0 0;
+  background: transparent; cursor: pointer;
+  flex: none;
+}
+.ts input[type="range"]::-webkit-slider-runnable-track { height: 4px; background: var(--c3); border-radius: 2px; }
+.ts input[type="range"]::-moz-range-track { height: 4px; background: var(--c3); border-radius: 2px; }
+.ts input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 20px; height: 20px; margin-top: -8px;
+  border-radius: 50%; background: var(--c1); border: 3px solid var(--bg2);
+  box-shadow: 0 0 0 1px var(--c1);
+}
+.ts input[type="range"]::-moz-range-thumb {
+  width: 16px; height: 16px; border-radius: 50%;
+  background: var(--c1); border: 3px solid var(--bg2); box-shadow: 0 0 0 1px var(--c1);
+}
+.ts input[type="range"]:focus-visible { outline: none; }
+.ts input[type="range"]:focus-visible::-webkit-slider-thumb { box-shadow: 0 0 0 4px rgba(102,255,51,0.35); }
+
+.ts-row-toggle { display: flex; justify-content: space-between; align-items: center; min-height: var(--ts-touch); margin-bottom: 4px; }
+.ts-switch {
+  -webkit-appearance: none; appearance: none;
+  position: relative; width: 48px; height: 28px; flex: none;
+  border-radius: 99px; background: var(--c3); cursor: pointer; transition: background .2s;
+}
+.ts-switch::after {
+  content: ""; position: absolute; top: 3px; left: 3px;
+  width: 22px; height: 22px; border-radius: 50%; background: var(--text); transition: transform .2s;
+}
+.ts-switch:checked { background: var(--c1); }
+.ts-switch:checked::after { transform: translateX(20px); background: var(--bg); }
+.ts-switch:focus-visible { outline: 2px solid var(--c1); outline-offset: 2px; }
+
+.ts-note { font-size: 12px; color: var(--text2); line-height: 1.5; }
+
+.ts-more { display: flex; flex-wrap: wrap; gap: 4px 16px; padding: 12px 0 4px; border-top: 1px solid var(--border); margin-top: 8px; }
+.ts-link {
+  min-height: 36px; padding: 0;
+  background: none; border: 0;
+  color: var(--text2); font-family: var(--font); font-size: 12px; letter-spacing: 1px;
+  cursor: pointer; text-decoration: underline; text-underline-offset: 3px;
+}
+.ts-link:hover { color: var(--c1); }
+
+/* ── Action bar ── */
+.ts-bar {
+  display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px;
+  padding: 12px 20px calc(12px + env(safe-area-inset-bottom));
+  border-top: 1px solid var(--border);
+  background: var(--bg2);
+}
+.ts-btn {
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px;
+  min-height: 52px; padding: 4px;
+  background: var(--bg3); border: 1px solid var(--c3); border-radius: 10px;
+  color: var(--text); font-family: var(--font);
+  cursor: pointer; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none;
+  transition: border-color .15s, background .15s, transform .1s;
+}
+.ts-btn:hover:not(:disabled) { border-color: var(--c1); }
+.ts-btn:active:not(:disabled) { transform: scale(0.96); }
+.ts-btn:disabled { opacity: 0.35; cursor: default; }
+.ts-btn:focus-visible { outline: 2px solid var(--c1); outline-offset: 2px; }
+.ts-btn-icon { font-size: 18px; line-height: 1; }
+.ts-btn-label { font-size: 11px; letter-spacing: 1px; text-transform: uppercase; }
+.ts-btn-primary { background: var(--c1); border-color: var(--c1); color: var(--bg); font-weight: 600; }
+.ts-btn-primary:hover:not(:disabled) { background: #fff; border-color: #fff; }
+
+.ts-file { position: absolute; width: 1px; height: 1px; opacity: 0; pointer-events: none; }
+
+/* ── Phone ── */
+@media (max-width: 768px) {
+  .ts-page nav .nav-links { display: none; }
+  .ts-page nav { flex-wrap: nowrap; }
+
+  .ts {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: minmax(0, 46%) minmax(0, 1fr);
+    grid-template-areas: "stage" "side";
+  }
+  .ts-stage { padding: 12px; }
+  .ts-empty { padding: 32px 16px; }
+
+  .ts-side { border-right: 0; border-top: 1px solid var(--border); }
+  .ts-head { display: flex; align-items: baseline; gap: 12px; padding: 10px 16px 6px; }
+  .ts-back { margin: 0; font-size: 0; }
+  .ts-back::before { content: "←"; font-size: 18px; }
+  .ts-head h1 { font-size: 13px; }
+  .ts-desc { display: none; }
+  .ts-tabs { padding: 0 8px; }
+  .ts-panels { padding: 14px 16px 8px; }
+  .ts-row label, .ts-val { font-size: 13px; }
+  .ts input[type="range"] { height: 36px; }
+  .ts input[type="range"]::-webkit-slider-thumb { width: 26px; height: 26px; margin-top: -11px; }
+  .ts input[type="range"]::-moz-range-thumb { width: 22px; height: 22px; }
+  .ts-bar { padding: 8px 12px calc(8px + env(safe-area-inset-bottom)); gap: 6px; }
+}
+
+/* Phone in landscape: side by side again, compact */
+@media (max-width: 950px) and (orientation: landscape) and (max-height: 500px) {
+  .ts {
+    --ts-side: 300px;
+    grid-template-columns: minmax(0, 1fr) var(--ts-side);
+    grid-template-rows: minmax(0, 1fr);
+    grid-template-areas: "stage side";
+  }
+  .ts-head, .ts-desc { display: none; }
+  .ts-btn { min-height: 44px; }
+  .ts-btn-label { display: none; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ts * { transition: none !important; }
+}

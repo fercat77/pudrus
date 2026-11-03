@@ -17,7 +17,7 @@ function drawCropOverlay(ctx, canvas, cropRect) {
     ctx.strokeStyle = 'rgba(89,255,0,0.85)';
     ctx.lineWidth = 2;
     ctx.setLineDash([8, 6]);
-    ctx.strokeRect(cropRect.x + 1, cropRect.y + 1, cropRect.w - 2, cropRect.h - 2);
+    ctx.strokeRect(cropRect.x - 1, cropRect.y - 1, cropRect.w + 2, cropRect.h + 2); // outside the crop so exports stay clean
     ctx.restore();
 }
 
