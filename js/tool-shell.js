@@ -154,11 +154,51 @@
         val = el('output', { class: 'ts-val', for: id });
         input = el('input', { type: 'range', id, min: c.min, max: c.max, step: c.step || 1, value: state.p[c.key] });
         input.addEventListener('input', () => { changed(c.key, parseFloat(input.value)); showVal(c.key); });
-        row = el('div', { class: 'ts-row' }, [el('div', { class: 'ts-row-head' }, [label, val]), input]);
+        row = el('div', { class: 'ts-row ts-row-range' }, [el('div', { class: 'ts-row-head' }, [label, val]), input]);
+        touchSlider(row, input, c);
       }
       inputs[c.key] = { c, input, val, row };
       return row;
     }
+    // Touch sliders: on phones the native range is not touchable (CSS), so a vertical
+    // swipe scrolls the panel and a tap changes nothing. Only a clearly horizontal
+    // drag anywhere on the row moves the value, relative to where it was.
+    function touchSlider(row, input, c) {
+      const min = +c.min, max = +c.max, step = +(c.step || 1);
+      const dec = String(step).includes('.') ? String(step).split('.')[1].length : 0;
+      let g = null;
+      row.addEventListener('pointerdown', e => {
+        if (e.pointerType !== 'touch') return;
+        g = { id: e.pointerId, x: e.clientX, y: e.clientY, v: +state.p[c.key], drag: false };
+      });
+      row.addEventListener('pointermove', e => {
+        if (!g || e.pointerId !== g.id) return;
+        const dx = e.clientX - g.x, dy = e.clientY - g.y;
+        if (!g.drag) {
+          if (Math.abs(dy) > 10 && Math.abs(dy) > Math.abs(dx)) { g = null; return; }      // it's a scroll
+          if (Math.abs(dx) < 10 || Math.abs(dx) < Math.abs(dy) * 1.5) return;               // not sure yet
+          g.drag = true;
+          g.x = e.clientX;                                                                   // no jump on grab
+          try { row.setPointerCapture(e.pointerId); } catch (err) { /* keep dragging without capture */ }
+          row.classList.add('is-dragging');
+          if (navigator.vibrate) navigator.vibrate(4);
+          return;
+        }
+        const w = input.getBoundingClientRect().width || 1;
+        let v = g.v + (e.clientX - g.x) / w * (max - min);
+        v = Math.min(max, Math.max(min, Math.round((v - min) / step) * step + min));
+        v = +v.toFixed(dec);
+        if (v !== state.p[c.key]) { input.value = v; changed(c.key, v); showVal(c.key); }
+      });
+      const end = e => {
+        if (!g || (e && e.pointerId !== g.id)) return;
+        g = null;
+        row.classList.remove('is-dragging');
+      };
+      row.addEventListener('pointerup', end);
+      row.addEventListener('pointercancel', end);
+    }
+
     function changed(key, v) {
       state.p[key] = v;
       if (key === 'format') resizeGenerator();

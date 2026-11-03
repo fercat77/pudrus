@@ -256,6 +256,16 @@
   .ts-bar { padding: 8px 12px calc(8px + env(safe-area-inset-bottom)); gap: 6px; }
 }
 
+/* Touch screens: the native slider ignores touches so scrolling the panel can't move it.
+   tool-shell.js turns a horizontal drag on the row into a value change instead. */
+@media (pointer: coarse) {
+  .ts-row-range { touch-action: pan-y; }
+  .ts-row-range input[type="range"] { pointer-events: none; }
+  .ts-row-range.is-dragging label, .ts-row-range.is-dragging .ts-val { color: var(--c1); }
+  .ts-row-range.is-dragging input[type="range"]::-webkit-slider-thumb { transform: scale(1.3); box-shadow: 0 0 0 6px rgba(102,255,51,0.25); }
+  .ts-row-range.is-dragging input[type="range"]::-moz-range-thumb { transform: scale(1.3); box-shadow: 0 0 0 6px rgba(102,255,51,0.25); }
+}
+
 /* Phone in landscape: side by side again, compact */
 @media (max-width: 950px) and (orientation: landscape) and (max-height: 500px) {
   .ts {
