@@ -426,7 +426,8 @@
     "videoSaved": "Video guardado",
     "videoUnsupported": "Este navegador no permite exportar video",
     "video": "Guardar video de 5 s",
-    "sendGallery": "◈ Enviar a la galería"
+    "sendGallery": "◈ Enviar a la galería",
+    "trySample": "o probalo con una imagen de ejemplo"
   },
   "gallery": {
     "sectionTag": "◈ Galería",

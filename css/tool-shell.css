@@ -43,8 +43,12 @@
 .ts-stage.is-cropping .ts-canvas:active { cursor: grabbing; }
 
 .ts-empty {
-  display: flex; flex-direction: column; align-items: center; gap: 10px;
+  display: flex; flex-direction: column; align-items: center; gap: 6px;
   width: min(420px, 100%);
+}
+.ts-empty-pick {
+  display: flex; flex-direction: column; align-items: center; gap: 10px;
+  width: 100%;
   padding: 48px 24px;
   background: transparent;
   border: 1px dashed var(--c3);
@@ -54,7 +58,14 @@
   cursor: pointer;
   transition: border-color .2s, background .2s;
 }
-.ts-empty:hover, .ts-empty:focus-visible { border-color: var(--c1); background: rgba(102,255,51,0.04); outline: none; }
+.ts-empty-pick:hover, .ts-empty-pick:focus-visible { border-color: var(--c1); background: rgba(102,255,51,0.04); outline: none; }
+.ts-empty-sample {
+  min-height: 44px; padding: 0 12px;
+  background: none; border: 0;
+  color: var(--c1); font-family: var(--font); font-size: 12px; letter-spacing: 1px;
+  text-decoration: underline; text-underline-offset: 4px; cursor: pointer;
+}
+.ts-empty-sample:hover { color: #fff; }
 .ts-empty-icon { font-size: 40px; color: var(--c1); }
 .ts-empty-title { font-size: 15px; letter-spacing: 2px; text-transform: uppercase; color: #fff; }
 .ts-empty-hint { font-size: 12px; color: var(--text2); line-height: 1.5; text-align: center; }
@@ -239,7 +250,7 @@
     grid-template-areas: "stage" "side";
   }
   .ts-stage { padding: 12px; }
-  .ts-empty { padding: 32px 16px; }
+  .ts-empty-pick { padding: 32px 16px; }
 
   .ts-side { border-right: 0; border-top: 1px solid var(--border); }
   .ts-head { display: flex; align-items: baseline; gap: 12px; padding: 10px 16px 6px; }

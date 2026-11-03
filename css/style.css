@@ -211,13 +211,13 @@ nav {
 .tool-card {
   position: relative; overflow: hidden;
   display: flex; flex-direction: column;
-  padding: 20px 18px;
   background: var(--bg2); border: 1px solid var(--border);
   color: var(--text); text-decoration: none;
   transition: border-color .25s, background .25s, transform .25s, box-shadow .25s;
 }
+.tool-card > div { padding: 12px 14px 14px; }
 .tool-card::before {
-  content: ''; position: absolute; inset: 0 0 auto 0; height: 2px;
+  content: ''; position: absolute; inset: 0 0 auto 0; height: 2px; z-index: 1;
   background: var(--c1); transform: scaleX(0); transform-origin: left;
   transition: transform .3s;
 }
@@ -226,15 +226,24 @@ nav {
   transform: translateY(-2px); box-shadow: var(--glow);
 }
 .tool-card:hover::before, .tool-card:focus-visible::before { transform: scaleX(1); }
-.tool-icon { display: block; font-size: 22px; line-height: 1; color: var(--c1); margin-bottom: 14px; }
-.tool-number { font-size: 9px; letter-spacing: 2px; color: var(--c2); margin-bottom: 6px; }
+/* Preview made with the tool itself on the sample photo */
+.tool-thumb {
+  width: 100%; height: auto; aspect-ratio: 16 / 9; object-fit: cover;
+  background: var(--bg3);
+  border-bottom: 1px solid var(--border);
+  transition: transform .5s ease, filter .3s;
+  filter: saturate(0.9);
+}
+.tool-card:hover .tool-thumb, .tool-card:focus-visible .tool-thumb { transform: scale(1.05); filter: saturate(1.15); }
+.tool-icon { display: none; }   /* the preview replaces the glyph icon */
+.tool-number { font-size: 9px; letter-spacing: 2px; color: var(--c2); margin-bottom: 5px; }
 .tool-name {
   font-size: 13px; font-weight: 700; letter-spacing: 1.5px; text-transform: uppercase;
-  color: #fff; margin-bottom: 8px;
+  color: #fff; margin-bottom: 6px;
 }
 .tool-desc {
-  font-size: 11px; line-height: 1.6; color: var(--text2);
-  display: -webkit-box; -webkit-line-clamp: 4; -webkit-box-orient: vertical; overflow: hidden;
+  font-size: 11px; line-height: 1.55; color: var(--text2);
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
 }
 
 /* ── ABOUT ──────────────────────────────────────────── */
@@ -364,6 +373,11 @@ footer a { color: var(--c2); text-decoration: none; }
 footer a:hover { color: var(--c1); }
 .footer-separator { color: var(--c3); }
 
+/* Laptops with short screens (e.g. 1366×768): a bit less vertical padding */
+@media (max-height: 820px) and (min-width: 721px) {
+  .screen { padding-top: clamp(24px, 4vh, 40px); padding-bottom: clamp(24px, 4vh, 40px); }
+}
+
 /* ── DESKTOP: sections snap gently into place ───────── */
 @media (min-width: 1000px) and (min-height: 640px) {
   html { scroll-snap-type: y proximity; }
@@ -373,8 +387,10 @@ footer a:hover { color: var(--c1); }
 /* ── TABLET ─────────────────────────────────────────── */
 @media (max-width: 1099px) {
   .tools-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .tool-card { flex-direction: row; gap: 16px; align-items: flex-start; }
-  .tool-icon { margin: 2px 0 0; width: 28px; text-align: center; }
+  .tool-card { flex-direction: row; align-items: stretch; }
+  .tool-thumb { width: 42%; height: auto; align-self: stretch; aspect-ratio: auto; min-height: 112px; border-bottom: 0; border-right: 1px solid var(--border); }
+  .tool-card > div { flex: 1; min-width: 0; align-self: center; }
+  .tool-desc { -webkit-line-clamp: 3; }
   .work-card { grid-template-columns: 1fr; }
   .gallery-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 }
@@ -428,10 +444,11 @@ footer a:hover { color: var(--c1); }
 
   /* Tools: compact 2-column cards */
   .tools-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
-  .tool-card { flex-direction: column; gap: 0; padding: 14px 12px; }
-  .tool-icon { width: auto; text-align: left; font-size: 20px; margin-bottom: 10px; }
-  .tool-name { font-size: 11px; letter-spacing: 1px; margin-bottom: 6px; overflow-wrap: anywhere; }
-  .tool-desc { font-size: 10.5px; -webkit-line-clamp: 4; }
+  .tool-card { flex-direction: column; }
+  .tool-thumb { width: 100%; aspect-ratio: 3 / 2; min-height: 0; border-right: 0; border-bottom: 1px solid var(--border); }
+  .tool-card > div { padding: 10px 10px 12px; align-self: stretch; }
+  .tool-name { font-size: 11px; letter-spacing: 1px; margin-bottom: 4px; overflow-wrap: anywhere; }
+  .tool-desc { font-size: 10.5px; -webkit-line-clamp: 3; }
 
   .about-grid { grid-template-columns: 1fr; }
   .gallery-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }

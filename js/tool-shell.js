@@ -109,10 +109,14 @@
     const ctx = canvas.getContext('2d', { willReadFrequently: true });
     const statusEl = el('div', { class: 'ts-status', role: 'status', 'aria-live': 'polite' });
     const badge = el('div', { class: 'ts-badge', 'data-i18n': 'shell.original', text: 'Original' });
-    const empty = el('button', { class: 'ts-empty', type: 'button', onclick: () => fileInput.click() }, [
-      el('span', { class: 'ts-empty-icon', text: cfg.icon || '◈' }),
-      el('span', { class: 'ts-empty-title', 'data-i18n': 'shell.emptyTitle', text: 'Load an image' }),
-      el('span', { class: 'ts-empty-hint', 'data-i18n': 'shell.emptyHint', text: 'Tap to choose, drop a file or paste (Ctrl+V)' }),
+    // Sample photo: "Jellyfish" by Marat Gilyadzinov (Unsplash licence), assets/sample.jpg
+    const empty = el('div', { class: 'ts-empty' }, [
+      el('button', { class: 'ts-empty-pick', type: 'button', onclick: () => fileInput.click() }, [
+        el('span', { class: 'ts-empty-icon', text: cfg.icon || '◈' }),
+        el('span', { class: 'ts-empty-title', 'data-i18n': 'shell.emptyTitle', text: 'Load an image' }),
+        el('span', { class: 'ts-empty-hint', 'data-i18n': 'shell.emptyHint', text: 'Tap to choose, drop a file or paste (Ctrl+V)' }),
+      ]),
+      el('button', { class: 'ts-empty-sample', type: 'button', 'data-i18n': 'shell.trySample', text: 'or try it with a sample image', onclick: () => load('../../assets/sample.jpg') }),
     ]);
     const stage = el('section', { class: 'ts-stage' + (gen ? ' has-image' : '') }, [gen ? null : empty, canvas, badge, statusEl]);
 
