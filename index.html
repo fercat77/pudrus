@@ -2,17 +2,22 @@
 <html lang="es">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="theme-color" content="#050508">
+  <meta name="description" content="Herramientas visuales creativas que corren en tu navegador: glitch, dithering, halftone, pixel sorting, ASCII, flyers y más.">
   <title>PUDRUS.XYZ — Creative Visual Suite</title>
   <link rel="icon" type="image/svg+xml" href="favicon.svg">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600;700&display=swap">
   <link rel="stylesheet" href="css/style.css">
 </head>
-<body>
+<body class="home">
 
 <!-- ── NAV ───────────────────────────────────────────── -->
-<nav>
-  <a href="index.html" class="nav-logo">PUDRUS<span>.xyz</span></a>
-  <ul class="nav-links">
+<nav id="nav">
+  <a href="#top" class="nav-logo">PUDRUS<span>.xyz</span></a>
+  <ul class="nav-links" id="navLinks">
     <li><a href="#tools" data-i18n="nav.tools">Tools</a></li>
     <li><a href="#about" data-i18n="nav.about">About</a></li>
     <li><a href="#work" data-i18n="nav.work">Work</a></li>
@@ -23,19 +28,20 @@
       <option value="en">EN</option>
     </select>
   </div>
+  <button class="nav-toggle" type="button" aria-controls="navLinks" aria-expanded="false" data-i18n-title="nav.menu"><span></span></button>
 </nav>
 
 <main>
   <!-- ── HERO ──────────────────────────────────────────── -->
-  <section class="hero">
+  <section class="screen hero" id="top">
     <div class="hero-grid"></div>
-    <div class="hero-brackets">
+    <div class="hero-brackets" aria-hidden="true">
       <div class="corner tl"></div><div class="corner tr"></div>
       <div class="corner bl"></div><div class="corner br"></div>
     </div>
     <div class="hero-tag" data-i18n="hero.tag">◈ Creative Visual Suite</div>
     <h1>PUDRUS<span>.</span>XYZ</h1>
-    <div class="hero-sub" data-i18n="hero.sub">Browser-based image & video processing tools</div>
+    <p class="hero-sub" data-i18n="hero.sub">Browser-based image processing tools</p>
     <div class="hero-cta">
       <a href="#tools" class="btn btn-primary" data-i18n="hero.explore">◈ Explore Tools</a>
       <a href="#about" class="btn btn-outline" data-i18n="hero.learn">Learn More</a>
@@ -62,162 +68,109 @@
   </section>
 
   <!-- ── TOOLS ─────────────────────────────────────────── -->
-  <section id="tools" class="section-tools">
+  <section id="tools" class="screen section-tools">
     <div class="section-tag" data-i18n="tools.sectionTag">◈ 01 — Tools</div>
-    <h2 class="section-title" data-i18n="tools.title">Visual Processing <span>Suite</span></h2>
-    <p class="section-desc" data-i18n="tools.desc">
-      Each tool runs entirely in your browser. No uploads to servers, no installations. Your files stay on your computer.
-    </p>
+    <h2 class="section-title" data-i18n="tools.title">Visual Processing Suite</h2>
+    <p class="section-desc" data-i18n="tools.desc">Each tool runs entirely in your browser. No uploads, no installs.</p>
 
     <div class="tools-grid">
-      <!-- Dithering -->
       <a href="tools/dithering/index.html" class="tool-card">
-        <span class="tool-icon">⠿</span>
-        <div class="tool-number">01 // TOOL</div>
+        <span class="tool-icon" aria-hidden="true">⠿</span>
+        <div><div class="tool-number">01 // TOOL</div>
         <div class="tool-name" data-i18n="tools.dither.name">Dithering</div>
-        <div class="tool-desc" data-i18n="tools.dither.desc">
-          Apply classic dithering algorithms: Floyd-Steinberg, ordered, Atkinson and more. Retro pixel aesthetics.
-        </div>
-        <span class="tool-badge active">◈ Available</span>
+        <div class="tool-desc" data-i18n="tools.dither.desc">Classic dithering with retro palettes.</div></div>
       </a>
-
-      <!-- Glitch FX -->
       <a href="tools/glitch/index.html" class="tool-card">
-        <span class="tool-icon">▓</span>
-        <div class="tool-number">02 // TOOL</div>
+        <span class="tool-icon" aria-hidden="true">▓</span>
+        <div><div class="tool-number">02 // TOOL</div>
         <div class="tool-name" data-i18n="tools.glitch.name">Glitch FX</div>
-        <div class="tool-desc" data-i18n="tools.glitch.desc">
-          RGB channel shift, scanlines, block corruption, datamosh effects. Full control over intensity and style.
-        </div>
-        <span class="tool-badge active">◈ Available</span>
+        <div class="tool-desc" data-i18n="tools.glitch.desc">RGB split, tearing, block corruption and scanlines.</div></div>
       </a>
-
-      <!-- Halftone -->
       <a href="tools/halftone/index.html" class="tool-card">
-        <span class="tool-icon">◉</span>
-        <div class="tool-number">03 // TOOL</div>
+        <span class="tool-icon" aria-hidden="true">◉</span>
+        <div><div class="tool-number">03 // TOOL</div>
         <div class="tool-name" data-i18n="tools.halftone.name">Halftone</div>
-        <div class="tool-desc" data-i18n="tools.halftone.desc">
-          Create halftone dot patterns, CMYK separations, and retro print effects.
-        </div>
-        <span class="tool-badge active">◈ Available</span>
+        <div class="tool-desc" data-i18n="tools.halftone.desc">Print-style dot screens.</div></div>
       </a>
-
-      <!-- Triangulation -->
       <a href="tools/triangulation/index.html" class="tool-card">
-        <span class="tool-icon">△</span>
-        <div class="tool-number">04 // TOOL</div>
+        <span class="tool-icon" aria-hidden="true">△</span>
+        <div><div class="tool-number">04 // TOOL</div>
         <div class="tool-name" data-i18n="tools.triangulation.name">Triangulation</div>
-        <div class="tool-desc" data-i18n="tools.triangulation.desc">
-          Reconstruct images into a low-poly vector style using Delaunay triangulation.
-        </div>
-        <span class="tool-badge active">◈ Available</span>
+        <div class="tool-desc" data-i18n="tools.triangulation.desc">Low-poly reconstruction.</div></div>
       </a>
-
-      <!-- CRT Bend -->
       <a href="tools/crt-bend/index.html" class="tool-card">
-        <span class="tool-icon">⏎</span>
-        <div class="tool-number">05 // TOOL</div>
+        <span class="tool-icon" aria-hidden="true">⏎</span>
+        <div><div class="tool-number">05 // TOOL</div>
         <div class="tool-name" data-i18n="tools.crt.name">CRT Bend</div>
-        <div class="tool-desc" data-i18n="tools.crt.desc">
-          Emulate CRT screen curvature, scanlines, and circuit-bent signal distortion.
-        </div>
-        <span class="tool-badge active">◈ Available</span>
+        <div class="tool-desc" data-i18n="tools.crt.desc">Curved CRT screen and signal distortion.</div></div>
       </a>
-
-      <!-- Flyer Forge -->
       <a href="tools/flyer-forge/index.html" class="tool-card">
-        <span class="tool-icon">⎚</span>
-        <div class="tool-number">06 // TOOL</div>
+        <span class="tool-icon" aria-hidden="true">⎚</span>
+        <div><div class="tool-number">06 // TOOL</div>
         <div class="tool-name" data-i18n="tools.flyer.name">Flyer Forge</div>
-        <div class="tool-desc" data-i18n="tools.flyer.desc"></div>
-        <span class="tool-badge active">◈ Available</span>
+        <div class="tool-desc" data-i18n="tools.flyer.desc">Event flyers with automatic layouts.</div></div>
       </a>
-
-      <!-- Pixel Sorter -->
       <a href="tools/pixel-sort/index.html" class="tool-card">
-        <span class="tool-icon">⟆</span>
-        <div class="tool-number">07 // TOOL</div>
+        <span class="tool-icon" aria-hidden="true">⟆</span>
+        <div><div class="tool-number">07 // TOOL</div>
         <div class="tool-name" data-i18n="tools.pixel.name">Pixel Sorter</div>
-        <div class="tool-desc" data-i18n="tools.pixel.desc">
-          Sort pixels by brightness, hue or saturation along horizontal, vertical or diagonal axes. Classic glitch aesthetic.
-        </div>
-        <span class="tool-badge active">◈ Available</span>
+        <div class="tool-desc" data-i18n="tools.pixel.desc">Sort pixels into streaks.</div></div>
       </a>
-
-      <!-- ASCII Canvas -->
       <a href="tools/ascii-canvas/index.html" class="tool-card">
-        <span class="tool-icon">◊</span>
-        <div class="tool-number">08 // TOOL</div>
+        <span class="tool-icon" aria-hidden="true">◊</span>
+        <div><div class="tool-number">08 // TOOL</div>
         <div class="tool-name" data-i18n="tools.ascii.name">ASCII Canvas</div>
-        <div class="tool-desc" data-i18n="tools.ascii.desc">
-          Transform images into creative ASCII art with custom character sets and effects.
-        </div>
-        <span class="tool-badge active">◈ Available</span>
+        <div class="tool-desc" data-i18n="tools.ascii.desc">Turn images into ASCII art.</div></div>
       </a>
-
-      <!-- Constellation -->
       <a href="tools/constellation/index.html" class="tool-card">
-        <span class="tool-icon">✧</span>
-        <div class="tool-number">09 // TOOL</div>
+        <span class="tool-icon" aria-hidden="true">✧</span>
+        <div><div class="tool-number">09 // TOOL</div>
         <div class="tool-name" data-i18n="tools.constellation.name">Constellation</div>
-        <div class="tool-desc" data-i18n="tools.constellation.desc">
-          Overlay generative star maps, technical diagrams and node networks over your images.
-        </div>
-        <span class="tool-badge active">◈ Available</span>
+        <div class="tool-desc" data-i18n="tools.constellation.desc">Stars detected from your photo.</div></div>
       </a>
-
-      <!-- Pattern Generator -->
       <a href="tools/pattern-generator/index.html" class="tool-card">
-        <span class="tool-icon">▦</span>
-        <div class="tool-number">10 // GENERATOR</div>
+        <span class="tool-icon" aria-hidden="true">▦</span>
+        <div><div class="tool-number">10 // GENERATOR</div>
         <div class="tool-name" data-i18n="tools.pattern.name">Pattern Generator</div>
-        <div class="tool-desc" data-i18n="tools.pattern.desc">
-          Generate abstract patterns, geometric designs and organic structures using Perlin noise, Voronoi, flow fields and strange attractors.
-        </div>
-        <span class="tool-badge active">◈ Available</span>
+        <div class="tool-desc" data-i18n="tools.pattern.desc">Animated generative patterns.</div></div>
       </a>
     </div>
   </section>
 
   <!-- ── ABOUT ─────────────────────────────────────────── -->
-  <section id="about" class="section-about">
-    <div class="section-tag" data-i18n="about.sectionTag">◈ 02 — About</div>
+  <section id="about" class="screen section-about">
     <div class="about-grid">
       <div class="about-text">
-        <h2 class="section-title" data-i18n="about.title">How it <span>Works</span></h2>
-        <p data-i18n="about.p1">
-          PUDRUS.XYZ is a browser-based creative suite for image and video processing. All tools run locally on your machine. Your files are never uploaded to a server, ensuring 100% privacy.
-        </p>
-        <p data-i18n="about.p2">
-          Built with vanilla JavaScript. No frameworks, no accounts. Just pure, fast, creative processing.
-        </p>
+        <div class="section-tag" data-i18n="about.sectionTag">◈ 02 — About</div>
+        <h2 class="section-title" data-i18n="about.title">How it works</h2>
+        <p data-i18n="about.p1">PUDRUS.XYZ is a creative suite that runs locally in your browser.</p>
+        <p data-i18n="about.p2">Built with vanilla JavaScript. No frameworks, no accounts.</p>
         <p>
-          <span data-i18n="about.p3">This project was created by Fercat, a digital artist and developer.</span>
+          <span data-i18n="about.p3">This project was created by Fercat, a musician, visual artist and digital creator.</span>
           <a href="https://www.instagram.com/pudrus/" target="_blank" rel="noopener noreferrer" data-i18n="about.portfolio" class="about-link">Check out my work</a>.
         </p>
-        <a href="#tools" class="btn btn-outline btn-outline-start" data-i18n="about.start">Start Creating</a>
+        <a href="#tools" class="btn btn-outline" data-i18n="about.start">Start Creating</a>
       </div>
       <div class="about-features">
         <div class="feature">
-          <div class="feature-icon">🔒</div>
+          <div class="feature-icon" aria-hidden="true">◈</div>
           <div class="feature-text">
-            <h4>100% Private</h4>
-            <p>Your images are processed on your device and never leave your computer.</p>
+            <h3 data-i18n="about.f1Title">100% private</h3>
+            <p data-i18n="about.f1Text">Your images are processed on your device and never leave it.</p>
           </div>
         </div>
         <div class="feature">
-          <div class="feature-icon">⚡</div>
+          <div class="feature-icon" aria-hidden="true">⚡</div>
           <div class="feature-text">
-            <h4>Instant & Fast</h4>
-            <p>No installation required. Works on any modern browser, desktop or mobile.</p>
+            <h3 data-i18n="about.f2Title">Instant</h3>
+            <p data-i18n="about.f2Text">Nothing to install. Works in any modern browser, on desktop or phone.</p>
           </div>
         </div>
         <div class="feature">
-          <div class="feature-icon">🎨</div>
+          <div class="feature-icon" aria-hidden="true">✦</div>
           <div class="feature-text">
-            <h4>Creative Control</h4>
-            <p>Fine-tune every parameter with real-time previews for maximum creativity.</p>
+            <h3 data-i18n="about.f3Title">Full control</h3>
+            <p data-i18n="about.f3Text">Presets to start fast, every parameter to fine-tune, and full-resolution export.</p>
           </div>
         </div>
       </div>
@@ -225,29 +178,20 @@
   </section>
 
   <!-- ── WORK ─────────────────────────────────────────── -->
-  <section id="work" class="section-work">
+  <section id="work" class="screen section-work">
     <div class="section-tag" data-i18n="work.sectionTag">◈ 03 — Work</div>
-    <div class="work-single">
-      <div class="work-card work-text">
-        <div class="work-intro">
-          <div class="work-badge" data-i18n="work.badge">Disponible para comisiones</div>
-          <h2 class="section-title" data-i18n-html="work.title">Trabajo entre el arte, la tecnología y la escena</h2>
-        </div>
+    <div class="work-card">
+      <div class="work-main">
+        <div class="work-badge" data-i18n="work.badge">Disponible para comisiones</div>
+        <h2 class="section-title" data-i18n-html="work.title">Trabajo entre el arte, la tecnología y la escena</h2>
         <div class="work-copy">
-          <p data-i18n="work.p1">
-            Durante más de una década desarrollé mi trabajo atravesando distintas disciplinas: diseño gráfico, artes visuales, informática, música y producción audiovisual. Ese recorrido me permitió construir una forma de trabajo donde la creatividad y la técnica no funcionan como áreas separadas, sino como partes de un mismo proceso.
-          </p>
-          <p data-i18n="work.p2">
-            Me desempeño como artista visual, diseñador gráfico, director de cámaras (CCTV), técnico audiovisual, técnico escénico y VJ, además de desarrollar proyectos musicales y colaborar en la producción de eventos en vivo. Cada una de estas experiencias aporta una mirada diferente sobre la imagen, el sonido, el espacio y la relación entre las personas y la tecnología.
-          </p>
-          <p data-i18n="work.p3">
-            Trabajo tanto en la creación de identidades visuales, ilustraciones, animaciones, motion graphics, diseño 3D y contenidos digitales, como en el desarrollo y operación de sistemas audiovisuales para espectáculos, transmisiones en vivo e instalaciones. En los últimos años incorporé herramientas de inteligencia artificial a mi flujo de trabajo como un recurso creativo que complementa, pero nunca reemplaza, los procesos de diseño y producción.
-          </p>
-
-          <p data-i18n="work.p4">
-            Actualmente me encuentro abierto a colaborar en proyectos, integrarme a equipos de trabajo y desarrollar propuestas tanto presenciales como remotas.
-          </p>
+          <p data-i18n="work.p1">Durante más de una década desarrollé mi trabajo atravesando distintas disciplinas: diseño gráfico, artes visuales, informática, música y producción audiovisual. Ese recorrido me permitió construir una forma de trabajo donde la creatividad y la técnica no funcionan como áreas separadas, sino como partes de un mismo proceso.</p>
+          <p data-i18n="work.p2">Me desempeño como artista visual, diseñador gráfico, director de cámaras (CCTV), técnico audiovisual, técnico escénico y VJ, además de desarrollar proyectos musicales y colaborar en la producción de eventos en vivo. Cada una de estas experiencias aporta una mirada diferente sobre la imagen, el sonido, el espacio y la relación entre las personas y la tecnología.</p>
+          <p data-i18n="work.p3">Trabajo tanto en la creación de identidades visuales, ilustraciones, animaciones, motion graphics, diseño 3D y contenidos digitales, como en el desarrollo y operación de sistemas audiovisuales para espectáculos, transmisiones en vivo e instalaciones. En los últimos años incorporé herramientas de inteligencia artificial a mi flujo de trabajo como un recurso creativo que complementa, pero nunca reemplaza, los procesos de diseño y producción.</p>
+          <p data-i18n="work.p4">Actualmente me encuentro abierto a colaborar en proyectos, integrarme a equipos de trabajo y desarrollar propuestas tanto presenciales como remotas.</p>
         </div>
+      </div>
+      <div class="work-side">
         <div class="work-list">
           <span data-i18n="work.item1">Dirección de cámaras (CCTV) y realización audiovisual</span>
           <span data-i18n="work.item2">Diseño gráfico e identidad visual</span>
@@ -279,52 +223,37 @@
 <!-- ── FOOTER ────────────────────────────────────────── -->
 <footer>
   <span data-i18n="footer.copyright">© 2026 PUDRUS.XYZ</span>
-  <span class="footer-separator">◈ ◈ ◈</span>
+  <span class="footer-separator" aria-hidden="true">◈ ◈ ◈</span>
   <a href="https://cafecito.app/pudrus" target="_blank" rel="noopener noreferrer" data-i18n="footer.donate">Support this project</a>
-  <span class="footer-separator">◈ ◈ ◈</span>
+  <span class="footer-separator" aria-hidden="true">◈ ◈ ◈</span>
   <span data-i18n="footer.note">Jump into a digital disaster</span>
 </footer>
 
 <script src="js/i18n.js"></script>
 <script>
+  // Phone menu
+  (function () {
+    const nav = document.getElementById('nav');
+    const btn = nav.querySelector('.nav-toggle');
+    const setOpen = open => { nav.classList.toggle('is-open', open); btn.setAttribute('aria-expanded', open); };
+    btn.addEventListener('click', () => setOpen(!nav.classList.contains('is-open')));
+    nav.querySelectorAll('.nav-links a').forEach(a => a.addEventListener('click', () => setOpen(false)));
+    document.addEventListener('keydown', e => { if (e.key === 'Escape') setOpen(false); });
+    document.addEventListener('click', e => { if (!nav.contains(e.target)) setOpen(false); });
+  })();
+
+  // "Online" counter
   document.addEventListener('DOMContentLoaded', () => {
     const usersEl = document.getElementById('online-users');
-    if (usersEl) {
-      let currentUsers = Math.floor(Math.random() * 12); // Start with 0-11 users
+    if (!usersEl) return;
+    let currentUsers = Math.floor(Math.random() * 12);
+    usersEl.textContent = currentUsers;
+    setInterval(() => {
+      if (Math.random() < 0.05) currentUsers = 15;
+      else currentUsers = Math.max(1, Math.min(11, currentUsers + Math.floor(Math.random() * 5) - 2));
       usersEl.textContent = currentUsers;
-
-      setInterval(() => {
-        // 5% chance to spike to 15
-        if (Math.random() < 0.05) {
-          currentUsers = 15;
-        } else {
-          const fluctuation = Math.floor(Math.random() * 5) - 2; // Fluctuate between -2 and +2
-          currentUsers = Math.max(1, Math.min(11, currentUsers + fluctuation)); // Clamp between 1 and 11
-        }
-        usersEl.textContent = currentUsers;
-      }, 3500); // Update every 3.5 seconds
-    }
+    }, 3500);
   });
-
-  const footer = document.querySelector('footer');
-  if (footer) {
-    let footerTimeout;
-    const showFooter = () => footer.classList.add('visible');
-    const hideFooter = () => footer.classList.remove('visible');
-
-    const handleScroll = () => {
-      showFooter();
-      clearTimeout(footerTimeout);
-      footerTimeout = setTimeout(() => {
-        hideFooter();
-      }, 1200);
-    };
-
-    window.addEventListener('scroll', handleScroll, { passive: true });
-    window.addEventListener('wheel', handleScroll, { passive: true });
-    window.addEventListener('touchmove', handleScroll, { passive: true });
-    handleScroll();
-  }
 </script>
 </body>
 </html>

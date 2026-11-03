@@ -2,13 +2,14 @@
   "nav": {
     "tools": "Herramientas",
     "about": "Acerca de",
-    "work": "Trabajo"
+    "work": "Trabajo",
+    "menu": "Menú"
   },
   "hero": {
     "tag": "◈ Suite Visual Creativa",
     "title": "PUDRUS.XYZ",
-    "sub": "Herramientas de image & video processing en el navegador",
-    "explore": "◈ Explorar Tools",
+    "sub": "Herramientas de procesamiento de imagen en tu navegador",
+    "explore": "◈ Ver herramientas",
     "learn": "Más info"
   },
   "stats": {
@@ -47,14 +48,14 @@
   "tools": {
     "sectionTag": "◈ 01 — Tools",
     "title": "Visual Processing Suite",
-    "desc": "Cada tool corre en tu navegador. Sin uploads, sin instalaciones.",
+    "desc": "Cada herramienta corre en tu navegador. Sin subir archivos, sin instalar nada.",
     "pixel": {
       "name": "Pixel Sorter",
-      "desc": "Ordena píxeles por brightness, hue o saturation."
+      "desc": "Ordená píxeles en vetas por brillo, tono o saturación."
     },
     "dither": {
       "name": "Dithering",
-      "desc": "Algoritmos clásicos: Floyd-Steinberg, Atkinson, ordered."
+      "desc": "Dithering clásico con paletas retro: Game Boy, CGA, 1-bit y tus propios colores."
     },
     "glitch": {
       "name": "Glitch FX",
@@ -66,27 +67,27 @@
     },
     "ascii": {
       "name": "ASCII Canvas",
-      "desc": "Transforma imágenes en ASCII art creativo."
+      "desc": "Convertí imágenes en arte ASCII en verde terminal, ámbar o a todo color."
     },
     "halftone": {
       "name": "Halftone",
-      "desc": "Crea patrones de puntos, separaciones CMYK y efectos de impresión retro."
+      "desc": "Tramas de puntos de imprenta: una tinta, CMYK o RGB, con ángulos de trama reales."
     },
     "triangulation": {
       "name": "Triangulation",
-      "desc": "Reconstruye imágenes en un estilo vectorial low-poly usando triangulación de Delaunay."
+      "desc": "Reconstrucción low-poly que sigue los bordes de tu imagen."
     },
     "crt": {
       "name": "CRT Bend",
-      "desc": "Emula la curvatura de pantallas CRT, scanlines y distorsión de señal."
+      "desc": "Pantalla CRT curva, scanlines, máscara de fósforo y distorsión de señal."
     },
     "flyer": {
       "name": "Flyer Forge",
-      "desc": "Genera flyers para eventos musicales con composiciones automáticas."
+      "desc": "Flyers para eventos con diagramación automática y tipografías reales."
     },
     "pattern": {
       "name": "Generador de Patrones",
-      "desc": "Genera patrones abstractos, diseños geométricos y estructuras orgánicas con ruido Perlin, Voronoi, campos de flujo y atractores."
+      "desc": "Patrones generativos animados: ruido, campos de flujo, Voronoi y atractores."
     }
   },
   "pixel": {
@@ -367,11 +368,17 @@
   "about": {
     "sectionTag": "◈ 02 — About",
     "title": "Cómo funciona",
-    "p1": "PUDRUS.XYZ es una suite creativa que corre localmente en tu navegador.",
+    "p1": "PUDRUS.XYZ es una suite creativa que corre localmente en tu navegador: tus imágenes nunca salen de tu dispositivo.",
     "p2": "Hecho con JavaScript puro. Sin frameworks ni cuentas.",
     "start": "Empezar a Crear",
     "p3": "Este proyecto fue creado por Fercat, un musico, artista visual y creador digital.",
-    "portfolio": "Mira mi trabajo"
+    "portfolio": "Mira mi trabajo",
+    "f1Title": "100% privado",
+    "f1Text": "Tus imágenes se procesan en tu dispositivo y nunca salen de él.",
+    "f2Title": "Al instante",
+    "f2Text": "Nada que instalar. Funciona en cualquier navegador moderno, en la compu o el celular.",
+    "f3Title": "Control total",
+    "f3Text": "Presets para arrancar rápido, todos los parámetros para ajustar y exportación en resolución completa."
   },
   "footer": {
     "copyright": "© 2026 PUDRUS.XYZ",

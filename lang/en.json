@@ -2,13 +2,14 @@
   "nav": {
     "tools": "Tools",
     "about": "About",
-    "work": "Work"
+    "work": "Work",
+    "menu": "Menu"
   },
   "hero": {
     "tag": "◈ Creative Visual Suite",
     "title": "PUDRUS.XYZ",
-    "sub": "Browser-based image & video processing tools",
-    "explore": "◈ Explore Tools",
+    "sub": "Browser-based image processing tools",
+    "explore": "◈ Explore tools",
     "learn": "Learn More"
   },
   "stats": {
@@ -47,14 +48,14 @@
   "tools": {
     "sectionTag": "◈ 01 — Tools",
     "title": "Visual Processing Suite",
-    "desc": "Each tool runs entirely in your browser. No uploads to servers, installations.",
+    "desc": "Each tool runs entirely in your browser. No uploads, no installs.",
     "pixel": {
       "name": "Pixel Sorter",
-      "desc": "Sort pixels by brightness, hue or saturation along horizontal, vertical or diagonal axes. Classic glitch aesthetic."
+      "desc": "Sort pixels into streaks by brightness, hue or saturation."
     },
     "dither": {
       "name": "Dithering",
-      "desc": "Apply classic dithering algorithms: Floyd-Steinberg, ordered, Atkinson and more. Retro pixel aesthetics."
+      "desc": "Classic dithering with retro palettes: Game Boy, CGA, 1-bit and your own colors."
     },
     "glitch": {
       "name": "Glitch FX",
@@ -66,27 +67,27 @@
     },
     "ascii": {
       "name": "ASCII Canvas",
-      "desc": "Transform images into creative ASCII art with custom character sets and effects."
+      "desc": "Turn images into ASCII art in terminal, amber or full color."
     },
     "halftone": {
       "name": "Halftone",
-      "desc": "Create halftone dot patterns, CMYK separations, and retro print effects."
+      "desc": "Print-style dot screens: one ink, CMYK or RGB, with real screen angles."
     },
     "triangulation": {
       "name": "Triangulation",
-      "desc": "Reconstruct images into a low-poly vector style using Delaunay triangulation."
+      "desc": "Low-poly reconstruction that follows the edges of your image."
     },
     "crt": {
       "name": "CRT Bend",
-      "desc": "Emulate CRT screen curvature, scanlines, and circuit-bent signal distortion."
+      "desc": "Curved CRT screen, scanlines, phosphor mask and signal distortion."
     },
     "flyer": {
       "name": "Flyer Forge",
-      "desc": "Generate flyers for music events with automatic, well-designed compositions."
+      "desc": "Event flyers with automatic layouts and real fonts."
     },
     "pattern": {
       "name": "Pattern Generator",
-      "desc": "Generate abstract patterns, geometric designs and organic structures using Perlin noise, Voronoi, flow fields and strange attractors."
+      "desc": "Animated generative patterns: noise, flow fields, Voronoi and attractors."
     }
   },
   "pixel": {
@@ -367,11 +368,17 @@
   "about": {
     "sectionTag": "◈ 02 — About",
     "title": "How it Works",
-    "p1": "PUDRUS.XYZ is a browser-based creative suite for image and video processing.",
+    "p1": "PUDRUS.XYZ is a creative suite that runs locally in your browser: your images never leave your device.",
     "p2": "Built with vanilla JavaScript. No frameworks, no accounts.",
     "start": "Start Creating",
     "p3": "This project was created by Fercat, a musician, visual artist and digital creator.",
-    "portfolio": "Check out my work"
+    "portfolio": "Check out my work",
+    "f1Title": "100% private",
+    "f1Text": "Your images are processed on your device and never leave it.",
+    "f2Title": "Instant",
+    "f2Text": "Nothing to install. Works in any modern browser, on desktop or phone.",
+    "f3Title": "Full control",
+    "f3Text": "Presets to start fast, every parameter to fine-tune, and full-resolution export."
   },
   "footer": {
     "copyright": "© 2026 PUDRUS.XYZ",
