@@ -340,7 +340,7 @@ function renderHalftone() {
     }
   });
   
-  drawCropOverlay();
+  drawCropOverlay(ctx, canvas, cropRect);
 }
 
 function scheduleRender() {
@@ -352,7 +352,7 @@ function scheduleRender() {
         renderHalftone();
       } else {
         ctx.clearRect(0,0,canvas.width, canvas.height);
-        drawCropOverlay();
+        drawCropOverlay(ctx, canvas, cropRect);
       }
     });
   }

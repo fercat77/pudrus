@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="es">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -241,18 +241,9 @@ document.addEventListener('DOMContentLoaded', () => {
   let canvas = document.getElementById('mainCanvas');
   let ctx = canvas.getContext('2d');
   let cropRect = null;
+  let updateCropRect = () => {}; // assigned in setupCrop()
   let currentLayout = null;
 
-  const WORKFLOW_STORAGE_KEY = 'pudrus_workflow_image';
-
-  function receiveImage() {
-      const dataUrl = sessionStorage.getItem(WORKFLOW_STORAGE_KEY);
-      if (dataUrl) {
-          sessionStorage.removeItem(WORKFLOW_STORAGE_KEY);
-          return dataUrl;
-      }
-      return null;
-  }
 
   // --- UI & File Load ---
   const dropZone = document.querySelector('.tool-canvas-area');
@@ -397,7 +388,7 @@ document.addEventListener('DOMContentLoaded', () => {
     ctx.fillText('pudrus.xyz', watermarkMargin, canvas.height - watermarkMargin);
     ctx.globalAlpha = 1.0;
 
-    drawCropOverlay();
+    drawCropOverlay(ctx, canvas, cropRect);
   }
 
   // --- Layout Calculation Logic ---
@@ -711,7 +702,7 @@ document.addEventListener('DOMContentLoaded', () => {
       const offsetXSlider = document.getElementById('cropOffsetX');
       const offsetYSlider = document.getElementById('cropOffsetY');
 
-      function updateCropRect() {
+      updateCropRect = function() {
           if (!img) return;
           const W = canvas.width, H = canvas.height;
           const ratio = aspectRatioSelect.value;
@@ -743,32 +734,18 @@ document.addEventListener('DOMContentLoaded', () => {
           // Redraw image with new crop overlay
           if (img) {
               ctx.drawImage(img, 0, 0);
-              drawCropOverlay();
+              drawCropOverlay(ctx, canvas, cropRect);
           }
       }
       
-      aspectRatioSelect.addEventListener('change', updateCropRect);
-      offsetXSlider.addEventListener('input', updateCropRect);
-      offsetYSlider.addEventListener('input', updateCropRect);
+      aspectRatioSelect.onchange = () => updateCropRect();
+      offsetXSlider.oninput = () => updateCropRect();
+      offsetYSlider.oninput = () => updateCropRect();
       
       // Initial calculation
       updateCropRect();
   }
 
-  function drawCropOverlay() {
-      if (!cropRect) return;
-      ctx.save();
-      ctx.fillStyle = 'rgba(0,0,0,0.4)';
-      ctx.fillRect(0, 0, cropRect.x, canvas.height);
-      ctx.fillRect(cropRect.x + cropRect.w, 0, canvas.width - (cropRect.x + cropRect.w), canvas.height);
-      ctx.fillRect(cropRect.x, 0, cropRect.w, cropRect.y);
-      ctx.fillRect(cropRect.x, cropRect.y + cropRect.h, cropRect.w, canvas.height - (cropRect.y + cropRect.h));
-      ctx.strokeStyle = 'rgba(89,255,0,0.85)';
-      ctx.lineWidth = 2;
-      ctx.setLineDash([8, 6]);
-      ctx.strokeRect(cropRect.x + 1, cropRect.y + 1, cropRect.w - 2, cropRect.h - 2);
-      ctx.restore();
-  }
 
   // --- Event Listeners ---
   document.getElementById('generateBtn').addEventListener('click', () => {

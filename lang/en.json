@@ -1,5 +1,9 @@
 {
-  "nav": { "tools": "Tools", "about": "About", "work": "Work" },
+  "nav": {
+    "tools": "Tools",
+    "about": "About",
+    "work": "Work"
+  },
   "hero": {
     "tag": "◈ Creative Visual Suite",
     "title": "PUDRUS.XYZ",
@@ -7,7 +11,12 @@
     "explore": "◈ Explore Tools",
     "learn": "Learn More"
   },
-  "stats": { "tools": "Tools", "combinations": "Combinations", "install": "No install", "online": "Online" },
+  "stats": {
+    "tools": "Tools",
+    "combinations": "Combinations",
+    "install": "No install",
+    "online": "Online"
+  },
   "work": {
     "sectionTag": "◈ 03 — Work",
     "title": "I create <span>visual work</span>",
@@ -21,38 +30,65 @@
     "ctaSecondary": "Contact me",
     "badge": "Available for commissions",
     "highlightTitle": "Open to freelance projects",
-    "highlightText": "If you need visuals with a sharp identity, experimental aesthetics, or custom browser-based experiences, I’d love to hear about it."
+    "highlightText": "If you need visuals with a sharp identity, experimental aesthetics, or custom browser-based experiences, I’d love to hear about it.",
+    "p3": "I work on visual identities, illustration, animation, motion graphics, 3D design and digital content, as well as developing and operating audiovisual systems for shows, live broadcasts and installations. In recent years I have brought artificial intelligence tools into my workflow as a creative resource that complements, but never replaces, design and production processes.",
+    "p4": "I am currently open to collaborating on projects, joining teams and developing proposals, both on-site and remote.",
+    "item5": "Real-time visuals (VJ)",
+    "item6": "TouchDesigner and Resolume Arena",
+    "item7": "Streaming and audiovisual systems",
+    "item8": "Illustration and digital art",
+    "item9": "Painting and sculpture",
+    "item10": "Editorial design",
+    "item11": "Web design",
+    "item12": "Photogrammetry",
+    "item13": "Technical production for live shows",
+    "item14": "AI integration in creative processes"
   },
   "tools": {
     "sectionTag": "◈ 01 — Tools",
     "title": "Visual Processing Suite",
     "desc": "Each tool runs entirely in your browser. No uploads to servers, installations.",
-    "pixel": { "name": "Pixel Sorter", "desc": "Sort pixels by brightness, hue or saturation along horizontal, vertical or diagonal axes. Classic glitch aesthetic." },
-    "dither": { "name": "Dithering", "desc": "Apply classic dithering algorithms: Floyd-Steinberg, ordered, Atkinson and more. Retro pixel aesthetics." },
-    "glitch": { "name": "Glitch FX", "desc": "RGB channel shift, scanlines, block corruption, datamosh effects. Full control over intensity and style." },
-    "constellation": { "name": "Constellation", "desc": "Overlay generative star maps, technical diagrams and node networks over your images. Export at high resolution." },
-    "ascii": { "name": "ASCII Canvas", "desc": "Transform images into creative ASCII art with custom character sets and effects." },
-    "halftone": { "name": "Halftone", "desc": "Create halftone dot patterns, CMYK separations, and retro print effects." },
-    "triangulation": { "name": "Triangulation", "desc": "Reconstruct images into a low-poly vector style using Delaunay triangulation." },
-    "crt": { "name": "CRT Bend", "desc": "Emulate CRT screen curvature, scanlines, and circuit-bent signal distortion." },
-  "flyer": { "name": "Flyer Forge", "desc": "Generate flyers for music events with automatic, well-designed compositions." },
-  "video": {
-    "name": "◈ Video FX",
-    "desc": "Real-time effects using your webcam or video files.",
-    "source": "Source",
-    "useWebcam": "◈ Use Webcam",
-    "effects": "Effects",
-    "aberration": "Aberration",
-    "noise": "Noise",
-    "scanlines": "Scanlines",
-    "curvature": "Curvature",
-    "vignette": "Vignette",
-    "blockGlitch": "Block Glitch",
-    "statusWait": "◈ Waiting for camera",
-    "cameraActive": "◈ Camera Active",
-    "cameraDenied": "◈ Camera access denied."
-  }
-},
+    "pixel": {
+      "name": "Pixel Sorter",
+      "desc": "Sort pixels by brightness, hue or saturation along horizontal, vertical or diagonal axes. Classic glitch aesthetic."
+    },
+    "dither": {
+      "name": "Dithering",
+      "desc": "Apply classic dithering algorithms: Floyd-Steinberg, ordered, Atkinson and more. Retro pixel aesthetics."
+    },
+    "glitch": {
+      "name": "Glitch FX",
+      "desc": "RGB channel shift, scanlines, block corruption, datamosh effects. Full control over intensity and style."
+    },
+    "constellation": {
+      "name": "Constellation",
+      "desc": "Overlay generative star maps, technical diagrams and node networks over your images. Export at high resolution."
+    },
+    "ascii": {
+      "name": "ASCII Canvas",
+      "desc": "Transform images into creative ASCII art with custom character sets and effects."
+    },
+    "halftone": {
+      "name": "Halftone",
+      "desc": "Create halftone dot patterns, CMYK separations, and retro print effects."
+    },
+    "triangulation": {
+      "name": "Triangulation",
+      "desc": "Reconstruct images into a low-poly vector style using Delaunay triangulation."
+    },
+    "crt": {
+      "name": "CRT Bend",
+      "desc": "Emulate CRT screen curvature, scanlines, and circuit-bent signal distortion."
+    },
+    "flyer": {
+      "name": "Flyer Forge",
+      "desc": "Generate flyers for music events with automatic, well-designed compositions."
+    },
+    "pattern": {
+      "name": "Pattern Generator",
+      "desc": "Generate abstract patterns, geometric designs and organic structures using Perlin noise, Voronoi, flow fields and strange attractors."
+    }
+  },
   "pixel": {
     "name": "⟆ Pixel Sorter",
     "desc": "Sort pixels by brightness, hue or saturation. Load an image to start.",
@@ -99,7 +135,10 @@
     "randomBtn": "◈ Randomize",
     "resetBtn": "Reset",
     "exportBtn": "Export PNG",
-    "canvasInfoNoImage": "No image loaded"
+    "canvasInfoNoImage": "No image loaded",
+    "name": "✧ Constellation",
+    "desc": "Overlay generative star maps, technical diagrams and node networks over your images.",
+    "continueBtn": "→ Continue in Flyer Forge"
   },
   "dithering": {
     "name": "⠿ Dithering",
@@ -128,7 +167,11 @@
     "resetBtn": "Reset",
     "continueBtn": "→ Continue in Flyer Forge",
     "exportBtn": "Export PNG",
-    "fileDrop": "Click or drop an image here"
+    "fileDrop": "Click or drop an image here",
+    "aspectFree": "Free",
+    "aspectSquare": "Square (1:1)",
+    "aspectPortrait": "Portrait (4:5)",
+    "aspectStory": "Story (9:16)"
   },
   "glitch": {
     "name": "▓ Glitch FX",
@@ -162,20 +205,17 @@
     "resetBtn": "Reset",
     "continueBtn": "→ Continue in Flyer Forge",
     "exportBtn": "Export PNG",
-    "fileDrop": "Click or drop an image here"
+    "fileDrop": "Click or drop an image here",
+    "aspectFree": "Free",
+    "aspectSquare": "Square (1:1)",
+    "aspectPortrait": "Portrait (4:5)",
+    "aspectStory": "Story (9:16)"
   },
   "pattern": {
-    "name": "◉ Pattern Generator",
-    "desc": "Render generative patterns with classic algorithms in real-time.",
-    "card": {
-      "name": "Pattern Generator",
-      "desc": "Generate abstract patterns, geometric designs and organic structures using Perlin noise, Voronoi, cellular automata, particles and reaction-diffusion algorithms."
-    },
+    "name": "▦ Pattern Generator",
     "seed": "Seed",
     "algorithm": "Algorithm",
     "voronoi": "Voronoi",
-    "cellular": "Cellular",
-    "particles": "Particles",
     "geometric": "Geometric",
     "transform": "Transform",
     "aspect": "Aspect",
@@ -191,27 +231,34 @@
     "statusReady": "◈ Ready",
     "renderBtn": "◈ Render",
     "randomBtn": "🎲 Randomize",
+    "rotateBtn": "Rotate 90°",
     "pngBtn": "⬇ PNG",
     "animBtn": "🎬 Animation",
     "continueBtn": "→ Continue in Flyer Forge",
-    "canvasInfo": "◉ Pattern Generator",
+    "canvasInfo": "▦ Pattern Generator",
     "params": {
       "sites": "Sites",
-      "lineWidth": "Line Width",
-      "cellSize": "Cell Size",
-      "generations": "Generations",
-      "fillPercent": "% Fill",
       "turbulence": "Turbulence",
       "scale": "Scale",
       "offsetX": "Offset X",
       "offsetY": "Offset Y",
-      "connect": "Connect",
       "a": "Param A",
       "b": "Param B",
       "c": "Param C",
       "d": "Param D",
-      "iterations": "Iterations"
-    }
+      "iterations": "Iterations",
+      "downscale": "Pixelation",
+      "octaves": "Octaves",
+      "persistence": "Persistence",
+      "lacunarity": "Lacunarity",
+      "time": "Time",
+      "particles": "Particles",
+      "speed": "Speed",
+      "lineOpacity": "Line Opacity"
+    },
+    "desc": "Generate abstract patterns, geometric designs and organic structures using Perlin noise, Voronoi and flow fields.",
+    "noise": "Noise",
+    "flow": "Flow Field"
   },
   "triangulation": {
     "name": "△ Triangulation",
@@ -291,7 +338,12 @@
     "watermark": "Show Watermark",
     "generateBtn": "◈ Generate Layout",
     "resetBtn": "Reset",
-    "exportBtn": "Export PNG"
+    "exportBtn": "Export PNG",
+    "textBackground": "Text Background",
+    "enableBg": "Enable Background",
+    "bgColor": "Background Color",
+    "bgOpacity": "Background Opacity",
+    "opacity": "Opacity"
   },
   "ascii": {
     "name": "◊ ASCII Canvas",
@@ -351,7 +403,9 @@
     "randomBtn": "◈ Randomize",
     "resetBtn": "Reset",
     "exportBtn": "Export PNG",
-    "canvasInfoNoImage": "No image loaded"
+    "canvasInfoNoImage": "No image loaded",
+    "name": "◉ Halftone",
+    "desc": "Create halftone dot patterns, CMYK separations, and retro print effects."
   },
   "about": {
     "sectionTag": "◈ 02 — About",
@@ -362,5 +416,9 @@
     "p3": "This project was created by Fercat, a musician, visual artist and digital creator.",
     "portfolio": "Check out my work"
   },
-  "footer": { "copyright": "© 2026 PUDRUS.XYZ", "donate": "Buy me a coffee", "note": "Jump into a digital disaster" }
+  "footer": {
+    "copyright": "© 2026 PUDRUS.XYZ",
+    "donate": "Buy me a coffee",
+    "note": "Jump into a digital disaster"
+  }
 }

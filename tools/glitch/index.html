@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="es">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -287,15 +287,6 @@ function setupCrop(W, H) {
     updateCropRect();
 }
 
-function drawCropOverlay() {
-    if (cropRect) {
-        ctx.fillStyle = 'rgba(0,0,0,0.5)';
-        ctx.fillRect(0, 0, cropRect.x, canvas.height);
-        ctx.fillRect(cropRect.x + cropRect.w, 0, canvas.width - (cropRect.x + cropRect.w), canvas.height);
-        ctx.fillRect(cropRect.x, 0, cropRect.w, cropRect.y);
-        ctx.fillRect(cropRect.x, cropRect.y + cropRect.h, cropRect.w, canvas.height - (cropRect.y + cropRect.h));
-    }
-}
 
 function applyGlitch(regenerateBlocks = true){
   if(!origImageData){status('Load an image first');return;}
@@ -400,7 +391,7 @@ function applyGlitch(regenerateBlocks = true){
         }
         ctx.drawImage(scanvas, 0, 0);
     }
-    drawCropOverlay();
+    drawCropOverlay(ctx, canvas, cropRect);
 
     status('Done!');
   },10);

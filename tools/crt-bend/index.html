@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="es">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -132,6 +132,8 @@
 
 </div>
 
+<script src="../../js/i18n.js"></script>
+<script src="../../js/utils.js"></script>
 <script>
 document.addEventListener('DOMContentLoaded', () => {
 
@@ -251,15 +253,6 @@ document.addEventListener('DOMContentLoaded', () => {
       updateCropRect();
   }
 
-  function drawCropOverlay() {
-      if (cropRect) {
-          ctx.fillStyle = 'rgba(0,0,0,0.5)';
-          ctx.fillRect(0, 0, cropRect.x, canvas.height);
-          ctx.fillRect(cropRect.x + cropRect.w, 0, canvas.width - (cropRect.x + cropRect.w), canvas.height);
-          ctx.fillRect(cropRect.x, 0, cropRect.w, cropRect.y);
-          ctx.fillRect(cropRect.x, cropRect.y + cropRect.h, cropRect.w, canvas.height - (cropRect.y + cropRect.h));
-      }
-  }
 
   // --- Main CRT Effect Logic ---
   let renderScheduled = false;
@@ -358,7 +351,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
       }
       ctx.putImageData(out, 0, 0);
-      drawCropOverlay();
+      drawCropOverlay(ctx, canvas, cropRect);
       status('CRT effects applied!');
   }
 

@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="es">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -108,8 +108,9 @@
 
 </div>
 
-<script src="https://cdn.jsdelivr.net/npm/d3-delaunay@6"></script>
+<script src="https://cdn.jsdelivr.net/npm/d3-delaunay@6.0.4/dist/d3-delaunay.min.js"></script>
 <script src="../../js/i18n.js"></script>
+<script src="../../js/utils.js"></script>
 <script>
 document.addEventListener('DOMContentLoaded', () => {
 
@@ -221,15 +222,6 @@ function setupCrop(W, H) {
     updateCropRect();
 }
 
-function drawCropOverlay() {
-    if (cropRect) {
-        ctx.fillStyle = 'rgba(0,0,0,0.5)';
-        ctx.fillRect(0, 0, cropRect.x, canvas.height);
-        ctx.fillRect(cropRect.x + cropRect.w, 0, canvas.width - (cropRect.x + cropRect.w), canvas.height);
-        ctx.fillRect(cropRect.x, 0, cropRect.w, cropRect.y);
-        ctx.fillRect(cropRect.x, cropRect.y + cropRect.h, cropRect.w, canvas.height - (cropRect.y + cropRect.h));
-    }
-}
 
 // Triangulation Logic
 function applyTriangulation() {
@@ -312,7 +304,7 @@ function applyTriangulation() {
         ctx.stroke();
       }
     }
-    drawCropOverlay();
+    drawCropOverlay(ctx, canvas, cropRect);
     status('Triangulation complete!');
   }, 10);
 }

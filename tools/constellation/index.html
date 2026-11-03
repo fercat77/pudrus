@@ -22,7 +22,7 @@
   <div class="tool-panel">
     <div class="tool-panel-header">
       <a href="../../index.html" class="back" data-i18n="nav.tools">← Back</a>
-      <h2 data-i18n="constellation.name">Constellation</h2>
+      <h2 data-i18n="constellation.name">✧ Constellation</h2>
       <p data-i18n="constellation.desc">Overlay generative star maps, technical diagrams and node networks over your images.</p>
     </div>
 
@@ -203,6 +203,7 @@ let currentLines = [];
 let currentMode = 'starfield';
 let renderScheduled = false;
 let cropRect = null;
+let updateCropRect = () => {}; // assigned in setupCrop()
 let cachedColorRGB = null;
 
 function updateControlStates() {
@@ -308,7 +309,7 @@ function scheduleRender() {
         renderOverlay();
       } else {
         ctx.putImageData(origImageData, 0, 0);
-        drawCropOverlay();
+        drawCropOverlay(ctx, canvas, cropRect);
       }
     });
   }
@@ -361,7 +362,7 @@ function setupCrop(W, H) {
     const offsetXSlider = document.getElementById('cropOffsetX');
     const offsetYSlider = document.getElementById('cropOffsetY');
 
-    function updateCropRect() {
+    updateCropRect = function() {
         const ratio = aspectRatioSelect.value;
         if (ratio === 'free') {
             cropRect = null;
@@ -394,9 +395,9 @@ function setupCrop(W, H) {
         }
     }
     
-    aspectRatioSelect.addEventListener('change', updateCropRect);
-    offsetXSlider.addEventListener('input', updateCropRect);
-    offsetYSlider.addEventListener('input', updateCropRect);
+    aspectRatioSelect.onchange = () => updateCropRect();
+    offsetXSlider.oninput = () => updateCropRect();
+    offsetYSlider.oninput = () => updateCropRect();
     
     // Initial calculation
     updateCropRect();

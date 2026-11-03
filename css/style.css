@@ -3,18 +3,19 @@
 
 :root {
   --bg:      #050508;
-  --bg2:     #0a0a12;
+  --bg2:     #0B0B14;
   --bg3:     #0f0f1a;
-  --c1:      #59ff00;
+  --c1:      #66FF33;
   --c2:      #00bb16;
   --c3:      #00662c;
   --c4:      #001a2e;
-  --text:    #c8e8f0;
+  --text:    #D0EFFF;
   --text2:   #15a048;
   --border:  rgba(0,212,255,0.15);
   --glow:    0 0 20px rgba(0,212,255,0.3);
-  --font:    'Courier New', 'Courier', monospace;
+  --font:    'IBM Plex Mono', 'Roboto Mono', monospace;
   --footer-height: 56px;
+  --nav-height: 56px;
 }
 
 html, body {
@@ -28,10 +29,11 @@ html, body {
 
 html {
   scroll-behavior: smooth;
+  scroll-padding-bottom: calc(var(--footer-height) + 24px);
 }
 
 main {
-  padding-bottom: calc(var(--footer-height) + 24px);
+  padding-bottom: calc(var(--footer-height) + 56px);
 }
 
 /* ── SCROLLBAR ──────────────────────────────────────── */
@@ -42,24 +44,32 @@ main {
 /* ── NAV ────────────────────────────────────────────── */
 nav {
   position: fixed; top: 0; left: 0; right: 0; z-index: 120;
-  height: 52px;
-  display: flex; align-items: center; justify-content: space-between;
+  height: var(--nav-height);
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
   padding: 0 32px;
   background: rgba(5,5,8,0.92);
   border-bottom: 1px solid var(--border);
   backdrop-filter: blur(10px);
 }
 
+.nav-links {
+  justify-self: center;
+  display: flex; gap: 28px; list-style: none;
+}
+
 .nav-lang {
   display: flex;
   align-items: center;
   gap: 8px;
+  justify-self: end;
 }
 
 .nav-logo {
-  font-size: 16px; font-weight: bold;
+  font-size: 15px; font-weight: bold;
   color: var(--c1);
-  letter-spacing: 4px;
+  letter-spacing: 3px;
   text-transform: uppercase;
   text-decoration: none;
 }
@@ -105,7 +115,7 @@ nav {
 
 .hero h1 {
   font-size: clamp(36px, 7vw, 80px);
-  font-weight: bold; letter-spacing: 6px;
+  font-weight: 600; letter-spacing: 6px;
   text-transform: uppercase;
   text-align: center;
   color: #fff;
@@ -134,6 +144,7 @@ nav {
   letter-spacing: 3px; text-transform: uppercase;
   text-decoration: none; cursor: pointer;
   border: none; transition: all 0.2s;
+  min-height: 44px; /* Touch target */
 }
 
 .btn-primary {
@@ -153,12 +164,12 @@ nav {
 
 /* ── SECTION ────────────────────────────────────────── */
 section {
-  padding: 112px 32px 96px;
+  padding: 112px 32px 140px;
   max-width: 1200px; margin: 0 auto;
-  min-height: 100vh;
+  min-height: auto;
   display: flex;
   flex-direction: column;
-  justify-content: center;
+  justify-content: flex-start;
   border-top: 1px solid rgba(0,212,255,0.08);
   scroll-margin-top: 72px;
 }
@@ -171,7 +182,7 @@ section {
 
 .section-title {
   font-size: clamp(22px, 4vw, 36px);
-  letter-spacing: 3px; text-transform: uppercase;
+  letter-spacing: 3px; text-transform: uppercase; font-weight: 600;
   color: #fff; margin-bottom: 12px;
 }
 
@@ -186,14 +197,14 @@ section {
 /* ── TOOLS GRID ─────────────────────────────────────── */
 .tools-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
-  gap: 20px;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 16px;
 }
 
 .tool-card {
   background: var(--bg2);
   border: 1px solid var(--border);
-  padding: 28px;
+  padding: 22px;
   text-decoration: none;
   transition: all 0.25s;
   position: relative; overflow: hidden;
@@ -223,30 +234,30 @@ section {
 }
 
 .tool-icon {
-  font-size: 28px; margin-bottom: 16px;
+  font-size: 24px; margin-bottom: 14px;
   display: block;
 }
 
 .tool-number {
-  font-size: 10px; letter-spacing: 3px;
-  color: var(--c2); margin-bottom: 8px;
+  font-size: 9px; letter-spacing: 2px;
+  color: var(--c2); margin-bottom: 6px;
 }
 
 .tool-name {
-  font-size: 15px; font-weight: bold;
-  letter-spacing: 2px; text-transform: uppercase;
+  font-size: 14px; font-weight: bold;
+  letter-spacing: 1.5px; text-transform: uppercase;
   color: #fff; margin-bottom: 8px;
 }
 
 .tool-desc {
-  font-size: 11px; line-height: 1.7;
+  font-size: 10px; line-height: 1.6;
   color: var(--text2);
 }
 
 .tool-badge {
-  display: inline-block; margin-top: 16px;
-  padding: 3px 10px; font-size: 9px;
-  letter-spacing: 2px; text-transform: uppercase;
+  display: inline-block; margin-top: 14px;
+  padding: 2px 8px; font-size: 8px;
+  letter-spacing: 1.5px; text-transform: uppercase;
   border: 1px solid var(--c3); color: var(--c2);
 }
 
@@ -263,19 +274,42 @@ footer {
   bottom: 0;
   z-index: 110;
   border-top: 1px solid var(--border);
-  padding: 12px 32px;
+  padding: 14px 32px;
   min-height: var(--footer-height);
-  display: flex; justify-content: space-between; align-items: center;
-  flex-wrap: wrap; gap: 12px;
-  color: var(--text2); font-size: 10px;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(120px, auto));
+  justify-content: center;
+  align-items: center;
+  gap: 10px;
+  color: var(--text2); font-size: 11px;
   letter-spacing: 2px; text-transform: uppercase;
   max-width: 100%;
   background: rgba(5,5,8,0.92);
   backdrop-filter: blur(10px);
+  text-align: center;
+  transform: translateY(100%);
+  opacity: 0;
+  transition: transform 0.28s ease, opacity 0.28s ease;
+  pointer-events: none;
+}
+
+footer.visible {
+  transform: translateY(0);
+  opacity: 1;
+  pointer-events: auto;
 }
 
 footer a { color: var(--c2); text-decoration: none; }
 footer a:hover { color: var(--c1); }
+
+.footer-separator {
+  opacity: 0.55;
+}
+
+/* For tool pages, we want the footer to be fixed */
+.tool-layout + footer {
+  position: fixed;
+}
 
 /* ── TOOL PAGE LAYOUT ───────────────────────────────── */
 .tool-layout {
@@ -428,13 +462,16 @@ select:focus { border-color: var(--c1); }
 }
 
 .action-btns {
-  display: flex; flex-direction: column; gap: 10px;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
   padding: 20px 24px;
   border-top: 1px solid var(--border);
 }
 
 .action-btns .btn {
   width: 100%;
+  justify-content: center; /* Center content inside button */
 }
 
 .status-bar {
@@ -590,7 +627,7 @@ input[type="color"]::-moz-color-swatch {
   /* Navigation */
   nav {
     padding: 8px 14px;
-    min-height: 56px;
+    min-height: var(--nav-height);
     flex-wrap: wrap;
     gap: 6px;
   }
@@ -634,9 +671,9 @@ input[type="color"]::-moz-color-swatch {
     margin-bottom: 16px;
   }
   .hero h1 {
-    font-size: clamp(32px, 10vw, 56px);
+    font-size: clamp(32px, 10vw, 56px); font-weight: 600;
     letter-spacing: 3px;
-    margin-bottom: 12px;
+    margin-bottom: 12px; 
     line-height: 1.2;
   }
   .hero-sub {
@@ -695,7 +732,7 @@ input[type="color"]::-moz-color-swatch {
   }
   .tool-icon {
     font-size: 20px;
-    margin-bottom: 0;
+    margin: 0;
     grid-row: span 2;
   }
   .tool-number {
@@ -720,14 +757,12 @@ input[type="color"]::-moz-color-swatch {
   }
   /* Tool Layout - Stack vertically */
   .tool-layout {
-    /* Convert to a flex-based split-screen layout */
     display: flex;
     flex-direction: column-reverse; /* Puts canvas on top */
     height: 100vh; /* Full viewport height */
     padding-top: 48px; /* Offset for the nav bar */
   }
   .tool-panel {
-    /* Panel ocupa la mitad inferior y es scrollable */
     flex: 1 1 50%;
     overflow-y: auto;
     border-right: none;
@@ -737,7 +772,6 @@ input[type="color"]::-moz-color-swatch {
     padding: 16px;
   }
   .tool-canvas-area {
-    /* Canvas area ocupa la mitad superior */
     flex: 1 1 50%;
     padding: 16px;
     min-height: 0; /* Override previous min-height */
@@ -746,60 +780,64 @@ input[type="color"]::-moz-color-swatch {
     max-height: 50vh;
   }
   
-  /* Controls - Larger touch targets */
+  /* Controls - Compact for mobile */
   .control-row {
     flex-wrap: wrap;
-    gap: 8px;
+    gap: 4px;
+    margin-bottom: 6px;
   }
   .control-row label {
     min-width: 100%;
-    margin-bottom: 4px;
+    margin-bottom: 2px;
+    font-size: 8px;
   }
   .control-row input[type="color"] {
     width: 100%;
-    max-width: 120px;
-    height: 36px;
+    max-width: 80px;
+    height: 28px;
   }
   input[type="range"] {
     flex: 1;
     min-width: 100%;
-    height: 4px;
+    height: 3px;
   }
   input[type="range"]::-webkit-slider-thumb {
-    width: 16px;
-    height: 16px;
+    width: 14px;
+    height: 14px;
   }
   
-  /* Toggle switches - larger */
+  /* Toggle switches - compact */
   .toggle {
-    width: 44px;
-    height: 24px;
+    width: 36px;
+    height: 18px;
   }
   .toggle::after {
-    width: 18px;
-    height: 18px;
-    top: 3px;
-    left: 3px;
+    width: 14px;
+    height: 14px;
+    top: 2px;
+    left: 2px;
   }
   .toggle.on::after {
-    left: 23px;
+    left: 20px;
   }
   
-  /* Buttons */
+  /* Buttons - Compact for mobile */
   .btn {
-    padding: 14px 24px;
-    font-size: 10px;
-    letter-spacing: 2px;
+    padding: 8px 12px;
+    font-size: 8px;
+    letter-spacing: 1px;
+    min-height: 36px;
+    gap: 4px;
   }
   
-  /* Preset buttons */
+  /* Preset buttons - compact */
   .preset-buttons {
     grid-template-columns: 1fr 1fr;
-    gap: 8px;
+    gap: 6px;
   }
   .btn-preset {
-    padding: 12px 8px;
-    font-size: 9px;
+    padding: 6px 4px;
+    font-size: 8px;
   }
   
   /* About section */
@@ -869,8 +907,8 @@ input[type="color"]::-moz-color-swatch {
     min-height: auto;
   }
   .hero h1 {
-    font-size: 24px;
-    letter-spacing: 3px;
+    font-size: 24px; letter-spacing: 3px;
+    font-weight: 600;
   }
   .hero-cta {
     max-width: 100%;
@@ -880,7 +918,7 @@ input[type="color"]::-moz-color-swatch {
     max-width: 100%;
   }
   .section-title {
-    font-size: 18px;
+    font-size: 18px; font-weight: 600;
     letter-spacing: 1px;
     white-space: normal;
     line-height: 1.3;
@@ -895,7 +933,7 @@ input[type="color"]::-moz-color-swatch {
   }
   
   section {
-    padding: 72px 16px 80px;
+    padding: 96px 16px 80px;
     min-height: auto;
   }
 
@@ -905,11 +943,11 @@ input[type="color"]::-moz-color-swatch {
   }
 
   .section-about {
-    padding-top: 72px;
+    padding-top: 96px;
   }
 
   .section-work {
-    padding: 72px 16px 96px;
+    padding: 96px 16px 96px;
   }
 
   .work-card {
@@ -1043,10 +1081,6 @@ input[type="color"]::-moz-color-swatch {
   font-size: 13px;
   letter-spacing: 1px;
   text-decoration: none;
-}
-
-.btn-outline-start {
-  margin-top: 8px;
 }
 
 footer.custom-margin {
@@ -1204,4 +1238,140 @@ footer.custom-margin {
   font-weight: bold;
   box-shadow: 0 0 15px rgba(89, 255, 0, 0.4);
   z-index: 2;
+}
+
+.pattern-generator-canvas canvas {
+  display: block !important;
+}
+
+
+/* ── TABLET OPTIMIZATIONS ───────────────────────────── */
+@media (min-width: 769px) and (max-width: 1024px) {
+  .tools-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  
+  .about-grid {
+    gap: 40px;
+  }
+  
+  section {
+    padding: 96px 24px 120px;
+  }
+}
+
+/* ── IMPROVED MOBILE NAVIGATION ─────────────────────── */
+@media (max-width: 768px) {
+  /* Ensure nav doesn't wrap awkwardly */
+  nav {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    align-items: center;
+    height: auto;
+    min-height: var(--nav-height);
+  }
+  
+  .nav-logo {
+    order: 1;
+  }
+  
+  .nav-lang {
+    order: 2;
+  }
+  
+  .nav-links {
+    order: 3;
+    width: 100%;
+    justify-content: center;
+    gap: 16px;
+    padding: 8px 0 4px;
+    border-top: 1px solid var(--border);
+    margin-top: 6px;
+  }
+}
+
+/* ── TOUCH DEVICE OPTIMIZATIONS ─────────────────────── */
+@media (hover: none) and (pointer: coarse) {
+  /* Remove hover effects on touch devices */
+  .tool-card:hover {
+    transform: none;
+    box-shadow: none;
+  }
+  
+  .tool-card:active {
+    border-color: var(--c1);
+    background: var(--bg3);
+  }
+  
+  .btn:hover {
+    transform: none;
+  }
+  
+  .btn:active {
+    transform: scale(0.98);
+  }
+  
+  /* Larger touch targets */
+  .nav-links a {
+    padding: 8px 4px;
+  }
+  
+  .tool-card {
+    min-height: 120px;
+  }
+}
+
+/* ── LANDSCAPE MOBILE ───────────────────────────────── */
+@media (max-width: 768px) and (orientation: landscape) {
+  .hero {
+    min-height: auto;
+    padding: 80px 18px 40px;
+  }
+  
+  .hero h1 {
+    font-size: 28px;
+    margin-bottom: 8px;
+  }
+  
+  .hero-sub {
+    font-size: 9px;
+    margin-bottom: 20px;
+  }
+  
+  .hero-cta {
+    margin-bottom: 16px;
+  }
+  
+  .hero-stats {
+    margin-top: 20px;
+  }
+  
+  .stat {
+    min-height: 60px;
+    padding: 8px;
+  }
+  
+  .stat-num {
+    font-size: 18px;
+  }
+}
+
+/* ── SAFE AREA INSETS FOR NOTCH DEVICES ─────────────── */
+@supports (padding-top: env(safe-area-inset-top)) {
+  nav {
+    padding-top: calc(8px + env(safe-area-inset-top));
+    padding-left: calc(14px + env(safe-area-inset-left));
+    padding-right: calc(14px + env(safe-area-inset-right));
+  }
+  
+  footer {
+    padding-bottom: calc(10px + env(safe-area-inset-bottom));
+    padding-left: calc(16px + env(safe-area-inset-left));
+    padding-right: calc(16px + env(safe-area-inset-right));
+  }
+  
+  .hero {
+    padding-top: calc(108px + env(safe-area-inset-top));
+  }
 }

@@ -7,13 +7,18 @@
  * @param {Object|null} cropRect - Crop rectangle {x, y, w, h} or null
  */
 function drawCropOverlay(ctx, canvas, cropRect) {
-    if (cropRect) {
-        ctx.fillStyle = 'rgba(0,0,0,0.5)';
-        ctx.fillRect(0, 0, cropRect.x, canvas.height);
-        ctx.fillRect(cropRect.x + cropRect.w, 0, canvas.width - (cropRect.x + cropRect.w), canvas.height);
-        ctx.fillRect(cropRect.x, 0, cropRect.w, cropRect.y);
-        ctx.fillRect(cropRect.x, cropRect.y + cropRect.h, cropRect.w, canvas.height - (cropRect.y + cropRect.h));
-    }
+    if (!cropRect) return;
+    ctx.save();
+    ctx.fillStyle = 'rgba(0,0,0,0.5)';
+    ctx.fillRect(0, 0, cropRect.x, canvas.height);
+    ctx.fillRect(cropRect.x + cropRect.w, 0, canvas.width - (cropRect.x + cropRect.w), canvas.height);
+    ctx.fillRect(cropRect.x, 0, cropRect.w, cropRect.y);
+    ctx.fillRect(cropRect.x, cropRect.y + cropRect.h, cropRect.w, canvas.height - (cropRect.y + cropRect.h));
+    ctx.strokeStyle = 'rgba(89,255,0,0.85)';
+    ctx.lineWidth = 2;
+    ctx.setLineDash([8, 6]);
+    ctx.strokeRect(cropRect.x + 1, cropRect.y + 1, cropRect.w - 2, cropRect.h - 2);
+    ctx.restore();
 }
 
 /**
@@ -187,4 +192,37 @@ function exportToPNG(canvas, cropRect, filename = 'pudrus_export', maxDim = null
     link.download = `${filename}_${Date.now()}.png`;
     link.href = exportCanvas.toDataURL('image/png');
     link.click();
+}
+
+// --- WORKFLOW (pass an image between tools) ---
+const WORKFLOW_STORAGE_KEY = 'pudrus_workflow_image';
+
+function sendTo(toolUrl, canvasElement, cropRect) {
+    if (!canvasElement) {
+        console.error('Workflow Error: Canvas element not provided.');
+        return;
+    }
+    const exportCanvas = document.createElement('canvas');
+    const exportCtx = exportCanvas.getContext('2d');
+
+    const sx = cropRect ? cropRect.x : 0;
+    const sy = cropRect ? cropRect.y : 0;
+    const sWidth = cropRect ? cropRect.w : canvasElement.width;
+    const sHeight = cropRect ? cropRect.h : canvasElement.height;
+
+    exportCanvas.width = sWidth;
+    exportCanvas.height = sHeight;
+
+    exportCtx.drawImage(canvasElement, sx, sy, sWidth, sHeight, 0, 0, sWidth, sHeight);
+    sessionStorage.setItem(WORKFLOW_STORAGE_KEY, exportCanvas.toDataURL('image/png'));
+    window.location.href = `../${toolUrl}/index.html`;
+}
+
+function receiveImage() {
+    const dataUrl = sessionStorage.getItem(WORKFLOW_STORAGE_KEY);
+    if (dataUrl) {
+        sessionStorage.removeItem(WORKFLOW_STORAGE_KEY); // Clear after reading
+        return dataUrl;
+    }
+    return null;
 }

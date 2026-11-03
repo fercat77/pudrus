@@ -1,5 +1,9 @@
 {
-  "nav": { "tools": "Herramientas", "about": "Acerca de", "work": "Trabajo" },
+  "nav": {
+    "tools": "Herramientas",
+    "about": "Acerca de",
+    "work": "Trabajo"
+  },
   "hero": {
     "tag": "◈ Suite Visual Creativa",
     "title": "PUDRUS.XYZ",
@@ -7,35 +11,83 @@
     "explore": "◈ Explorar Tools",
     "learn": "Más info"
   },
-  "stats": { "tools": "Herramientas", "combinations": "Combinaciones", "install": "instalación" },
+  "stats": {
+    "tools": "Herramientas",
+    "combinations": "Combinaciones",
+    "install": "instalación",
+    "online": "En línea"
+  },
   "work": {
     "sectionTag": "◈ 03 — Trabajo",
-    "title": "Creo <span>trabajo visual</span>",
-    "p1": "Trabajo en la intersección entre el arte digital, la identidad visual y las experiencias interactivas.",
-    "p2": "Colaboro en comisiones para marcas, artistas, proyectos culturales y campañas experimentales que necesitan una imagen fuerte y distintiva.",
-    "item1": "Visuales de marca",
-    "item2": "Sistemas de póster",
-    "item3": "Arte digital",
-    "item4": "Herramientas interactivas",
-    "ctaPrimary": "Trabajemos juntos",
-    "ctaSecondary": "Contáctame",
+    "title": "Trabajo entre el arte, la tecnología y la escena",
+    "p1": "Durante más de una década desarrollé mi trabajo atravesando distintas disciplinas: diseño gráfico, artes visuales, informática, música y producción audiovisual. Ese recorrido me permitió construir una forma de trabajo donde la creatividad y la técnica no funcionan como áreas separadas, sino como partes de un mismo proceso.",
+    "p2": "Me desempeño como artista visual, diseñador gráfico, director de cámaras (CCTV), técnico audiovisual, técnico escénico y VJ, además de desarrollar proyectos musicales y colaborar en la producción de eventos en vivo. Cada una de estas experiencias aporta una mirada diferente sobre la imagen, el sonido, el espacio y la relación entre las personas y la tecnología.",
+    "item1": "Dirección de cámaras (CCTV) y realización audiovisual",
+    "item2": "Diseño gráfico e identidad visual",
+    "item3": "Motion Graphics y animación",
+    "item4": "Modelado y producción 3D",
+    "ctaPrimary": "Ver Instagram",
+    "ctaSecondary": "Contactar",
     "badge": "Disponible para comisiones",
     "highlightTitle": "Abierto a proyectos freelance",
-    "highlightText": "Si necesitas imágenes con una identidad marcada, estética experimental o experiencias personalizadas en navegador, me encantaría escuchar tu idea."
+    "highlightText": "Si necesitas imágenes con una identidad marcada, estética experimental o experiencias personalizadas en navegador, me encantaría escuchar tu idea.",
+    "p3": "Trabajo tanto en la creación de identidades visuales, ilustraciones, animaciones, motion graphics, diseño 3D y contenidos digitales, como en el desarrollo y operación de sistemas audiovisuales para espectáculos, transmisiones en vivo e instalaciones. En los últimos años incorporé herramientas de inteligencia artificial a mi flujo de trabajo como un recurso creativo que complementa, pero nunca reemplaza, los procesos de diseño y producción.",
+    "p4": "Actualmente me encuentro abierto a colaborar en proyectos, integrarme a equipos de trabajo y desarrollar propuestas tanto presenciales como remotas.",
+    "item5": "Visuales en tiempo real (VJ)",
+    "item6": "TouchDesigner y Resolume Arena",
+    "item7": "Streaming y sistemas audiovisuales",
+    "item8": "Ilustración y arte digital",
+    "item9": "Pintura y escultura",
+    "item10": "Diseño editorial",
+    "item11": "Diseño web",
+    "item12": "Fotogrametría",
+    "item13": "Producción técnica para espectáculos",
+    "item14": "Integración de IA en procesos creativos"
   },
   "tools": {
     "sectionTag": "◈ 01 — Tools",
     "title": "Visual Processing Suite",
     "desc": "Cada tool corre en tu navegador. Sin uploads, sin instalaciones.",
-    "pixel": { "name": "Pixel Sorter", "desc": "Ordena píxeles por brightness, hue o saturation." },
-    "dither": { "name": "Dithering", "desc": "Algoritmos clásicos: Floyd-Steinberg, Atkinson, ordered." },
-    "glitch": { "name": "Glitch FX", "desc": "RGB shifts, scanlines, block corruption." },
-    "constellation": { "name": "Constellation", "desc": "Overlay generative star maps y node networks." },
-    "ascii": { "name": "ASCII Canvas", "desc": "Transforma imágenes en ASCII art creativo." },
-    "halftone": { "name": "Halftone", "desc": "Crea patrones de puntos, separaciones CMYK y efectos de impresión retro." },
-    "triangulation": { "name": "Triangulation", "desc": "Reconstruye imágenes en un estilo vectorial low-poly usando triangulación de Delaunay." },
-    "crt": { "name": "CRT Bend", "desc": "Emula la curvatura de pantallas CRT, scanlines y distorsión de señal." },
-  "flyer": { "name": "Flyer Forge", "desc": "Genera flyers para eventos musicales con composiciones automáticas." }
+    "pixel": {
+      "name": "Pixel Sorter",
+      "desc": "Ordena píxeles por brightness, hue o saturation."
+    },
+    "dither": {
+      "name": "Dithering",
+      "desc": "Algoritmos clásicos: Floyd-Steinberg, Atkinson, ordered."
+    },
+    "glitch": {
+      "name": "Glitch FX",
+      "desc": "RGB shifts, scanlines, block corruption."
+    },
+    "constellation": {
+      "name": "Constellation",
+      "desc": "Overlay generative star maps y node networks."
+    },
+    "ascii": {
+      "name": "ASCII Canvas",
+      "desc": "Transforma imágenes en ASCII art creativo."
+    },
+    "halftone": {
+      "name": "Halftone",
+      "desc": "Crea patrones de puntos, separaciones CMYK y efectos de impresión retro."
+    },
+    "triangulation": {
+      "name": "Triangulation",
+      "desc": "Reconstruye imágenes en un estilo vectorial low-poly usando triangulación de Delaunay."
+    },
+    "crt": {
+      "name": "CRT Bend",
+      "desc": "Emula la curvatura de pantallas CRT, scanlines y distorsión de señal."
+    },
+    "flyer": {
+      "name": "Flyer Forge",
+      "desc": "Genera flyers para eventos musicales con composiciones automáticas."
+    },
+    "pattern": {
+      "name": "Generador de Patrones",
+      "desc": "Genera patrones abstractos, diseños geométricos y estructuras orgánicas con ruido Perlin, Voronoi, campos de flujo y atractores."
+    }
   },
   "pixel": {
     "name": "⟆ Pixel Sorter",
@@ -83,7 +135,10 @@
     "randomBtn": "◈ Aleatorio",
     "resetBtn": "Reiniciar",
     "exportBtn": "Exportar PNG",
-    "canvasInfoNoImage": "Sin imagen"
+    "canvasInfoNoImage": "Sin imagen",
+    "name": "✧ Constellation",
+    "desc": "Superpone mapas de estrellas generativos, diagramas técnicos y redes de nodos sobre tus imágenes.",
+    "continueBtn": "→ Continuar en Flyer Forge"
   },
   "dithering": {
     "name": "⠿ Dithering",
@@ -112,7 +167,11 @@
     "resetBtn": "Reiniciar",
     "continueBtn": "→ Continuar en Flyer Forge",
     "exportBtn": "Exportar PNG",
-    "fileDrop": "Click o suelta una imagen aquí"
+    "fileDrop": "Click o suelta una imagen aquí",
+    "aspectFree": "Libre",
+    "aspectSquare": "Cuadrado (1:1)",
+    "aspectPortrait": "Retrato (4:5)",
+    "aspectStory": "Historia (9:16)"
   },
   "glitch": {
     "name": "▓ Glitch FX",
@@ -146,7 +205,60 @@
     "resetBtn": "Reiniciar",
     "continueBtn": "→ Continuar en Flyer Forge",
     "exportBtn": "Exportar PNG",
-    "fileDrop": "Click o suelta una imagen aquí"
+    "fileDrop": "Click o suelta una imagen aquí",
+    "aspectFree": "Libre",
+    "aspectSquare": "Cuadrado (1:1)",
+    "aspectPortrait": "Retrato (4:5)",
+    "aspectStory": "Historia (9:16)"
+  },
+  "pattern": {
+    "name": "▦ Generador de Patrones",
+    "seed": "Semilla (Seed)",
+    "algorithm": "Algoritmo",
+    "voronoi": "Voronoi",
+    "geometric": "Geométrico",
+    "transform": "Transformación",
+    "aspect": "Aspecto",
+    "aspectFree": "Libre",
+    "aspectSquare": "Cuadrado (1:1)",
+    "aspectPortrait": "Retrato (4:5)",
+    "aspectStory": "Historia (9:16)",
+    "rotation": "Rotación",
+    "parameters": "Parámetros",
+    "animation": "Animación",
+    "animate": "Animar",
+    "speed": "Velocidad",
+    "statusReady": "◈ Listo",
+    "renderBtn": "◈ Renderizar",
+    "randomBtn": "🎲 Aleatorizar",
+    "rotateBtn": "Rotar 90°",
+    "pngBtn": "⬇ PNG",
+    "animBtn": "🎬 Animación",
+    "continueBtn": "→ Continuar en Flyer Forge",
+    "canvasInfo": "▦ Generador de Patrones",
+    "params": {
+      "sites": "Sitios",
+      "turbulence": "Turbulencia",
+      "scale": "Escala",
+      "offsetX": "Offset X",
+      "offsetY": "Offset Y",
+      "a": "Param A",
+      "b": "Param B",
+      "c": "Param C",
+      "d": "Param D",
+      "iterations": "Iteraciones",
+      "downscale": "Pixelado",
+      "octaves": "Octavas",
+      "persistence": "Persistencia",
+      "lacunarity": "Lacunaridad",
+      "time": "Tiempo",
+      "particles": "Partículas",
+      "speed": "Velocidad",
+      "lineOpacity": "Opacidad Línea"
+    },
+    "desc": "Genera patrones abstractos, diseños geométricos y estructuras orgánicas usando ruido Perlin, Voronoi y campos de flujo.",
+    "noise": "Ruido",
+    "flow": "Flow Field"
   },
   "triangulation": {
     "name": "△ Triangulation",
@@ -226,7 +338,12 @@
     "watermark": "Mostrar Marca de Agua",
     "generateBtn": "◈ Generar Diseño",
     "resetBtn": "Reiniciar",
-    "exportBtn": "Exportar PNG"
+    "exportBtn": "Exportar PNG",
+    "textBackground": "Fondo del texto",
+    "enableBg": "Activar fondo",
+    "bgColor": "Color de fondo",
+    "bgOpacity": "Opacidad del fondo",
+    "opacity": "Opacidad"
   },
   "ascii": {
     "name": "◊ ASCII Canvas",
@@ -286,7 +403,9 @@
     "randomBtn": "◈ Aleatorio",
     "resetBtn": "Reiniciar",
     "exportBtn": "Exportar PNG",
-    "canvasInfoNoImage": "Sin imagen"
+    "canvasInfoNoImage": "Sin imagen",
+    "name": "◉ Halftone",
+    "desc": "Crea patrones de puntos, separaciones CMYK y efectos de impresión retro."
   },
   "about": {
     "sectionTag": "◈ 02 — About",
@@ -297,50 +416,9 @@
     "p3": "Este proyecto fue creado por Fercat, un musico, artista visual y creador digital.",
     "portfolio": "Mira mi trabajo"
   },
-  "footer": { "copyright": "© 2026 PUDRUS.XYZ", "donate": "Apoya este proyecto", "note": "Jump into a digital disaster" },
-  "pattern": {
-    "name": "◉ Generador de Patrones",
-    "desc": "Renderiza patrones generativos con algoritmos clásicos en tiempo real.",
-    "seed": "Semilla (Seed)",
-    "algorithm": "Algoritmo",
-    "voronoi": "Voronoi",
-    "cellular": "Celular",
-    "particles": "Partículas",
-    "geometric": "Geométrico",
-    "transform": "Transformación",
-    "aspect": "Aspecto",
-    "aspectFree": "Libre",
-    "aspectSquare": "Cuadrado (1:1)",
-    "aspectPortrait": "Retrato (4:5)",
-    "aspectStory": "Historia (9:16)",
-    "rotation": "Rotación",
-    "parameters": "Parámetros",
-    "animation": "Animación",
-    "animate": "Animar",
-    "speed": "Velocidad",
-    "statusReady": "◈ Listo",
-    "renderBtn": "◈ Renderizar",
-    "randomBtn": "🎲 Aleatorizar",
-    "pngBtn": "⬇ PNG",
-    "animBtn": "🎬 Animación",
-    "continueBtn": "→ Continuar en Flyer Forge",
-    "canvasInfo": "◉ Generador de Patrones",
-    "params": {
-      "sites": "Sitios",
-      "lineWidth": "Ancho Línea",
-      "cellSize": "Tamaño Celda",
-      "generations": "Generaciones",
-      "fillPercent": "% Relleno",
-      "turbulence": "Turbulencia",
-      "scale": "Escala",
-      "offsetX": "Offset X",
-      "offsetY": "Offset Y",
-      "connect": "Conectar",
-      "a": "Param A",
-      "b": "Param B",
-      "c": "Param C",
-      "d": "Param D",
-      "iterations": "Iteraciones"
-    }
+  "footer": {
+    "copyright": "© 2026 PUDRUS.XYZ",
+    "donate": "Apoya este proyecto",
+    "note": "Jump into a digital disaster"
   }
 }
