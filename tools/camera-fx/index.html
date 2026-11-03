@@ -1,0 +1,697 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="theme-color" content="#050508">
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="PUDRUS.XYZ">
+  <meta property="og:title" content="Cámara FX — PUDRUS.XYZ">
+  <meta property="og:description" content="Efectos en vivo para tu cámara: glitch, VHS, dither, halftone, ASCII, neón y más. Sacá fotos y grabá video. Gratis, en tu navegador.">
+  <meta property="og:url" content="https://pudrus.xyz/tools/camera-fx/">
+  <meta property="og:image" content="https://pudrus.xyz/assets/og/camera-fx.jpg">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta property="og:image:alt" content="Ejemplo de Cámara FX">
+  <meta property="og:locale" content="es_AR">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="description" content="Efectos en vivo para tu cámara: glitch, VHS, dither, halftone, ASCII, neón y más. Sacá fotos y grabá video. Gratis, en tu navegador.">
+  <title>Cámara FX — PUDRUS.XYZ</title>
+  <link rel="icon" type="image/svg+xml" href="../../favicon.svg">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600;700&display=swap">
+  <link rel="stylesheet" href="../../css/style.css">
+  <link rel="stylesheet" href="../../css/tool-shell.css">
+  <style>
+    .cam-start { display: flex; flex-direction: column; align-items: center; gap: 10px; width: min(420px, 100%); text-align: center; }
+    .cam-start .ts-empty-icon { font-size: 44px; }
+    .cam-start .btn { width: 100%; }
+    .cam-start .cam-note { font-size: 11px; color: var(--text2); line-height: 1.5; margin-top: 4px; }
+    .ts-stage.is-live .cam-start { display: none; }
+    .ts-stage.is-live .ts-canvas { display: block; }
+    .ts-btn.is-rec { background: #ff2a4d; border-color: #ff2a4d; color: #fff; }
+    .ts-btn.is-rec .ts-btn-icon { animation: rec 1s steps(2) infinite; }
+    @keyframes rec { 50% { opacity: .35; } }
+    .cam-timer {
+      position: absolute; top: 14px; left: 14px; z-index: 2;
+      padding: 5px 10px; border-radius: 99px; background: rgba(255,42,77,0.9); color: #fff;
+      font-size: 12px; font-weight: 700; letter-spacing: 1px; font-variant-numeric: tabular-nums;
+    }
+    .cam-flash { position: absolute; inset: 0; background: #fff; opacity: 0; pointer-events: none; transition: opacity .25s; }
+    .cam-flash.on { opacity: .6; transition: none; }
+    /* Phone: bigger viewfinder than the other tools (portrait camera video) */
+    @media (max-width: 768px) {
+      .ts { grid-template-rows: minmax(0, 62%) minmax(0, 1fr); }
+      .ts-stage { padding: 8px; }
+    }
+  </style>
+</head>
+<body>
+
+<nav>
+  <a href="../../index.html" class="nav-logo">PUDRUS<span>.xyz</span></a>
+  <ul class="nav-links">
+    <li><a href="../../index.html#tools" data-i18n="nav.tools">Tools</a></li>
+  </ul>
+  <div class="nav-lang">
+    <select id="langSelect" aria-label="Language selector">
+      <option value="es">ES</option>
+      <option value="en">EN</option>
+    </select>
+  </div>
+</nav>
+
+<main id="tool"></main>
+
+<script src="../../js/i18n.js"></script>
+<script>
+(function () {
+  const t = (k, fb, v) => (window.pudrusT ? window.pudrusT(k, fb, v) : fb);
+
+  /* ── Looks ──────────────────────────────────────────────
+     Every look is one branch of the same fragment shader and reads up to four
+     parameters (u_p.xyzw, all 0..1). "comp" says which component a control drives. */
+  const PALETTES = {
+    gameboy: ['#0f380f', '#306230', '#8bac0f', '#9bbc0f'],
+    bw:      ['#000000', '#000000', '#ffffff', '#ffffff'],
+    cga:     ['#000000', '#ff55ff', '#55ffff', '#ffffff'],
+    pudrus:  ['#050508', '#00662c', '#66ff33', '#d0efff'],
+  };
+  const LOOKS = [
+    { id: 'original', icon: '◌', label: 'camera.lookOriginal', fb: 'Original', params: [] },
+    { id: 'glitch', icon: '▓', label: 'camera.lookGlitch', fb: 'Glitch', params: [
+      { key: 'rgb', comp: 0, label: 'camera.rgb', fb: 'RGB split', value: 45 },
+      { key: 'blocks', comp: 1, label: 'camera.blocks', fb: 'Blocks', value: 35 },
+      { key: 'tear', comp: 2, label: 'camera.tear', fb: 'Tearing', value: 40 },
+      { key: 'noise', comp: 3, label: 'camera.noise', fb: 'Noise', value: 20 } ] },
+    { id: 'vhs', icon: '⏎', label: 'camera.lookVhs', fb: 'VHS / CRT', params: [
+      { key: 'curve', comp: 0, label: 'camera.curvature', fb: 'Curvature', value: 40 },
+      { key: 'scan', comp: 1, label: 'camera.scanlines', fb: 'Scanlines', value: 55 },
+      { key: 'vig', comp: 2, label: 'camera.vignette', fb: 'Vignette', value: 50 },
+      { key: 'noise', comp: 3, label: 'camera.noise', fb: 'Noise', value: 35 } ] },
+    { id: 'dither', icon: '⠿', label: 'camera.lookDither', fb: 'Dither', params: [
+      { key: 'palette', comp: -1, type: 'select', label: 'camera.palette', fb: 'Palette', value: 'gameboy', options: [
+        { value: 'gameboy', label: 'dithering.palGameboy', fb: 'Game Boy' },
+        { value: 'bw', label: 'dithering.palBw', fb: '1-bit' },
+        { value: 'cga', label: 'dithering.palCga', fb: 'CGA' },
+        { value: 'pudrus', label: 'dithering.palPudrus', fb: 'PUDRUS' } ] },
+      { key: 'pixel', comp: 0, label: 'camera.pixel', fb: 'Pixel size', value: 30 },
+      { key: 'contrast', comp: 2, label: 'camera.contrast', fb: 'Contrast', value: 35 } ] },
+    { id: 'halftone', icon: '◉', label: 'camera.lookHalftone', fb: 'Halftone', params: [
+      { key: 'dot', comp: 0, label: 'camera.dot', fb: 'Dot size', value: 30 },
+      { key: 'angle', comp: 1, label: 'camera.angle', fb: 'Angle', value: 50 },
+      { key: 'color', comp: 2, type: 'toggle', label: 'camera.colorDots', fb: 'Color dots', value: false } ] },
+    { id: 'ascii', icon: '◊', label: 'camera.lookAscii', fb: 'ASCII', params: [
+      { key: 'cell', comp: 0, label: 'camera.cell', fb: 'Character size', value: 25 },
+      { key: 'tint', comp: 1, type: 'select', label: 'camera.tint', fb: 'Color', value: 0, options: [
+        { value: 0, label: 'ascii.colorGreen', fb: 'Terminal green' },
+        { value: 0.5, label: 'ascii.colorOriginal', fb: 'Image colors' },
+        { value: 1, label: 'ascii.colorAmber', fb: 'Amber' } ] },
+      { key: 'contrast', comp: 2, label: 'camera.contrast', fb: 'Contrast', value: 40 } ] },
+    { id: 'neon', icon: '⌁', label: 'camera.lookNeon', fb: 'Neon', params: [
+      { key: 'glow', comp: 0, label: 'camera.strength', fb: 'Strength', value: 50 },
+      { key: 'hue', comp: 1, label: 'camera.hue', fb: 'Hue', value: 30 },
+      { key: 'base', comp: 2, label: 'camera.keep', fb: 'Keep image', value: 15 },
+      { key: 'cycle', comp: 3, type: 'toggle', label: 'camera.cycle', fb: 'Cycle colors', value: false } ] },
+    { id: 'thermal', icon: '◍', label: 'camera.lookThermal', fb: 'Thermal', params: [
+      { key: 'mode', comp: 1, type: 'select', label: 'camera.mode', fb: 'Mode', value: 0, options: [
+        { value: 0, label: 'camera.modeThermal', fb: 'Thermal' },
+        { value: 1, label: 'camera.modeNight', fb: 'Night vision' } ] },
+      { key: 'contrast', comp: 0, label: 'camera.contrast', fb: 'Contrast', value: 40 },
+      { key: 'noise', comp: 2, label: 'camera.noise', fb: 'Noise', value: 30 } ] },
+    { id: 'pixel', icon: '▦', label: 'camera.lookPixel', fb: 'Pixel', params: [
+      { key: 'size', comp: 0, label: 'camera.pixel', fb: 'Pixel size', value: 30 },
+      { key: 'levels', comp: 1, label: 'camera.levels', fb: 'Colors', value: 35 },
+      { key: 'grid', comp: 2, label: 'camera.grid', fb: 'Grid', value: 0 } ] },
+  ];
+
+  /* ── Shader ─────────────────────────────────────────── */
+  const VERT = `attribute vec2 a_pos; varying vec2 v_uv;
+    void main(){ v_uv = a_pos * 0.5 + 0.5; gl_Position = vec4(a_pos, 0.0, 1.0); }`;
+  const FRAG = `
+    #ifdef GL_FRAGMENT_PRECISION_HIGH
+    precision highp float;
+    #else
+    precision mediump float;
+    #endif
+    varying vec2 v_uv;
+    uniform sampler2D u_tex, u_glyphs;
+    uniform vec2 u_res;
+    uniform float u_time, u_look, u_mirror;
+    uniform vec4 u_p;
+    uniform vec3 u_pal0, u_pal1, u_pal2, u_pal3;
+    const float NCHARS = 10.0;
+
+    vec3 src(vec2 uv){ uv = clamp(uv, 0.0, 1.0); if (u_mirror > 0.5) uv.x = 1.0 - uv.x; return texture2D(u_tex, uv).rgb; }
+    float luma(vec3 c){ return dot(c, vec3(0.299, 0.587, 0.114)); }
+    float hash(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
+    float bayer2(vec2 a){ a = floor(a); return fract(a.x * 0.5 + a.y * a.y * 0.75); }
+    float bayer4(vec2 a){ return bayer2(0.5 * a) * 0.25 + bayer2(a); }
+    float bayer8(vec2 a){ return bayer4(0.5 * a) * 0.25 + bayer2(a); }
+    vec3 pal(float i){ if (i < 0.5) return u_pal0; if (i < 1.5) return u_pal1; if (i < 2.5) return u_pal2; return u_pal3; }
+    vec3 hsv(float h, float s, float v){ vec3 k = clamp(abs(mod(h * 6.0 + vec3(0.0, 4.0, 2.0), 6.0) - 3.0) - 1.0, 0.0, 1.0); return v * mix(vec3(1.0), k, s); }
+    float contrast(float l, float c){ return clamp((l - 0.5) * (1.0 + c * 2.5) + 0.5, 0.0, 1.0); }
+
+    vec3 glitch(vec2 uv){
+      float tk = floor(u_time * 12.0);
+      float band = floor(uv.y * 48.0);
+      float tear = hash(vec2(band, tk)) > 1.0 - u_p.z * 0.5 ? (hash(vec2(tk, band)) - 0.5) * 0.18 * u_p.z : 0.0;
+      vec2 blk = floor(uv * vec2(14.0, 22.0));
+      float on = step(1.0 - u_p.y * 0.3, hash(blk + tk * 0.37));
+      vec2 b = uv + vec2(tear + on * (hash(blk * 1.7 + tk) - 0.5) * 0.25, 0.0);
+      float s = u_p.x * 0.035;
+      vec3 c = vec3(src(b + vec2(s, 0.0)).r, src(b).g, src(b - vec2(s, 0.0)).b);
+      if (on > 0.5 && hash(blk + tk * 2.0) > 0.55) c = c.gbr;
+      return c + (hash(uv * u_res + tk) - 0.5) * u_p.w * 0.6;
+    }
+    vec3 vhs(vec2 uv){
+      vec2 cc = uv * 2.0 - 1.0; float r2 = dot(cc, cc);
+      cc *= 1.0 + r2 * u_p.x * 0.28;
+      vec2 q = cc * 0.5 + 0.5;
+      if (q.x < 0.0 || q.x > 1.0 || q.y < 0.0 || q.y > 1.0) return vec3(0.0);
+      q.x += (hash(vec2(floor(q.y * u_res.y / 2.0), floor(u_time * 30.0))) - 0.5) * 0.004 * u_p.w;   // tracking jitter
+      float ab = 0.0015 + u_p.w * 0.004;
+      vec3 c = vec3(src(q + vec2(ab, 0.0)).r, src(q).g, src(q - vec2(ab, 0.0)).b);
+      float line = 0.5 + 0.5 * cos(q.y * u_res.y * 2.0944);          // a scanline every 3 px
+      c *= 1.0 - u_p.y * 0.55 * line;
+      c *= 1.0 - u_p.z * smoothstep(0.35, 1.7, r2);
+      c += (hash(q * u_res + u_time) - 0.5) * u_p.w * 0.22;
+      c *= 1.0 + 0.04 * u_p.w * sin(q.y * 8.0 - u_time * 6.0);       // rolling bar
+      return c * 1.08;
+    }
+    vec3 dither(vec2 uv){
+      float ps = 1.0 + floor(u_p.x * 7.0);
+      vec2 px = floor(uv * u_res / ps);
+      float l = contrast(luma(src((px + 0.5) * ps / u_res)), u_p.z);
+      float q = clamp(floor(l * 3.0 + bayer8(px) - 0.5 + 0.5), 0.0, 3.0);
+      return pal(q);
+    }
+    vec3 halftone(vec2 uv){
+      float cell = 5.0 + u_p.x * 22.0;
+      float a = u_p.y * 1.5708, ca = cos(a), sa = sin(a);
+      mat2 R = mat2(ca, sa, -sa, ca), Ri = mat2(ca, -sa, sa, ca);
+      vec2 rp = R * (uv * u_res);
+      vec2 cen = (floor(rp / cell) + 0.5) * cell;
+      vec3 col = src((Ri * cen) / u_res);
+      float rad = sqrt(1.0 - luma(col)) * cell * 0.72;
+      float ink = 1.0 - smoothstep(rad - 1.0, rad + 1.0, length(rp - cen));
+      vec3 inkc = u_p.z > 0.5 ? col * 0.85 : vec3(0.07);
+      return mix(vec3(0.96, 0.94, 0.9), inkc, ink);
+    }
+    vec3 ascii(vec2 uv){
+      float cw = 6.0 + u_p.x * 16.0;
+      vec2 cs = vec2(cw, cw * 1.6), p = uv * u_res, cell = floor(p / cs);
+      vec3 col = src((cell + 0.5) * cs / u_res);
+      float l = min(contrast(luma(col), u_p.z), 0.999);
+      float idx = floor(l * NCHARS);
+      vec2 f = fract(p / cs);
+      float g = texture2D(u_glyphs, vec2((idx + f.x) / NCHARS, f.y)).r;
+      vec3 tint = u_p.y < 0.25 ? vec3(0.4, 1.0, 0.2) : (u_p.y > 0.75 ? vec3(1.0, 0.69, 0.0) : col * 1.5 + 0.1);
+      return tint * g;
+    }
+    vec3 neon(vec2 uv){
+      vec2 d = (1.0 + u_p.x * 1.5) / u_res;
+      float tl = luma(src(uv + d * vec2(-1.0, 1.0))), t = luma(src(uv + d * vec2(0.0, 1.0))), tr = luma(src(uv + d * vec2(1.0, 1.0)));
+      float l = luma(src(uv + d * vec2(-1.0, 0.0))), r = luma(src(uv + d * vec2(1.0, 0.0)));
+      float bl = luma(src(uv + d * vec2(-1.0, -1.0))), b = luma(src(uv + d * vec2(0.0, -1.0))), br = luma(src(uv + d * vec2(1.0, -1.0)));
+      float gx = -tl - 2.0 * l - bl + tr + 2.0 * r + br, gy = tl + 2.0 * t + tr - bl - 2.0 * b - br;
+      float e = smoothstep(0.08, 0.5, length(vec2(gx, gy)) * (1.0 + u_p.x * 2.0));
+      float h = u_p.y + (u_p.w > 0.5 ? u_time * 0.08 + uv.y * 0.3 : 0.0);
+      return src(uv) * u_p.z * 0.7 + hsv(fract(h), 0.85, 1.0) * e * 1.4;
+    }
+    vec3 thermal(vec2 uv){
+      float l = contrast(luma(src(uv)), u_p.x);
+      if (u_p.y < 0.5) {
+        vec3 c = mix(vec3(0.0, 0.0, 0.15), vec3(0.35, 0.0, 0.6), smoothstep(0.0, 0.25, l));
+        c = mix(c, vec3(0.9, 0.05, 0.2), smoothstep(0.25, 0.5, l));
+        c = mix(c, vec3(1.0, 0.6, 0.0), smoothstep(0.5, 0.75, l));
+        c = mix(c, vec3(1.0, 1.0, 0.85), smoothstep(0.75, 1.0, l));
+        return c + (hash(uv * u_res + u_time) - 0.5) * u_p.z * 0.12;
+      }
+      vec3 c = vec3(0.15, 1.0, 0.3) * (l * 1.3 + 0.04);
+      c *= 1.0 - 0.18 * (0.5 + 0.5 * cos(uv.y * u_res.y * 3.1416));
+      c += (hash(uv * u_res + u_time) - 0.5) * u_p.z * 0.45;
+      vec2 cc = uv * 2.0 - 1.0; cc.x *= u_res.x / u_res.y;
+      return c * (1.0 - smoothstep(0.8, 1.35, length(cc)));
+    }
+    vec3 pixel(vec2 uv){
+      float ps = 2.0 + floor(u_p.x * 30.0);
+      vec2 g = uv * u_res / ps;
+      vec3 c = src((floor(g) + 0.5) * ps / u_res);
+      float lv = 2.0 + floor(u_p.y * 10.0);
+      c = floor(c * lv + 0.5) / lv;
+      vec2 f = fract(g);
+      float w = u_p.z * 0.2;
+      return c * (1.0 - 0.6 * (step(f.x, w) + step(f.y, w) > 0.0 ? 1.0 : 0.0));
+    }
+    void main(){
+      vec2 uv = v_uv; vec3 c;
+      if (u_look < 0.5) c = src(uv);
+      else if (u_look < 1.5) c = glitch(uv);
+      else if (u_look < 2.5) c = vhs(uv);
+      else if (u_look < 3.5) c = dither(uv);
+      else if (u_look < 4.5) c = halftone(uv);
+      else if (u_look < 5.5) c = ascii(uv);
+      else if (u_look < 6.5) c = neon(uv);
+      else if (u_look < 7.5) c = thermal(uv);
+      else c = pixel(uv);
+      gl_FragColor = vec4(clamp(c, 0.0, 1.0), 1.0);
+    }`;
+
+  /* ── State ──────────────────────────────────────────── */
+  const store = { get(k, d) { try { const v = localStorage.getItem('pudrus_cam_' + k); return v === null ? d : JSON.parse(v); } catch (e) { return d; } },
+                  set(k, v) { try { localStorage.setItem('pudrus_cam_' + k, JSON.stringify(v)); } catch (e) { /* private mode */ } } };
+  const defaults = {};
+  LOOKS.forEach(L => { defaults[L.id] = Object.fromEntries(L.params.map(p => [p.key, p.value])); });
+  const saved = store.get('params', {});
+  const state = {
+    look: Math.max(0, LOOKS.findIndex(L => L.id === store.get('look', 'vhs'))),
+    params: Object.fromEntries(LOOKS.map(L => [L.id, { ...defaults[L.id], ...(saved[L.id] || {}) }])),
+    mirror: store.get('mirror', true),
+    sound: store.get('sound', false),
+    quality: store.get('quality', 720),
+    facing: 'user',
+    source: null,        // HTMLVideoElement | HTMLImageElement
+    kind: null,          // 'camera' | 'video' | 'image'
+    stream: null,
+    recorder: null,
+  };
+
+  /* ── DOM ────────────────────────────────────────────── */
+  const el = (tag, attrs = {}, kids = []) => {
+    const e = document.createElement(tag);
+    for (const [k, v] of Object.entries(attrs)) {
+      if (v === null || v === undefined || v === false) continue;
+      if (k === 'class') e.className = v; else if (k === 'text') e.textContent = v;
+      else if (k.startsWith('on')) e.addEventListener(k.slice(2), v); else e.setAttribute(k, v === true ? '' : v);
+    }
+    [].concat(kids).forEach(c => c && e.append(c));
+    return e;
+  };
+  document.body.classList.add('ts-page');
+  const root = document.getElementById('tool');
+  root.className = 'ts';
+
+  const canvas = el('canvas', { class: 'ts-canvas' });
+  const statusEl = el('div', { class: 'ts-status', role: 'status', 'aria-live': 'polite' });
+  const timerEl = el('div', { class: 'cam-timer', hidden: true });
+  const flash = el('div', { class: 'cam-flash' });
+  const fileInput = el('input', { type: 'file', accept: 'video/*,image/*', class: 'ts-file', tabindex: '-1', 'aria-hidden': 'true' });
+  const start = el('div', { class: 'cam-start' }, [
+    el('span', { class: 'ts-empty-icon', text: '◉' }),
+    el('span', { class: 'ts-empty-title', 'data-i18n': 'camera.startTitle', text: 'Live camera effects' }),
+    el('button', { type: 'button', class: 'btn btn-primary', 'data-i18n': 'camera.startCamera', text: '◉ Turn on camera', onclick: () => startCamera() }),
+    el('button', { type: 'button', class: 'btn btn-outline', 'data-i18n': 'camera.useVideo', text: 'Use a video or photo', onclick: () => fileInput.click() }),
+    el('button', { type: 'button', class: 'ts-empty-sample', 'data-i18n': 'camera.trySample', text: 'or try it with the sample image', onclick: () => useImage('../../assets/sample.jpg') }),
+    el('p', { class: 'cam-note', 'data-i18n': 'camera.privacy', text: 'Everything happens on your device: the camera never leaves it.' }),
+  ]);
+  const stage = el('section', { class: 'ts-stage' }, [start, canvas, timerEl, flash, statusEl]);
+
+  // Look chips + controls
+  const chips = LOOKS.map((L, i) => el('button', { type: 'button', class: 'ts-chip', 'data-i18n': L.label, text: L.fb, onclick: () => setLook(i) }));
+  const controlsBox = el('div');
+  const btn = (icon, key, fb, extra = {}) => el('button', { type: 'button', class: 'ts-btn' + (extra.primary ? ' ts-btn-primary' : ''), ...(extra.attrs || {}) }, [
+    el('span', { class: 'ts-btn-icon', 'aria-hidden': 'true', text: icon }),
+    el('span', { class: 'ts-btn-label', 'data-i18n': key, text: fb }),
+  ]);
+  const srcBtn = btn('⤒', 'camera.video', 'Video');
+  const flipBtn = btn('⇄', 'camera.flip', 'Flip');
+  const recBtn = btn('●', 'camera.record', 'Record');
+  const shotBtn = btn('◉', 'camera.photo', 'Photo', { primary: true });
+
+  const toggle = (key, label, fb, onChange) => {
+    const input = el('input', { type: 'checkbox', class: 'ts-switch', role: 'switch', id: 'opt-' + key });
+    input.checked = !!state[key];
+    input.addEventListener('change', () => { state[key] = input.checked; store.set(key, input.checked); onChange && onChange(); });
+    return el('div', { class: 'ts-row ts-row-toggle' }, [el('label', { for: 'opt-' + key, 'data-i18n': label, text: fb }), input]);
+  };
+  const quality = el('select', { class: 'ts-select', id: 'opt-quality' }, [
+    el('option', { value: '720', text: '720p' }), el('option', { value: '1080', text: '1080p' })]);
+  quality.value = String(state.quality);
+  quality.addEventListener('change', () => { state.quality = +quality.value; store.set('quality', state.quality); if (state.kind === 'camera') startCamera(); else fitCanvas(); });
+  const galleryLink = el('a', { class: 'ts-link', 'data-i18n': 'shell.sendGallery', text: '◈ Send to the gallery', hidden: true, target: '_blank', rel: 'noopener noreferrer' });
+
+  const effectPanel = el('div', { class: 'ts-panel', 'data-panel': 'effect' }, [el('div', { class: 'ts-presets' }, chips), controlsBox]);
+  const optionsPanel = el('div', { class: 'ts-panel', 'data-panel': 'options', hidden: true }, [
+    toggle('mirror', 'camera.mirror', 'Mirror image'),
+    toggle('sound', 'camera.sound', 'Record sound (microphone)'),
+    el('div', { class: 'ts-row' }, [el('label', { for: 'opt-quality', 'data-i18n': 'camera.quality', text: 'Quality' }), quality]),
+    el('p', { class: 'ts-note', 'data-i18n': 'camera.recordNote', text: 'Videos are saved as MP4 on iPhone and WebM on most other browsers.' }),
+  ]);
+  const tabs = [['effect', 'camera.tabEffect', 'Effect'], ['options', 'camera.tabOptions', 'Options']];
+  const tabBar = el('div', { class: 'ts-tabs', role: 'tablist' }, tabs.map(([id, key, fb], i) =>
+    el('button', { type: 'button', role: 'tab', class: 'ts-tab' + (i ? '' : ' is-on'), 'data-tab': id, 'data-i18n': key, text: fb, onclick: () => {
+      tabBar.querySelectorAll('.ts-tab').forEach(b => b.classList.toggle('is-on', b.dataset.tab === id));
+      [effectPanel, optionsPanel].forEach(p => { p.hidden = p.dataset.panel !== id; });
+    } })));
+
+  root.append(stage, el('aside', { class: 'ts-side' }, [
+    el('header', { class: 'ts-head' }, [
+      el('a', { href: '../../index.html#tools', class: 'ts-back', 'data-i18n': 'shell.back', text: '← Tools' }),
+      el('h1', { 'data-i18n': 'camera.name', text: '◉ Camera FX' }),
+      el('p', { class: 'ts-desc', 'data-i18n': 'camera.desc', text: 'Live effects for your camera.' }),
+    ]),
+    tabBar,
+    el('div', { class: 'ts-panels' }, [effectPanel, optionsPanel, el('div', { class: 'ts-more' }, [
+      el('button', { type: 'button', class: 'ts-link', 'data-i18n': 'camera.resetLook', text: 'Reset effect', onclick: resetLook }),
+      galleryLink,
+    ])]),
+    el('div', { class: 'ts-bar', style: 'grid-template-columns: repeat(4, 1fr)' }, [srcBtn, flipBtn, recBtn, shotBtn]),
+  ]), fileInput);
+
+  /* ── Controls for the current look ──────────────────── */
+  function buildControls() {
+    const L = LOOKS[state.look];
+    const P = state.params[L.id];
+    controlsBox.textContent = '';
+    chips.forEach((c, i) => c.classList.toggle('is-on', i === state.look));
+    if (!L.params.length) {
+      controlsBox.append(el('p', { class: 'ts-note', 'data-i18n': 'camera.originalNote', text: 'No effect. Pick a look above.' }));
+    }
+    for (const p of L.params) {
+      const id = 'ctl-' + L.id + '-' + p.key;
+      const label = el('label', { for: id, 'data-i18n': p.label, text: p.fb });
+      if (p.type === 'select') {
+        const s = el('select', { class: 'ts-select', id }, p.options.map(o => el('option', { value: o.value, 'data-i18n': o.label, text: o.fb })));
+        s.value = P[p.key];
+        s.addEventListener('change', () => { P[p.key] = isNaN(+s.value) ? s.value : +s.value; save(); });
+        controlsBox.append(el('div', { class: 'ts-row' }, [label, s]));
+      } else if (p.type === 'toggle') {
+        const c = el('input', { type: 'checkbox', class: 'ts-switch', role: 'switch', id });
+        c.checked = !!P[p.key];
+        c.addEventListener('change', () => { P[p.key] = c.checked; save(); });
+        controlsBox.append(el('div', { class: 'ts-row ts-row-toggle' }, [label, c]));
+      } else {
+        const out = el('output', { class: 'ts-val', for: id, text: P[p.key] + '%' });
+        const r = el('input', { type: 'range', id, min: 0, max: 100, value: P[p.key] });
+        const set = v => { P[p.key] = v; r.value = v; out.textContent = v + '%'; save(); };
+        r.addEventListener('input', () => set(+r.value));
+        label.title = t('shell.resetHint', 'Double-click to reset');
+        label.addEventListener('dblclick', () => set(defaults[L.id][p.key]));
+        const row = el('div', { class: 'ts-row ts-row-range' }, [el('div', { class: 'ts-row-head' }, [label, out]), r]);
+        touchSlider(row, r, set);
+        controlsBox.append(row);
+      }
+    }
+    if (window.pudrusT) translate(controlsBox);
+  }
+  // Re-apply translations to freshly created controls
+  function translate(scope) {
+    scope.querySelectorAll('[data-i18n]').forEach(e => { const v = t(e.getAttribute('data-i18n'), null); if (v) e.textContent = v; });
+  }
+  // Same touch behaviour as the other tools: vertical swipe scrolls, horizontal drag changes the value
+  function touchSlider(row, input, set) {
+    let g = null;
+    row.addEventListener('pointerdown', e => { if (e.pointerType === 'touch') g = { id: e.pointerId, x: e.clientX, y: e.clientY, v: +input.value, drag: false }; });
+    row.addEventListener('pointermove', e => {
+      if (!g || e.pointerId !== g.id) return;
+      const dx = e.clientX - g.x, dy = e.clientY - g.y;
+      if (!g.drag) {
+        if (Math.abs(dy) > 10 && Math.abs(dy) > Math.abs(dx)) { g = null; return; }
+        if (Math.abs(dx) < 10 || Math.abs(dx) < Math.abs(dy) * 1.5) return;
+        g.drag = true; g.x = e.clientX;
+        try { row.setPointerCapture(e.pointerId); } catch (err) { /* ignore */ }
+        row.classList.add('is-dragging');
+        return;
+      }
+      const w = input.getBoundingClientRect().width || 1;
+      set(Math.round(Math.min(100, Math.max(0, g.v + (e.clientX - g.x) / w * 100))));
+    });
+    const end = () => { g = null; row.classList.remove('is-dragging'); };
+    row.addEventListener('pointerup', end);
+    row.addEventListener('pointercancel', end);
+  }
+  function setLook(i) { state.look = i; store.set('look', LOOKS[i].id); buildControls(); }
+  function resetLook() { const L = LOOKS[state.look]; state.params[L.id] = { ...defaults[L.id] }; save(); buildControls(); }
+  function save() { store.set('params', state.params); }
+
+  /* ── WebGL ──────────────────────────────────────────── */
+  const gl = canvas.getContext('webgl', { preserveDrawingBuffer: true, antialias: false }) ||
+             canvas.getContext('experimental-webgl', { preserveDrawingBuffer: true });
+  let prog, U = {}, tex, glyphTex;
+  function compile(type, srcCode) {
+    const s = gl.createShader(type);
+    gl.shaderSource(s, srcCode); gl.compileShader(s);
+    if (!gl.getShaderParameter(s, gl.COMPILE_STATUS)) throw new Error(gl.getShaderInfoLog(s));
+    return s;
+  }
+  function initGL() {
+    prog = gl.createProgram();
+    gl.attachShader(prog, compile(gl.VERTEX_SHADER, VERT));
+    gl.attachShader(prog, compile(gl.FRAGMENT_SHADER, FRAG));
+    gl.linkProgram(prog);
+    if (!gl.getProgramParameter(prog, gl.LINK_STATUS)) throw new Error(gl.getProgramInfoLog(prog));
+    gl.useProgram(prog);
+    const buf = gl.createBuffer();
+    gl.bindBuffer(gl.ARRAY_BUFFER, buf);
+    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, 1, -1, -1, 1, -1, 1, 1, -1, 1, 1]), gl.STATIC_DRAW);
+    const loc = gl.getAttribLocation(prog, 'a_pos');
+    gl.enableVertexAttribArray(loc);
+    gl.vertexAttribPointer(loc, 2, gl.FLOAT, false, 0, 0);
+    ['u_tex', 'u_glyphs', 'u_res', 'u_time', 'u_look', 'u_mirror', 'u_p', 'u_pal0', 'u_pal1', 'u_pal2', 'u_pal3'].forEach(n => { U[n] = gl.getUniformLocation(prog, n); });
+    gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);
+    tex = makeTex(0);
+    glyphTex = makeTex(1);
+    // ASCII glyph atlas: characters from light to dense, white on black
+    const chars = ' .:-=+*#%@', gw = 32, gh = 52;
+    const a = document.createElement('canvas');
+    a.width = gw * chars.length; a.height = gh;
+    const ax = a.getContext('2d');
+    ax.fillStyle = '#000'; ax.fillRect(0, 0, a.width, a.height);
+    ax.fillStyle = '#fff'; ax.font = 'bold 44px "Courier New", monospace'; ax.textAlign = 'center'; ax.textBaseline = 'middle';
+    [...chars].forEach((c, i) => ax.fillText(c, i * gw + gw / 2, gh / 2 + 2));
+    gl.activeTexture(gl.TEXTURE1); gl.bindTexture(gl.TEXTURE_2D, glyphTex);
+    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, a);
+    gl.uniform1i(U.u_tex, 0); gl.uniform1i(U.u_glyphs, 1);
+  }
+  function makeTex(unit) {
+    const tx = gl.createTexture();
+    gl.activeTexture(gl.TEXTURE0 + unit); gl.bindTexture(gl.TEXTURE_2D, tx);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+    return tx;
+  }
+  const hex = h => [1, 3, 5].map(i => parseInt(h.slice(i, i + 2), 16) / 255);
+
+  function srcSize() {
+    const s = state.source;
+    if (!s) return [0, 0];
+    return s.tagName === 'VIDEO' ? [s.videoWidth, s.videoHeight] : [s.naturalWidth, s.naturalHeight];
+  }
+  function fitCanvas() {
+    const [w, h] = srcSize();
+    if (!w || !h) return false;
+    const max = state.quality === 1080 ? 1920 : 1280;
+    const s = Math.min(1, max / Math.max(w, h));
+    const cw = Math.round(w * s), ch = Math.round(h * s);
+    if (canvas.width !== cw || canvas.height !== ch) { canvas.width = cw; canvas.height = ch; gl.viewport(0, 0, cw, ch); }
+    return true;
+  }
+
+  let t0 = performance.now();
+  function frame(now) {
+    requestAnimationFrame(frame);
+    const s = state.source;
+    if (!s || !gl) return;
+    if (s.tagName === 'VIDEO' && s.readyState < 2) return;
+    if (!fitCanvas()) return;
+    drawOnce(now);
+  }
+  function drawOnce(now) {
+    const s = state.source;
+    gl.activeTexture(gl.TEXTURE0); gl.bindTexture(gl.TEXTURE_2D, tex);
+    try { gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, s); } catch (e) { return; }
+    const L = LOOKS[state.look], P = state.params[L.id], p = [0, 0, 0, 0];
+    for (const d of L.params) {
+      if (d.comp < 0) continue;
+      const v = P[d.key];
+      p[d.comp] = d.type === 'toggle' ? (v ? 1 : 0) : d.type === 'select' ? +v : v / 100;
+    }
+    const pal = PALETTES[P.palette] || PALETTES.gameboy;
+    gl.uniform4f(U.u_p, p[0], p[1], p[2], p[3]);
+    gl.uniform1f(U.u_look, state.look);
+    gl.uniform1f(U.u_time, ((now || performance.now()) - t0) / 1000);
+    gl.uniform2f(U.u_res, canvas.width, canvas.height);
+    gl.uniform1f(U.u_mirror, state.mirror && state.kind === 'camera' ? 1 : 0);
+    ['u_pal0', 'u_pal1', 'u_pal2', 'u_pal3'].forEach((n, i) => gl.uniform3fv(U[n], hex(pal[i])));
+    gl.drawArrays(gl.TRIANGLES, 0, 6);
+  }
+
+  /* ── Sources ────────────────────────────────────────── */
+  function stopStream() {
+    if (state.stream) state.stream.getTracks().forEach(tr => tr.stop());
+    state.stream = null;
+  }
+  function goLive(kind, source) {
+    state.kind = kind; state.source = source;
+    stage.classList.add('is-live');
+    [recBtn, shotBtn].forEach(b => { b.disabled = false; });
+    flipBtn.disabled = kind !== 'camera' && !navigator.mediaDevices;
+    if (state.mirrorRow) state.mirrorRow.hidden = kind !== 'camera';
+  }
+  async function startCamera() {
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+      status(t('camera.noCamera', 'This browser cannot use the camera. Try a video or the sample.'));
+      return;
+    }
+    const wasRecording = !!state.recorder;
+    if (wasRecording) stopRecording();
+    stopStream();
+    status(t('camera.starting', 'Starting camera…'));
+    const ideal = state.quality === 1080 ? { width: { ideal: 1920 }, height: { ideal: 1080 } } : { width: { ideal: 1280 }, height: { ideal: 720 } };
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: state.facing, ...ideal }, audio: false });
+      state.stream = stream;
+      const v = document.createElement('video');
+      v.muted = true; v.playsInline = true; v.setAttribute('playsinline', ''); v.autoplay = true;
+      v.srcObject = stream;
+      // Don't wait for play(): on some phones it resolves late; the render loop waits for frames itself
+      v.play().catch(() => {});
+      goLive('camera', v);
+      status('');
+    } catch (err) {
+      const denied = err && (err.name === 'NotAllowedError' || err.name === 'SecurityError');
+      status(denied ? t('camera.denied', 'Camera permission denied. Allow it in the browser settings, or use a video.')
+                    : t('camera.failed', 'Could not start the camera. Try a video or the sample.'));
+    }
+  }
+  function useImage(url) {
+    stopStream();
+    const im = new Image();
+    im.onload = () => { goLive('image', im); status(''); };
+    im.onerror = () => status(t('shell.loadError', 'Could not open that image'));
+    im.src = url;
+  }
+  function useFile(file) {
+    stopStream();
+    const url = URL.createObjectURL(file);
+    if (file.type.startsWith('image/')) { useImage(url); return; }
+    const v = document.createElement('video');
+    v.muted = true; v.loop = true; v.playsInline = true; v.setAttribute('playsinline', '');
+    v.onerror = () => status(t('camera.videoError', 'Could not play that video'));
+    v.src = url;
+    v.play().catch(() => {});
+    goLive('video', v);
+    status('');
+  }
+  fileInput.addEventListener('change', () => { if (fileInput.files[0]) useFile(fileInput.files[0]); fileInput.value = ''; });
+  srcBtn.addEventListener('click', () => fileInput.click());
+  flipBtn.addEventListener('click', () => {
+    if (state.kind !== 'camera') { startCamera(); return; }
+    state.facing = state.facing === 'user' ? 'environment' : 'user';
+    // mirror makes sense for the selfie camera only
+    state.mirror = state.facing === 'user';
+    const m = document.getElementById('opt-mirror'); if (m) m.checked = state.mirror;
+    startCamera();
+  });
+
+  /* ── Photo & video ──────────────────────────────────── */
+  async function deliver(blob, name, okMsg) {
+    const file = new File([blob], name, { type: blob.type });
+    if (window.matchMedia('(pointer: coarse)').matches && navigator.canShare && navigator.canShare({ files: [file] })) {
+      try { await navigator.share({ files: [file] }); status(okMsg); return; }
+      catch (err) { if (err.name === 'AbortError') { status(''); return; } }
+    }
+    const a = document.createElement('a');
+    a.download = name; a.href = URL.createObjectURL(blob); a.click();
+    setTimeout(() => URL.revokeObjectURL(a.href), 15000);
+    status(okMsg);
+  }
+  shotBtn.addEventListener('click', () => {
+    if (!state.source) return;
+    drawOnce();
+    flash.classList.add('on'); setTimeout(() => flash.classList.remove('on'), 60);
+    canvas.toBlob(b => b && deliver(b, `pudrus_camera_${Date.now()}.png`, t('shell.savedSize', 'Saved {w} × {h}px', { w: canvas.width, h: canvas.height })), 'image/png');
+  });
+
+  function pickMime() {
+    if (typeof MediaRecorder === 'undefined') return null;
+    return ['video/mp4;codecs=avc1', 'video/mp4', 'video/webm;codecs=vp9,opus', 'video/webm;codecs=vp8,opus', 'video/webm']
+      .find(m => MediaRecorder.isTypeSupported && MediaRecorder.isTypeSupported(m)) || '';
+  }
+  let timerInt = null;
+  async function startRecording() {
+    const mime = pickMime();
+    if (mime === null || !canvas.captureStream) { status(t('shell.videoUnsupported', 'Video export is not supported in this browser')); return; }
+    const out = canvas.captureStream(30);
+    if (state.sound) {
+      try {
+        const mic = await navigator.mediaDevices.getUserMedia({ audio: true });
+        mic.getAudioTracks().forEach(tr => out.addTrack(tr));
+        state.mic = mic;
+      } catch (e) { status(t('camera.noMic', 'Recording without sound (no microphone permission)')); }
+    }
+    const rec = new MediaRecorder(out, mime ? { mimeType: mime, videoBitsPerSecond: state.quality === 1080 ? 10e6 : 6e6 } : undefined);
+    const chunks = [];
+    rec.ondataavailable = e => { if (e.data && e.data.size) chunks.push(e.data); };
+    rec.onstop = () => {
+      if (state.mic) { state.mic.getTracks().forEach(tr => tr.stop()); state.mic = null; }
+      const type = rec.mimeType || mime || 'video/webm';
+      const blob = new Blob(chunks, { type });
+      deliver(blob, `pudrus_camera_${Date.now()}.${type.includes('mp4') ? 'mp4' : 'webm'}`, t('shell.videoSaved', 'Video saved'));
+    };
+    rec.start(1000);
+    state.recorder = rec;
+    recBtn.classList.add('is-rec');
+    setLabel(recBtn, 'camera.stop', 'Stop', '■');
+    const began = Date.now();
+    timerEl.hidden = false;
+    const tick = () => { const s = Math.floor((Date.now() - began) / 1000); timerEl.textContent = '● ' + String(Math.floor(s / 60)).padStart(2, '0') + ':' + String(s % 60).padStart(2, '0'); };
+    tick(); timerInt = setInterval(tick, 500);
+  }
+  function stopRecording() {
+    if (!state.recorder) return;
+    state.recorder.stop();
+    state.recorder = null;
+    clearInterval(timerInt);
+    timerEl.hidden = true;
+    recBtn.classList.remove('is-rec');
+    setLabel(recBtn, 'camera.record', 'Record', '●');
+  }
+  recBtn.addEventListener('click', () => { if (!state.source) return; state.recorder ? stopRecording() : startRecording(); });
+  function setLabel(b, key, fb, icon) {
+    b.querySelector('.ts-btn-icon').textContent = icon;
+    const l = b.querySelector('.ts-btn-label');
+    l.setAttribute('data-i18n', key); l.textContent = t(key, fb);
+  }
+
+  /* ── Misc ───────────────────────────────────────────── */
+  let statusTimer;
+  function status(msg) {
+    statusEl.textContent = msg;
+    statusEl.classList.toggle('is-on', !!msg);
+    clearTimeout(statusTimer);
+    if (msg) statusTimer = setTimeout(() => statusEl.classList.remove('is-on'), 5000);
+  }
+  fetch('../../gallery/gallery.json', { cache: 'no-cache' }).then(r => (r.ok ? r.json() : null)).then(g => {
+    if (g && typeof g.formUrl === 'string' && /^https:\/\//.test(g.formUrl)) { galleryLink.href = g.formUrl; galleryLink.hidden = false; }
+  }).catch(() => {});
+  document.addEventListener('pudrus:i18n', () => {
+    if (state.recorder) setLabel(recBtn, 'camera.stop', 'Stop', '■');
+  });
+  document.addEventListener('visibilitychange', () => {
+    if (document.hidden && state.recorder) stopRecording();   // phones kill the camera in background anyway
+  });
+  window.addEventListener('pagehide', stopStream);
+
+  [recBtn, shotBtn].forEach(b => { b.disabled = true; });
+  state.mirrorRow = document.getElementById('opt-mirror') && document.getElementById('opt-mirror').closest('.ts-row');
+  buildControls();
+  if (!gl) {
+    status(t('camera.noWebgl', 'Your browser does not support WebGL, which this tool needs.'));
+  } else {
+    try { initGL(); requestAnimationFrame(frame); }
+    catch (err) { console.error(err); status('WebGL: ' + err.message); }
+  }
+  // Link hooks: ?sample=1 starts with the sample image, ?look=<id> opens a look
+  const q = new URLSearchParams(location.search);
+  const lookParam = LOOKS.findIndex(L => L.id === q.get('look'));
+  if (lookParam >= 0) setLook(lookParam);
+  if (q.get('sample') === '1') useImage('../../assets/sample.jpg');
+})();
+</script>
+</body>
+</html>
