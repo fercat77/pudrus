@@ -62,7 +62,7 @@
     },
     "constellation": {
       "name": "Constellation",
-      "desc": "Overlay generative star maps, technical diagrams and node networks over your images. Export at high resolution."
+      "desc": "Stars detected from the bright or dark points of your photo, joined into real constellations."
     },
     "ascii": {
       "name": "ASCII Canvas",
@@ -111,12 +111,12 @@
     "randomness": "Randomness"
   },
   "constellation": {
-    "count": "Count",
+    "count": "Max stars",
     "size": "Size",
     "glow": "Glow",
     "color": "Color",
     "name": "✧ Constellation",
-    "desc": "Star maps and node networks over your images.",
+    "desc": "Stars detected from the bright or dark points of your image.",
     "dim": "Darken image",
     "labels": "Coordinates",
     "lines": "Line opacity",
@@ -135,7 +135,17 @@
     "shapeCircle": "Circle",
     "shapeCross": "Cross",
     "shapeDot": "Dot",
-    "shapeSquare": "Square"
+    "shapeSquare": "Square",
+    "detect": "Detect",
+    "detectAuto": "Automatic",
+    "detectBright": "Bright points",
+    "detectDark": "Dark points",
+    "detectEdges": "Edges and corners",
+    "sensitivity": "Sensitivity",
+    "tint": "Stars take the image color",
+    "spacing": "Minimum spacing",
+    "group": "Stars per constellation",
+    "fill": "Extra random stars"
   },
   "dithering": {
     "name": "⠿ Dithering",

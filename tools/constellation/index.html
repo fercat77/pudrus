@@ -31,56 +31,216 @@
 <script src="../../js/tool-shell.js"></script>
 <script>
 (function () {
-  const GRID = 40; // brightness analysis grid
+  /*
+   * Star detection, the way astro software finds stars in a photo:
+   *  1. luminance at a fixed analysis size (same stars in preview and export)
+   *  2. "interest" = how much a point stands out from a ring around it in every
+   *     direction: bright spots on dark images, dark spots on bright images
+   *     (auto picks by the median), or edges/corners
+   *  3. local maxima above a threshold, strongest first, with a minimum spacing
+   *  4. star size / brightness from the strength of the peak
+   */
+  const A = 360;
+  let cache = { sig: '', data: null };
 
-  // Star positions in 0..1 coordinates: brightest spots of the image first, then random fill
-  function stars(srcCanvas, p, rng) {
-    const c = document.createElement('canvas');
-    c.width = GRID; c.height = GRID;
-    const x = c.getContext('2d', { willReadFrequently: true });
-    x.drawImage(srcCanvas, 0, 0, GRID, GRID);
-    const d = x.getImageData(0, 0, GRID, GRID).data;
-    const cells = [];
-    for (let i = 0; i < GRID * GRID; i++) cells.push({ i, l: 0.299 * d[i * 4] + 0.587 * d[i * 4 + 1] + 0.114 * d[i * 4 + 2] });
-    cells.sort((a, b) => b.l - a.l);
-    const out = [];
-    const fromImage = p.mode === 'starfield' ? Math.round(p.count * 0.4) : Math.round(p.count * 0.75);
-    for (let q = 0; q < p.count; q++) {
-      let sx, sy, l;
-      if (q < fromImage && q < cells.length) {
-        const cell = cells[(q * 3) % Math.min(cells.length, p.count * 3)];
-        sx = ((cell.i % GRID) + rng()) / GRID; sy = (((cell.i / GRID) | 0) + rng()) / GRID; l = cell.l / 255;
-      } else { sx = rng(); sy = rng(); l = 0.4 + rng() * 0.6; }
-      out.push({ x: sx, y: sy, s: 0.6 + rng() * 0.9, a: 0.45 + l * 0.55 });
+  function signature(c) {
+    const t = document.createElement('canvas');
+    t.width = 8; t.height = 8;
+    const x = t.getContext('2d', { willReadFrequently: true });
+    x.drawImage(c, 0, 0, 8, 8);
+    return (c.width / c.height).toFixed(3) + Array.from(x.getImageData(0, 0, 8, 8).data.filter((_, i) => i % 4 !== 3)).map(v => v >> 4).join('');
+  }
+
+  // Separable box blur (running sums), edges clamped
+  function blur(src, w, h, r) {
+    const tmp = new Float32Array(w * h), out = new Float32Array(w * h), d = 2 * r + 1;
+    for (let y = 0; y < h; y++) {
+      const o = y * w;
+      let s = 0;
+      for (let x = -r; x <= r; x++) s += src[o + Math.min(w - 1, Math.max(0, x))];
+      for (let x = 0; x < w; x++) {
+        tmp[o + x] = s / d;
+        s += src[o + Math.min(w - 1, x + r + 1)] - src[o + Math.max(0, x - r)];
+      }
+    }
+    for (let x = 0; x < w; x++) {
+      let s = 0;
+      for (let y = -r; y <= r; y++) s += tmp[Math.min(h - 1, Math.max(0, y)) * w + x];
+      for (let y = 0; y < h; y++) {
+        out[y * w + x] = s / d;
+        s += tmp[Math.min(h - 1, y + r + 1) * w + x] - tmp[Math.max(0, y - r) * w + x];
+      }
     }
     return out;
   }
 
-  function links(pts, W, H, p) {
-    const res = [];
-    const maxD = Math.min(W, H) * (p.mode === 'network' ? 0.28 : 0.2);
-    const per = p.mode === 'network' ? p.links + 1 : p.links;
-    const seen = new Set();
+  function analyse(srcCanvas) {
+    const sig = signature(srcCanvas);
+    if (cache.sig === sig) return cache.data;
+    const aspect = srcCanvas.width / srcCanvas.height;
+    const aw = aspect >= 1 ? A : Math.max(8, Math.round(A * aspect));
+    const ah = aspect >= 1 ? Math.max(8, Math.round(A / aspect)) : A;
+    const c = document.createElement('canvas');
+    c.width = aw; c.height = ah;
+    const cx = c.getContext('2d', { willReadFrequently: true });
+    cx.imageSmoothingQuality = 'high';
+    cx.drawImage(srcCanvas, 0, 0, aw, ah);
+    const rgb = cx.getImageData(0, 0, aw, ah).data;
+    const L = new Float32Array(aw * ah);
+    const hist = new Uint32Array(256);
+    for (let i = 0; i < L.length; i++) {
+      const l = 0.299 * rgb[i * 4] + 0.587 * rgb[i * 4 + 1] + 0.114 * rgb[i * 4 + 2];
+      L[i] = l / 255; hist[l | 0]++;
+    }
+    let acc = 0, median = 0.5;
+    for (let v = 0; v < 256; v++) { acc += hist[v]; if (acc >= L.length / 2) { median = v / 255; break; } }
+    const fine = blur(L, aw, ah, 1);
+    const edges = new Float32Array(aw * ah);
+    for (let y = 1; y < ah - 1; y++) for (let x = 1; x < aw - 1; x++) {
+      const i = y * aw + x;
+      const gx = -fine[i - aw - 1] - 2 * fine[i - 1] - fine[i + aw - 1] + fine[i - aw + 1] + 2 * fine[i + 1] + fine[i + aw + 1];
+      const gy = -fine[i - aw - 1] - 2 * fine[i - aw] - fine[i - aw + 1] + fine[i + aw - 1] + 2 * fine[i + aw] + fine[i + aw + 1];
+      edges[i] = Math.sqrt(gx * gx + gy * gy) / 4;
+    }
+    const data = { aw, ah, rgb, fine, edges, median };
+    cache = { sig, data };
+    return data;
+  }
+
+  function detectStars(srcCanvas, p, rng) {
+    const a = analyse(srcCanvas);
+    const { aw, ah, fine, edges, median, rgb } = a;
+    const mode = p.detect === 'auto' ? (median < 0.5 ? 'bright' : 'dark') : p.detect;
+    const n = aw * ah, m = new Float32Array(n);
+    let max = 0;
+    if (mode === 'edges') {
+      for (let i = 0; i < n; i++) { m[i] = edges[i]; if (edges[i] > max) max = edges[i]; }
+    } else {
+      // Point detector: a star must stand out from a ring of 8 samples around it, in every
+      // direction. On an edge one side of the ring is as bright as the centre, so it scores ~0.
+      // Several radii catch both pin-point lights and larger soft glows.
+      const sign = mode === 'bright' ? 1 : -1;
+      const rings = [2, 4, 7].map(r => Array.from({ length: 8 }, (_, q) =>
+        Math.round(Math.sin(q * Math.PI / 4) * r) * aw + Math.round(Math.cos(q * Math.PI / 4) * r)));
+      const M = 7;
+      for (let y = M; y < ah - M; y++) for (let x = M; x < aw - M; x++) {
+        const i = y * aw + x, c = sign * fine[i];
+        let best = 0;
+        for (const ring of rings) {
+          let ringMax = -Infinity;
+          for (const o of ring) { const v = sign * fine[i + o]; if (v > ringMax) ringMax = v; }
+          if (c - ringMax > best) best = c - ringMax;
+        }
+        // small bias towards points that are bright (or dark) in absolute terms too
+        const v = best + (best > 0 ? 0.1 * Math.max(0, sign * (fine[i] - median)) : 0);
+        m[i] = v;
+        if (v > max) max = v;
+      }
+    }
+    const stars = [];
+    if (max > 0) {
+      // local maxima (5x5) above the sensitivity threshold
+      const thr = max * Math.pow(1 - p.sensitivity / 100, 1.5) * 0.85;
+      const cand = [];
+      for (let y = 2; y < ah - 2; y++) for (let x = 2; x < aw - 2; x++) {
+        const i = y * aw + x, v = m[i];
+        if (v <= thr || v <= 0) continue;
+        let peak = true;
+        for (let dy = -2; dy <= 2 && peak; dy++) for (let dx = -2; dx <= 2; dx++) {
+          if ((dx || dy) && m[i + dy * aw + dx] > v) { peak = false; break; }
+        }
+        if (peak) cand.push(i);
+      }
+      cand.sort((i, j) => m[j] - m[i]);
+      // strongest first, keeping a minimum distance (grid buckets keep it fast)
+      const minD = Math.max(1, p.spacing / 100 * Math.max(aw, ah)), minD2 = minD * minD;
+      const buckets = new Map();
+      const key = (gx, gy) => gx + ',' + gy;
+      for (const i of cand) {
+        if (stars.length >= p.count) break;
+        const x = i % aw, y = (i / aw) | 0;
+        const gx = Math.floor(x / minD), gy = Math.floor(y / minD);
+        let ok = true;
+        for (let oy = -1; oy <= 1 && ok; oy++) for (let ox = -1; ox <= 1 && ok; ox++) {
+          for (const s of buckets.get(key(gx + ox, gy + oy)) || []) {
+            if ((s.px - x) ** 2 + (s.py - y) ** 2 < minD2) { ok = false; break; }
+          }
+        }
+        if (!ok) continue;
+        // sub-pixel centre: weighted centroid of the 3x3 neighbourhood
+        let sw = 0, sx = 0, sy = 0;
+        for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) {
+          const w = m[i + dy * aw + dx]; sw += w; sx += (x + dx) * w; sy += (y + dy) * w;
+        }
+        const star = { px: x, py: y, x: (sx / sw + 0.5) / aw, y: (sy / sw + 0.5) / ah, s: m[i] / max, c: [rgb[i * 4], rgb[i * 4 + 1], rgb[i * 4 + 2]] };
+        stars.push(star);
+        const k = key(gx, gy);
+        if (!buckets.has(k)) buckets.set(k, []);
+        buckets.get(k).push(star);
+      }
+    }
+    const detected = stars.length;
+    // optional faint random stars on top of the real ones
+    const fill = Math.round(p.count * p.fill / 100);
+    for (let q = 0; q < fill; q++) {
+      const x = rng(), y = rng();
+      const i = (Math.min(ah - 1, (y * ah) | 0) * aw + Math.min(aw - 1, (x * aw) | 0)) * 4;
+      stars.push({ x, y, s: 0.1 + rng() * 0.25, c: [rgb[i], rgb[i + 1], rgb[i + 2]], fill: true });
+    }
+    return { stars, detected, mode };
+  }
+
+  // Constellation lines: minimum spanning tree, split into groups by cutting the longest links
+  function constellationLinks(pts, W, H, p) {
+    const real = pts.filter(s => !s.fill);
+    const n = real.length;
+    if (n < 2) return [];
+    const d = (a, b) => Math.hypot((a.x - b.x) * W, (a.y - b.y) * H);
+    const inTree = new Uint8Array(n), best = new Float64Array(n).fill(Infinity), from = new Int32Array(n).fill(-1);
+    best[0] = 0;
+    const edges = [];
+    for (let it = 0; it < n; it++) {
+      let u = -1;
+      for (let i = 0; i < n; i++) if (!inTree[i] && (u < 0 || best[i] < best[u])) u = i;
+      inTree[u] = 1;
+      if (from[u] >= 0) edges.push([real[from[u]], real[u], best[u]]);
+      for (let v = 0; v < n; v++) {
+        if (inTree[v]) continue;
+        const dv = d(real[u], real[v]);
+        if (dv < best[v]) { best[v] = dv; from[v] = u; }
+      }
+    }
+    edges.sort((a, b) => a[2] - b[2]);
+    const groups = Math.max(1, Math.round(n / p.group));
+    const maxLen = Math.min(W, H) * 0.3;
+    return edges.slice(0, Math.max(0, edges.length - (groups - 1))).filter(e => e[2] <= maxLen);
+  }
+
+  function networkLinks(pts, W, H, p) {
+    const res = [], seen = new Set();
+    const maxD = Math.min(W, H) * 0.28;
     for (let i = 0; i < pts.length; i++) {
       const near = [];
       for (let j = 0; j < pts.length; j++) {
         if (i === j) continue;
-        const dx = (pts[j].x - pts[i].x) * W, dy = (pts[j].y - pts[i].y) * H, dd = dx * dx + dy * dy;
-        if (dd < maxD * maxD) near.push([dd, j]);
+        const dd = Math.hypot((pts[j].x - pts[i].x) * W, (pts[j].y - pts[i].y) * H);
+        if (dd < maxD) near.push([dd, j]);
       }
       near.sort((a, b) => a[0] - b[0]);
-      for (const [, j] of near.slice(0, per)) {
+      for (const [dd, j] of near.slice(0, p.links)) {
         const key = i < j ? i + '-' + j : j + '-' + i;
-        if (!seen.has(key)) { seen.add(key); res.push([pts[i], pts[j]]); }
+        if (!seen.has(key)) { seen.add(key); res.push([pts[i], pts[j], dd]); }
       }
     }
     return res;
   }
 
+  const lighten = c => `rgb(${c.map(v => Math.round(v + (255 - v) * 0.45)).join(',')})`;
+
   function draw({ ctx, srcCanvas, W, H, p, rng, k }) {
     ctx.drawImage(srcCanvas, 0, 0, W, H);
     if (p.dim > 0) { ctx.fillStyle = `rgba(0,0,0,${p.dim / 100})`; ctx.fillRect(0, 0, W, H); }
-    const pts = stars(srcCanvas, p, rng);
+    const { stars: pts } = detectStars(srcCanvas, p, rng);
     const col = p.color;
     ctx.save();
     ctx.globalCompositeOperation = 'screen';
@@ -103,18 +263,28 @@
       ctx.arc(W / 2, H / 2, Math.min(W, H) * 0.15, 0, Math.PI * 2);
       ctx.stroke();
     } else if (p.mode !== 'starfield' && p.lines > 0) {
+      const lines = p.mode === 'network' ? networkLinks(pts, W, H, p) : constellationLinks(pts, W, H, p);
       ctx.globalAlpha = p.lines / 100;
       ctx.lineWidth = 1.2 * k;
       ctx.shadowBlur = p.glow * k * 0.5;
       ctx.beginPath();
-      for (const [a, b] of links(pts, W, H, p)) { ctx.moveTo(a.x * W, a.y * H); ctx.lineTo(b.x * W, b.y * H); }
+      // stop the line short of each star so stars read as nodes
+      for (const [a, b, len] of lines) {
+        const gapA = p.size * k * (0.45 + 0.9 * a.s) * 1.6, gapB = p.size * k * (0.45 + 0.9 * b.s) * 1.6;
+        if (len <= gapA + gapB) continue;
+        const ux = ((b.x - a.x) * W) / len, uy = ((b.y - a.y) * H) / len;
+        ctx.moveTo(a.x * W + ux * gapA, a.y * H + uy * gapA);
+        ctx.lineTo(b.x * W - ux * gapB, b.y * H - uy * gapB);
+      }
       ctx.stroke();
     }
 
     ctx.shadowBlur = p.glow * k;
     for (const s of pts) {
-      const x = s.x * W, y = s.y * H, r = p.size * s.s * k;
-      ctx.globalAlpha = s.a;
+      const x = s.x * W, y = s.y * H, r = p.size * k * (0.45 + 0.9 * s.s);
+      const sc = p.tint ? lighten(s.c) : col;
+      ctx.strokeStyle = sc; ctx.fillStyle = sc; ctx.shadowColor = sc;
+      ctx.globalAlpha = 0.35 + 0.65 * s.s;
       ctx.lineWidth = 1.5 * k;
       ctx.beginPath();
       if (p.shape === 'circle') ctx.arc(x, y, r, 0, Math.PI * 2);
@@ -122,8 +292,8 @@
       else if (p.shape === 'cross') { ctx.moveTo(x - r * 1.6, y); ctx.lineTo(x + r * 1.6, y); ctx.moveTo(x, y - r * 1.6); ctx.lineTo(x, y + r * 1.6); }
       else { ctx.arc(x, y, r * 0.6, 0, Math.PI * 2); ctx.fill(); }
       ctx.stroke();
-      if (p.ring) {
-        ctx.globalAlpha = s.a * 0.35;
+      if (p.ring && !s.fill) {
+        ctx.globalAlpha = (0.35 + 0.65 * s.s) * 0.35;
         ctx.lineWidth = 1 * k;
         ctx.beginPath(); ctx.arc(x, y, r * 2.6, 0, Math.PI * 2); ctx.stroke();
       }
@@ -131,9 +301,10 @@
     if (p.labels) {
       ctx.shadowBlur = 0;
       ctx.globalAlpha = 0.8;
+      ctx.fillStyle = col;
       ctx.font = `${10 * k}px "Courier New", monospace`;
-      pts.forEach((s, i) => {
-        if (i % 4) return;
+      pts.filter(s => !s.fill).forEach((s, i) => {
+        if (i % 3) return;
         ctx.fillText(`${(s.x * 180 - 90).toFixed(1)}° ${(s.y * 360 - 180).toFixed(1)}°`, s.x * W + p.size * k * 2, s.y * H - p.size * k * 1.5);
       });
     }
@@ -143,19 +314,29 @@
   const linked = p => p.mode !== 'starfield';
   PudrusTool.create({
     id: 'constellation', i18n: 'constellation', icon: '✧',
-    name: '✧ Constellation', desc: 'Generative star maps and node networks over your images.',
+    name: '✧ Constellation', desc: 'Stars detected from the bright or dark points of your image.',
     controls: [
       { key: 'mode', label: 'constellation.mode', fallback: 'Mode', type: 'select', value: 'constellation', options: [
         { value: 'constellation', label: 'constellation.modeConstellation', fallback: 'Constellation' },
         { value: 'network', label: 'constellation.modeNetwork', fallback: 'Network' },
         { value: 'starfield', label: 'constellation.modeStarfield', fallback: 'Starfield' },
         { value: 'map', label: 'constellation.modeMap', fallback: 'Technical map' } ] },
-      { key: 'count', label: 'constellation.count', fallback: 'Stars', min: 10, max: 200, value: 60, rand: [20, 140] },
+      { key: 'detect', label: 'constellation.detect', fallback: 'Detect', type: 'select', value: 'auto', options: [
+        { value: 'auto', label: 'constellation.detectAuto', fallback: 'Automatic' },
+        { value: 'bright', label: 'constellation.detectBright', fallback: 'Bright points' },
+        { value: 'dark', label: 'constellation.detectDark', fallback: 'Dark points' },
+        { value: 'edges', label: 'constellation.detectEdges', fallback: 'Edges and corners' } ] },
+      { key: 'count', label: 'constellation.count', fallback: 'Max stars', min: 5, max: 300, step: 5, value: 60, rand: [20, 150] },
+      { key: 'sensitivity', label: 'constellation.sensitivity', fallback: 'Sensitivity', min: 0, max: 100, value: 60, unit: '%', rand: [40, 90] },
       { key: 'size', label: 'constellation.size', fallback: 'Star size', min: 1, max: 20, value: 5, rand: [2, 12] },
-      { key: 'lines', label: 'constellation.lines', fallback: 'Line opacity', min: 0, max: 100, value: 50, unit: '%', show: linked, rand: [20, 80] },
+      { key: 'lines', label: 'constellation.lines', fallback: 'Line opacity', min: 0, max: 100, value: 55, unit: '%', show: linked, rand: [20, 80] },
       { key: 'color', label: 'constellation.color', fallback: 'Color', type: 'color', value: '#66ff33', rand: true },
+      { key: 'tint', label: 'constellation.tint', fallback: 'Stars take the image color', type: 'toggle', value: false, advanced: true, randChance: 0.3 },
+      { key: 'spacing', label: 'constellation.spacing', fallback: 'Minimum spacing', min: 1, max: 20, value: 4, unit: '%', advanced: true, rand: [2, 10] },
+      { key: 'group', label: 'constellation.group', fallback: 'Stars per constellation', min: 3, max: 30, value: 8, advanced: true, show: p => p.mode === 'constellation', rand: [4, 15] },
+      { key: 'links', label: 'constellation.links', fallback: 'Links per star', min: 1, max: 5, value: 3, advanced: true, show: p => p.mode === 'network', rand: [2, 4] },
+      { key: 'fill', label: 'constellation.fill', fallback: 'Extra random stars', min: 0, max: 100, value: 0, unit: '%', advanced: true, rand: [0, 40] },
       { key: 'glow', label: 'constellation.glow', fallback: 'Glow', min: 0, max: 50, value: 12, advanced: true, rand: [0, 30] },
-      { key: 'links', label: 'constellation.links', fallback: 'Links per star', min: 1, max: 5, value: 2, advanced: true, show: p => p.mode === 'constellation' || p.mode === 'network', rand: [1, 4] },
       { key: 'shape', label: 'constellation.shape', fallback: 'Star shape', type: 'select', value: 'circle', advanced: true, options: [
         { value: 'circle', label: 'constellation.shapeCircle', fallback: 'Circle' },
         { value: 'dot', label: 'constellation.shapeDot', fallback: 'Dot' },
@@ -166,10 +347,10 @@
       { key: 'labels', label: 'constellation.labels', fallback: 'Coordinates', type: 'toggle', value: false, advanced: true, randChance: 0.3 },
     ],
     presets: [
-      { label: 'constellation.presetSky', fallback: 'Night sky', values: { mode: 'constellation', count: 70, size: 4, color: '#d0efff', glow: 18, dim: 40 } },
-      { label: 'constellation.presetNetwork', fallback: 'Network', values: { mode: 'network', count: 110, size: 3, lines: 40, color: '#66ff33', shape: 'dot', links: 3 } },
-      { label: 'constellation.presetHud', fallback: 'HUD', values: { mode: 'map', count: 40, size: 6, lines: 45, color: '#00d4ff', shape: 'cross', labels: true, ring: true, dim: 35 } },
-      { label: 'constellation.presetDust', fallback: 'Stardust', values: { mode: 'starfield', count: 180, size: 2, color: '#fff2c4', glow: 25, shape: 'dot' } },
+      { label: 'constellation.presetSky', fallback: 'Night sky', values: { mode: 'constellation', detect: 'auto', count: 70, sensitivity: 70, size: 4, color: '#d0efff', glow: 18, dim: 35, group: 7 } },
+      { label: 'constellation.presetNetwork', fallback: 'Network', values: { mode: 'network', detect: 'edges', count: 120, sensitivity: 75, size: 3, lines: 40, color: '#66ff33', shape: 'dot', links: 3, spacing: 3 } },
+      { label: 'constellation.presetHud', fallback: 'HUD', values: { mode: 'map', detect: 'auto', count: 35, sensitivity: 55, size: 6, lines: 45, color: '#00d4ff', shape: 'cross', labels: true, ring: true, dim: 35, spacing: 7 } },
+      { label: 'constellation.presetDust', fallback: 'Stardust', values: { mode: 'starfield', detect: 'auto', count: 250, sensitivity: 90, size: 2, color: '#fff2c4', glow: 25, shape: 'dot', tint: true, spacing: 1, fill: 30 } },
     ],
     draw,
   });

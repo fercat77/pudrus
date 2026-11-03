@@ -62,7 +62,7 @@
     },
     "constellation": {
       "name": "Constellation",
-      "desc": "Overlay generative star maps y node networks."
+      "desc": "Estrellas detectadas en los puntos brillantes u oscuros de tu foto, unidas en constelaciones reales."
     },
     "ascii": {
       "name": "ASCII Canvas",
@@ -111,12 +111,12 @@
     "randomness": "Aleatoriedad"
   },
   "constellation": {
-    "count": "Cantidad",
+    "count": "Máximo de estrellas",
     "size": "Tamaño",
     "glow": "Brillo",
     "color": "Color",
     "name": "✧ Constellation",
-    "desc": "Mapas de estrellas y redes de nodos sobre tus imágenes.",
+    "desc": "Estrellas detectadas en los puntos brillantes u oscuros de tu imagen.",
     "dim": "Oscurecer imagen",
     "labels": "Coordenadas",
     "lines": "Opacidad de líneas",
@@ -135,7 +135,17 @@
     "shapeCircle": "Círculo",
     "shapeCross": "Cruz",
     "shapeDot": "Punto",
-    "shapeSquare": "Cuadrado"
+    "shapeSquare": "Cuadrado",
+    "detect": "Detectar",
+    "detectAuto": "Automático",
+    "detectBright": "Puntos brillantes",
+    "detectDark": "Puntos oscuros",
+    "detectEdges": "Bordes y esquinas",
+    "sensitivity": "Sensibilidad",
+    "tint": "Estrellas con el color de la imagen",
+    "spacing": "Separación mínima",
+    "group": "Estrellas por constelación",
+    "fill": "Estrellas extra al azar"
   },
   "dithering": {
     "name": "⠿ Dithering",
