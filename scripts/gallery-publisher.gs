@@ -141,7 +141,9 @@ function publishRow_(sh, head, row) {
   putFile_('gallery/' + thumbPath, small.getBytes(), 'Galería: miniatura de ' + author);
 
   const date = Utilities.formatDate(new Date(), 'UTC', 'yyyy-MM-dd');
+  let previous = null;
   updateJson_(data => {
+    previous = (data.items || []).find(i => i.id === key) || null;
     data.items = (data.items || []).filter(i => i.id !== key);
     const item = { id: key, file: fullPath, thumb: thumbPath, author: author, date: date };
     if (link) item.link = link;
@@ -149,6 +151,11 @@ function publishRow_(sh, head, row) {
     data.items.push(item);
     return data;
   }, 'Galería: publica la imagen de ' + author);
+  // republished with a different format: remove the old files
+  if (previous) {
+    [previous.file, previous.thumb].filter(p => p && p !== fullPath && p !== thumbPath)
+      .forEach(p => deleteFile_('gallery/' + p, 'Galería: borra ' + p));
+  }
   return 'Publicada ✓ ' + date + ' (aparece en 1–2 min)';
 }
 
@@ -221,11 +228,16 @@ function thumbnail_(fileId, size) {
   if (meta.getResponseCode() !== 200) throw new Error('Drive no devolvió la miniatura (' + meta.getResponseCode() + ')');
   const link = JSON.parse(meta.getContentText()).thumbnailLink;
   if (!link) throw new Error('Drive todavía no generó la vista previa; probá de nuevo en un minuto');
-  const url = link.replace(/=s\d+(-[a-z0-9-]+)?$/i, '') + '=s' + size;
-  let res = UrlFetchApp.fetch(url, { headers: auth, muteHttpExceptions: true });
-  if (res.getResponseCode() !== 200) res = UrlFetchApp.fetch(url, { muteHttpExceptions: true });   // some thumbnail hosts reject the auth header
-  if (res.getResponseCode() !== 200) throw new Error('no pude descargar la imagen redimensionada (' + res.getResponseCode() + ')');
-  return res.getBlob();
+  const base = link.replace(/=s\d+(-[a-z0-9-]+)?$/i, '');
+  // "-rj" asks Google for a JPEG (a 1600px PNG can weigh several MB); fall back to whatever Drive returns
+  const urls = [base + '=s' + size + '-rj', base + '=s' + size];
+  for (const url of urls) {
+    for (const opts of [{ headers: auth, muteHttpExceptions: true }, { muteHttpExceptions: true }]) {   // some hosts reject the auth header
+      const res = UrlFetchApp.fetch(url, opts);
+      if (res.getResponseCode() === 200) return res.getBlob();
+    }
+  }
+  throw new Error('no pude descargar la imagen redimensionada');
 }
 
 function gh_(method, path, body) {
