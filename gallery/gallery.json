@@ -1,17 +1,4 @@
 {
-  "formUrl": "",
-  "toolField": "",
-  "toolNames": {
-    "glitch": "Glitch FX",
-    "dithering": "Dithering",
-    "halftone": "Halftone",
-    "triangulation": "Triangulation",
-    "crt-bend": "CRT Bend",
-    "flyer": "Flyer Forge",
-    "pixel-sort": "Pixel Sorter",
-    "ascii-canvas": "ASCII Canvas",
-    "constellation": "Constellation",
-    "pattern": "Pattern Generator"
-  },
+  "formUrl": "https://docs.google.com/forms/d/e/1FAIpQLScg4jQLQnDzopaxonYpaaztRUrNC91Vm1T0rtwLUBglndw8Bg/viewform",
   "items": []
 }

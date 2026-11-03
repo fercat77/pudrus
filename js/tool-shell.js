@@ -258,12 +258,7 @@
     // "Send to the gallery" shows up only once a submission form is configured in gallery/gallery.json
     fetch('../../gallery/gallery.json', { cache: 'no-cache' }).then(r => (r.ok ? r.json() : null)).then(g => {
       if (!g || typeof g.formUrl !== 'string' || !/^https:\/\//.test(g.formUrl)) return;
-      let href = g.formUrl;
-      const option = g.toolNames && g.toolNames[cfg.id];
-      if (g.toolField && option) {
-        try { const u = new URL(g.formUrl); u.searchParams.set('usp', 'pp_url'); u.searchParams.set(g.toolField, option); href = u.toString(); } catch (e) { /* keep plain link */ }
-      }
-      galleryLink.href = href;
+      galleryLink.href = g.formUrl;
       galleryLink.hidden = false;
     }).catch(() => {});
 

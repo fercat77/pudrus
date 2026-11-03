@@ -6,11 +6,10 @@
  *
  * gallery.json:
  * {
- *   "formUrl": "https://forms.gle/...",            // Google Form for submissions
- *   "toolField": "entry.123456",                    // optional: pre-fills the tool question
- *   "toolNames": { "glitch": "Glitch FX", ... },    // tool id -> option text in the form
+ *   "formUrl": "https://docs.google.com/forms/...",   // Google Form for submissions
  *   "items": [{ "file": "img/x.jpg", "thumb": "img/x-thumb.jpg", "author": "@name",
- *               "link": "https://instagram.com/name", "tool": "glitch", "date": "2026-11-03", "alt": "" }]
+ *               "link": "https://instagram.com/name", "tools": ["glitch", "pixel-sort"],   // optional
+ *               "date": "2026-11-03", "alt": "" }]
  * }
  *
  * Markup hooks:
@@ -42,25 +41,16 @@
         .then(d => {
           const items = Array.isArray(d.items) ? d.items.filter(i => i && typeof i.file === 'string') : [];
           items.sort((a, b) => String(b.date || '').localeCompare(String(a.date || '')));
-          return { formUrl: typeof d.formUrl === 'string' ? d.formUrl : '', toolField: d.toolField || '', toolNames: d.toolNames || {}, items };
+          return { formUrl: typeof d.formUrl === 'string' && /^https:\/\//.test(d.formUrl) ? d.formUrl : '', items };
         });
     }
     return dataPromise;
   }
 
-  function formLink(data, tool) {
-    if (!data.formUrl) return '';
-    if (!tool || !data.toolField || !data.toolNames[tool]) return data.formUrl;
-    try {
-      const u = new URL(data.formUrl);
-      u.searchParams.set('usp', 'pp_url');
-      u.searchParams.set(data.toolField, data.toolNames[tool]);
-      return u.toString();
-    } catch (e) { return data.formUrl; }
-  }
-
   const safeUrl = u => (typeof u === 'string' && /^https?:\/\//i.test(u) ? u : '');
-  const toolName = id => (TOOL_KEYS[id] ? t(TOOL_KEYS[id], id) : id || '');
+  const toolName = id => (TOOL_KEYS[id] ? t(TOOL_KEYS[id], id) : String(id || ''));
+  // "tools": [...] (one image can go through several tools); "tool": "x" also accepted
+  const toolsOf = item => [].concat(item.tools || item.tool || []).map(toolName).filter(Boolean).join(' · ');
 
   function el(tag, cls, text) {
     const e = document.createElement(tag);
@@ -121,7 +111,8 @@
       by.append(name);
       target.append(by);
     }
-    if (item.tool) target.append(el('span', 'gallery-tool', toolName(item.tool)));
+    const tools = toolsOf(item);
+    if (tools) target.append(el('span', 'gallery-tool', tools));
   }
   function show(i) {
     if (!boxList.length) return;
@@ -169,9 +160,8 @@
     const hasSomething = data.items.length > 0 || !!data.formUrl;
     document.querySelectorAll('[data-gallery-section]').forEach(s => { s.hidden = !hasSomething; });
     document.querySelectorAll('[data-gallery-send]').forEach(a => {
-      const href = formLink(data, a.dataset.tool);
-      a.hidden = !href;
-      if (href) { a.href = href; a.target = '_blank'; a.rel = 'noopener noreferrer'; }
+      a.hidden = !data.formUrl;
+      if (data.formUrl) { a.href = data.formUrl; a.target = '_blank'; a.rel = 'noopener noreferrer'; }
     });
     document.querySelectorAll('[data-gallery]').forEach(c => render(c, data));
     document.querySelectorAll('[data-gallery-more]').forEach(a => {
@@ -184,5 +174,5 @@
   document.addEventListener('pudrus:i18n', () => { if (dataPromise) load().then(d => document.querySelectorAll('[data-gallery]').forEach(c => render(c, d))); });
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init); else init();
 
-  window.PudrusGallery = { load, formLink };
+  window.PudrusGallery = { load };
 })();
