@@ -60,10 +60,6 @@
         <div class="stat-num">0</div>
         <div class="stat-label" data-i18n="stats.install">No install</div>
       </div>
-      <div class="stat">
-        <div class="stat-num" id="online-users">1</div>
-        <div class="stat-label" data-i18n="stats.online">Online</div>
-      </div>
     </div>
   </section>
 
@@ -242,18 +238,6 @@
     document.addEventListener('click', e => { if (!nav.contains(e.target)) setOpen(false); });
   })();
 
-  // "Online" counter
-  document.addEventListener('DOMContentLoaded', () => {
-    const usersEl = document.getElementById('online-users');
-    if (!usersEl) return;
-    let currentUsers = Math.floor(Math.random() * 12);
-    usersEl.textContent = currentUsers;
-    setInterval(() => {
-      if (Math.random() < 0.05) currentUsers = 15;
-      else currentUsers = Math.max(1, Math.min(11, currentUsers + Math.floor(Math.random() * 5) - 2));
-      usersEl.textContent = currentUsers;
-    }, 3500);
-  });
 </script>
 </body>
 </html>
