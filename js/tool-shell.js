@@ -248,11 +248,24 @@
       el('p', { class: 'ts-note', 'data-i18n': 'shell.cropHint', text: 'Drag on the image to move the crop.' }),
     ]);
     const videoLink = cfg.animated ? el('button', { type: 'button', class: 'ts-link', 'data-i18n': 'shell.video', text: 'Save 5s video', onclick: recordVideo }) : null;
+    const galleryLink = el('a', { class: 'ts-link', 'data-i18n': 'shell.sendGallery', text: '◈ Send to the gallery', hidden: '', target: '_blank', rel: 'noopener noreferrer' });
     const extraPanel = el('div', { class: 'ts-more' }, [
       el('button', { type: 'button', class: 'ts-link', 'data-i18n': 'shell.reset', text: 'Reset', onclick: reset }),
       videoLink,
       cfg.noFlyer ? null : el('button', { type: 'button', class: 'ts-link', 'data-i18n': 'shell.sendFlyer', text: '→ Continue in Flyer Forge', onclick: sendToFlyer }),
+      galleryLink,
     ]);
+    // "Send to the gallery" shows up only once a submission form is configured in gallery/gallery.json
+    fetch('../../gallery/gallery.json', { cache: 'no-cache' }).then(r => (r.ok ? r.json() : null)).then(g => {
+      if (!g || typeof g.formUrl !== 'string' || !/^https:\/\//.test(g.formUrl)) return;
+      let href = g.formUrl;
+      const option = g.toolNames && g.toolNames[cfg.id];
+      if (g.toolField && option) {
+        try { const u = new URL(g.formUrl); u.searchParams.set('usp', 'pp_url'); u.searchParams.set(g.toolField, option); href = u.toString(); } catch (e) { /* keep plain link */ }
+      }
+      galleryLink.href = href;
+      galleryLink.hidden = false;
+    }).catch(() => {});
 
     const tabs = [['basic', 'shell.tabBasic', 'Adjust'], ['advanced', 'shell.tabAdvanced', 'Advanced'], ['crop', 'shell.tabCrop', 'Crop']]
       .filter(([id]) => (id !== 'advanced' || controls.some(c => c.advanced)) && (id !== 'crop' || !gen));

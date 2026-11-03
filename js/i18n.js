@@ -2,6 +2,8 @@
 (function(){
   const selectId = 'langSelect';
   const storageKey = 'pudrus_lang';
+  // lang/ lives next to js/, so resolve it from this script's own URL (works from any page depth)
+  const langBase = new URL('../lang/', (document.currentScript && document.currentScript.src) || document.baseURI);
   let currentDict = {};
 
   function lookup(dict, key){
@@ -25,10 +27,7 @@
 
   async function loadLang(code){
     try{
-      const langPath = location.pathname.includes('/tools/')
-        ? '../../lang/' + code + '.json'
-        : 'lang/' + code + '.json';
-      const res = await fetch(new URL(langPath, document.location));
+      const res = await fetch(new URL(code + '.json', langBase));
       if(!res.ok) throw new Error('missing');
       return await res.json();
     }catch(e){

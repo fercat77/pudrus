@@ -3,7 +3,8 @@
     "tools": "Herramientas",
     "about": "Acerca de",
     "work": "Trabajo",
-    "menu": "Menú"
+    "menu": "Menú",
+    "gallery": "Galería"
   },
   "hero": {
     "tag": "◈ Suite Visual Creativa",
@@ -424,6 +425,21 @@
     "recording": "Grabando 5 segundos…",
     "videoSaved": "Video guardado",
     "videoUnsupported": "Este navegador no permite exportar video",
-    "video": "Guardar video de 5 s"
+    "video": "Guardar video de 5 s",
+    "sendGallery": "◈ Enviar a la galería"
+  },
+  "gallery": {
+    "sectionTag": "◈ Galería",
+    "pageTag": "◈ Galería",
+    "title": "Hecho con <span>PUDRUS</span>",
+    "desc": "Imágenes que la comunidad creó con estas herramientas.",
+    "send": "◈ Enviá la tuya",
+    "viewAll": "Ver toda la galería",
+    "empty": "Todavía no hay imágenes. ¡La tuya puede ser la primera!",
+    "by": "por",
+    "close": "Cerrar",
+    "prev": "Anterior",
+    "next": "Siguiente",
+    "note": "Cada imagen se revisa antes de publicarse."
   }
 }

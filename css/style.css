@@ -286,6 +286,72 @@ nav {
 .work-contact a { color: #fff; font-size: 13px; letter-spacing: 1px; text-decoration: none; word-break: break-all; }
 .work-contact a:hover { color: var(--c1); }
 
+/* ── GALLERY ────────────────────────────────────────── */
+[hidden] { display: none !important; }
+
+.gallery-head {
+  display: flex; justify-content: space-between; align-items: flex-end; gap: 16px 32px; flex-wrap: wrap;
+  margin-bottom: clamp(16px, 3vh, 28px);
+}
+.gallery-head .section-desc { margin-bottom: 0; }
+.gallery-grid {
+  display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px;
+}
+.gallery-item {
+  position: relative; display: block; aspect-ratio: 1; overflow: hidden;
+  padding: 0; border: 1px solid var(--border); background: var(--bg2);
+  cursor: zoom-in; font: inherit; color: inherit;
+}
+.gallery-item img {
+  width: 100%; height: 100%; object-fit: cover;
+  transition: transform .4s ease, filter .3s;
+}
+.gallery-item:hover img, .gallery-item:focus-visible img { transform: scale(1.04); }
+.gallery-caption {
+  position: absolute; inset: auto 0 0 0;
+  display: flex; flex-direction: column; gap: 2px; align-items: flex-start;
+  padding: 28px 12px 10px;
+  background: linear-gradient(transparent, rgba(5,5,8,0.88));
+  font-size: 11px; text-align: left; letter-spacing: 0.5px;
+}
+.gallery-by { color: var(--text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 100%; }
+.gallery-author { color: #fff; font-weight: 600; text-decoration: none; }
+a.gallery-author:hover { color: var(--c1); }
+.gallery-tool { font-size: 9px; letter-spacing: 2px; text-transform: uppercase; color: var(--c1); }
+.gallery-empty {
+  grid-column: 1 / -1; padding: 48px 16px;
+  border: 1px dashed var(--c3); text-align: center;
+  color: var(--text2); font-size: 12px; letter-spacing: 1px;
+}
+.gallery-more { align-self: center; margin-top: clamp(18px, 3vh, 28px); }
+.gallery-note { margin-top: 18px; font-size: 11px; color: var(--text2); }
+.gallery-page { justify-content: flex-start; }
+
+.gallery-box {
+  width: 100vw; height: 100vh; max-width: none; max-height: none;
+  width: 100dvw; height: 100dvh;
+  margin: 0; padding: 0; border: 0;
+  background: rgba(3,3,6,0.96); color: var(--text);
+}
+.gallery-box[open] { display: grid; grid-template-columns: 56px minmax(0, 1fr) 56px; align-items: center; }
+.gallery-box::backdrop { background: rgba(0,0,0,0.6); }
+.gallery-box:focus { outline: none; }
+.gallery-box-figure {
+  height: 100%; min-width: 0; padding: 56px 0 16px;
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px;
+}
+.gallery-box-img { max-width: 100%; max-height: calc(100% - 48px); object-fit: contain; }
+.gallery-box-caption { display: flex; gap: 14px; align-items: baseline; flex-wrap: wrap; justify-content: center; font-size: 12px; }
+.gallery-box-caption .gallery-tool { font-size: 10px; }
+.gallery-box-close, .gallery-box-nav {
+  display: flex; align-items: center; justify-content: center;
+  width: 48px; height: 48px; background: none; border: 0;
+  color: var(--text); font-size: 34px; line-height: 1; cursor: pointer; font-family: var(--font);
+}
+.gallery-box-close { position: absolute; top: 8px; right: 8px; font-size: 30px; }
+.gallery-box-close:hover, .gallery-box-nav:hover { color: var(--c1); }
+.gallery-box.is-single .gallery-box-nav { visibility: hidden; }
+
 /* ── FOOTER (in the page flow, never on top of content) ─ */
 footer {
   display: flex; flex-wrap: wrap; justify-content: center; align-items: center; gap: 10px 20px;
@@ -310,6 +376,7 @@ footer a:hover { color: var(--c1); }
   .tool-card { flex-direction: row; gap: 16px; align-items: flex-start; }
   .tool-icon { margin: 2px 0 0; width: 28px; text-align: center; }
   .work-card { grid-template-columns: 1fr; }
+  .gallery-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 }
 
 /* ── PHONE ──────────────────────────────────────────── */
@@ -367,6 +434,11 @@ footer a:hover { color: var(--c1); }
   .tool-desc { font-size: 10.5px; -webkit-line-clamp: 4; }
 
   .about-grid { grid-template-columns: 1fr; }
+  .gallery-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+  .gallery-head .btn { width: 100%; }
+  .gallery-box[open] { grid-template-columns: minmax(0, 1fr); }
+  .gallery-box-nav { display: none; }   /* swipe instead */
+  .gallery-box-figure { padding: 56px 8px 16px; }
   .work-copy p { font-size: 12px; }
   .work-cta .btn { flex: 1 1 140px; }
   footer { flex-direction: column; gap: 8px; }

@@ -1,0 +1,17 @@
+{
+  "formUrl": "",
+  "toolField": "",
+  "toolNames": {
+    "glitch": "Glitch FX",
+    "dithering": "Dithering",
+    "halftone": "Halftone",
+    "triangulation": "Triangulation",
+    "crt-bend": "CRT Bend",
+    "flyer": "Flyer Forge",
+    "pixel-sort": "Pixel Sorter",
+    "ascii-canvas": "ASCII Canvas",
+    "constellation": "Constellation",
+    "pattern": "Pattern Generator"
+  },
+  "items": []
+}

@@ -19,6 +19,7 @@
   <a href="#top" class="nav-logo">PUDRUS<span>.xyz</span></a>
   <ul class="nav-links" id="navLinks">
     <li><a href="#tools" data-i18n="nav.tools">Tools</a></li>
+    <li data-gallery-section hidden><a href="#gallery" data-i18n="nav.gallery">Gallery</a></li>
     <li><a href="#about" data-i18n="nav.about">About</a></li>
     <li><a href="#work" data-i18n="nav.work">Work</a></li>
   </ul>
@@ -133,6 +134,20 @@
     </div>
   </section>
 
+  <!-- ── GALLERY (hidden until there are images or a submission form) ── -->
+  <section id="gallery" class="screen section-gallery" data-gallery-section hidden>
+    <div class="gallery-head">
+      <div>
+        <div class="section-tag" data-i18n="gallery.sectionTag">◈ 02 — Gallery</div>
+        <h2 class="section-title" data-i18n="gallery.title" data-i18n-html>Made with PUDRUS</h2>
+        <p class="section-desc" data-i18n="gallery.desc">Images the community created with these tools.</p>
+      </div>
+      <a class="btn btn-primary" data-gallery-send hidden data-i18n="gallery.send">Send yours</a>
+    </div>
+    <div class="gallery-grid" data-gallery data-limit="4"></div>
+    <a href="gallery/index.html" class="btn btn-outline gallery-more" data-gallery-more="4" hidden data-i18n="gallery.viewAll">See the whole gallery</a>
+  </section>
+
   <!-- ── ABOUT ─────────────────────────────────────────── -->
   <section id="about" class="screen section-about">
     <div class="about-grid">
@@ -226,18 +241,7 @@
 </footer>
 
 <script src="js/i18n.js"></script>
-<script>
-  // Phone menu
-  (function () {
-    const nav = document.getElementById('nav');
-    const btn = nav.querySelector('.nav-toggle');
-    const setOpen = open => { nav.classList.toggle('is-open', open); btn.setAttribute('aria-expanded', open); };
-    btn.addEventListener('click', () => setOpen(!nav.classList.contains('is-open')));
-    nav.querySelectorAll('.nav-links a').forEach(a => a.addEventListener('click', () => setOpen(false)));
-    document.addEventListener('keydown', e => { if (e.key === 'Escape') setOpen(false); });
-    document.addEventListener('click', e => { if (!nav.contains(e.target)) setOpen(false); });
-  })();
-
-</script>
+<script src="js/gallery.js"></script>
+<script src="js/nav.js"></script>
 </body>
 </html>

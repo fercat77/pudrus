@@ -3,7 +3,8 @@
     "tools": "Tools",
     "about": "About",
     "work": "Work",
-    "menu": "Menu"
+    "menu": "Menu",
+    "gallery": "Gallery"
   },
   "hero": {
     "tag": "◈ Creative Visual Suite",
@@ -424,6 +425,21 @@
     "recording": "Recording 5 seconds…",
     "videoSaved": "Video saved",
     "videoUnsupported": "Video export is not supported in this browser",
-    "video": "Save 5s video"
+    "video": "Save 5s video",
+    "sendGallery": "◈ Send to the gallery"
+  },
+  "gallery": {
+    "sectionTag": "◈ Gallery",
+    "pageTag": "◈ Gallery",
+    "title": "Made with <span>PUDRUS</span>",
+    "desc": "Images the community created with these tools.",
+    "send": "◈ Send yours",
+    "viewAll": "See the whole gallery",
+    "empty": "No images yet. Yours could be the first!",
+    "by": "by",
+    "close": "Close",
+    "prev": "Previous",
+    "next": "Next",
+    "note": "Every image is reviewed before it is published."
   }
 }
