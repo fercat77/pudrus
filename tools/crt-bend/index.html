@@ -2,406 +2,119 @@
 <html lang="es">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="theme-color" content="#050508">
   <title>CRT Bend — PUDRUS.XYZ</title>
   <link rel="icon" type="image/svg+xml" href="../../favicon.svg">
   <link rel="stylesheet" href="../../css/style.css">
+  <link rel="stylesheet" href="../../css/tool-shell.css">
 </head>
 <body>
 
 <nav>
   <a href="../../index.html" class="nav-logo">PUDRUS<span>.xyz</span></a>
   <ul class="nav-links">
-    <li><a href="../../index.html#tools">All Tools</a></li>
+    <li><a href="../../index.html#tools" data-i18n="nav.tools">Tools</a></li>
   </ul>
+  <div class="nav-lang">
+    <select id="langSelect" aria-label="Language selector">
+      <option value="es">ES</option>
+      <option value="en">EN</option>
+    </select>
+  </div>
 </nav>
 
-<div class="tool-layout">
-
-  <!-- ── PANEL ── -->
-  <div class="tool-panel">
-    <div class="tool-panel-header">
-      <a href="../../index.html" class="back" data-i18n="nav.tools">← Atrás</a>
-      <h2 data-i18n="crt.name">⏎ CRT Bend</h2>
-      <p data-i18n="tools.crt.desc">Emulate CRT screens and analog signal distortion.</p>
-    </div>
-
-    <div class="tool-panel-body">
-
-      <!-- Export Controls -->
-      <div class="control-group">
-        <span class="control-label" data-i18n="crt.aspectRatio">Aspect Ratio</span>
-        <div class="control-row">
-          <label data-i18n="crt.aspect">Aspect</label>
-          <select id="aspectRatio">
-            <option value="free">Free</option>
-            <option value="1:1">Square (1:1)</option>
-            <option value="4:5">Portrait (4:5)</option>
-            <option value="9:16">Story (9:16)</option>
-          </select>
-        </div>
-        <div class="control-row">
-          <label data-i18n="crt.offsetX">Offset X</label>
-          <input type="range" id="cropOffsetX" min="-50" max="50" value="0"><span class="val" id="cropOffsetXVal">0%</span>
-        </div>
-        <div class="control-row">
-          <label data-i18n="crt.offsetY">Offset Y</label>
-          <input type="range" id="cropOffsetY" min="-50" max="50" value="0"><span class="val" id="cropOffsetYVal">0%</span>
-        </div>
-      </div>
-
-      <hr class="divider">
-
-      <!-- CRT Screen Effects -->
-      <div class="control-group">
-        <span class="control-label" data-i18n="crt.screenFx">CRT Screen FX</span>
-        <div class="control-row">
-          <label data-i18n="crt.curvature">Curvature</label>
-          <input type="range" id="curvature" min="0" max="20" value="5">
-          <span class="val" id="curvatureVal">5</span>
-        </div>
-        <div class="control-row">
-          <label data-i18n="crt.scanlines">Scanlines</label>
-          <input type="range" id="scanlines" min="0" max="1" step="0.05" value="0.2">
-          <span class="val" id="scanlinesVal">0.2</span>
-        </div>
-        <div class="control-row">
-          <label data-i18n="crt.vignette">Vignette</label>
-          <input type="range" id="vignette" min="0" max="1" step="0.05" value="0.3">
-          <span class="val" id="vignetteVal">0.3</span>
-        </div>
-      </div>
-
-      <!-- Signal Distortion -->
-      <div class="control-group">
-        <span class="control-label" data-i18n="crt.distortion">Signal Distortion</span>
-        <div class="control-row">
-          <label data-i18n="crt.noise">Noise</label>
-          <input type="range" id="noise" min="0" max="0.5" step="0.01" value="0.1">
-          <span class="val" id="noiseVal">0.1</span>
-        </div>
-        <div class="control-row">
-          <label data-i18n="crt.lineWarp">Line Warp</label>
-          <input type="range" id="lineWarp" min="0" max="20" value="0">
-          <span class="val" id="lineWarpVal">0</span>
-        </div>
-        <div class="control-row">
-          <label data-i18n="crt.vsync">V-Sync Roll</label>
-          <input type="range" id="vsync" min="0" max="1" step="0.01" value="0">
-          <span class="val" id="vsyncVal">0</span>
-        </div>
-      </div>
-
-      <!-- Color Effects -->
-      <div class="control-group">
-        <span class="control-label" data-i18n="crt.colorFx">Color FX</span>
-        <div class="control-row">
-          <label data-i18n="crt.aberration">Aberration</label>
-          <input type="range" id="aberration" min="0" max="20" value="2">
-          <span class="val" id="aberrationVal">2</span>
-        </div>
-        <div class="control-row">
-          <label data-i18n="crt.bloom">Bloom</label>
-          <input type="range" id="bloom" min="0" max="1" step="0.05" value="0.1">
-          <span class="val" id="bloomVal">0.1</span>
-        </div>
-      </div>
-
-    </div>
-
-    <div class="status-bar" id="statusBar" data-i18n="crt.statusNoImage">◈ No image loaded</div>
-
-    <div class="action-btns">
-      <button class="btn btn-primary" id="applyBtn" style="width:100%" data-i18n="crt.applyBtn">◈ Apply FX</button>
-      <button class="btn btn-outline" id="resetBtn" style="width:100%" data-i18n="crt.resetBtn">Reset</button>
-      <button class="btn btn-outline" id="sendToFlyerBtn" style="width:100%" data-i18n="crt.continueBtn">→ Continue in Flyer Forge</button>
-      <button class="btn btn-outline" id="exportBtn" style="width:100%" data-i18n="crt.exportBtn">Export PNG</button>
-    </div>
-  </div>
-
-  <!-- ── CANVAS ── -->
-  <div class="tool-canvas-area" id="canvasArea">
-    <div class="file-upload" id="dropZone">
-      <span class="icon">📺</span>
-      <span data-i18n="crt.fileDrop">Click or drop an image here</span>
-      <input type="file" id="fileInput" accept="image/*">
-    </div>
-    <canvas id="mainCanvas"></canvas>
-    <div class="canvas-info" id="canvasInfo">No image loaded</div>
-  </div>
-
-</div>
+<main id="tool"></main>
 
 <script src="../../js/i18n.js"></script>
 <script src="../../js/utils.js"></script>
+<script src="../../js/tool-shell.js"></script>
 <script>
-document.addEventListener('DOMContentLoaded', () => {
+(function () {
+  function render({ src, out, W, H, p, rng, k }) {
+    const s = src.data, o = out.data;
+    const curv = p.curvature / 100 * 0.35;
+    const ab = p.aberration / 100 * 0.012;          // relative to half width
+    const warp = p.warp / 100 * 0.01;
+    const roll = p.roll / 100;
+    const scan = p.scanlines / 100 * 0.7;
+    const spacing = H / (120 + p.density * 5);       // scanline period in px
+    const vig = p.vignette / 100;
+    const noise = p.noise / 100 * 90;
+    const glow = p.glow / 100;
+    const mask = p.mask / 100 * 0.35;
+    const maskW = Math.max(1, Math.round(k));        // phosphor stripe width
+    const phase = rng() * Math.PI * 2;
+    const W1 = W - 1, H1 = H - 1;
+    const cornerR = 0.06 * (0.3 + curv * 2);         // rounded screen corners
 
-  // State and Canvas setup
-  let origImageData = null;
-  let img = null;
-  let canvas = document.getElementById('mainCanvas');
-  let ctx = canvas.getContext('2d');
-  let cropRect = null;
-
-  // UI Helpers
-  function setupSlider(id, valId, suffix = '') {
-    const sliderEl = document.getElementById(id);
-    const valEl = document.getElementById(valId);
-    if (sliderEl && valEl) {
-      sliderEl.addEventListener('input', () => {
-        valEl.textContent = sliderEl.value + suffix;
-        scheduleRender();
-      });
-      // Set initial value
-      valEl.textContent = sliderEl.value + suffix;
-    }
-  }
-
-  ['curvature', 'scanlines', 'vignette', 'noise', 'lineWarp', 'vsync', 'aberration', 'bloom'].forEach(id => {
-    setupSlider(id, id + 'Val');
-  });
-  [['cropOffsetX','cropOffsetXVal','%'],['cropOffsetY','cropOffsetYVal','%']].forEach(([id,valId,suf])=>{
-    let el = document.getElementById(id);
-    el.addEventListener('input', ()=> { document.getElementById(valId).textContent = el.value + suf; scheduleRender(); });
-  });
-
-  function status(msg) {
-    document.getElementById('statusBar').textContent = '◈ ' + msg;
-  }
-
-  // File Loading
-  const dropZone = document.querySelector('.tool-canvas-area');
-  const fileInput = document.getElementById('fileInput');
-
-  dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.style.borderColor = 'var(--c1)'; });
-  dropZone.addEventListener('dragleave', () => { dropZone.style.borderColor = ''; });
-  dropZone.addEventListener('drop', e => {
-    e.preventDefault();
-    dropZone.style.borderColor = '';
-    const file = e.dataTransfer.files[0];
-    if (file && file.type.startsWith('image/')) loadFile(file);
-  });
-  fileInput.addEventListener('change', () => {
-    if (fileInput.files[0]) loadFile(fileInput.files[0]);
-  });
-
-  function loadFile(file) {
-    img = new Image();
-    img.onload = () => {
-      const area = document.getElementById('canvasArea');
-      const maxW = area.clientWidth - 40;
-      const maxH = area.clientHeight - 40;
-      const scale = Math.min(maxW / img.width, maxH / img.height, 1);
-      canvas.width = img.width;
-      canvas.height = img.height;
-      canvas.style.width = (img.width * scale) + 'px';
-      canvas.style.height = (img.height * scale) + 'px';
-      ctx.drawImage(img, 0, 0);
-      origImageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-      document.getElementById('canvasInfo').textContent = `${img.width} × ${img.height} px`;
-      document.getElementById('canvasArea').classList.add('has-image');
-      document.getElementById('canvasInfo').style.display = 'block';
-      setupCrop(canvas.width, canvas.height);
-      status('Image loaded. Ready to apply effects.');
-    };
-
-    if (typeof file === 'string') {
-        img.src = file; // It's already a data URL
-    } else {
-      const reader = new FileReader();
-      reader.onload = e => { img.src = e.target.result; };
-      reader.readAsDataURL(file);
-    }
-  }
-  
-  function setupCrop(W, H) {
-      const aspectRatioSelect = document.getElementById('aspectRatio');
-      const offsetXSlider = document.getElementById('cropOffsetX');
-      const offsetYSlider = document.getElementById('cropOffsetY');
-      function updateCropRect() {
-          const ratio = aspectRatioSelect.value;
-          if (ratio === 'free') {
-              cropRect = null;
-              offsetXSlider.disabled = true;
-              offsetYSlider.disabled = true;
-          } else {
-              offsetXSlider.disabled = false;
-              offsetYSlider.disabled = false;
-              const [w, h] = ratio.split(':').map(Number);
-              const targetRatio = w / h;
-              const currentRatio = W / H;
-              let cropW, cropH, cropX, cropY;
-              if (currentRatio > targetRatio) {
-                  cropH = H;
-                  cropW = H * targetRatio;
-                  cropX = (W - cropW) / 2 * (1 + offsetXSlider.value / 50);
-                  cropY = 0;
-              } else {
-                  cropW = W;
-                  cropH = W / targetRatio;
-                  cropX = 0;
-                  cropY = (H - cropH) / 2 * (1 + offsetYSlider.value / 50);
-              }
-              cropRect = { x: cropX, y: cropY, w: cropW, h: cropH };
-          }
-          scheduleRender(); // Redraw with crop overlay
-      }
-      aspectRatioSelect.addEventListener('change', updateCropRect);
-      offsetXSlider.addEventListener('input', updateCropRect);
-      offsetYSlider.addEventListener('input', updateCropRect);
-      updateCropRect();
-  }
-
-
-  // --- Main CRT Effect Logic ---
-  let renderScheduled = false;
-
-  function scheduleRender() {
-    if (!origImageData || renderScheduled) return;
-    renderScheduled = true;
-    requestAnimationFrame(() => {
-      applyCrtEffects();
-      renderScheduled = false;
-    });
-  }
-
-  function applyCrtEffects() {
-    if (!origImageData) {
-      status('Please load an image first.');
-      return;
-    }
-    status('Processing...');
-
-      const W = canvas.width;
-      const H = canvas.height;
-
-      const src = origImageData;
-      const out = ctx.createImageData(W, H);
-      const s = src.data;
-      const d = out.data;
-
-      // Get slider values
-      const curvature = parseFloat(document.getElementById('curvature').value) * 0.05;
-      const scanlines = parseFloat(document.getElementById('scanlines').value);
-      const vignette = 1.0 - parseFloat(document.getElementById('vignette').value);
-      const noise = parseFloat(document.getElementById('noise').value);
-      const lineWarp = parseFloat(document.getElementById('lineWarp').value);
-      const vsync = parseFloat(document.getElementById('vsync').value) * H;
-      const aberration = parseFloat(document.getElementById('aberration').value);
-      const bloom = parseFloat(document.getElementById('bloom').value);
-
-      const halfW = W / 2;
-      const halfH = H / 2;
-
-      for (let y = 0; y < H; y++) {
-        const warpedY = y + Math.sin(y / (H / 10) + performance.now() / 1000) * lineWarp;
-        for (let x = 0; x < W; x++) {
-          // --- Curvature ---
-          const dx = x - halfW;
-          const dy = y - halfH;
-          const dist = Math.sqrt(dx * dx + dy * dy);
-          const lensFactor = 1.0 + (dist / Math.min(halfW, halfH)) * curvature;
-          const u = halfW + dx / lensFactor;
-          const v = halfH + dy / lensFactor;
-
-          // --- V-Sync Roll ---
-          const rolledV = (v + vsync) % H;
-
-          // --- Chromatic Aberration ---
-          const sampleX = Math.round(u);
-          const sampleY = Math.round(rolledV);
-
-          const rX = Math.max(0, Math.min(W - 1, sampleX + aberration));
-          const bX = Math.max(0, Math.min(W - 1, sampleX - aberration));
-
-          const rIdx = (sampleY * W + rX) * 4;
-          const gIdx = (sampleY * W + sampleX) * 4;
-          const bIdx = (sampleY * W + bX) * 4;
-
-          let r = s[rIdx];
-          let g = s[gIdx + 1];
-          let b = s[bIdx + 2];
-
-          // --- Scanlines & Vignette ---
-          const vignetteFactor = (Math.cos(dx / W * Math.PI) * Math.cos(dy / H * Math.PI));
-          const scanlineFactor = y % 2 === 0 ? 1.0 : 1.0 - scanlines;
-          const finalFactor = scanlineFactor * Math.max(vignette, vignetteFactor);
-
-          r *= finalFactor;
-          g *= finalFactor;
-          b *= finalFactor;
-
-          // --- Noise ---
-          const noiseFactor = (Math.random() - 0.5) * noise * 255;
-          r += noiseFactor;
-          g += noiseFactor;
-          b += noiseFactor;
-
-          // --- Bloom (simple brightness boost) ---
-          r += bloom * r;
-          g += bloom * g;
-          b += bloom * b;
-
-          const outIdx = (y * W + x) * 4;
-          d[outIdx] = r;
-          d[outIdx + 1] = g;
-          d[outIdx + 2] = b;
-          d[outIdx + 3] = 255;
+    let i = 0;
+    for (let y = 0; y < H; y++) {
+      const ny = y / H * 2 - 1;
+      const sl = 1 - scan * (0.5 + 0.5 * Math.cos(2 * Math.PI * y / spacing));
+      for (let x = 0; x < W; x++, i += 4) {
+        const nx = x / W * 2 - 1;
+        // Barrel distortion: sample further out towards the edges
+        const r2 = nx * nx + ny * ny;
+        const f = 1 + r2 * curv;
+        let sx = nx * f, sy = ny * f;
+        // Outside the tube or in a rounded corner -> black
+        const ex = Math.abs(sx), ey = Math.abs(sy);
+        if (ex > 1 || ey > 1) { o[i] = o[i + 1] = o[i + 2] = 0; o[i + 3] = 255; continue; }
+        if (ex > 1 - cornerR && ey > 1 - cornerR) {
+          const cx = ex - (1 - cornerR), cy = ey - (1 - cornerR);
+          if (cx * cx + cy * cy > cornerR * cornerR) { o[i] = o[i + 1] = o[i + 2] = 0; o[i + 3] = 255; continue; }
         }
+        sx += Math.sin(sy * 30 + phase) * warp;
+        let v = (sy + 1) / 2 + roll; v -= Math.floor(v);
+        const u = (sx + 1) / 2;
+        const py = Math.min(H1, (v * H) | 0) * W;
+        const off = ab * sx * W;                       // more fringing near the edges
+        let r = s[(py + Math.min(W1, Math.max(0, (u * W + off) | 0))) * 4];
+        let g = s[(py + Math.min(W1, Math.max(0, (u * W) | 0))) * 4 + 1];
+        let b = s[(py + Math.min(W1, Math.max(0, (u * W - off) | 0))) * 4 + 2];
+
+        if (glow) {
+          const l = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+          const boost = 1 + glow * l * l * 0.8;
+          r *= boost; g *= boost; b *= boost;
+        }
+        let m = sl;
+        if (mask) {
+          const col = ((x / maskW) | 0) % 3;
+          r *= col === 0 ? 1 : 1 - mask; g *= col === 1 ? 1 : 1 - mask; b *= col === 2 ? 1 : 1 - mask;
+        }
+        if (vig) m *= 1 - vig * Math.pow(Math.min(1, (sx * sx + sy * sy) / 2), 1.5) * 1.6;
+        if (noise) { const n = (rng() - 0.5) * noise; r += n; g += n; b += n; }
+        o[i] = r * m; o[i + 1] = g * m; o[i + 2] = b * m; o[i + 3] = 255;
       }
-      ctx.putImageData(out, 0, 0);
-      drawCropOverlay(ctx, canvas, cropRect);
-      status('CRT effects applied!');
+    }
   }
 
-  document.getElementById('applyBtn').addEventListener('click', scheduleRender);
-
-  document.getElementById('resetBtn').addEventListener('click', () => {
-    if (origImageData) {
-      ctx.putImageData(origImageData, 0, 0);
-      status('Image reset.');
-    }
+  PudrusTool.create({
+    id: 'crt-bend', i18n: 'crt', icon: '⏎',
+    name: '⏎ CRT Bend', desc: 'Curved CRT screen, scanlines and signal distortion.',
+    controls: [
+      { key: 'curvature', label: 'crt.curvature', fallback: 'Curvature', min: 0, max: 100, value: 35, unit: '%', rand: [10, 70] },
+      { key: 'scanlines', label: 'crt.scanlines', fallback: 'Scanlines', min: 0, max: 100, value: 40, unit: '%', rand: [10, 80] },
+      { key: 'aberration', label: 'crt.aberration', fallback: 'Color fringing', min: 0, max: 100, value: 25, unit: '%', rand: [0, 70] },
+      { key: 'noise', label: 'crt.noise', fallback: 'Noise', min: 0, max: 100, value: 15, unit: '%', rand: [0, 50] },
+      { key: 'vignette', label: 'crt.vignette', fallback: 'Vignette', min: 0, max: 100, value: 40, unit: '%', rand: [10, 70] },
+      { key: 'glow', label: 'crt.glow', fallback: 'Glow', min: 0, max: 100, value: 20, unit: '%', advanced: true, rand: [0, 60] },
+      { key: 'mask', label: 'crt.mask', fallback: 'RGB phosphor mask', min: 0, max: 100, value: 0, unit: '%', advanced: true, rand: [0, 60] },
+      { key: 'density', label: 'crt.density', fallback: 'Scanline density', min: 1, max: 100, value: 40, advanced: true, rand: [10, 80] },
+      { key: 'warp', label: 'crt.warp', fallback: 'Line wobble', min: 0, max: 100, value: 0, unit: '%', advanced: true, rand: [0, 40] },
+      { key: 'roll', label: 'crt.roll', fallback: 'V-sync roll', min: 0, max: 100, value: 0, unit: '%', advanced: true, rand: [0, 30] },
+    ],
+    presets: [
+      { label: 'crt.presetTv', fallback: 'Old TV', values: { curvature: 55, scanlines: 55, aberration: 30, noise: 30, vignette: 60, glow: 25 } },
+      { label: 'crt.presetArcade', fallback: 'Arcade', values: { curvature: 30, scanlines: 65, aberration: 15, noise: 5, vignette: 35, glow: 45, mask: 45 } },
+      { label: 'crt.presetMonitor', fallback: 'Monitor', values: { curvature: 15, scanlines: 25, aberration: 10, noise: 5, vignette: 20, density: 70 } },
+      { label: 'crt.presetBroken', fallback: 'Bad signal', values: { curvature: 45, scanlines: 50, aberration: 70, noise: 45, vignette: 50, warp: 45, roll: 18 } },
+    ],
+    render,
   });
-
-  document.getElementById('sendToFlyerBtn').addEventListener('click', () => {
-      if (!origImageData) { status('Nothing to send'); return; }
-      sendTo('flyer-forge', canvas, cropRect);
-  });
-
-  document.getElementById('exportBtn').addEventListener('click', () => {
-    if (!origImageData) {
-      status('Nothing to export.');
-      return;
-    }
-    
-    let exportCanvas = document.createElement('canvas');
-    let exportCtx = exportCanvas.getContext('2d');
-
-    let sx = cropRect ? cropRect.x : 0;
-    let sy = cropRect ? cropRect.y : 0;
-    let sWidth = cropRect ? cropRect.w : canvas.width;
-    let sHeight = cropRect ? cropRect.h : canvas.height;
-
-    exportCanvas.width = sWidth;
-    exportCanvas.height = sHeight;
-
-    exportCtx.drawImage(canvas, sx, sy, sWidth, sHeight, 0, 0, sWidth, sHeight);
-
-    const link = document.createElement('a');
-    link.download = `pudrus_crt-bend_${Date.now()}.png`;
-    link.href = exportCanvas.toDataURL('image/png');
-    link.click();
-    status('Exported!');
-  });
-
-  // Check for incoming image from workflow
-  const incomingImageDataUrl = receiveImage();
-  if (incomingImageDataUrl) {
-      loadFile(incomingImageDataUrl);
-  }
-
-});
+})();
 </script>
 </body>
 </html>

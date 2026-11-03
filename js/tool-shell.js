@@ -1,30 +1,43 @@
 /*
  * PUDRUS tool shell
  * -----------------
- * Shared UI + plumbing for image tools. A tool only declares its controls,
- * presets and a render() function; the shell handles:
+ * Shared UI + plumbing for every tool. A tool declares its controls, presets and
+ * one render function; the shell handles:
  *   - loading (button, drag & drop, paste, image sent from another tool)
  *   - fast preview at reduced resolution, full resolution only on export
  *   - crop presets with drag-to-move on the image
  *   - hold-to-compare with the original
- *   - presets, randomize, reset (double-click a label resets one control)
+ *   - presets, randomize (seeded, so effects stay put while you tweak), reset
  *   - save (native share sheet on phones, download on desktop)
  *   - "continue in Flyer Forge" handoff
+ *   - generator mode (no input image, output format picker, optional animation)
  *
- * Usage:
- *   PudrusTool.create({
- *     id: 'glitch', i18n: 'glitch', icon: '▓',
- *     name: 'Glitch FX', desc: '...',
- *     controls: [{ key, label, type: 'range'|'toggle', min, max, step, value, unit, advanced, rand: [min,max] }],
- *     presets:  [{ label, values: { key: value } }],
- *     render({ src, out, W, H, p, seed }) { ... write pixels into out (ImageData) ... }
- *   });
+ * PudrusTool.create({
+ *   id, i18n, icon, name, desc,
+ *   controls: [
+ *     { key, label, fallback, type: 'range' (default) | 'toggle' | 'select' | 'color' | 'text',
+ *       min, max, step, value, unit, advanced, rand: [lo, hi] | false, randChance,
+ *       options: [{ value, label, fallback }]   // select
+ *       show: p => boolean                        // conditional visibility
+ *     }
+ *   ],
+ *   presets: [{ label, fallback, values }],
  *
- * render() must be resolution independent (express sizes relative to W/H) so the
- * preview and the exported file look the same.
+ *   // one of:
+ *   render({ src, out, W, H, p, rng, k })        // pixel tools: write into out (ImageData)
+ *   draw({ ctx, src, srcCanvas, W, H, p, rng, k, t }) // canvas tools: draw into ctx
+ *
+ *   generator: { formats: [{ value, label, fallback, w, h }] },  // no input image
+ *   animated: true,                                 // generator only: play/pause + video export
+ *   noFlyer: true,                                  // hide "continue in Flyer Forge"
+ * });
+ *
+ * Renders must be resolution independent: k = max(W, H) / 1000, so "10 * k" means
+ * "10px on a 1000px image". Preview and export then look the same.
  */
 (function () {
-  const PREVIEW_MAX = window.matchMedia('(max-width: 768px)').matches ? 1100 : 1600;
+  const PHONE = window.matchMedia('(max-width: 768px)').matches;
+  const PREVIEW_MAX = PHONE ? 1100 : 1600;
   const FULL_MAX = 4096;       // cap for exports (protects phone memory)
   const HANDOFF_MAX = 2048;    // cap for images passed to another tool (sessionStorage limit)
   const WORKFLOW_KEY = 'pudrus_workflow_image';
@@ -39,7 +52,7 @@
 
   const t = (k, fb, vars) => (window.pudrusT ? window.pudrusT(k, fb, vars) : fb);
 
-  // Small seeded PRNG (mulberry32) so random effects stay stable while you tweak sliders
+  // Small seeded PRNG (mulberry32)
   function rng(seed) {
     let a = seed >>> 0;
     return function () {
@@ -53,6 +66,7 @@
   function el(tag, attrs = {}, children = []) {
     const e = document.createElement(tag);
     for (const [k, v] of Object.entries(attrs)) {
+      if (v === null || v === undefined) continue;
       if (k === 'class') e.className = v;
       else if (k === 'text') e.textContent = v;
       else if (k.startsWith('on')) e.addEventListener(k.slice(2), v);
@@ -69,15 +83,21 @@
 
   function create(cfg) {
     const ns = cfg.i18n || cfg.id;
-    const defaults = Object.fromEntries(cfg.controls.map(c => [c.key, c.value]));
+    const gen = cfg.generator || null;
+    const controls = cfg.controls.slice();
+    if (gen) controls.unshift({ key: 'format', label: 'shell.format', fallback: 'Format', type: 'select', options: gen.formats, value: gen.formats[0].value, rand: false });
+    const defaults = Object.fromEntries(controls.map(c => [c.key, c.value]));
     const state = {
       p: { ...defaults },
       seed: (Math.random() * 1e9) | 0,
-      full: null,        // HTMLCanvasElement with the source at (capped) full resolution
+      full: null,        // canvas with the source at (capped) full resolution
       src: null,         // ImageData of the source at preview resolution
+      srcCanvas: null,   // canvas with the source at preview resolution
       crop: 'free',
       cropCenter: { x: 0.5, y: 0.5 },
       comparing: false,
+      playing: false,
+      time: 0,
     };
 
     // ── DOM ──────────────────────────────────────────────
@@ -94,60 +114,108 @@
       el('span', { class: 'ts-empty-title', 'data-i18n': 'shell.emptyTitle', text: 'Load an image' }),
       el('span', { class: 'ts-empty-hint', 'data-i18n': 'shell.emptyHint', text: 'Tap to choose, drop a file or paste (Ctrl+V)' }),
     ]);
-    const stage = el('section', { class: 'ts-stage' }, [empty, canvas, badge, statusEl]);
+    const stage = el('section', { class: 'ts-stage' + (gen ? ' has-image' : '') }, [gen ? null : empty, canvas, badge, statusEl]);
 
     // Controls
     const inputs = {};
+    let textTimer;
     function controlRow(c) {
-      const label = el('label', { for: 'ctl-' + c.key, 'data-i18n': c.label, text: c.fallback || c.key, title: t('shell.resetHint', 'Double-click to reset') });
-      label.addEventListener('dblclick', () => setValue(c.key, defaults[c.key], true));
-      if (c.type === 'toggle') {
-        const input = el('input', { type: 'checkbox', id: 'ctl-' + c.key, class: 'ts-switch', role: 'switch' });
-        input.checked = !!state.p[c.key];
-        input.addEventListener('change', () => { state.p[c.key] = input.checked; schedule(); });
-        inputs[c.key] = { c, input };
-        return el('div', { class: 'ts-row ts-row-toggle' }, [label, input]);
+      const id = 'ctl-' + c.key;
+      const label = el('label', { for: id, 'data-i18n': c.label, text: c.fallback || c.key });
+      if (c.type !== 'text') {
+        label.title = t('shell.resetHint', 'Double-click to reset');
+        label.addEventListener('dblclick', () => setValue(c.key, defaults[c.key], true));
       }
-      const val = el('output', { class: 'ts-val', for: 'ctl-' + c.key });
-      const input = el('input', { type: 'range', id: 'ctl-' + c.key, min: c.min, max: c.max, step: c.step || 1, value: state.p[c.key] });
-      input.addEventListener('input', () => { state.p[c.key] = parseFloat(input.value); showVal(c.key); schedule(); });
-      inputs[c.key] = { c, input, val };
-      return el('div', { class: 'ts-row' }, [el('div', { class: 'ts-row-head' }, [label, val]), input]);
+      let row, input, val;
+      if (c.type === 'toggle') {
+        input = el('input', { type: 'checkbox', id, class: 'ts-switch', role: 'switch' });
+        input.checked = !!state.p[c.key];
+        input.addEventListener('change', () => changed(c.key, input.checked));
+        row = el('div', { class: 'ts-row ts-row-toggle' }, [label, input]);
+      } else if (c.type === 'select') {
+        input = el('select', { id, class: 'ts-select' }, c.options.map(o =>
+          el('option', { value: o.value, 'data-i18n': o.label, text: o.fallback || o.value })));
+        input.value = state.p[c.key];
+        input.addEventListener('change', () => changed(c.key, input.value));
+        row = el('div', { class: 'ts-row' }, [label, input]);
+      } else if (c.type === 'color') {
+        input = el('input', { type: 'color', id, class: 'ts-color', value: state.p[c.key] });
+        input.addEventListener('input', () => changed(c.key, input.value));
+        row = el('div', { class: 'ts-row ts-row-toggle' }, [label, input]);
+      } else if (c.type === 'text') {
+        input = el('input', { type: 'text', id, class: 'ts-text', value: state.p[c.key], 'data-i18n-placeholder': c.placeholder || null, autocomplete: 'off' });
+        input.addEventListener('input', () => {
+          state.p[c.key] = input.value;
+          clearTimeout(textTimer);
+          textTimer = setTimeout(schedule, 120);
+        });
+        row = el('div', { class: 'ts-row' }, [label, input]);
+      } else {
+        val = el('output', { class: 'ts-val', for: id });
+        input = el('input', { type: 'range', id, min: c.min, max: c.max, step: c.step || 1, value: state.p[c.key] });
+        input.addEventListener('input', () => { changed(c.key, parseFloat(input.value)); showVal(c.key); });
+        row = el('div', { class: 'ts-row' }, [el('div', { class: 'ts-row-head' }, [label, val]), input]);
+      }
+      inputs[c.key] = { c, input, val, row };
+      return row;
+    }
+    function changed(key, v) {
+      state.p[key] = v;
+      if (key === 'format') resizeGenerator();
+      updateVisibility();
+      schedule();
     }
     function showVal(key) {
       const { c, val } = inputs[key];
-      if (val) val.textContent = (c.format ? c.format(state.p[key]) : state.p[key]) + (c.unit || '');
+      if (!val) return;
+      const v = state.p[key];
+      const dec = String(c.step || 1).includes('.') ? String(c.step).split('.')[1].length : 0;
+      val.textContent = (c.format ? c.format(v) : Number(v).toFixed(dec)) + (c.unit || '');
     }
     function setValue(key, v, render) {
       state.p[key] = v;
-      const { input } = inputs[key];
-      if (input.type === 'checkbox') input.checked = !!v; else { input.value = v; showVal(key); }
-      if (render) schedule();
+      const { input, c } = inputs[key];
+      if (c.type === 'toggle') input.checked = !!v;
+      else { input.value = v; showVal(key); }
+      if (key === 'format') resizeGenerator();
+      if (render) { updateVisibility(); schedule(); }
+    }
+    function updateVisibility() {
+      for (const { c, row } of Object.values(inputs)) if (c.show) row.hidden = !c.show(state.p);
     }
 
     const presetBar = cfg.presets && cfg.presets.length
       ? el('div', { class: 'ts-presets' }, cfg.presets.map(pr =>
           el('button', { type: 'button', class: 'ts-chip', 'data-i18n': pr.label, text: pr.fallback || pr.label,
-            onclick: () => { for (const k of Object.keys(defaults)) setValue(k, k in pr.values ? pr.values[k] : defaults[k]); state.seed = (Math.random() * 1e9) | 0; schedule(); } })))
+            onclick: () => {
+              for (const c of controls) {
+                if (c.type === 'text' || c.key === 'format') continue;  // keep the user's text and format
+                setValue(c.key, c.key in pr.values ? pr.values[c.key] : defaults[c.key]);
+              }
+              state.seed = (Math.random() * 1e9) | 0;
+              updateVisibility(); schedule();
+            } })))
       : null;
 
     const basicPanel = el('div', { class: 'ts-panel', 'data-panel': 'basic' },
-      [presetBar, ...cfg.controls.filter(c => !c.advanced).map(controlRow)]);
+      [presetBar, ...controls.filter(c => !c.advanced).map(controlRow)]);
     const advPanel = el('div', { class: 'ts-panel', 'data-panel': 'advanced', hidden: '' },
-      cfg.controls.filter(c => c.advanced).map(controlRow));
+      controls.filter(c => c.advanced).map(controlRow));
     const cropChips = CROPS.map(cr => el('button', { type: 'button', class: 'ts-chip' + (cr.id === 'free' ? ' is-on' : ''), 'data-crop': cr.id, 'data-i18n': cr.label, text: cr.fb,
       onclick: () => setCrop(cr.id) }));
     const cropPanel = el('div', { class: 'ts-panel', 'data-panel': 'crop', hidden: '' }, [
       el('div', { class: 'ts-presets' }, cropChips),
       el('p', { class: 'ts-note', 'data-i18n': 'shell.cropHint', text: 'Drag on the image to move the crop.' }),
     ]);
+    const videoLink = cfg.animated ? el('button', { type: 'button', class: 'ts-link', 'data-i18n': 'shell.video', text: 'Save 5s video', onclick: recordVideo }) : null;
     const extraPanel = el('div', { class: 'ts-more' }, [
       el('button', { type: 'button', class: 'ts-link', 'data-i18n': 'shell.reset', text: 'Reset', onclick: reset }),
+      videoLink,
       cfg.noFlyer ? null : el('button', { type: 'button', class: 'ts-link', 'data-i18n': 'shell.sendFlyer', text: '→ Continue in Flyer Forge', onclick: sendToFlyer }),
     ]);
 
     const tabs = [['basic', 'shell.tabBasic', 'Adjust'], ['advanced', 'shell.tabAdvanced', 'Advanced'], ['crop', 'shell.tabCrop', 'Crop']]
-      .filter(([id]) => id !== 'advanced' || cfg.controls.some(c => c.advanced));
+      .filter(([id]) => (id !== 'advanced' || controls.some(c => c.advanced)) && (id !== 'crop' || !gen));
     const tabBar = el('div', { class: 'ts-tabs', role: 'tablist' }, tabs.map(([id, key, fb], i) =>
       el('button', { type: 'button', role: 'tab', class: 'ts-tab' + (i === 0 ? ' is-on' : ''), 'data-tab': id, 'data-i18n': key, text: fb,
         onclick: () => {
@@ -159,11 +227,14 @@
       el('span', { class: 'ts-btn-icon', 'aria-hidden': 'true', text: icon }),
       el('span', { class: 'ts-btn-label', 'data-i18n': key, text: fb }),
     ]);
-    const loadBtn = btn('⤒', 'shell.load', 'Load');
+    const loadBtn = gen ? null : btn('⤒', 'shell.load', 'Load');
     const randBtn = btn('⚄', 'shell.random', 'Random');
-    const cmpBtn = btn('◐', 'shell.compare', 'Compare', { attrs: { 'data-i18n-title': 'shell.compareHint' } });
+    const cmpBtn = gen ? null : btn('◐', 'shell.compare', 'Compare', { attrs: { 'data-i18n-title': 'shell.compareHint' } });
+    const playBtn = cfg.animated ? btn('▶', 'shell.play', 'Play') : null;
+    const seedBtn = gen && !cfg.animated ? btn('✦', 'shell.newSeed', 'New') : null;
     const saveBtn = btn('⤓', 'shell.save', 'Save', { primary: true });
-    const bar = el('div', { class: 'ts-bar' }, [loadBtn, randBtn, cmpBtn, saveBtn]);
+    const barBtns = [loadBtn, randBtn, cmpBtn, playBtn, seedBtn, saveBtn].filter(Boolean);
+    const bar = el('div', { class: 'ts-bar', style: `grid-template-columns: repeat(${barBtns.length}, 1fr)` }, barBtns);
 
     const side = el('aside', { class: 'ts-side' }, [
       el('header', { class: 'ts-head' }, [
@@ -178,23 +249,26 @@
 
     root.className = 'ts';
     root.append(stage, side, fileInput);
-    Object.keys(inputs).forEach(k => inputs[k].val && showVal(k));
-    setDisabled(true);
+    Object.keys(inputs).forEach(showVal);
+    updateVisibility();
 
     // ── Loading ──────────────────────────────────────────
-    loadBtn.addEventListener('click', () => fileInput.click());
+    if (loadBtn) loadBtn.addEventListener('click', () => fileInput.click());
     fileInput.addEventListener('change', () => { if (fileInput.files[0]) load(fileInput.files[0]); fileInput.value = ''; });
-    stage.addEventListener('dragover', e => { e.preventDefault(); stage.classList.add('is-drag'); });
-    stage.addEventListener('dragleave', () => stage.classList.remove('is-drag'));
-    stage.addEventListener('drop', e => {
-      e.preventDefault(); stage.classList.remove('is-drag');
-      const f = [...e.dataTransfer.files].find(f => f.type.startsWith('image/'));
-      if (f) load(f);
-    });
-    window.addEventListener('paste', e => {
-      const item = [...(e.clipboardData || {}).items || []].find(i => i.type.startsWith('image/'));
-      if (item) load(item.getAsFile());
-    });
+    if (!gen) {
+      stage.addEventListener('dragover', e => { e.preventDefault(); stage.classList.add('is-drag'); });
+      stage.addEventListener('dragleave', () => stage.classList.remove('is-drag'));
+      stage.addEventListener('drop', e => {
+        e.preventDefault(); stage.classList.remove('is-drag');
+        const f = [...e.dataTransfer.files].find(f => f.type.startsWith('image/'));
+        if (f) load(f);
+      });
+      window.addEventListener('paste', e => {
+        if (e.target && e.target.matches && e.target.matches('input[type=text]')) return;
+        const item = [...((e.clipboardData || {}).items || [])].find(i => i.type.startsWith('image/'));
+        if (item) load(item.getAsFile());
+      });
+    }
 
     function load(source) {
       status(t('shell.loading', 'Loading…'));
@@ -207,11 +281,8 @@
         full.width = fw; full.height = fh;
         full.getContext('2d').drawImage(img, 0, 0, fw, fh);
         state.full = full;
-
         const [pw, ph] = fitSize(fw, fh, PREVIEW_MAX);
-        canvas.width = pw; canvas.height = ph;
-        ctx.drawImage(full, 0, 0, pw, ph);
-        state.src = ctx.getImageData(0, 0, pw, ph);
+        setPreviewSource(pw, ph, c => c.drawImage(full, 0, 0, pw, ph));
         stage.classList.add('has-image');
         setDisabled(false);
         render();
@@ -221,8 +292,29 @@
       img.src = url;
     }
 
+    function setPreviewSource(w, h, paint) {
+      const sc = document.createElement('canvas');
+      sc.width = w; sc.height = h;
+      const sctx = sc.getContext('2d', { willReadFrequently: true });
+      paint(sctx);
+      state.srcCanvas = sc;
+      state.src = sctx.getImageData(0, 0, w, h);
+      canvas.width = w; canvas.height = h;
+    }
+
+    // Generator: blank source of the chosen format
+    function genSize() {
+      const f = gen.formats.find(f => f.value === state.p.format) || gen.formats[0];
+      return [f.w, f.h];
+    }
+    function resizeGenerator() {
+      if (!gen) return;
+      const [w, h] = fitSize(...genSize(), PREVIEW_MAX);
+      setPreviewSource(w, h, () => {});
+    }
+
     function setDisabled(d) {
-      [randBtn, cmpBtn, saveBtn].forEach(b => { b.disabled = d; });
+      [randBtn, cmpBtn, saveBtn].forEach(b => { if (b) b.disabled = d; });
     }
 
     // ── Rendering ────────────────────────────────────────
@@ -233,17 +325,28 @@
       requestAnimationFrame(() => { queued = false; render(); });
     }
 
-    function runRender(srcData) {
+    // Renders the tool at the size of srcData into a new canvas
+    function runRender(srcData, srcCanvas) {
       const W = srcData.width, H = srcData.height;
-      const out = new ImageData(W, H);
-      cfg.render({ src: srcData, out, W, H, p: state.p, seed: state.seed, rng: rng(state.seed) });
+      const args = { src: srcData, srcCanvas, W, H, p: state.p, seed: state.seed, rng: rng(state.seed), k: Math.max(W, H) / 1000, t: state.time };
+      const out = document.createElement('canvas');
+      out.width = W; out.height = H;
+      const octx = out.getContext('2d');
+      if (cfg.draw) {
+        cfg.draw({ ...args, ctx: octx });
+      } else {
+        const data = new ImageData(W, H);
+        cfg.render({ ...args, out: data });
+        octx.putImageData(data, 0, 0);
+      }
       return out;
     }
 
     function render() {
       if (!state.src) return;
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
       if (state.comparing) ctx.putImageData(state.src, 0, 0);
-      else ctx.putImageData(runRender(state.src), 0, 0);
+      else ctx.drawImage(runRender(state.src, state.srcCanvas), 0, 0);
       drawCropOverlay(ctx, canvas, cropRect(canvas.width, canvas.height));
     }
 
@@ -283,39 +386,95 @@
     ['pointerup', 'pointercancel'].forEach(ev => canvas.addEventListener(ev, () => { drag = null; }));
 
     // ── Compare (hold) ───────────────────────────────────
-    const startCmp = e => { if (!state.src) return; e.preventDefault(); state.comparing = true; stage.classList.add('is-comparing'); render(); };
-    const endCmp = () => { if (!state.comparing) return; state.comparing = false; stage.classList.remove('is-comparing'); render(); };
-    cmpBtn.addEventListener('pointerdown', startCmp);
-    ['pointerup', 'pointerleave', 'pointercancel'].forEach(ev => cmpBtn.addEventListener(ev, endCmp));
-    cmpBtn.addEventListener('contextmenu', e => e.preventDefault());
-    cmpBtn.addEventListener('keydown', e => { if (e.key === ' ' || e.key === 'Enter') startCmp(e); });
-    cmpBtn.addEventListener('keyup', endCmp);
+    if (cmpBtn) {
+      const startCmp = e => { if (!state.src) return; e.preventDefault(); state.comparing = true; stage.classList.add('is-comparing'); render(); };
+      const endCmp = () => { if (!state.comparing) return; state.comparing = false; stage.classList.remove('is-comparing'); render(); };
+      cmpBtn.addEventListener('pointerdown', startCmp);
+      ['pointerup', 'pointerleave', 'pointercancel'].forEach(ev => cmpBtn.addEventListener(ev, endCmp));
+      cmpBtn.addEventListener('contextmenu', e => e.preventDefault());
+      cmpBtn.addEventListener('keydown', e => { if (e.key === ' ' || e.key === 'Enter') startCmp(e); });
+      cmpBtn.addEventListener('keyup', endCmp);
+    }
+
+    // ── Animation (generators) ───────────────────────────
+    let lastFrame = 0;
+    function tick(now) {
+      if (!state.playing) return;
+      if (lastFrame) state.time += Math.min(0.1, (now - lastFrame) / 1000);
+      lastFrame = now;
+      render();
+      requestAnimationFrame(tick);
+    }
+    function setPlaying(on) {
+      state.playing = on;
+      if (!playBtn) return;
+      playBtn.querySelector('.ts-btn-icon').textContent = on ? '❚❚' : '▶';
+      const lbl = playBtn.querySelector('.ts-btn-label');
+      lbl.setAttribute('data-i18n', on ? 'shell.pause' : 'shell.play');
+      lbl.textContent = on ? t('shell.pause', 'Pause') : t('shell.play', 'Play');
+      if (on) { lastFrame = 0; requestAnimationFrame(tick); }
+    }
+    if (playBtn) playBtn.addEventListener('click', () => setPlaying(!state.playing));
+    if (seedBtn) seedBtn.addEventListener('click', () => { state.seed = (Math.random() * 1e9) | 0; schedule(); });
+
+    function recordVideo() {
+      if (!canvas.captureStream || typeof MediaRecorder === 'undefined') {
+        status(t('shell.videoUnsupported', 'Video export is not supported in this browser'));
+        return;
+      }
+      const mime = ['video/webm;codecs=vp9', 'video/webm;codecs=vp8', 'video/webm', 'video/mp4']
+        .find(m => MediaRecorder.isTypeSupported(m)) || '';
+      const rec = new MediaRecorder(canvas.captureStream(30), mime ? { mimeType: mime, videoBitsPerSecond: 8e6 } : undefined);
+      const chunks = [];
+      const wasPlaying = state.playing;
+      rec.ondataavailable = e => { if (e.data.size) chunks.push(e.data); };
+      rec.onstop = () => {
+        if (!wasPlaying) setPlaying(false);
+        const type = rec.mimeType || 'video/webm';
+        const blob = new Blob(chunks, { type });
+        deliver(blob, `pudrus_${cfg.id}_${Date.now()}.${type.includes('mp4') ? 'mp4' : 'webm'}`, t('shell.videoSaved', 'Video saved'));
+      };
+      status(t('shell.recording', 'Recording 5 seconds…'));
+      if (!state.playing) setPlaying(true);
+      rec.start();
+      setTimeout(() => rec.stop(), 5000);
+    }
 
     // ── Random / reset ───────────────────────────────────
     randBtn.addEventListener('click', () => {
-      for (const c of cfg.controls) {
-        if (c.rand === false) continue;
+      for (const c of controls) {
+        if (c.rand === false || c.type === 'text' || (c.type === 'color' && !c.rand)) continue;
         if (c.type === 'toggle') { setValue(c.key, Math.random() < (c.randChance || 0.3)); continue; }
+        if (c.type === 'select') { const o = c.options[Math.floor(Math.random() * c.options.length)]; setValue(c.key, o.value); continue; }
+        if (c.type === 'color') { setValue(c.key, '#' + ((Math.random() * 0xffffff) | 0).toString(16).padStart(6, '0')); continue; }
         const [lo, hi] = c.rand || [c.min, c.max];
         const step = c.step || 1;
-        setValue(c.key, Math.round((lo + Math.random() * (hi - lo)) / step) * step);
+        setValue(c.key, +(Math.round((lo + Math.random() * (hi - lo)) / step) * step).toFixed(6));
       }
       state.seed = (Math.random() * 1e9) | 0;
+      updateVisibility();
       schedule();
     });
     function reset() {
-      for (const k of Object.keys(defaults)) setValue(k, defaults[k]);
-      setCrop('free');
+      for (const c of controls) if (c.type !== 'text') setValue(c.key, defaults[c.key]);
+      updateVisibility();
+      if (gen) { resizeGenerator(); render(); } else setCrop('free');
     }
 
     // ── Export ───────────────────────────────────────────
     function renderFull() {
-      const { full } = state;
-      const data = full.getContext('2d').getImageData(0, 0, full.width, full.height);
-      const out = document.createElement('canvas');
-      out.width = full.width; out.height = full.height;
-      out.getContext('2d').putImageData(runRender(data), 0, 0);
-      const cr = cropRect(full.width, full.height);
+      let data, srcCanvas;
+      if (gen) {
+        const [w, h] = fitSize(...genSize(), FULL_MAX);
+        srcCanvas = document.createElement('canvas');
+        srcCanvas.width = w; srcCanvas.height = h;
+        data = new ImageData(w, h);
+      } else {
+        srcCanvas = state.full;
+        data = state.full.getContext('2d').getImageData(0, 0, state.full.width, state.full.height);
+      }
+      const out = runRender(data, srcCanvas);
+      const cr = cropRect(out.width, out.height);
       if (!cr) return out;
       const c = document.createElement('canvas');
       c.width = cr.w; c.height = cr.h;
@@ -323,33 +482,38 @@
       return c;
     }
 
+    async function deliver(blob, name, okMsg) {
+      const file = new File([blob], name, { type: blob.type });
+      const touch = window.matchMedia('(pointer: coarse)').matches;
+      if (touch && navigator.canShare && navigator.canShare({ files: [file] })) {
+        try { await navigator.share({ files: [file] }); status(okMsg); return; }
+        catch (err) { if (err.name === 'AbortError') { status(''); return; } }
+      }
+      const a = document.createElement('a');
+      a.download = name;
+      a.href = URL.createObjectURL(blob);
+      a.click();
+      setTimeout(() => URL.revokeObjectURL(a.href), 10000);
+      status(okMsg);
+    }
+
     saveBtn.addEventListener('click', () => {
-      if (!state.full) return;
+      if (!state.src) return;
       status(t('shell.exporting', 'Rendering full resolution…'));
       setDisabled(true);
       setTimeout(() => {   // let the status paint before the heavy work
-        const out = renderFull();
-        out.toBlob(async blob => {
+        let out;
+        try { out = renderFull(); }
+        catch (err) { console.error(err); setDisabled(false); status(t('shell.exportError', 'Could not render, try a smaller image')); return; }
+        out.toBlob(blob => {
           setDisabled(false);
-          const name = `pudrus_${cfg.id}_${Date.now()}.png`;
-          const file = new File([blob], name, { type: 'image/png' });
-          const touch = window.matchMedia('(pointer: coarse)').matches;
-          if (touch && navigator.canShare && navigator.canShare({ files: [file] })) {
-            try { await navigator.share({ files: [file] }); status(t('shell.saved', 'Saved')); return; }
-            catch (err) { if (err.name === 'AbortError') { status(''); return; } }
-          }
-          const a = document.createElement('a');
-          a.download = name;
-          a.href = URL.createObjectURL(blob);
-          a.click();
-          setTimeout(() => URL.revokeObjectURL(a.href), 10000);
-          status(t('shell.savedSize', 'Saved {w} × {h}px', { w: out.width, h: out.height }));
+          deliver(blob, `pudrus_${cfg.id}_${Date.now()}.png`, t('shell.savedSize', 'Saved {w} × {h}px', { w: out.width, h: out.height }));
         }, 'image/png');
       }, 30);
     });
 
     function sendToFlyer() {
-      if (!state.full) { status(t('shell.needImage', 'Load an image first')); return; }
+      if (!state.src) { status(t('shell.needImage', 'Load an image first')); return; }
       const out = renderFull();
       const [w, h] = fitSize(out.width, out.height, HANDOFF_MAX);
       const c = document.createElement('canvas');
@@ -368,16 +532,26 @@
       clearTimeout(statusTimer);
       if (msg) statusTimer = setTimeout(() => statusEl.classList.remove('is-on'), 3500);
     }
-    // Labels created from JS need translating again after the language loads
     document.addEventListener('pudrus:i18n', () => {
-      document.querySelectorAll('.ts-row label').forEach(l => l.title = t('shell.resetHint', 'Double-click to reset'));
+      document.querySelectorAll('.ts-row label[title]').forEach(l => { l.title = t('shell.resetHint', 'Double-click to reset'); });
+      if (playBtn) setPlaying(state.playing);
+      if (cfg.onLanguage) { cfg.onLanguage(); schedule(); }
     });
+    // Web fonts used by a tool may load after the first render
+    if (document.fonts && document.fonts.ready) document.fonts.ready.then(schedule);
 
-    // Image sent from another tool
-    const incoming = typeof receiveImage === 'function' ? receiveImage() : null;
-    if (incoming) load(incoming);
+    if (gen) {
+      resizeGenerator();
+      setDisabled(false);
+      render();
+      if (cfg.autoplay) setPlaying(true);
+    } else {
+      setDisabled(true);
+      const incoming = typeof receiveImage === 'function' ? receiveImage() : null;
+      if (incoming) load(incoming);
+    }
 
-    return { state, render: schedule };
+    return { state, render: schedule, setValue };
   }
 
   window.PudrusTool = { create };

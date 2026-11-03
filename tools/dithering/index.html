@@ -2,454 +2,157 @@
 <html lang="es">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="theme-color" content="#050508">
   <title>Dithering — PUDRUS.XYZ</title>
   <link rel="icon" type="image/svg+xml" href="../../favicon.svg">
   <link rel="stylesheet" href="../../css/style.css">
+  <link rel="stylesheet" href="../../css/tool-shell.css">
 </head>
 <body>
 
 <nav>
   <a href="../../index.html" class="nav-logo">PUDRUS<span>.xyz</span></a>
   <ul class="nav-links">
-    <li><a href="../../index.html#tools">All Tools</a></li>
+    <li><a href="../../index.html#tools" data-i18n="nav.tools">Tools</a></li>
   </ul>
+  <div class="nav-lang">
+    <select id="langSelect" aria-label="Language selector">
+      <option value="es">ES</option>
+      <option value="en">EN</option>
+    </select>
+  </div>
 </nav>
 
-<div class="tool-layout">
-
-  <!-- ── PANEL ── -->
-  <div class="tool-panel">
-    <div class="tool-panel-header">
-      <a href="../../index.html" class="back" data-i18n="nav.tools">← Back</a>
-      <h2 data-i18n="dithering.name">⠿ Dithering</h2>
-      <p data-i18n="dithering.desc">Classic dithering algorithms with full color palette control.</p>
-    </div>
-
-    <div class="tool-panel-body">
-
-      <!-- Aspect Ratio -->
-      <div class="control-group">
-        <span class="control-label" data-i18n="dithering.aspectRatio">Aspect Ratio</span>
-        <div class="control-row">
-          <label data-i18n="dithering.aspect">Aspect</label>
-          <select id="aspectRatio">
-            <option value="free" data-i18n="dithering.aspectFree">Free</option>
-            <option value="1:1" data-i18n="dithering.aspectSquare">Square (1:1)</option>
-            <option value="4:5" data-i18n="dithering.aspectPortrait">Portrait (4:5)</option>
-            <option value="9:16" data-i18n="dithering.aspectStory">Story (9:16)</option>
-          </select>
-        </div>
-        <div class="control-row">
-          <label data-i18n="dithering.offsetX">Offset X</label>
-          <input type="range" id="cropOffsetX" min="-50" max="50" value="0"><span class="val" id="cropOffsetXVal">0%</span>
-        </div>
-        <div class="control-row">
-          <label data-i18n="dithering.offsetY">Offset Y</label>
-          <input type="range" id="cropOffsetY" min="-50" max="50" value="0"><span class="val" id="cropOffsetYVal">0%</span>
-        </div>
-      </div>
-
-      <hr class="divider">
-
-      <!-- Algorithm & Mode -->
-      <div class="control-group">
-        <span class="control-label" data-i18n="dithering.algorithm">Algorithm</span>
-        <div class="control-row">
-          <select id="algorithm">
-            <option value="floyd">Floyd-Steinberg</option>
-            <option value="atkinson">Atkinson</option>
-            <option value="ordered">Ordered (Bayer)</option>
-            <option value="random">Random</option>
-            <option value="halftone">Halftone</option>
-          </select>
-        </div>
-        <div class="control-row">
-          <label data-i18n="dithering.colorMode">Color Mode</label>
-          <select id="colorMode">
-            <option value="bw">B&W</option>
-            <option value="2bit">2-Bit</option>
-            <option value="custom">Custom</option>
-          </select>
-        </div>
-        <div id="customPalette" style="display:none; margin-top: 10px;">
-          <div class="control-row">
-            <label>C1</label>
-            <input type="color" id="col1" value="#59ff00">
-            <label>C2</label>
-            <input type="color" id="col2" value="#00d4ff">
-          </div>
-          <div class="control-row">
-            <label>C3</label>
-            <input type="color" id="col3" value="#ff4ecc">
-            <label>C4</label>
-            <input type="color" id="col4" value="#ffffff">
-          </div>
-        </div>
-      </div>
-
-      <hr class="divider">
-
-      <!-- Parameters -->
-      <div class="control-group">
-        <span class="control-label" data-i18n="dithering.parameters">Parameters</span>
-        <div class="control-row">
-          <label data-i18n="dithering.scale">Scale</label>
-          <input type="range" id="scale" min="1" max="8" value="1">
-          <span class="val" id="scaleVal">1x</span>
-        </div>
-        <div class="control-row">
-          <label data-i18n="dithering.threshold">Threshold</label>
-          <input type="range" id="threshold" min="0" max="255" value="128">
-          <span class="val" id="thresholdVal">128</span>
-        </div>
-        <div class="control-row">
-          <label data-i18n="dithering.contrast">Contrast</label>
-          <input type="range" id="contrast" min="-100" max="100" value="0">
-          <span class="val" id="contrastVal">0</span>
-        </div>
-      </div>
-
-      <!-- Options -->
-      <div class="control-group">
-        <span class="control-label" data-i18n="dithering.options">Options</span>
-        <div class="toggle-row">
-          <label data-i18n="dithering.invert">Invert</label>
-          <div class="toggle" id="invertToggle"></div>
-        </div>
-        <div class="toggle-row">
-          <label data-i18n="dithering.grayscaleFirst">Grayscale First</label>
-          <div class="toggle" id="grayToggle"></div>
-        </div>
-      </div>
-
-    </div>
-
-    <div class="status-bar" id="statusBar" data-i18n="dithering.statusNoImage">◈ No image loaded</div>
-
-    <div class="action-btns">
-      <button class="btn btn-primary" id="applyBtn" style="width:100%" data-i18n="dithering.applyBtn">◈ Apply Dither</button>
-      <button class="btn btn-outline" id="randomBtn" style="width:100%" data-i18n="dithering.randomBtn">◈ Random Dither</button>
-      <button class="btn btn-outline" id="resetBtn" style="width:100%" data-i18n="dithering.resetBtn">Reset</button>
-      <button class="btn btn-outline" id="sendToFlyerBtn" style="width:100%" data-i18n="dithering.continueBtn">→ Continue in Flyer Forge</button>
-      <button class="btn btn-outline" id="exportBtn" style="width:100%" data-i18n="dithering.exportBtn">Export PNG</button>
-    </div>
-  </div>
-
-  <!-- ── CANVAS ── -->
-  <div class="tool-canvas-area" id="canvasArea">
-    <div class="file-upload" id="dropZone">
-      <span class="icon">⠿</span>
-      <span data-i18n="dithering.fileDrop">Click or drop an image here</span>
-      <input type="file" id="fileInput" accept="image/*">
-    </div>
-    <canvas id="mainCanvas"></canvas>
-    <div class="canvas-info" id="canvasInfo">No image loaded</div>
-  </div>
-
-</div>
+<main id="tool"></main>
 
 <script src="../../js/i18n.js"></script>
 <script src="../../js/utils.js"></script>
+<script src="../../js/tool-shell.js"></script>
 <script>
-// Este listener se asegura de que todo el código se ejecute después de que que la página haya cargado.
-document.addEventListener('DOMContentLoaded', () => {
-let origImageData=null, img=null, canvas=document.getElementById('mainCanvas'), ctx=canvas.getContext('2d');
-let isInvert=false, doGray=true;
-let cropRect = null;
+(function () {
+  const hex = h => [parseInt(h.slice(1, 3), 16), parseInt(h.slice(3, 5), 16), parseInt(h.slice(5, 7), 16)];
+  const PALETTES = {
+    bw:      ['#000000', '#ffffff'],
+    gray:    ['#000000', '#555555', '#aaaaaa', '#ffffff'],
+    gameboy: ['#0f380f', '#306230', '#8bac0f', '#9bbc0f'],
+    cga:     ['#000000', '#55ffff', '#ff55ff', '#ffffff'],
+    pudrus:  ['#050508', '#00662c', '#66ff33', '#d0efff'],
+    sepia:   ['#2b1d0e', '#6b4a2b', '#b08a5a', '#f1e3c8'],
+  };
+  // 8x8 Bayer matrix, normalised to -0.5..0.5
+  const BAYER = (() => {
+    const m = [[0, 2], [3, 1]];
+    let b = m;
+    for (let n = 2; n < 8; n *= 2) {
+      const nb = [];
+      for (let y = 0; y < n * 2; y++) { nb.push([]); for (let x = 0; x < n * 2; x++) nb[y].push(4 * b[y % n][x % n] + m[(y / n) | 0][(x / n) | 0]); }
+      b = nb;
+    }
+    return b.map(r => r.map(v => v / 64 - 0.5));
+  })();
 
-// Sliders
-[['scale','scaleVal','x'],['threshold','thresholdVal',''],['contrast','contrastVal','']].forEach(([id,vid,suf])=>{
-  document.getElementById(id).addEventListener('input',()=>{
-    document.getElementById(vid).textContent=document.getElementById(id).value+suf;
-  });
-});
+  function draw({ ctx, srcCanvas, W, H, p, rng, k }) {
+    // Work at "pixel size" resolution, then scale up with hard edges
+    const ps = Math.max(1, Math.round(p.pixel * k));
+    const w = Math.max(1, Math.round(W / ps)), h = Math.max(1, Math.round(H / ps));
+    const small = document.createElement('canvas');
+    small.width = w; small.height = h;
+    const sctx = small.getContext('2d', { willReadFrequently: true });
+    sctx.imageSmoothingQuality = 'high';
+    sctx.drawImage(srcCanvas, 0, 0, w, h);
+    const img = sctx.getImageData(0, 0, w, h);
+    const d = img.data;
 
-function status(m){document.getElementById('statusBar').textContent='◈ '+m;}
+    const pal = (p.palette === 'custom' ? [p.c1, p.c2, p.c3, p.c4] : PALETTES[p.palette]).map(hex);
+    const cf = (259 * (p.contrast + 255)) / (255 * (259 - p.contrast));
+    const bri = p.brightness * 1.28;
 
-function toggle(id,cb){let el=document.getElementById(id);el.addEventListener('click',()=>{el.classList.toggle('on');cb(el.classList.contains('on'));});}
-toggle('invertToggle',v=>isInvert=v);
-toggle('grayToggle',v=>doGray=v);
+    // Float buffer so diffused error is not clipped early
+    const buf = new Float32Array(w * h * 3);
+    for (let i = 0, j = 0; i < d.length; i += 4, j += 3) {
+      let r = d[i], g = d[i + 1], b = d[i + 2];
+      if (p.gray) r = g = b = 0.299 * r + 0.587 * g + 0.114 * b;
+      r = cf * (r - 128) + 128 + bri; g = cf * (g - 128) + 128 + bri; b = cf * (b - 128) + 128 + bri;
+      if (p.invert) { r = 255 - r; g = 255 - g; b = 255 - b; }
+      buf[j] = r; buf[j + 1] = g; buf[j + 2] = b;
+    }
 
-// Real-time preview
-['scale','threshold','contrast','algorithm','colorMode'].forEach(id=>{
-  document.getElementById(id).addEventListener('input',()=>{
-    if(origImageData) applyDither();
-  });
-});
+    const nearest = (r, g, b) => {
+      let best = 0, bd = Infinity;
+      for (let c = 0; c < pal.length; c++) {
+        const dr = r - pal[c][0], dg = g - pal[c][1], db = b - pal[c][2];
+        const dist = dr * dr * 0.3 + dg * dg * 0.59 + db * db * 0.11;
+        if (dist < bd) { bd = dist; best = c; }
+      }
+      return pal[best];
+    };
+    const spread = p.algorithm === 'atkinson'
+      ? [[1, 0, 1 / 8], [2, 0, 1 / 8], [-1, 1, 1 / 8], [0, 1, 1 / 8], [1, 1, 1 / 8], [0, 2, 1 / 8]]
+      : [[1, 0, 7 / 16], [-1, 1, 3 / 16], [0, 1, 5 / 16], [1, 1, 1 / 16]];
+    const amp = 255 / Math.max(1, pal.length - 1);
 
-document.getElementById('colorMode').addEventListener('change',function(){
-  document.getElementById('customPalette').style.display=this.value==='custom'?'block':'none';
-});
-
-// File load
-let dropZone=document.querySelector('.tool-canvas-area'),fileInput=document.getElementById('fileInput');
-dropZone.addEventListener('dragover',e=>{e.preventDefault(); dropZone.style.borderColor='var(--c1)';});
-dropZone.addEventListener('dragleave',e=>{e.preventDefault(); dropZone.style.borderColor='';});
-dropZone.addEventListener('drop',e=>{e.preventDefault(); dropZone.style.borderColor=''; let f=e.dataTransfer.files[0];if(f)loadFile(f);});
-fileInput.addEventListener('change',()=>{if(fileInput.files[0])loadFile(fileInput.files[0]);});
-
-async function loadFile(file){
-  try {
-    const imageData = await loadImageFile(file, canvas, ctx, 
-      document.getElementById('canvasArea'), 
-      document.getElementById('canvasInfo'),
-      document.querySelector('.file-upload')
-    );
-    
-    img = imageData.img;
-    origImageData = imageData.data;
-    setupCrop(canvas.width, canvas.height);
-    status('Image loaded');
-  } catch (error) {
-    status('Error loading image');
-    console.error(error);
+    for (let y = 0; y < h; y++) {
+      for (let x = 0; x < w; x++) {
+        const j = (y * w + x) * 3, i = (y * w + x) * 4;
+        let r = buf[j], g = buf[j + 1], b = buf[j + 2];
+        if (p.algorithm === 'bayer') { const o = BAYER[y & 7][x & 7] * amp; r += o; g += o; b += o; }
+        else if (p.algorithm === 'noise') { const o = (rng() - 0.5) * amp * 1.2; r += o; g += o; b += o; }
+        const c = nearest(r, g, b);
+        d[i] = c[0]; d[i + 1] = c[1]; d[i + 2] = c[2]; d[i + 3] = 255;
+        if (p.algorithm === 'floyd' || p.algorithm === 'atkinson') {
+          const er = r - c[0], eg = g - c[1], eb = b - c[2];
+          for (const [dx, dy, wgt] of spread) {
+            const nx = x + dx, ny = y + dy;
+            if (nx < 0 || nx >= w || ny >= h) continue;
+            const n = (ny * w + nx) * 3;
+            buf[n] += er * wgt; buf[n + 1] += eg * wgt; buf[n + 2] += eb * wgt;
+          }
+        }
+      }
+    }
+    sctx.putImageData(img, 0, 0);
+    ctx.imageSmoothingEnabled = false;
+    ctx.drawImage(small, 0, 0, W, H);
   }
-}
-function setupCrop(W, H) {
-    const aspectRatioSelect = document.getElementById('aspectRatio');
-    const offsetXSlider = document.getElementById('cropOffsetX');
-    const offsetYSlider = document.getElementById('cropOffsetY');
 
-    function updateCropRect() {
-        const ratio = aspectRatioSelect.value;
-        if (ratio === 'free') {
-            cropRect = null;
-            offsetXSlider.disabled = true;
-            offsetYSlider.disabled = true;
-        } else {
-            offsetXSlider.disabled = false;
-            offsetYSlider.disabled = false;
-            const [w, h] = ratio.split(':').map(Number);
-            const targetRatio = w / h;
-            const currentRatio = W / H;
-            let cropW, cropH, cropX, cropY;
-            if (currentRatio > targetRatio) {
-                cropH = H;
-                cropW = H * targetRatio;
-                cropX = (W - cropW) / 2 * (1 + offsetXSlider.value / 50);
-                cropY = 0;
-            } else {
-                cropW = W;
-                cropH = W / targetRatio;
-                cropX = 0;
-                cropY = (H - cropH) / 2 * (1 + offsetYSlider.value / 50);
-            }
-            cropRect = { x: cropX, y: cropY, w: cropW, h: cropH };
-        }
-        // Redraw original image with new crop overlay
-        if (origImageData) {
-            ctx.putImageData(origImageData, 0, 0);
-            drawCropOverlay(ctx, canvas, cropRect);
-        }
-    }
-    
-    aspectRatioSelect.addEventListener('change', updateCropRect);
-    offsetXSlider.addEventListener('input', updateCropRect);
-    offsetYSlider.addEventListener('input', updateCropRect);
-    
-    // Initial calculation
-    updateCropRect();
-}
-
-
-// Helpers
-function hexToRgb(hex){let r=parseInt(hex.slice(1,3),16),g=parseInt(hex.slice(3,5),16),b=parseInt(hex.slice(5,7),16);return[r,g,b];}
-function getBright(r,g,b){return 0.299*r+0.587*g+0.114*b;}
-function applyContrast(val,contrast){let f=(259*(contrast+255))/(255*(259-contrast));return Math.min(255,Math.max(0,f*(val-128)+128));}
-
-function getPalette(){
-  let mode=document.getElementById('colorMode').value;
-  if(mode==='bw') return [[0,0,0],[255,255,255]];
-  if(mode==='2bit') return[[0,0,0],[80,80,80],[160,160,160],[255,255,255]];
-  return [
-    hexToRgb(document.getElementById('col1').value),
-    hexToRgb(document.getElementById('col2').value),
-    hexToRgb(document.getElementById('col3').value),
-    hexToRgb(document.getElementById('col4').value),
-  ];
-}
-
-function nearestColor(r,g,b,palette){
-  let best=palette[0],bestD=Infinity;
-  for(let c of palette){let d=(r-c[0])**2+(g-c[1])**2+(b-c[2])**2;if(d<bestD){bestD=d;best=c;}}
-  return best;
-}
-
-// Bayer matrix 4x4
-const BAYER4=[[0,8,2,10],[12,4,14,6],[3,11,1,9],[15,7,13,5]].map(r=>r.map(v=>v/16));
-
-function applyDither(){
-  if(!origImageData){status('Load an image first');return;}
-  status('Processing...');
-  setTimeout(()=>{
-    // Always work on the full image
-    let src=new ImageData(new Uint8ClampedArray(origImageData.data),origImageData.width,origImageData.height);
-    let data=src.data, W=src.width, H=src.height;
-    let algo=document.getElementById('algorithm').value;
-    let palette=getPalette();
-    let sc=parseInt(document.getElementById('scale').value);
-    let thresh=parseInt(document.getElementById('threshold').value);
-    let contrast=parseInt(document.getElementById('contrast').value);
-
-    // Preprocesar
-    for(let i=0;i<data.length;i+=4){
-      if(doGray){
-        let br=getBright(data[i],data[i+1],data[i+2]);
-        data[i]=data[i+1]=data[i+2]=applyContrast(br,contrast);
-      }
-      if(isInvert){data[i]=255-data[i];data[i+1]=255-data[i+1];data[i+2]=255-data[i+2];}
-    }
-
-    if(algo==='floyd'){
-      for(let y=0;y<H;y++){
-        for(let x=0;x<W;x++){
-          let idx=(y*W+x)*4;
-          let [nr,ng,nb]=nearestColor(data[idx],data[idx+1],data[idx+2],palette);
-          let er=data[idx]-nr, eg=data[idx+1]-ng, eb=data[idx+2]-nb;
-          data[idx]=nr; data[idx+1]=ng; data[idx+2]=nb;
-          // Distribuir error Floyd-Steinberg
-          const spread=[[1,0,7/16],[-1,1,3/16],[0,1,5/16],[1,1,1/16]];
-          for(let[dx,dy,w]of spread){
-            let nx2=x+dx,ny2=y+dy;
-            if(nx2>=0&&nx2<W&&ny2<H){let ni=(ny2*W+nx2)*4;data[ni]=Math.min(255,Math.max(0,data[ni]+er*w));data[ni+1]=Math.min(255,Math.max(0,data[ni+1]+eg*w));data[ni+2]=Math.min(255,Math.max(0,data[ni+2]+eb*w));}
-          }
-        }
-      }
-    } else if(algo==='atkinson'){
-      for(let y=0;y<H;y++){
-        for(let x=0;x<W;x++){
-          let idx=(y*W+x)*4;
-          let [nr,ng,nb]=nearestColor(data[idx],data[idx+1],data[idx+2],palette);
-          let er=(data[idx]-nr)/8, eg=(data[idx+1]-ng)/8, eb=(data[idx+2]-nb)/8;
-          data[idx]=nr; data[idx+1]=ng; data[idx+2]=nb;
-          const spread=[[1,0],[2,0],[-1,1],[0,1],[1,1],[0,2]];
-          for(let[dx,dy]of spread){
-            let nx2=x+dx,ny2=y+dy;
-            if(nx2>=0&&nx2<W&&ny2<H){let ni=(ny2*W+nx2)*4;data[ni]=Math.min(255,Math.max(0,data[ni]+er));data[ni+1]=Math.min(255,Math.max(0,data[ni+1]+eg));data[ni+2]=Math.min(255,Math.max(0,data[ni+2]+eb));}
-          }
-        }
-      }
-    } else if(algo==='ordered'){
-      for(let y=0;y<H;y++){
-        for(let x=0;x<W;x++){
-          let idx=(y*W+x)*4;
-          let bayer=BAYER4[y%4][x%4];
-          let r=Math.min(255,data[idx]+bayer*80);
-          let g=Math.min(255,data[idx+1]+bayer*80);
-          let b=Math.min(255,data[idx+2]+bayer*80);
-          let [nr,ng,nb]=nearestColor(r,g,b,palette);
-          data[idx]=nr; data[idx+1]=ng; data[idx+2]=nb;
-        }
-      }
-    } else if(algo==='random'){
-      for(let y=0;y<H;y++){
-        for(let x=0;x<W;x++){
-          let idx=(y*W+x)*4;
-          let noise=(Math.random()-0.5)*thresh;
-          let r=Math.min(255,Math.max(0,data[idx]+noise));
-          let g=Math.min(255,Math.max(0,data[idx+1]+noise));
-          let b=Math.min(255,Math.max(0,data[idx+2]+noise));
-          let [nr,ng,nb]=nearestColor(r,g,b,palette);
-          data[idx]=nr; data[idx+1]=ng; data[idx+2]=nb;
-        }
-      }
-    } else if(algo==='halftone'){
-      let dotSize=sc*3;
-      for(let y=0;y<H;y+=dotSize){
-        for(let x=0;x<W;x+=dotSize){
-          // Promedio del bloque
-          let tr=0,tg=0,tb=0,count=0;
-          for(let dy=0;dy<dotSize&&y+dy<H;dy++){for(let dx=0;dx<dotSize&&x+dx<W;dx++){let i=((y+dy)*W+(x+dx))*4;tr+=data[i];tg+=data[i+1];tb+=data[i+2];count++;}}
-          tr/=count; tg/=count; tb/=count;
-          let [nr,ng,nb]=nearestColor(tr,tg,tb,palette);
-          let bright=getBright(tr,tg,tb)/255;
-          let r2=Math.ceil(dotSize/2*bright);
-          // Rellenar bloque
-          for(let dy=0;dy<dotSize&&y+dy<H;dy++){
-            for(let dx=0;dx<dotSize&&x+dx<W;dx++){
-              let i=((y+dy)*W+(x+dx))*4;
-              let cx2=x+dotSize/2, cy2=y+dotSize/2;
-              let dist=Math.sqrt((x+dx-cx2)**2+(y+dy-cy2)**2);
-              if(dist<=r2){data[i]=nr;data[i+1]=ng;data[i+2]=nb;}
-              else{data[i]=palette[0][0];data[i+1]=palette[0][1];data[i+2]=palette[0][2];}
-            }
-          }
-        }
-      }
-    }
-
-    // Escala de bloque
-    if(sc>1){
-      let out=new ImageData(W,H);
-      for(let y=0;y<H;y++){for(let x=0;x<W;x++){let sy2=Math.floor(y/sc)*sc,sx2=Math.floor(x/sc)*sc;let si=(sy2*W+sx2)*4,di=(y*W+x)*4;out.data[di]=data[si];out.data[di+1]=data[si+1];out.data[di+2]=data[si+2];out.data[di+3]=255;}}
-      ctx.putImageData(out,0,0);
-    } else {
-      ctx.putImageData(src,0,0);
-    }
-    
-    // Draw crop overlay on top
-    drawCropOverlay(ctx, canvas, cropRect);
-    status('Done — '+algo);
-  },10);
-}
-
-document.getElementById('applyBtn').addEventListener('click',applyDither);
-
-function randomDither() {
-  if(!origImageData){status('Load an image first');return;}
-  let algos=['floyd','atkinson','ordered','random','halftone'];
-  let modes=['bw','2bit','custom'];
-  document.getElementById('algorithm').value = algos[Math.floor(Math.random()*algos.length)];
-  let mode = modes[Math.floor(Math.random()*modes.length)];
-  document.getElementById('colorMode').value = mode;
-  document.getElementById('customPalette').style.display = mode==='custom'?'block':'none';
-  document.getElementById('scale').value     = Math.floor(Math.random()*4+1);
-  document.getElementById('scaleVal').textContent = document.getElementById('scale').value+'x';
-  document.getElementById('threshold').value = Math.floor(Math.random()*180+40);
-  document.getElementById('thresholdVal').textContent = document.getElementById('threshold').value;
-  document.getElementById('contrast').value  = Math.floor(Math.random()*80-40);
-  document.getElementById('contrastVal').textContent = document.getElementById('contrast').value;
-  // Random custom colors
-  if(mode==='custom'){
-    ['col1','col2','col3','col4'].forEach(id=>{
-      document.getElementById(id).value='#'+Math.floor(Math.random()*16777215).toString(16).padStart(6,'0');
-    });
-  }
-  applyDither();
-}
-
-document.getElementById('randomBtn').addEventListener('click',randomDither);
-document.getElementById('resetBtn').addEventListener('click',()=>{
-  if(origImageData){ctx.putImageData(origImageData,0,0);status('Reset');}
-  document.getElementById('canvasArea').classList.remove('has-image');
-});
-document.getElementById('sendToFlyerBtn').addEventListener('click', () => {
-    if (!origImageData) { status('Nothing to send'); return; }
-    sendTo('flyer-forge', canvas, cropRect);
-});
-
-document.getElementById('exportBtn').addEventListener('click',()=>{
-  if(!origImageData){status('Nothing to export');return;}
-  exportToPNG(canvas, cropRect, 'pudrus_dither');
-  status('Exported!');
-});
-
-// Update crop slider value displays
-document.getElementById('cropOffsetX').addEventListener('input', (e) => {
-  document.getElementById('cropOffsetXVal').textContent = e.target.value + '%';
-});
-document.getElementById('cropOffsetY').addEventListener('input', (e) => {
-  document.getElementById('cropOffsetYVal').textContent = e.target.value + '%';
-});
-
-// Cargar imagen si viene de otra herramienta
-// Cargar imagen si viene de otra herramienta
-const incomingImageDataUrl = receiveImage();
-if (incomingImageDataUrl) {
-    loadFile(incomingImageDataUrl);
-}
-});
+  const custom = p => p.palette === 'custom';
+  PudrusTool.create({
+    id: 'dithering', i18n: 'dithering', icon: '⠿',
+    name: '⠿ Dithering', desc: 'Classic dithering with retro palettes.',
+    controls: [
+      { key: 'algorithm', label: 'dithering.algorithm', fallback: 'Algorithm', type: 'select', value: 'floyd', options: [
+        { value: 'floyd', label: 'dithering.algoFloyd', fallback: 'Floyd–Steinberg' },
+        { value: 'atkinson', label: 'dithering.algoAtkinson', fallback: 'Atkinson' },
+        { value: 'bayer', label: 'dithering.algoBayer', fallback: 'Ordered (Bayer)' },
+        { value: 'noise', label: 'dithering.algoNoise', fallback: 'Noise' } ] },
+      { key: 'palette', label: 'dithering.palette', fallback: 'Palette', type: 'select', value: 'bw', options: [
+        { value: 'bw', label: 'dithering.palBw', fallback: '1-bit (B&W)' },
+        { value: 'gray', label: 'dithering.palGray', fallback: '4 grays' },
+        { value: 'gameboy', label: 'dithering.palGameboy', fallback: 'Game Boy' },
+        { value: 'cga', label: 'dithering.palCga', fallback: 'CGA' },
+        { value: 'pudrus', label: 'dithering.palPudrus', fallback: 'PUDRUS' },
+        { value: 'sepia', label: 'dithering.palSepia', fallback: 'Sepia' },
+        { value: 'custom', label: 'dithering.palCustom', fallback: 'Custom' } ] },
+      { key: 'c1', label: 'dithering.color1', fallback: 'Color 1', type: 'color', value: '#050508', show: custom },
+      { key: 'c2', label: 'dithering.color2', fallback: 'Color 2', type: 'color', value: '#ff4ecc', show: custom },
+      { key: 'c3', label: 'dithering.color3', fallback: 'Color 3', type: 'color', value: '#00d4ff', show: custom },
+      { key: 'c4', label: 'dithering.color4', fallback: 'Color 4', type: 'color', value: '#ffffff', show: custom },
+      { key: 'pixel', label: 'dithering.pixel', fallback: 'Pixel size', min: 1, max: 12, value: 2, rand: [1, 6] },
+      { key: 'contrast', label: 'dithering.contrast', fallback: 'Contrast', min: -100, max: 100, value: 0, rand: [-20, 50] },
+      { key: 'brightness', label: 'dithering.brightness', fallback: 'Brightness', min: -100, max: 100, value: 0, advanced: true, rand: [-20, 20] },
+      { key: 'gray', label: 'dithering.gray', fallback: 'Grayscale first', type: 'toggle', value: true, advanced: true, randChance: 0.7 },
+      { key: 'invert', label: 'dithering.invert', fallback: 'Invert', type: 'toggle', value: false, advanced: true, randChance: 0.1 },
+    ],
+    presets: [
+      { label: 'dithering.presetGameboy', fallback: 'Game Boy', values: { palette: 'gameboy', algorithm: 'bayer', pixel: 3, contrast: 20 } },
+      { label: 'dithering.preset1bit', fallback: '1-bit', values: { palette: 'bw', algorithm: 'atkinson', pixel: 2, contrast: 30 } },
+      { label: 'dithering.presetCga', fallback: 'CGA', values: { palette: 'cga', algorithm: 'floyd', pixel: 3, gray: false } },
+      { label: 'dithering.presetPrint', fallback: 'Print', values: { palette: 'sepia', algorithm: 'noise', pixel: 1, contrast: 25 } },
+    ],
+    draw,
+  });
+})();
 </script>
 </body>
 </html>

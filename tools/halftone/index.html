@@ -2,579 +2,140 @@
 <html lang="es">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="theme-color" content="#050508">
   <title>Halftone — PUDRUS.XYZ</title>
   <link rel="icon" type="image/svg+xml" href="../../favicon.svg">
   <link rel="stylesheet" href="../../css/style.css">
+  <link rel="stylesheet" href="../../css/tool-shell.css">
 </head>
 <body>
 
 <nav>
   <a href="../../index.html" class="nav-logo">PUDRUS<span>.xyz</span></a>
   <ul class="nav-links">
-    <li><a href="../../index.html#tools">All Tools</a></li>
+    <li><a href="../../index.html#tools" data-i18n="nav.tools">Tools</a></li>
   </ul>
+  <div class="nav-lang">
+    <select id="langSelect" aria-label="Language selector">
+      <option value="es">ES</option>
+      <option value="en">EN</option>
+    </select>
+  </div>
 </nav>
 
-<div class="tool-layout">
-
-  <!-- ── PANEL ── -->
-  <div class="tool-panel">
-    <div class="tool-panel-header">
-      <a href="../../index.html" class="back" data-i18n="nav.tools">← Back</a>
-      <h2 data-i18n="halftone.name">◉ Halftone</h2>
-      <p data-i18n="halftone.desc">Create halftone dot patterns, CMYK separations, and retro print effects.</p>
-    </div>
-
-    <div class="tool-panel-body">
-
-      <!-- Aspect Ratio -->
-      <div class="control-group">
-        <span class="control-label">Aspect Ratio</span>
-        <div class="control-row">
-          <label>Aspect</label>
-          <select id="aspectRatio">
-            <option value="free">Free</option>
-            <option value="1:1">Square (1:1)</option>
-            <option value="4:5">Portrait (4:5)</option>
-            <option value="9:16">Story (9:16)</option>
-          </select>
-        </div>
-        <div class="control-row">
-          <label>Offset X</label>
-          <input type="range" id="cropOffsetX" min="-50" max="50" value="0"><span class="val" id="cropOffsetXVal">0%</span>
-        </div>
-        <div class="control-row">
-          <label>Offset Y</label>
-          <input type="range" id="cropOffsetY" min="-50" max="50" value="0"><span class="val" id="cropOffsetYVal">0%</span>
-        </div>
-      </div>
-
-      <hr class="divider">
-
-      <!-- Halftone Mode -->
-      <div class="control-group">
-        <span class="control-label" data-i18n="halftone.mode">Halftone Mode</span>
-        <div class="control-row">
-          <select id="halftoneMode">
-            <option value="mono">Monochrome</option>
-            <option value="rgb">RGB</option>
-            <option value="cmyk">CMYK</option>
-            <option value="custom">Custom Channel</option>
-          </select>
-        </div>
-        <div id="customChannelControls" style="display:none; margin-top: 10px;">
-          <div class="control-row">
-            <label data-i18n="halftone.customChannel">Custom Channel</label>
-            <select id="customChannel">
-              <option value="luminance">Luminance</option>
-              <option value="red">Red</option>
-              <option value="green">Green</option>
-              <option value="blue">Blue</option>
-            </select>
-          </div>
-        </div>
-      </div>
-
-      <hr class="divider">
-
-      <!-- Dot Settings -->
-      <div class="control-group">
-        <span class="control-label" data-i18n="halftone.dotSettings">Dot Settings</span>
-        <div class="control-row">
-          <label data-i18n="halftone.dotSize">Dot Size</label>
-          <input type="range" id="dotSize" min="2" max="20" value="6">
-          <span class="val" id="dotSizeVal">6px</span>
-        </div>
-        <div class="control-row">
-          <label data-i18n="halftone.spacing">Spacing</label>
-          <input type="range" id="dotSpacing" min="4" max="24" value="10">
-          <span class="val" id="dotSpacingVal">10px</span>
-        </div>
-        <div class="control-row">
-          <label data-i18n="halftone.shape">Shape</label>
-          <select id="dotShape">
-            <option value="circle">Circle</option>
-            <option value="square">Square</option>
-            <option value="line">Line</option>
-            <option value="diamond">Diamond</option>
-          </select>
-        </div>
-      </div>
-
-      <hr class="divider">
-
-      <!-- Channel Angles -->
-      <div class="control-group" id="angleControls">
-        <span class="control-label" data-i18n="halftone.angles">Channel Angles</span>
-        <div class="control-row" id="angle1Row">
-          <label data-i18n="halftone.angle1">Angle 1</label>
-          <input type="range" id="angle1" min="0" max="90" value="15">
-          <span class="val" id="angle1Val">15°</span>
-        </div>
-        <div class="control-row" id="angle2Row" style="display:none;">
-          <label data-i18n="halftone.angle2">Angle 2</label>
-          <input type="range" id="angle2" min="0" max="90" value="75">
-          <span class="val" id="angle2Val">75°</span>
-        </div>
-        <div class="control-row" id="angle3Row" style="display:none;">
-          <label data-i18n="halftone.angle3">Angle 3</label>
-          <input type="range" id="angle3" min="0" max="90" value="0">
-          <span class="val" id="angle3Val">0°</span>
-        </div>
-        <div class="control-row" id="angle4Row" style="display:none;">
-          <label data-i18n="halftone.angle4">Angle 4</label>
-          <input type="range" id="angle4" min="0" max="90" value="45">
-          <span class="val" id="angle4Val">45°</span>
-        </div>
-      </div>
-
-      <hr class="divider">
-
-      <!-- Colors -->
-      <div class="control-group">
-        <span class="control-label" data-i18n="halftone.colors">Colors</span>
-        <div class="control-row" id="channel1ColorRow">
-          <label data-i18n="halftone.channel1">Channel 1</label>
-          <input type="color" id="channel1Color" value="#000000">
-        </div>
-        <div class="control-row" id="channel2ColorRow" style="display:none;">
-          <label data-i18n="halftone.channel2">Channel 2</label>
-          <input type="color" id="channel2Color" value="#00d4ff">
-        </div>
-        <div class="control-row" id="channel3ColorRow" style="display:none;">
-          <label data-i18n="halftone.channel3">Channel 3</label>
-          <input type="color" id="channel3Color" value="#ff4ecc">
-        </div>
-        <div class="control-row" id="channel4ColorRow" style="display:none;">
-          <label data-i18n="halftone.channel4">Channel 4</label>
-          <input type="color" id="channel4Color" value="#ffffff">
-        </div>
-        <div class="control-row">
-          <label data-i18n="halftone.bgColor">Background</label>
-          <input type="color" id="bgColor" value="#ffffff">
-        </div>
-      </div>
-
-      <!-- Options -->
-      <div class="control-group">
-        <span class="control-label" data-i18n="halftone.options">Options</span>
-        <div class="toggle-row">
-          <label data-i18n="halftone.invert">Invert</label>
-          <div class="toggle" id="invertToggle"></div>
-        </div>
-        <div class="toggle-row">
-          <label data-i18n="halftone.preview">Real-time Preview</label>
-          <div class="toggle" id="previewToggle"></div>
-        </div>
-      </div>
-
-    </div>
-
-    <div class="status-bar" id="statusBar" data-i18n="halftone.statusNoImage">◈ No image loaded</div>
-
-    <div class="action-btns">
-      <button class="btn btn-primary" id="applyBtn" style="width:100%" data-i18n="halftone.applyBtn">◈ Apply Effect</button>
-      <button class="btn btn-outline" id="randomBtn" style="width:100%" data-i18n="halftone.randomBtn">◈ Randomize</button>
-      <button class="btn btn-outline" id="resetBtn" style="width:100%" data-i18n="halftone.resetBtn">Reset</button>
-      <button class="btn btn-outline" id="sendToFlyerBtn" style="width:100%">→ Continue in Flyer Forge</button>
-      <button class="btn btn-outline" id="exportBtn" style="width:100%" data-i18n="halftone.exportBtn">Export PNG</button>
-    </div>
-  </div>
-
-  <!-- ── CANVAS ── -->
-  <div class="tool-canvas-area" id="canvasArea">
-    <div class="file-upload" id="dropZone">
-      <span class="icon">◉</span>
-      <span data-i18n="halftone.fileDrop">Click or drop an image here</span>
-      <input type="file" id="fileInput" accept="image/*">
-    </div>
-    <canvas id="mainCanvas"></canvas>
-    <div class="canvas-info" id="canvasInfo">No image loaded</div>
-  </div>
-
-</div>
+<main id="tool"></main>
 
 <script src="../../js/i18n.js"></script>
 <script src="../../js/utils.js"></script>
+<script src="../../js/tool-shell.js"></script>
 <script>
-// Este listener se asegura de que todo el código se ejecute después de que la página haya cargado.
-document.addEventListener('DOMContentLoaded', () => {
-let img = null;
-let origImageData = null;
-let canvas = document.getElementById('mainCanvas');
-let ctx = canvas.getContext('2d');
-let currentMode = 'mono';
-let invert = false;
-let previewEnabled = true;
-let renderScheduled = false;
-let cropRect = null;
-
-function updateLabel(id, value) {
-  document.getElementById(id).textContent = value;
-}
-
-[['dotSize','dotSizeVal','px'],['dotSpacing','dotSpacingVal','px'],['angle1','angle1Val','°'],['angle2','angle2Val','°'],['angle3','angle3Val','°'],['angle4','angle4Val','°']].forEach(([id,val,suffix=''])=>{
-  let el = document.getElementById(id);
-  el.addEventListener('input', ()=> updateLabel(val, el.value + suffix));
-});
-[['cropOffsetX','cropOffsetXVal','%'],['cropOffsetY','cropOffsetYVal','%']].forEach(([id,val,suffix=''])=>{
-  let el = document.getElementById(id);
-  el.addEventListener('input', ()=> { updateLabel(val, el.value + suffix); scheduleRender(); });
-});
-
-function getLuminance(r, g, b) {
-  return 0.299 * r + 0.587 * g + 0.114 * b;
-}
-
-function getChannelValue(data, idx, channel) {
-  switch(channel) {
-    case 'r': return data[idx];
-    case 'g': return data[idx + 1];
-    case 'b': return data[idx + 2];
-    case 'luminance': return getLuminance(data[idx], data[idx + 1], data[idx + 2]);
-    default: return getLuminance(data[idx], data[idx + 1], data[idx + 2]);
-  }
-}
-
-function drawDot(x, y, size, shape, angle) {
-  ctx.save();
-  ctx.translate(x, y);
-  ctx.rotate(angle * Math.PI / 180);
-  
-  const halfSize = size / 2;
-  
-  switch(shape) {
-    case 'circle':
-      ctx.beginPath();
-      ctx.arc(0, 0, halfSize, 0, Math.PI * 2);
-      ctx.fill();
-      break;
-    case 'square':
-      ctx.fillRect(-halfSize, -halfSize, size, size);
-      break;
-    case 'line':
-      ctx.fillRect(-halfSize, -size/4, size, size/2);
-      break;
-    case 'diamond':
-      ctx.beginPath();
-      ctx.moveTo(0, -halfSize);
-      ctx.lineTo(halfSize, 0);
-      ctx.lineTo(0, halfSize);
-      ctx.lineTo(-halfSize, 0);
-      ctx.closePath();
-      ctx.fill();
-      break;
-  }
-  
-  ctx.restore();
-}
-
-function renderHalftone() {
-  if (!origImageData) return;
-  
-  const dotSize = parseInt(document.getElementById('dotSize').value, 10);
-  const spacing = parseInt(document.getElementById('dotSpacing').value, 10);
-  const shape = document.getElementById('dotShape').value;
-  const bgColor = document.getElementById('bgColor').value;
-  const mode = document.getElementById('halftoneMode').value;
-  
-  // Fill background
-  ctx.fillStyle = bgColor;
-  ctx.fillRect(0, 0, canvas.width, canvas.height);
-  
-  const data = origImageData.data;
-  const width = origImageData.width;
-  const height = origImageData.height;
-  
-  const angles = [
-    parseInt(document.getElementById('angle1').value, 10),
-    parseInt(document.getElementById('angle2').value, 10),
-    parseInt(document.getElementById('angle3').value, 10),
-    parseInt(document.getElementById('angle4').value, 10)
-  ];
-  const colors = [
-    document.getElementById('channel1Color').value,
-    document.getElementById('channel2Color').value,
-    document.getElementById('channel3Color').value,
-    document.getElementById('channel4Color').value
-  ];
-
-  let channelsToRender = [];
-
-  if (mode === 'mono') {
-    channelsToRender.push({ angle: angles[0], color: colors[0], getValue: (idx) => getChannelValue(data, idx, 'luminance') });
-  } else if (mode === 'rgb') {
-    channelsToRender.push({ angle: angles[0], color: colors[0], getValue: (idx) => data[idx] });
-    channelsToRender.push({ angle: angles[1], color: colors[1], getValue: (idx) => data[idx + 1] });
-    channelsToRender.push({ angle: angles[2], color: colors[2], getValue: (idx) => data[idx + 2] });
-  } else if (mode === 'cmyk') {
-    const rgbToCmyk = (r, g, b) => {
-      const k = 1 - Math.max(r / 255, g / 255, b / 255);
-      if (k === 1) return [0, 0, 0, 1];
-      return [(1 - (r / 255) - k) / (1 - k), (1 - (g / 255) - k) / (1 - k), (1 - (b / 255) - k) / (1 - k), k];
-    };
-    channelsToRender.push({ angle: angles[0], color: colors[0], getValue: (idx) => rgbToCmyk(data[idx], data[idx+1], data[idx+2])[0] * 255 });
-    channelsToRender.push({ angle: angles[1], color: colors[1], getValue: (idx) => rgbToCmyk(data[idx], data[idx+1], data[idx+2])[1] * 255 });
-    channelsToRender.push({ angle: angles[2], color: colors[2], getValue: (idx) => rgbToCmyk(data[idx], data[idx+1], data[idx+2])[2] * 255 });
-    channelsToRender.push({ angle: angles[3], color: colors[3], getValue: (idx) => rgbToCmyk(data[idx], data[idx+1], data[idx+2])[3] * 255 });
-  } else if (mode === 'custom') {
-    const customChannel = document.getElementById('customChannel').value;
-    channelsToRender.push({ angle: angles[0], color: colors[0], getValue: (idx) => getChannelValue(data, idx, customChannel) });
-  }
-
-  channelsToRender.forEach(ch => {
-    ctx.fillStyle = ch.color;
-    for (let y = spacing / 2; y < height; y += spacing) {
-      for (let x = spacing / 2; x < width; x += spacing) {
-        const idx = (Math.floor(y) * width + Math.floor(x)) * 4;
-        if (idx >= 0 && idx < data.length - 3) {
-          let value = ch.getValue(idx);
-          if (invert) value = 255 - value;
-          const dotRadius = (value / 255) * (dotSize / 2);
-          if (dotRadius > 0.5) {
-            drawDot(x, y, dotRadius * 2, shape, ch.angle);
-          }
-        }
-      }
-    }
-  });
-  
-  drawCropOverlay(ctx, canvas, cropRect);
-}
-
-function scheduleRender() {
-  if (!renderScheduled && origImageData && previewEnabled) {
-    renderScheduled = true;
-    requestAnimationFrame(() => {
-      renderScheduled = false;
-      if (origImageData) {
-        renderHalftone();
-      } else {
-        ctx.clearRect(0,0,canvas.width, canvas.height);
-        drawCropOverlay(ctx, canvas, cropRect);
-      }
-    });
-  }
-}
-
-function debounce(fn, delay) {
-  let timer;
-  return function(...args) {
-    clearTimeout(timer);
-    timer = setTimeout(() => fn.apply(this, args), delay);
+(function () {
+  // Channels per mode: how to read the "ink amount" (0..1) from r,g,b and how to print it
+  const MODES = {
+    mono: p => [{ angle: p.angle, color: p.ink, amount: (r, g, b) => 1 - (0.299 * r + 0.587 * g + 0.114 * b) / 255 }],
+    cmyk: () => {
+      const k = (r, g, b) => 1 - Math.max(r, g, b) / 255;
+      const ch = i => (r, g, b) => { const K = k(r, g, b); return K >= 1 ? 0 : (1 - [r, g, b][i] / 255 - K) / (1 - K); };
+      return [
+        { angle: 15, color: '#00aeef', amount: ch(0) },
+        { angle: 75, color: '#ec008c', amount: ch(1) },
+        { angle: 0,  color: '#fff200', amount: ch(2) },
+        { angle: 45, color: '#111111', amount: k },
+      ];
+    },
+    rgb: () => [
+      { angle: 15, color: '#ff2a2a', amount: r => r / 255 },
+      { angle: 45, color: '#2aff2a', amount: (r, g) => g / 255 },
+      { angle: 75, color: '#2a5bff', amount: (r, g, b) => b / 255 },
+    ],
   };
-}
 
-function updateModeUI() {
-  const mode = document.getElementById('halftoneMode').value;
-  const angleControls = document.getElementById('angleControls');
-  const customControls = document.getElementById('customChannelControls');
-  const angle4Row = document.getElementById('angle4Row');
-  const channel2Row = document.getElementById('channel2ColorRow');
-  const channel3Row = document.getElementById('channel3ColorRow');
-  const channel4Row = document.getElementById('channel4ColorRow');
-  
-  angleControls.style.display = 'block';
-  customControls.style.display = 'none';
-  
-  if (mode === 'mono') {
-    angle4Row.style.display = 'none';
-    channel2Row.style.display = 'none';
-    channel3Row.style.display = 'none';
-    channel4Row.style.display = 'none';
-  } else if (mode === 'rgb') {
-    angle4Row.style.display = 'none';
-    channel2Row.style.display = 'block';
-    channel3Row.style.display = 'block';
-    channel4Row.style.display = 'none';
-  } else if (mode === 'cmyk') {
-    angle4Row.style.display = 'block';
-    channel2Row.style.display = 'block';
-    channel3Row.style.display = 'block';
-    channel4Row.style.display = 'block';
-  } else if (mode === 'custom') {
-    angle4Row.style.display = 'none';
-    channel2Row.style.display = 'none';
-    channel3Row.style.display = 'none';
-    channel4Row.style.display = 'none';
-    customControls.style.display = 'block';
-  }
-}
+  function draw({ ctx, srcCanvas, W, H, p, k }) {
+    const cell = Math.max(2, p.cell * k);
+    // Averaged colour per small block, sampled while walking the rotated grid
+    const sw = Math.max(1, Math.round(W / (cell / 2))), sh = Math.max(1, Math.round(H / (cell / 2)));
+    const small = document.createElement('canvas');
+    small.width = sw; small.height = sh;
+    const sctx = small.getContext('2d', { willReadFrequently: true });
+    sctx.imageSmoothingQuality = 'high';
+    sctx.drawImage(srcCanvas, 0, 0, sw, sh);
+    const d = sctx.getImageData(0, 0, sw, sh).data;
+    const cf = (259 * (p.contrast + 255)) / (255 * (259 - p.contrast));
+    const adj = v => Math.max(0, Math.min(255, cf * (v - 128) + 128));
 
-function applyEffect() {
-  if (!origImageData) { status('Load an image first'); return; }
-  renderHalftone();
-  status('Halftone effect applied');
-}
+    const rgbMode = p.mode === 'rgb';
+    ctx.fillStyle = rgbMode ? '#000000' : p.paper;
+    ctx.fillRect(0, 0, W, H);
+    ctx.globalCompositeOperation = rgbMode ? 'screen' : 'multiply';
 
-function randomize() {
-  document.getElementById('halftoneMode').value = ['mono','rgb','cmyk','custom'][Math.floor(Math.random()*4)];
-  document.getElementById('dotSize').value = Math.floor(Math.random() * 12 + 4);
-  document.getElementById('dotSpacing').value = Math.floor(Math.random() * 16 + 8);
-  document.getElementById('dotShape').value = ['circle','square','line','diamond'][Math.floor(Math.random()*4)];
-  document.getElementById('angle1').value = Math.floor(Math.random() * 90);
-  document.getElementById('angle2').value = Math.floor(Math.random() * 90);
-  document.getElementById('angle3').value = Math.floor(Math.random() * 90);
-  document.getElementById('angle4').value = Math.floor(Math.random() * 90);
-  
-  updateLabel('dotSizeVal', document.getElementById('dotSize').value + 'px');
-  updateLabel('dotSpacingVal', document.getElementById('dotSpacing').value + 'px');
-  updateLabel('angle1Val', document.getElementById('angle1').value + '°');
-  updateLabel('angle2Val', document.getElementById('angle2').value + '°');
-  updateLabel('angle3Val', document.getElementById('angle3').value + '°');
-  updateLabel('angle4Val', document.getElementById('angle4').value + '°');
-  
-  updateModeUI();
-  scheduleRender();
-  status('Randomized settings');
-}
-
-function resetTool() {
-  if (!origImageData) { status('Load an image first'); return; }
-  ctx.putImageData(origImageData, 0, 0);
-  document.getElementById('canvasArea').classList.remove('has-image');
-  status('Reset to original image');
-}
-
-function status(msg) { document.getElementById('statusBar').textContent = '◈ ' + msg; }
-
-// Event listeners
-document.getElementById('halftoneMode').addEventListener('change', () => {
-  updateModeUI();
-  scheduleRender();
-});
-
-['dotSize', 'dotSpacing', 'angle1', 'angle2', 'angle3', 'angle4'].forEach(id => {
-  document.getElementById(id).addEventListener('input', debounce(() => {
-    scheduleRender();
-  }, 16));
-});
-
-['dotShape', 'customChannel', 'bgColor', 'channel1Color', 'channel2Color', 'channel3Color', 'channel4Color'].forEach(id => {
-  document.getElementById(id).addEventListener('input', () => {
-    scheduleRender();
-  });
-  document.getElementById(id).addEventListener('change', () => {
-    scheduleRender();
-  });
-});
-
-function toggle(id, cb){ 
-  let el = document.getElementById(id); 
-  el.addEventListener('click', ()=>{ 
-    el.classList.toggle('on'); 
-    cb(el.classList.contains('on')); 
-  }); 
-}
-
-toggle('invertToggle', v => { 
-  invert = v; 
-  scheduleRender(); 
-});
-
-toggle('previewToggle', v => { 
-  previewEnabled = v; 
-  if (v && origImageData) scheduleRender();
-});
-
-// File handling
-let dropZone = document.querySelector('.tool-canvas-area');
-let fileInput = document.getElementById('fileInput');
-dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.style.borderColor = 'var(--c1)'; });
-dropZone.addEventListener('dragleave', () => { dropZone.style.borderColor = ''; });
-dropZone.addEventListener('drop', e => { e.preventDefault(); dropZone.style.borderColor = ''; let file = e.dataTransfer.files[0]; if (file && file.type.startsWith('image/')) loadFile(file); });
-fileInput.addEventListener('change', () => { if (fileInput.files[0]) loadFile(fileInput.files[0]); });
-
-async function loadFile(file) {
-  try {
-    const imageData = await loadImageFile(file, canvas, ctx, 
-      document.getElementById('canvasArea'), 
-      document.getElementById('canvasInfo'),
-      document.querySelector('.file-upload')
-    );
-    
-    img = imageData.img;
-    origImageData = imageData.data;
-    setupCrop(canvas.width, canvas.height);
-    status('Image loaded');
-  } catch (error) {
-    status('Error loading image');
-    console.error(error);
-  }
-}
-
-function setupCrop(W, H) {
-    const aspectRatioSelect = document.getElementById('aspectRatio');
-    const offsetXSlider = document.getElementById('cropOffsetX');
-    const offsetYSlider = document.getElementById('cropOffsetY');
-
-    function updateCropRect() {
-        const ratio = aspectRatioSelect.value;
-        if (ratio === 'free') {
-            cropRect = null;
-            offsetXSlider.disabled = true;
-            offsetYSlider.disabled = true;
-        } else {
-            offsetXSlider.disabled = false;
-            offsetYSlider.disabled = false;
-            const [w, h] = ratio.split(':').map(Number);
-            const targetRatio = w / h;
-            const currentRatio = W / H;
-            let cropW, cropH, cropX, cropY;
-            if (currentRatio > targetRatio) {
-                cropH = H;
-                cropW = H * targetRatio;
-                cropX = (W - cropW) / 2 * (1 + offsetXSlider.value / 50);
-                cropY = 0;
-            } else {
-                cropW = W;
-                cropH = W / targetRatio;
-                cropX = 0;
-                cropY = (H - cropH) / 2 * (1 + offsetYSlider.value / 50);
-            }
-            cropRect = { x: cropX, y: cropY, w: cropW, h: cropH };
+    const R = Math.hypot(W, H) / 2, cx = W / 2, cy = H / 2;
+    for (const ch of MODES[p.mode](p)) {
+      const a = ch.angle * Math.PI / 180, ca = Math.cos(a), sa = Math.sin(a);
+      ctx.fillStyle = ch.color;
+      ctx.beginPath();
+      for (let v = -R; v <= R; v += cell) {
+        for (let u = -R; u <= R; u += cell) {
+          const x = cx + u * ca - v * sa, y = cy + u * sa + v * ca;
+          if (x < -cell || y < -cell || x > W + cell || y > H + cell) continue;
+          const si = (Math.min(sh - 1, Math.max(0, (y / H * sh) | 0)) * sw + Math.min(sw - 1, Math.max(0, (x / W * sw) | 0))) * 4;
+          let amt = ch.amount(adj(d[si]), adj(d[si + 1]), adj(d[si + 2]));
+          if (p.invert) amt = 1 - amt;
+          if (amt <= 0.02) continue;
+          // area proportional to ink amount
+          const r = (cell / 2) * Math.sqrt(amt) * 1.42 * (p.gain / 100);
+          shape(ctx, p.shape, x, y, r, ca, sa);
         }
-        // Redraw original image with new crop overlay
-        if (origImageData) {
-            ctx.putImageData(origImageData, 0, 0);
-            drawCropOverlay(ctx, canvas, cropRect);
-        }
+      }
+      ctx.fill();
     }
-    
-    aspectRatioSelect.addEventListener('change', updateCropRect);
-    offsetXSlider.addEventListener('input', updateCropRect);
-    offsetYSlider.addEventListener('input', updateCropRect);
-    
-    // Initial calculation
-    updateCropRect();
-}
+    ctx.globalCompositeOperation = 'source-over';
+  }
 
-// Use shared drawCropOverlay from utils.js
+  function shape(ctx, kind, x, y, r, ca, sa) {
+    if (kind === 'circle') { ctx.moveTo(x + r, y); ctx.arc(x, y, r, 0, Math.PI * 2); return; }
+    let pts;
+    if (kind === 'square') { const s = r * 0.886; pts = [[-s, -s], [s, -s], [s, s], [-s, s]]; }
+    else if (kind === 'diamond') pts = [[0, -r * 1.2], [r * 1.2, 0], [0, r * 1.2], [-r * 1.2, 0]];
+    else pts = [[-r * 1.6, -r * 0.5], [r * 1.6, -r * 0.5], [r * 1.6, r * 0.5], [-r * 1.6, r * 0.5]]; // line
+    pts.forEach(([u, v], i) => {
+      const px = x + u * ca - v * sa, py = y + u * sa + v * ca;
+      i ? ctx.lineTo(px, py) : ctx.moveTo(px, py);
+    });
+    ctx.closePath();
+  }
 
-// Export
-document.getElementById('exportBtn').addEventListener('click', () => {
-  if (!origImageData) { status('Nothing to export'); return; }
-  exportToPNG(canvas, cropRect, 'pudrus_halftone');
-  status('Exported PNG');
-});
-
-document.getElementById('applyBtn').addEventListener('click', applyEffect);
-document.getElementById('randomBtn').addEventListener('click', randomize);
-document.getElementById('resetBtn').addEventListener('click', resetTool);
-document.getElementById('sendToFlyerBtn').addEventListener('click', () => {
-    if (!origImageData) { status('Nothing to send'); return; }
-    sendTo('flyer-forge', canvas, cropRect);
-});
-
-// Initialize
-updateModeUI();
-// Cargar imagen si viene de otra herramienta
-const incomingImageDataUrl = receiveImage();
-if (incomingImageDataUrl) {
-    loadFile(incomingImageDataUrl);
-}
-});
+  const mono = p => p.mode === 'mono';
+  PudrusTool.create({
+    id: 'halftone', i18n: 'halftone', icon: '◉',
+    name: '◉ Halftone', desc: 'Print-style dot screens: mono, CMYK or RGB.',
+    controls: [
+      { key: 'mode', label: 'halftone.mode', fallback: 'Mode', type: 'select', value: 'mono', options: [
+        { value: 'mono', label: 'halftone.modeMono', fallback: 'One ink' },
+        { value: 'cmyk', label: 'halftone.modeCmyk', fallback: 'CMYK' },
+        { value: 'rgb', label: 'halftone.modeRgb', fallback: 'RGB (light)' } ] },
+      { key: 'cell', label: 'halftone.cell', fallback: 'Dot size', min: 3, max: 40, value: 10, rand: [5, 25] },
+      { key: 'shape', label: 'halftone.shape', fallback: 'Shape', type: 'select', value: 'circle', options: [
+        { value: 'circle', label: 'halftone.shapeCircle', fallback: 'Circle' },
+        { value: 'square', label: 'halftone.shapeSquare', fallback: 'Square' },
+        { value: 'diamond', label: 'halftone.shapeDiamond', fallback: 'Diamond' },
+        { value: 'line', label: 'halftone.shapeLine', fallback: 'Line' } ] },
+      { key: 'angle', label: 'halftone.angle', fallback: 'Screen angle', min: 0, max: 90, value: 45, unit: '°', show: mono },
+      { key: 'ink', label: 'halftone.ink', fallback: 'Ink', type: 'color', value: '#111111', show: mono },
+      { key: 'paper', label: 'halftone.paper', fallback: 'Paper', type: 'color', value: '#f4f0e6', show: p => p.mode !== 'rgb' },
+      { key: 'gain', label: 'halftone.gain', fallback: 'Dot gain', min: 50, max: 150, value: 100, unit: '%', advanced: true, rand: [80, 120] },
+      { key: 'contrast', label: 'halftone.contrast', fallback: 'Contrast', min: -100, max: 100, value: 10, advanced: true, rand: [0, 40] },
+      { key: 'invert', label: 'halftone.invert', fallback: 'Invert', type: 'toggle', value: false, advanced: true, randChance: 0.1 },
+    ],
+    presets: [
+      { label: 'halftone.presetNewspaper', fallback: 'Newspaper', values: { mode: 'mono', cell: 8, angle: 45, ink: '#1a1a1a', paper: '#e9e4d8', contrast: 25 } },
+      { label: 'halftone.presetComic', fallback: 'Comic', values: { mode: 'cmyk', cell: 14, paper: '#fffbea', contrast: 30 } },
+      { label: 'halftone.presetRiso', fallback: 'Riso', values: { mode: 'mono', cell: 11, angle: 15, ink: '#ff3d7f', paper: '#fff4e6', gain: 115 } },
+      { label: 'halftone.presetLines', fallback: 'Lines', values: { mode: 'mono', cell: 9, angle: 30, shape: 'line', ink: '#0b1f4d', paper: '#f4f0e6' } },
+    ],
+    draw,
+  });
+})();
 </script>
 </body>
 </html>

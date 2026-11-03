@@ -2,915 +2,237 @@
 <html lang="es">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="theme-color" content="#050508">
   <title>Flyer Forge — PUDRUS.XYZ</title>
   <link rel="icon" type="image/svg+xml" href="../../favicon.svg">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Major+Mono+Display&family=Roboto+Mono:wght@400;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo+Black&family=Bebas+Neue&family=Inter:wght@400;800&family=Major+Mono+Display&family=Space+Mono:wght@400;700&display=swap">
   <link rel="stylesheet" href="../../css/style.css">
+  <link rel="stylesheet" href="../../css/tool-shell.css">
 </head>
 <body>
 
 <nav>
   <a href="../../index.html" class="nav-logo">PUDRUS<span>.xyz</span></a>
   <ul class="nav-links">
-    <li><a href="../../index.html#tools">All Tools</a></li>
+    <li><a href="../../index.html#tools" data-i18n="nav.tools">Tools</a></li>
   </ul>
+  <div class="nav-lang">
+    <select id="langSelect" aria-label="Language selector">
+      <option value="es">ES</option>
+      <option value="en">EN</option>
+    </select>
+  </div>
 </nav>
 
-<div class="tool-layout">
-
-  <!-- ── PANEL ── -->
-  <div class="tool-panel">
-    <div class="tool-panel-header">
-      <a href="../../index.html" class="back" data-i18n="nav.tools">← Back</a>
-      <h2 data-i18n="tools.flyer.name">⎚ Flyer Forge</h2>
-      <p data-i18n="tools.flyer.desc">Generate flyers with automatic compositions.</p>
-    </div>
-
-    <div class="tool-panel-body">
-
-      <!-- Event Info -->
-      <div class="control-group">
-        <span class="control-label" data-i18n="flyer.eventInfo">Event Information</span>
-        <input type="text" id="mainAct" placeholder="" data-i18n-placeholder="flyer.mainAct" class="text-input">
-        <input type="text" id="supportActs" placeholder="" data-i18n-placeholder="flyer.supportActs" class="text-input">
-        <input type="text" id="date" placeholder="" data-i18n-placeholder="flyer.date" class="text-input">
-        <input type="text" id="venue" placeholder="" data-i18n-placeholder="flyer.venue" class="text-input">
-      </div>
-
-      <hr class="divider">
-
-      <!-- Crop Controls -->
-      <div class="control-group">
-        <span class="control-label" data-i18n="pixel.cropExport">Crop & Export</span>
-        <div class="control-row">
-          <label data-i18n="pixel.aspect">Aspect</label>
-          <select id="aspectRatio">
-            <option value="free" data-i18n="pixel.aspectFree">Free</option>
-            <option value="1:1" data-i18n="pixel.aspectSquare">Square (1:1)</option>
-            <option value="4:5" data-i18n="pixel.aspectPortrait">Portrait (4:5)</option>
-            <option value="9:16" data-i18n="pixel.aspectStory">Story (9:16)</option>
-          </select>
-        </div>
-        <div class="control-row">
-          <label>Offset X</label>
-          <input type="range" id="cropOffsetX" min="-50" max="50" value="0"><span class="val" id="cropOffsetXVal">0%</span>
-        </div>
-        <div class="control-row">
-          <label>Offset Y</label>
-          <input type="range" id="cropOffsetY" min="-50" max="50" value="0"><span class="val" id="cropOffsetYVal">0%</span>
-        </div>
-        <div class="control-row">
-          <label data-i18n="pixel.quality">Quality</label>
-          <select id="exportQuality">
-            <option value="high" data-i18n="pixel.qualityHigh">High (Original)</option>
-            <option value="medium" data-i18n="pixel.qualityMedium">Medium (1080px)</option>
-            <option value="low" data-i18n="pixel.qualityLow">Low (720px)</option>
-          </select>
-        </div>
-      </div>
-
-      <!-- Layout Positioning -->
-      <div class="control-group">
-        <span class="control-label">Text Placement</span>
-        <div class="control-row">
-          <label>Offset X</label>
-          <input type="range" id="textOffsetX" min="-100" max="100" step="5" value="0"><span class="val" id="textOffsetXVal">0%</span>
-        </div>
-        <div class="control-row">
-          <label>Offset Y</label>
-          <input type="range" id="textOffsetY" min="-100" max="100" step="5" value="0"><span class="val" id="textOffsetYVal">0%</span>
-        </div>
-        <div class="control-row">
-          <label>Rotation</label>
-          <input type="range" id="textRotation" min="-45" max="45" step="1" value="0"><span class="val" id="textRotationVal">0°</span>
-        </div>
-        <div class="control-row">
-          <label>Block Spacing</label>
-          <input type="range" id="blockSpacing" min="0.5" max="2.5" step="0.1" value="1.0"><span class="val" id="blockSpacingVal">1.0x</span>
-        </div>
-      </div>
-
-      <!-- Design Style -->
-      <div class="control-group" style="display:none;">
-        <span class="control-label" data-i18n="flyer.designStyle">Design Style</span>
-        <select id="designStyle">
-          <option value="swiss" data-i18n="flyer.styleSwiss">Swiss</option>
-          <option value="american" data-i18n="flyer.styleAmerican">American</option>
-          <option value="experimental" data-i18n="flyer.styleExperimental">Experimental</option>
-        </select>
-      </div>
-
-      <!-- Text Style -->
-      <div class="control-group" style="display:none;">
-        <span class="control-label" data-i18n="flyer.textStyle">Text Style</span>
-        <div class="control-row">
-          <label data-i18n="flyer.color">Color</label>
-          <input type="color" id="textColor" value="#ffffff">
-        </div>
-        <div class="control-row">
-          <label data-i18n="flyer.fontSize">Font Size</label>
-          <input type="range" id="fontSize" min="0.5" max="2.0" step="0.1" value="1.0">
-          <span class="val" id="fontSizeVal">1.0x</span>
-        </div>
-        <div class="control-row">
-          <label data-i18n="flyer.lineHeight">Line Height</label>
-          <input type="range" id="lineHeight" min="0.8" max="2.5" step="0.1" value="1.2">
-          <span class="val" id="lineHeightVal">1.2x</span>
-        </div>
-        <div class="control-row">
-          <label data-i18n="flyer.letterSpacing">Letter Spacing</label>
-          <input type="range" id="letterSpacing" min="-2" max="10" step="0.5" value="0">
-          <span class="val" id="letterSpacingVal">0px</span>
-        </div>
-        <div class="control-row">
-          <label data-i18n="flyer.alignment">Alignment</label>
-          <select id="textAlign">
-            <option value="smart" data-i18n="flyer.alignSmart">Smart</option>
-            <option value="left" data-i18n="flyer.alignLeft">Left</option>
-            <option value="center" data-i18n="flyer.alignCenter">Center</option>
-            <option value="right" data-i18n="flyer.alignRight">Right</option>
-          </select>
-        </div>
-        <div class="control-row">
-          <label data-i18n="flyer.fontFamily">Font Family</label>
-          <select id="fontFamily">
-            <option value="monospace">Courier New</option>
-            <option value="'Roboto Mono', monospace">Roboto Mono</option>
-            <option value="'Space Mono', monospace">Space Mono</option>
-            <option value="'Major Mono Display', monospace">Major Mono Display</option>
-          </select>
-        </div>
-      </div>
-
-      <hr class="divider">
-
-      <!-- Text Background -->
-      <div class="control-group">
-        <span class="control-label" data-i18n="flyer.textBackground">Text Background</span>
-        <div class="toggle-row">
-          <label data-i18n="flyer.enableBg">Enable Background</label>
-          <div class="toggle" id="textBgToggle"></div>
-        </div>
-        <div class="control-row">
-          <label data-i18n="flyer.bgColor">Background Color</label>
-          <input type="color" id="bgColor" value="#000000">
-        </div>
-        <div class="control-row">
-          <label data-i18n="flyer.bgOpacity">Background Opacity</label>
-          <input type="range" id="bgOpacity" min="0" max="0.9" step="0.1" value="0.4">
-          <span class="val" id="bgOpacityVal">40%</span>
-        </div>
-      </div>
-
-      <!-- Advanced Style -->
-      <div class="control-group" style="display:none;">
-        <span class="control-label" data-i18n="flyer.strokeStyle">Stroke Style</span>
-        <div class="toggle-row">
-          <label data-i18n="flyer.enableStroke">Enable Stroke</label>
-          <div class="toggle" id="strokeToggle"></div>
-        </div>
-        <div class="control-row">
-          <label data-i18n="flyer.strokeColor">Stroke Color</label>
-          <input type="color" id="strokeColor" value="#000000">
-        </div>
-        <div class="control-row">
-          <label data-i18n="flyer.strokeWidth">Stroke Width</label>
-          <input type="range" id="strokeWidth" min="0.5" max="10" step="0.5" value="2">
-          <span class="val" id="strokeWidthVal">2px</span>
-        </div>
-      </div>
-
-      <!-- Layout Rules -->
-      <div class="control-group" style="display:none;">
-        <span class="control-label" data-i18n="flyer.layoutRules">Layout Rules</span>
-        <div class="control-row">
-          <label data-i18n="flyer.margin">Margin</label>
-          <input type="range" id="margin" min="0" max="150" step="5" value="40">
-          <span class="val" id="marginVal">40px</span>
-        </div>
-        <div class="control-row">
-          <label data-i18n="flyer.opacity">Opacity</label>
-          <input type="range" id="textOpacity" min="0.3" max="1.0" step="0.1" value="1.0">
-          <span class="val" id="textOpacityVal">100%</span>
-        </div>
-      </div>
-
-      <!-- Text Options -->
-      <div class="control-group" style="display:none;">
-        <span class="control-label" data-i18n="flyer.textOptions">Text Options</span>
-        <div class="toggle-row">
-          <label data-i18n="flyer.uppercase">Uppercase Text</label>
-          <div class="toggle on" id="uppercaseToggle"></div>
-        </div>
-      </div>
-
-    </div>
-
-    <div class="status-bar" id="statusBar">◈ No image loaded</div>
-
-    <div class="action-btns">
-      <button class="btn btn-primary" id="generateBtn" style="width:100%" data-i18n="flyer.generateBtn">◈ Generate Layout</button>
-      <button class="btn btn-outline" id="resetBtn" style="width:100%" data-i18n="flyer.resetBtn">Reset</button>
-      <button class="btn btn-outline" id="exportBtn" style="width:100%" data-i18n="flyer.exportBtn">Export PNG</button>
-    </div>
-  </div>
-
-  <!-- ── CANVAS ── -->
-  <div class="tool-canvas-area" id="canvasArea">
-    <div class="file-upload" id="dropZone">
-      <span class="icon">⎚</span>
-      <span>Click or drop an image here</span>
-      <input type="file" id="fileInput" accept="image/*">
-    </div>
-    <canvas id="mainCanvas"></canvas>
-    <div class="canvas-info" id="canvasInfo">No image loaded</div>
-  </div>
-
-</div>
-
+<main id="tool"></main>
 
 <script src="../../js/i18n.js"></script>
 <script src="../../js/utils.js"></script>
+<script src="../../js/tool-shell.js"></script>
 <script>
-document.addEventListener('DOMContentLoaded', () => {
+(function () {
+  const FONTS = {
+    archivo: { family: '"Archivo Black", sans-serif', main: '400', body: '400' },
+    bebas:   { family: '"Bebas Neue", sans-serif', main: '400', body: '400' },
+    inter:   { family: 'Inter, sans-serif', main: '800', body: '400' },
+    space:   { family: '"Space Mono", monospace', main: '700', body: '400' },
+    major:   { family: '"Major Mono Display", monospace', main: '400', body: '400' },
+    courier: { family: '"Courier New", monospace', main: '700', body: '400' },
+  };
 
-  let img = null;
-  let canvas = document.getElementById('mainCanvas');
-  let ctx = canvas.getContext('2d');
-  let cropRect = null;
-  let updateCropRect = () => {}; // assigned in setupCrop()
-  let currentLayout = null;
-
-
-  // --- UI & File Load ---
-  const dropZone = document.querySelector('.tool-canvas-area');
-  const fileUpload = document.querySelector('.tool-canvas-area .file-upload');
-  const fileInput = document.getElementById('fileInput');
-  dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.style.borderColor = 'var(--c1)'; });
-  dropZone.addEventListener('dragleave', () => { dropZone.style.borderColor = ''; });
-  dropZone.addEventListener('drop', e => {
-    e.preventDefault(); dropZone.style.borderColor = '';
-    const file = e.dataTransfer.files[0];
-    if (file && file.type && file.type.startsWith('image/')) {
-      loadFile(file);
-    } else if (file) {
-      document.getElementById('statusBar').textContent = '◈ Please drop an image file.';
+  // ── text helpers (letter spacing done by hand so every browser matches) ──
+  function width(ctx, text, sp) { return ctx.measureText(text).width + sp * Math.max(0, text.length - 1); }
+  function wrap(ctx, text, maxW, sp) {
+    const words = text.split(/\s+/).filter(Boolean), lines = [];
+    let cur = '';
+    for (const w of words) {
+      const test = cur ? cur + ' ' + w : w;
+      if (!cur || width(ctx, test, sp) <= maxW) cur = test;
+      else { lines.push(cur); cur = w; }
     }
-  });
-  fileInput.addEventListener('change', () => {
-    const file = fileInput.files[0];
-    if (file && file.type && file.type.startsWith('image/')) {
-      loadFile(file);
-    } else if (file) {
-      document.getElementById('statusBar').textContent = '◈ Please select an image file.';
-    }
-  });
-
-  async function loadFile(file) {
-    try {
-      const imageData = await loadImageFile(file, canvas, ctx, 
-        document.getElementById('canvasArea'), 
-        document.getElementById('canvasInfo'),
-        document.querySelector('.file-upload')
-      );
-      
-      img = imageData.img;
-      document.getElementById('statusBar').textContent = '◈ Image loaded. Flyer is being generated automatically.';
-      setupCrop(img.width, img.height);
-      currentLayout = null; // Invalidate layout on new image
-      scheduleGenerate();
-    } catch (error) {
-      document.getElementById('statusBar').textContent = '◈ Error loading image';
-      console.error(error);
-    }
-  }
-
-  function debounce(func, delay) {
-      let timeout;
-      return function(...args) {
-          const context = this;
-          clearTimeout(timeout);
-          timeout = setTimeout(() => func.apply(context, args), delay);
-      };
-  }
-
-  const scheduleGenerate = debounce(() => {
-      if (img) generateLayout();
-  }, 100);
-
-  // --- Drawing Logic ---
-  function drawLayout() {
-    if (!img) {
-      document.getElementById('statusBar').textContent = '◈ Please load an image first.';
-      return;
-    }
-    if (!currentLayout) {
-      generateLayout();
-      return;
-    }
-
-    updateLayoutText();
-    updateCropRect(); // Make sure crop is up to date
-
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-    ctx.drawImage(img, 0, 0);
-
-    const color = document.getElementById('textColor').value;
-    const fontFamily = document.getElementById('fontFamily').value;
-    const useStroke = document.getElementById('strokeToggle').classList.contains('on');
-    const strokeColor = document.getElementById('strokeColor').value;
-    const strokeWidth = parseFloat(document.getElementById('strokeWidth').value);
-    const textOpacity = parseFloat(document.getElementById('textOpacity').value);
-
-    const useBg = document.getElementById('textBgToggle').classList.contains('on');
-    const bgColor = document.getElementById('bgColor').value;
-    const bgOpacity = parseFloat(document.getElementById('bgOpacity').value);
-    ctx.fillStyle = color;
-
-    const lineHeightFactor = parseFloat(document.getElementById('lineHeight').value);
-    const letterSpacing = parseFloat(document.getElementById('letterSpacing').value);
-
-    currentLayout.elements.forEach(el => {
-        const resolvedFamily = (el.fontFamily || fontFamily);
-        const currentFont = `${el.bold ? 'bold ' : ''}${el.size}px ${resolvedFamily}`;
-        ctx.font = currentFont;
-        ctx.textAlign = 'left';
-        ctx.save();
-        ctx.globalAlpha = textOpacity;
-        ctx.translate(el.x, el.y);
-        ctx.rotate(el.rotation * Math.PI / 180);
-        
-        const lines = el.lines;
-        const padding = 10;
-        
-        lines.forEach((line, i) => {
-          const yPos = i * (el.size * lineHeightFactor);
-          const lineWidth = getTextWidth(line, currentFont, letterSpacing);
-          let xStart = 0;
-          if (el.textAlign === 'center') xStart = -lineWidth / 2;
-          if (el.textAlign === 'right') xStart = -lineWidth;
-
-          if (useBg) {
-            ctx.save();
-            ctx.globalAlpha = bgOpacity;
-            ctx.fillStyle = bgColor;
-            ctx.fillRect(xStart - padding, yPos - el.size * 0.85, lineWidth + padding * 2, el.size * 1.15);
-            ctx.restore();
-          }
-
-          if (useStroke) {
-            ctx.strokeStyle = strokeColor;
-            ctx.lineWidth = strokeWidth;
-            ctx.strokeText(line, xStart, yPos);
-          }
-          if (letterSpacing !== 0) {
-            let currentX = xStart;
-            for (let char of line) {
-                ctx.fillText(char, currentX, yPos);
-                currentX += getTextWidth(char, currentFont, letterSpacing);
-            }
-          } else {
-            ctx.fillText(line, xStart, yPos);
-          }
-        });
-        ctx.restore();
-    });
-
-    // Add watermark (always visible)
-    const watermarkSize = canvas.width * 0.015;
-    const watermarkMargin = canvas.width * 0.02;
-    ctx.font = `${watermarkSize}px monospace`;
-    ctx.textAlign = 'left';
-    ctx.globalAlpha = 0.7;
-    ctx.fillText('pudrus.xyz', watermarkMargin, canvas.height - watermarkMargin);
-    ctx.globalAlpha = 1.0;
-
-    drawCropOverlay(ctx, canvas, cropRect);
-  }
-
-  // --- Layout Calculation Logic ---
-  function generateLayout() {
-    if (!img) {
-      document.getElementById('statusBar').textContent = '◈ Please load an image first.';
-      return;
-    }
-
-    updateCropRect(); // Ensure crop is updated before generating
-    const W = canvas.width;
-    const H = canvas.height;
-    const bounds = {
-        x: cropRect ? cropRect.x : 0,
-        y: cropRect ? cropRect.y : 0,
-        w: cropRect ? cropRect.w : canvas.width,
-        h: cropRect ? cropRect.h : canvas.height
-    };
-
-    const useUppercase = document.getElementById('uppercaseToggle').classList.contains('on');
-    const mainAct = document.getElementById('mainAct').value;
-    const supportActs = document.getElementById('supportActs').value.split(',').map(s => s.trim()).filter(s => s !== '');
-    const date = document.getElementById('date').value;
-    const venue = document.getElementById('venue').value;
-    const fontFamily = document.getElementById('fontFamily').value;
-    const designStyle = 'experimental';
-    const textOffsetX = parseFloat(document.getElementById('textOffsetX').value);
-    const textOffsetY = parseFloat(document.getElementById('textOffsetY').value);
-    const textRotation = parseFloat(document.getElementById('textRotation').value);
-    const blockSpacing = parseFloat(document.getElementById('blockSpacing').value);
-    
-    let success = false;
-    let currentSizeMultiplier = parseFloat(document.getElementById('fontSize').value);
-
-    for (let attempt = 0; attempt < 10 && !success; attempt++) {
-        const letterSpacing = parseFloat(document.getElementById('letterSpacing').value);
-        const lineHeightFactor = parseFloat(document.getElementById('lineHeight').value);
-        ctx.font = `10px ${fontFamily}`; // Set a base font for measurements
-        const elementsToPlace = [];
-        if (mainAct) {
-            const text = useUppercase ? mainAct.toUpperCase() : mainAct;
-            elementsToPlace.push({ id: 'main', text: text, baseSize: W * 0.15, bold: true, wrapWidth: 0.8 });
-        }
-        if (supportActs.length > 0 && supportActs[0] !== '') {
-            supportActs.forEach((act, i) => {
-                const text = useUppercase ? act.toUpperCase() : act;
-                elementsToPlace.push({ id: `support-${i}`, text: text, baseSize: W * 0.05, bold: false, wrapWidth: 0.6 });
-            });
-        }
-        if (date) {
-            const text = useUppercase ? date.toUpperCase() : date;
-            elementsToPlace.push({ id: 'date', text: text, baseSize: W * 0.04, bold: false, wrapWidth: 0.6 });
-        }
-        if (venue) {
-            const text = useUppercase ? venue.toUpperCase() : venue;
-            elementsToPlace.push({ id: 'venue', text: text, baseSize: W * 0.04, bold: false, wrapWidth: 0.6 });
-        }
-
-        currentLayout = { elements: [] };
-        let placedBBoxes = [];
-        let layoutPossible = true;
-        const margin = parseInt(document.getElementById('margin').value);
-        const xShift = bounds.w * (textOffsetX / 100);
-        const yShift = bounds.h * (textOffsetY / 100);
-        
-        if (designStyle === 'swiss') {
-            let yPos = bounds.y + H * 0.15 + yShift;
-            const xPos = Math.random() < 0.5 ? bounds.x + margin + xShift : bounds.x + bounds.w - margin + xShift;
-            const align = xPos === bounds.x + margin + xShift ? 'left' : 'right';
-
-            for (const el of elementsToPlace) {
-                const initialSize = el.baseSize * currentSizeMultiplier;
-                const fit = fitTextToElement({ ...el, size: initialSize }, el.text, fontFamily, letterSpacing, lineHeightFactor, bounds, margin, bounds.h - (yPos - bounds.y) - margin);
-                if (!fit.lines.length || fit.size < 12) { layoutPossible = false; break; }
-                const metrics = getMetrics(fit.lines, `${el.bold ? 'bold ' : ''}${fit.size}px ${fontFamily}`, fit.size, letterSpacing, lineHeightFactor);
-                if (yPos + metrics.height > bounds.y + bounds.h - margin) { layoutPossible = false; break; }
-                currentLayout.elements.push({ ...el, lines: fit.lines, size: fit.size, x: xPos, y: yPos, textAlign: align, rotation: textRotation });
-                yPos += metrics.height * blockSpacing;
-            }
-        } else if (designStyle === 'american') {
-            let yPos = bounds.y + H * 0.2 + yShift;
-            for (const el of elementsToPlace) {
-                const initialSize = el.baseSize * currentSizeMultiplier;
-                const fit = fitTextToElement({ ...el, size: initialSize }, el.text, fontFamily, letterSpacing, lineHeightFactor, bounds, margin, bounds.h - (yPos - bounds.y) - margin);
-                if (!fit.lines.length || fit.size < 12) { layoutPossible = false; break; }
-                const metrics = getMetrics(fit.lines, `${el.bold ? 'bold ' : ''}${fit.size}px ${fontFamily}`, fit.size, letterSpacing, lineHeightFactor);
-                if (yPos + metrics.height > bounds.y + bounds.h - margin) { layoutPossible = false; break; }
-                currentLayout.elements.push({ ...el, lines: fit.lines, size: fit.size, x: bounds.x + bounds.w / 2 + xShift, y: yPos, textAlign: 'center', rotation: textRotation });
-                yPos += metrics.height * blockSpacing;
-            }
-        } else { // Experimental
-            const fontOptions = Array.from(document.getElementById('fontFamily').options).map(opt => opt.value);
-            for (const el of elementsToPlace) {
-                const randomFont = fontOptions[Math.floor(Math.random() * fontOptions.length)];
-                if (!placeElementRandomly(el, placedBBoxes, currentSizeMultiplier, randomFont, bounds, letterSpacing, lineHeightFactor, margin, textOffsetX, textOffsetY, textRotation)) { layoutPossible = false; break; }
-            }
-        }
-        
-        if (layoutPossible) {
-            success = true;
-        } else {
-            currentSizeMultiplier *= 0.9; // Reduce size and retry
-        }
-    }
-    
-    if (!success) {
-        document.getElementById('statusBar').textContent = "◈ Could not fit all text. Try reducing font size or text length.";
-    } else {
-        document.getElementById('statusBar').textContent = currentLayout.elements.length ? '◈ Layout generated.' : '◈ Image ready. Add text and regenerate for a flyer layout.';
-    }
-
-    drawLayout();
-  }
-
-  function getTextWidth(text, font, letterSpacing = 0) {
-    ctx.font = font;
-    if (letterSpacing === 0) return ctx.measureText(text).width;
-    let width = 0;
-    for (let i = 0; i < text.length; i++) {
-      width += ctx.measureText(text[i]).width;
-      if (i < text.length - 1) width += letterSpacing;
-    }
-    return width;
-  }
-
-  function breakWord(word, maxWidth, font, letterSpacing) {
-    let chunk = '';
-    const parts = [];
-    for (let char of word) {
-      const next = chunk + char;
-      if (getTextWidth(next, font, letterSpacing) <= maxWidth) {
-        chunk = next;
-      } else {
-        if (chunk.length === 0) {
-          parts.push(char);
-          chunk = '';
-        } else {
-          parts.push(chunk);
-          chunk = char;
-        }
-      }
-    }
-    if (chunk) parts.push(chunk);
-    return parts;
-  }
-
-  function wrapText(text, maxWidth, font, letterSpacing = 0) {
-    ctx.font = font;
-    if (!text) return [''];
-    const words = text.split(' ');
-    let lines = [];
-    let currentLine = '';
-    for (let i = 0; i < words.length; i++) {
-      const word = words[i];
-      const testLine = currentLine ? `${currentLine} ${word}` : word;
-      if (getTextWidth(testLine, font, letterSpacing) <= maxWidth) {
-        currentLine = testLine;
-      } else {
-        if (getTextWidth(word, font, letterSpacing) > maxWidth) {
-          const broken = breakWord(word, maxWidth, font, letterSpacing);
-          if (currentLine) {
-            lines.push(currentLine);
-            currentLine = '';
-          }
-          for (let j = 0; j < broken.length - 1; j++) {
-            lines.push(broken[j]);
-          }
-          currentLine = broken[broken.length - 1];
-        } else {
-          if (currentLine) lines.push(currentLine);
-          currentLine = word;
-        }
-      }
-    }
-    if (currentLine) lines.push(currentLine);
+    if (cur) lines.push(cur);
     return lines;
   }
-
-  function getMetrics(lines, font, fontSize, letterSpacing = 0, lineHeightFactor = 1.2) {
-      const lineHeight = fontSize * lineHeightFactor;
-      const height = lines.length * lineHeight;
-      const maxWidth = Math.max(...lines.map(line => getTextWidth(line, font, letterSpacing)));
-      return { width: maxWidth, height: height };
+  function fillLine(ctx, text, x, y, sp, stroke) {
+    if (!sp) { if (stroke) ctx.strokeText(text, x, y); ctx.fillText(text, x, y); return; }
+    for (const ch of text) {
+      if (stroke) ctx.strokeText(ch, x, y);
+      ctx.fillText(ch, x, y);
+      x += ctx.measureText(ch).width + sp;
+    }
   }
 
-  function fitTextToElement(el, text, fontFamily, letterSpacing, lineHeightFactor, bounds, margin, maxHeightOverride = null) {
-      const resolvedFamily = el.fontFamily || fontFamily;
-      let size = el.size;
-      const minSize = Math.max(12, size * 0.75);
-      const maxWidth = Math.max(0, bounds.w * (el.wrapWidth || 1) - margin * 2);
-      const availableHeight = maxHeightOverride !== null ? maxHeightOverride : Math.max(0, bounds.y + bounds.h - el.y - margin);
-      let font = `${el.bold ? 'bold ' : ''}${size}px ${resolvedFamily}`;
-      let lines = wrapText(text, maxWidth, font, letterSpacing);
-      let metrics = getMetrics(lines, font, size, letterSpacing, lineHeightFactor);
+  function draw({ ctx, srcCanvas, W, H, p, rng, k }) {
+    // Background image (cover) + darken
+    ctx.drawImage(srcCanvas, 0, 0, W, H);
+    if (p.dim > 0) { ctx.fillStyle = `rgba(0,0,0,${p.dim / 100})`; ctx.fillRect(0, 0, W, H); }
 
-      while ((metrics.width > maxWidth || metrics.height > availableHeight) && size > minSize) {
-          size *= 0.9;
-          font = `${el.bold ? 'bold ' : ''}${size}px ${resolvedFamily}`;
-          lines = wrapText(text, maxWidth, font, letterSpacing);
-          metrics = getMetrics(lines, font, size, letterSpacing, lineHeightFactor);
-      }
+    const u = Math.min(W, H) / 100;
+    const m = p.margin / 100 * Math.min(W, H);
+    const font = FONTS[p.font];
+    const up = s => (p.upper ? s.toUpperCase() : s);
+    const defs = [];
+    if (p.main.trim()) defs.push({ text: up(p.main.trim()), base: 15, weight: font.main, wrap: 1 });
+    p.support.split(',').map(s => s.trim()).filter(Boolean).forEach(s => defs.push({ text: up(s), base: 5.5, weight: font.body, wrap: 0.9 }));
+    if (p.date.trim()) defs.push({ text: up(p.date.trim()), base: 4.6, weight: font.body, wrap: 0.9 });
+    if (p.venue.trim()) defs.push({ text: up(p.venue.trim()), base: 4.6, weight: font.body, wrap: 0.9 });
 
-      return { size, lines, metrics };
-  }
-
-  function updateLayoutText() {
-      if (!currentLayout) return;
-      const useUppercase = document.getElementById('uppercaseToggle').classList.contains('on');
-      const letterSpacing = parseFloat(document.getElementById('letterSpacing').value);
-      const fontFamily = document.getElementById('fontFamily').value;
-      const lineHeightFactor = parseFloat(document.getElementById('lineHeight').value);
-      const margin = parseInt(document.getElementById('margin').value);
-      const bounds = {
-          x: cropRect ? cropRect.x : 0,
-          y: cropRect ? cropRect.y : 0,
-          w: cropRect ? cropRect.w : canvas.width,
-          h: cropRect ? cropRect.h : canvas.height
-      };
-
-      const textMap = {
-          main: useUppercase ? document.getElementById('mainAct').value.toUpperCase() : document.getElementById('mainAct').value,
-          date: useUppercase ? document.getElementById('date').value.toUpperCase() : document.getElementById('date').value,
-          venue: useUppercase ? document.getElementById('venue').value.toUpperCase() : document.getElementById('venue').value
-      };
-      const supportActs = document.getElementById('supportActs').value.split(',').map(s => s.trim()).filter(s => s !== '');
-      let supportIndex = 0;
-
-      currentLayout.elements.forEach(el => {
-          let text = textMap[el.id];
-          if (text === undefined && el.id.startsWith('support-')) {
-              text = supportActs[supportIndex] ? (useUppercase ? supportActs[supportIndex].toUpperCase() : supportActs[supportIndex]) : el.text;
-              supportIndex += 1;
-          }
-          if (text === undefined) text = el.text;
-          el.text = text;
-          const fitted = fitTextToElement(el, el.text, fontFamily, letterSpacing, lineHeightFactor, bounds, margin);
-          el.size = fitted.size;
-          el.lines = fitted.lines;
-      });
-  }
-
-  function clamp(value, min, max) {
-      return Math.max(min, Math.min(max, value));
-  }
-
-  function checkCollision(box, boxes) {
-      for (const other of boxes) {
-        if (box.x < other.x + other.w && box.x + box.w > other.x &&
-            box.y < other.y + other.h && box.y + box.h > other.y) {
-          return true; // Collision
+    // Fit: shrink everything until all blocks fit the free area
+    const lh = p.lineHeight / 100, gap = 2.6 * u * (p.gap / 100);
+    const availW = W - 2 * m, availH = H - 2 * m;
+    let scale = p.size / 100, blocks = [];
+    for (let attempt = 0; attempt < 14; attempt++) {
+      blocks = defs.map(d => {
+        let size = d.base * u * scale;
+        let lines, w;
+        for (let s = 0; s < 20; s++) {
+          ctx.font = `${d.weight} ${size}px ${font.family}`;
+          const sp = p.spacing / 100 * size;
+          lines = wrap(ctx, d.text, availW * d.wrap, sp);
+          w = Math.max(...lines.map(l => width(ctx, l, sp)));
+          if (w <= availW * d.wrap || size < u) break;
+          size *= 0.92;  // a single word is wider than the page
         }
-      }
-      return false; // No collision
-    }
-
-  function getBBox(el) {
-      return { x: el.x - el.w/2, y: el.y - el.h/2, w: el.w, h: el.h };
-  }
-
-  function placeElementRandomly(el, placedBBoxes, sizeMultiplier, randomFont = null, bounds, letterSpacing, lineHeightFactor, margin, offsetX = 0, offsetY = 0, rotation = 0) {
-    const W = canvas.width;
-    const H = canvas.height;
-    const fontFamily = randomFont || document.getElementById('fontFamily').value;
-    const textAlign = document.getElementById('textAlign').value;
-    const initialSize = el.baseSize * sizeMultiplier;
-    const fit = fitTextToElement({ ...el, size: initialSize }, el.text, fontFamily, letterSpacing, lineHeightFactor, bounds, margin, (bounds ? bounds.h : H) - margin * 2);
-    const size = fit.size;
-    const font = `${el.bold ? 'bold ' : ''}${size}px ${fontFamily}`;
-    const lines = fit.lines;
-    const metrics = getMetrics(lines, font, size, letterSpacing, lineHeightFactor);
-    
-    if (metrics.width > (bounds ? bounds.w : W) - margin * 2 || metrics.height > (bounds ? bounds.h : H) - margin * 2) {
-      return false;
-    }
-
-    const baseX = (bounds ? bounds.x + bounds.w / 2 : W / 2) + ((bounds ? bounds.w : W) * offsetX / 100);
-    const baseY = (bounds ? bounds.y + bounds.h / 2 : H / 2) + ((bounds ? bounds.h : H) * offsetY / 100);
-    const availableWidth = Math.max(0, (bounds ? bounds.w : W) - metrics.width - margin * 2);
-    const availableHeight = Math.max(0, (bounds ? bounds.h : H) - metrics.height - margin * 2);
-
-    for (let i = 0; i < 200; i++) {
-        const x = clamp(baseX + (Math.random() - 0.5) * Math.max(0, availableWidth), (bounds ? bounds.x : 0) + margin, (bounds ? bounds.x + bounds.w : W) - margin - metrics.width);
-        const y = clamp(baseY + (Math.random() - 0.5) * Math.max(0, availableHeight), (bounds ? bounds.y : 0) + margin, (bounds ? bounds.y + bounds.h : H) - margin - metrics.height);
-        const bbox = { x: x - 10, y: y - 10, w: metrics.width + 20, h: metrics.height + 20 };
-
-        if (!checkCollision(bbox, placedBBoxes)) {
-            let align = 'left';
-            if (textAlign === 'smart') {
-                if (x < bounds.x + bounds.w * 0.2) align = 'left';
-                else if (x + metrics.width > bounds.x + bounds.w * 0.8) align = 'right';
-                else align = 'center';
-            } else {
-                align = textAlign;
-            }
-            
-            let drawX = x;
-            if (align === 'center') drawX = x + metrics.width / 2;
-            if (align === 'right') drawX = x + metrics.width;
-
-            currentLayout.elements.push({ ...el, lines, size, fontFamily, x: drawX, y: y, textAlign: align, rotation: rotation });
-            placedBBoxes.push(bbox);
-            return true;
-        }
-    }
-    console.warn(`Could not place: ${el.text}`);
-    return false;
-  }
-
-  function setupCrop(W, H) {
-      const aspectRatioSelect = document.getElementById('aspectRatio');
-      const offsetXSlider = document.getElementById('cropOffsetX');
-      const offsetYSlider = document.getElementById('cropOffsetY');
-
-      updateCropRect = function() {
-          if (!img) return;
-          const W = canvas.width, H = canvas.height;
-          const ratio = aspectRatioSelect.value;
-
-          if (ratio === 'free') {
-              cropRect = null;
-              offsetXSlider.disabled = true;
-              offsetYSlider.disabled = true;
-          } else {
-              offsetXSlider.disabled = false;
-              offsetYSlider.disabled = false;
-              const [w, h] = ratio.split(':').map(Number);
-              const targetRatio = w / h;
-              const currentRatio = W / H;
-              let cropW, cropH, cropX, cropY;
-              if (currentRatio > targetRatio) {
-                  cropH = H;
-                  cropW = H * targetRatio;
-                  cropX = (W - cropW) / 2 * (1 + offsetXSlider.value / 50);
-                  cropY = 0;
-              } else {
-                  cropW = W;
-                  cropH = W / targetRatio;
-                  cropX = 0;
-                  cropY = (H - cropH) / 2 * (1 + offsetYSlider.value / 50);
-              }
-              cropRect = { x: cropX, y: cropY, w: cropW, h: cropH };
-          }
-          // Redraw image with new crop overlay
-          if (img) {
-              ctx.drawImage(img, 0, 0);
-              drawCropOverlay(ctx, canvas, cropRect);
-          }
-      }
-      
-      aspectRatioSelect.onchange = () => updateCropRect();
-      offsetXSlider.oninput = () => updateCropRect();
-      offsetYSlider.oninput = () => updateCropRect();
-      
-      // Initial calculation
-      updateCropRect();
-  }
-
-
-  // --- Event Listeners ---
-  document.getElementById('generateBtn').addEventListener('click', () => {
-    currentLayout = null;
-    generateLayout();
-  });
-  document.getElementById('resetBtn').addEventListener('click', () => {
-    currentLayout = null;
-    cropRect = null;
-    img = null;
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-    canvas.style.display = 'none';
-    document.getElementById('canvasArea').classList.remove('has-image');
-    if (fileUpload) fileUpload.style.display = 'flex';
-    document.getElementById('canvasInfo').textContent = 'No image loaded';
-    document.getElementById('statusBar').textContent = '◈ Reset complete. Drop a new image to start again.';
-  });
-  document.getElementById('exportBtn').addEventListener('click', () => {
-    if (!img) return;
-
-    let quality = document.getElementById('exportQuality').value;
-    let maxDim = quality === 'high' ? Math.max(canvas.width, canvas.height) :
-                 quality === 'medium' ? 1080 : 720;
-
-    let exportCanvas = document.createElement('canvas');
-    let exportCtx = exportCanvas.getContext('2d');
-    
-    let sx = cropRect ? cropRect.x : 0;
-    let sy = cropRect ? cropRect.y : 0;
-    let srcW = cropRect ? cropRect.w : canvas.width;
-    let srcH = cropRect ? cropRect.h : canvas.height;
-
-    let scale = Math.min(1, maxDim / Math.max(srcW, srcH));
-    exportCanvas.width = Math.floor(srcW * scale);
-    exportCanvas.height = Math.floor(srcH * scale);
-    exportCtx.drawImage(img, sx, sy, srcW, srcH, 0, 0, exportCanvas.width, exportCanvas.height);
-
-    if (currentLayout) {
-      const exportScale = exportCanvas.width / srcW;
-      exportCtx.globalAlpha = 1;
-      currentLayout.elements.forEach(el => {
-        const resolvedFamily = (el.fontFamily || document.getElementById('fontFamily').value);
-        exportCtx.font = `${el.bold ? 'bold ' : ''}${el.size * exportScale}px ${resolvedFamily}`;
-        exportCtx.fillStyle = document.getElementById('textColor').value;
-        exportCtx.textAlign = 'left';
-        exportCtx.save();
-        exportCtx.translate((el.x - sx) * exportScale, (el.y - sy) * exportScale);
-        exportCtx.rotate(el.rotation * Math.PI / 180);
-        const lines = el.lines;
-        const letterSpacing = parseFloat(document.getElementById('letterSpacing').value) * exportScale;
-        const lineHeightFactorExport = parseFloat(document.getElementById('lineHeight').value);
-        const useBgExport = document.getElementById('textBgToggle').classList.contains('on');
-        const bgColorExport = document.getElementById('bgColor').value;
-        const bgOpacityExport = parseFloat(document.getElementById('bgOpacity').value);
-        const padding = 10 * exportScale;
-        lines.forEach((line, i) => {
-          const yPos = i * (el.size * lineHeightFactorExport) * exportScale;
-          const lineWidth = letterSpacing !== 0 ?
-              Array.from(line).reduce((sum, char) => sum + exportCtx.measureText(char).width, 0) + Math.max(0, letterSpacing * (line.length - 1)) :
-              exportCtx.measureText(line).width;
-          let xStart = 0;
-          if (el.textAlign === 'center') xStart = -lineWidth / 2;
-          if (el.textAlign === 'right') xStart = -lineWidth;
-
-          if (useBgExport) {
-            exportCtx.save();
-            exportCtx.globalAlpha = bgOpacityExport;
-            exportCtx.fillStyle = bgColorExport;
-            exportCtx.fillRect(xStart - padding, yPos - el.size * 0.85 * exportScale, lineWidth + padding * 2, el.size * 1.15 * exportScale);
-            exportCtx.restore();
-          }
-
-          if (document.getElementById('strokeToggle').classList.contains('on')) {
-            exportCtx.strokeStyle = document.getElementById('strokeColor').value;
-            exportCtx.lineWidth = parseFloat(document.getElementById('strokeWidth').value) * exportScale;
-            exportCtx.strokeText(line, xStart, yPos);
-          }
-          if (letterSpacing !== 0) {
-            let currentX = xStart;
-            for (let char of line) {
-              exportCtx.fillText(char, currentX, yPos);
-              currentX += exportCtx.measureText(char).width + letterSpacing;
-            }
-          } else {
-            exportCtx.fillText(line, xStart, yPos);
-          }
-        });
-        exportCtx.restore();
+        return { ...d, size, lines, w, h: lines.length * size * lh };
       });
+      const total = blocks.reduce((a, b) => a + b.h, 0) + gap * Math.max(0, blocks.length - 1);
+      if (total <= availH * (p.style === 'poster' ? 0.7 : 1)) break;
+      scale *= 0.9;
     }
 
-    const link = document.createElement('a');
-    link.download = `pudrus_flyer_${Date.now()}.png`;
-    link.href = exportCanvas.toDataURL('image/png');
-    link.click();
-  });
-
-  // Real-time update
-  ['textColor', 'strokeColor', 'strokeWidth', 'textOpacity', 'letterSpacing'].forEach(id => {
-    document.getElementById(id).addEventListener('input', () => { if (currentLayout) drawLayout(); });
-  });
-  document.getElementById('strokeToggle').addEventListener('click', () => {
-      document.getElementById('strokeToggle').classList.toggle('on');
-      if (currentLayout) drawLayout();
-  });
-  document.getElementById('mainAct').addEventListener('input', () => { if (currentLayout) drawLayout(); });
-  document.getElementById('supportActs').addEventListener('input', () => { if (currentLayout) drawLayout(); });
-  document.getElementById('date').addEventListener('input', () => { if (currentLayout) drawLayout(); });
-  document.getElementById('venue').addEventListener('input', () => { if (currentLayout) drawLayout(); });
-  document.getElementById('uppercaseToggle').addEventListener('click', () => {
-      document.getElementById('uppercaseToggle').classList.toggle('on');
-      if (currentLayout) drawLayout();
-  });
-  document.getElementById('textBgToggle').addEventListener('click', () => {
-      document.getElementById('textBgToggle').classList.toggle('on');
-      if (currentLayout) drawLayout();
-  });
-  ['bgColor', 'bgOpacity'].forEach(id => {
-    document.getElementById(id).addEventListener('input', () => { if (currentLayout) drawLayout(); });
-  });
-
-  // Controls that require re-calculating the layout
-  ['fontSize', 'fontFamily', 'textAlign', 'lineHeight', 'designStyle', 'margin', 'aspectRatio', 'cropOffsetX', 'cropOffsetY', 'textOffsetX', 'textOffsetY', 'textRotation', 'blockSpacing'].forEach(id => {
-    const el = document.getElementById(id);
-    el.addEventListener(el.tagName === 'SELECT' ? 'change' : 'input', () => { 
-      currentLayout = null; 
-      scheduleGenerate(); 
-    });
-  });
-  document.getElementById('fontSize').addEventListener('input', (e) => {
-    document.getElementById('fontSizeVal').textContent = e.target.value + 'x';
-  });
-  document.getElementById('lineHeight').addEventListener('input', (e) => {
-    document.getElementById('lineHeightVal').textContent = e.target.value + 'x';
-  });
-  document.getElementById('strokeWidth').addEventListener('input', (e) => {
-    document.getElementById('strokeWidthVal').textContent = e.target.value + 'px';
-  });
-  document.getElementById('margin').addEventListener('input', (e) => {
-    document.getElementById('marginVal').textContent = e.target.value + 'px';
-  });
-  document.getElementById('textOpacity').addEventListener('input', (e) => {
-    document.getElementById('textOpacityVal').textContent = Math.round(e.target.value * 100) + '%';
-  });
-  document.getElementById('letterSpacing').addEventListener('input', (e) => {
-    document.getElementById('letterSpacingVal').textContent = e.target.value + 'px';
-  });
-  document.getElementById('cropOffsetX').addEventListener('input', (e) => { document.getElementById('cropOffsetXVal').textContent = e.target.value + '%'; });
-  document.getElementById('cropOffsetY').addEventListener('input', (e) => { document.getElementById('cropOffsetYVal').textContent = e.target.value + '%'; });
-  document.getElementById('textOffsetX').addEventListener('input', (e) => { document.getElementById('textOffsetXVal').textContent = e.target.value + '%'; });
-  document.getElementById('textOffsetY').addEventListener('input', (e) => { document.getElementById('textOffsetYVal').textContent = e.target.value + '%'; });
-  document.getElementById('textRotation').addEventListener('input', (e) => { document.getElementById('textRotationVal').textContent = e.target.value + '°'; });
-  document.getElementById('blockSpacing').addEventListener('input', (e) => { document.getElementById('blockSpacingVal').textContent = e.target.value + 'x'; });
-
-  // Check for incoming image from workflow
-  document.fonts.ready.then(() => {
-    const incomingImageDataUrl = receiveImage();
-    if (incomingImageDataUrl) {
-        loadFile(incomingImageDataUrl);
+    // Placement
+    const ox = p.offsetX / 100 * W, oy = p.offsetY / 100 * H;
+    const total = blocks.reduce((a, b) => a + b.h, 0) + gap * Math.max(0, blocks.length - 1);
+    if (p.style === 'poster') {
+      const placed = [];
+      for (const b of blocks) {
+        let best = null;
+        for (let tries = 0; tries < 150; tries++) {
+          const x = m + rng() * Math.max(0, availW - b.w), y = m + rng() * Math.max(0, availH - b.h);
+          const box = { x: x - u, y: y - u, w: b.w + 2 * u, h: b.h + 2 * u };
+          if (!placed.some(o => box.x < o.x + o.w && box.x + box.w > o.x && box.y < o.y + o.h && box.y + box.h > o.y)) { best = { x, y, box }; break; }
+          if (!best) best = { x, y, box };
+        }
+        placed.push(best.box);
+        b.align = best.x < W * 0.25 ? 'left' : best.x + b.w > W * 0.75 ? 'right' : 'center';
+        b.x = b.align === 'left' ? best.x : b.align === 'right' ? best.x + b.w : best.x + b.w / 2;
+        b.y = best.y;
+        b.rot = (rng() - 0.5) * 8;
+      }
     } else {
-      // If no image is coming, we can still trigger a layout if there's text
+      const align = p.style === 'center' ? 'center' : p.align;
+      let y = p.style === 'center' ? (H - total) / 2 : p.style === 'bottom' ? H - m - total : m;
+      for (const b of blocks) {
+        b.align = align;
+        b.x = align === 'left' ? m : align === 'right' ? W - m : W / 2;
+        b.y = y;
+        b.rot = 0;
+        y += b.h + gap;
+      }
     }
+
+    // Draw
+    ctx.textBaseline = 'top';
+    for (const b of blocks) {
+      ctx.save();
+      ctx.font = `${b.weight} ${b.size}px ${font.family}`;
+      const sp = p.spacing / 100 * b.size;
+      ctx.translate(b.x + ox, b.y + oy);
+      ctx.rotate((b.rot + p.rotation) * Math.PI / 180);
+      b.lines.forEach((line, i) => {
+        const lw = width(ctx, line, sp);
+        const x = b.align === 'left' ? 0 : b.align === 'right' ? -lw : -lw / 2;
+        const y = i * b.size * lh;
+        if (p.box) {
+          ctx.globalAlpha = p.boxOpacity / 100;
+          ctx.fillStyle = p.boxColor;
+          const pad = b.size * 0.18;
+          ctx.fillRect(x - pad, y - pad * 0.6, lw + pad * 2, b.size + pad * 1.2);
+          ctx.globalAlpha = 1;
+        }
+        ctx.fillStyle = p.color;
+        if (p.stroke) { ctx.strokeStyle = p.strokeColor; ctx.lineWidth = p.strokeWidth * k; ctx.lineJoin = 'round'; }
+        fillLine(ctx, line, x, y, sp, p.stroke);
+      });
+      ctx.restore();
+    }
+
+    if (p.watermark) {
+      ctx.font = `${1.6 * u}px "Space Mono", monospace`;
+      ctx.fillStyle = p.color;
+      ctx.globalAlpha = 0.7;
+      ctx.textAlign = 'right';
+      ctx.textBaseline = 'alphabetic';
+      ctx.fillText('pudrus.xyz', W - 2 * u, H - 2 * u);
+      ctx.globalAlpha = 1;
+      ctx.textAlign = 'left';
+    }
+  }
+
+  const tool = PudrusTool.create({
+    id: 'flyer', i18n: 'flyer', icon: '⎚',
+    name: '⎚ Flyer Forge', desc: 'Event flyers with automatic layouts.',
+    noFlyer: true,
+    controls: [
+      { key: 'main', label: 'flyer.mainLabel', fallback: 'Main act', type: 'text', value: 'PUDRUS', placeholder: 'flyer.mainAct' },
+      { key: 'support', label: 'flyer.supportLabel', fallback: 'Support (comma separated)', type: 'text', value: 'Live A/V set, Guest DJ', placeholder: 'flyer.supportActs' },
+      { key: 'date', label: 'flyer.dateLabel', fallback: 'Date', type: 'text', value: '24.11 — 23:00', placeholder: 'flyer.date' },
+      { key: 'venue', label: 'flyer.venueLabel', fallback: 'Venue', type: 'text', value: 'Club XYZ', placeholder: 'flyer.venue' },
+      { key: 'style', label: 'flyer.designStyle', fallback: 'Layout', type: 'select', value: 'swiss', options: [
+        { value: 'swiss', label: 'flyer.styleSwiss', fallback: 'Swiss' },
+        { value: 'center', label: 'flyer.styleCenter', fallback: 'Centered' },
+        { value: 'bottom', label: 'flyer.styleBottom', fallback: 'Bottom' },
+        { value: 'poster', label: 'flyer.stylePoster', fallback: 'Poster (random)' } ] },
+      { key: 'font', label: 'flyer.fontFamily', fallback: 'Font', type: 'select', value: 'archivo', options: [
+        { value: 'archivo', fallback: 'Archivo Black' },
+        { value: 'bebas', fallback: 'Bebas Neue' },
+        { value: 'inter', fallback: 'Inter' },
+        { value: 'space', fallback: 'Space Mono' },
+        { value: 'major', fallback: 'Major Mono Display' },
+        { value: 'courier', fallback: 'Courier New' } ] },
+      { key: 'color', label: 'flyer.color', fallback: 'Text color', type: 'color', value: '#ffffff', rand: true },
+      { key: 'size', label: 'flyer.fontSize', fallback: 'Text size', min: 40, max: 200, value: 100, unit: '%', rand: [70, 150] },
+      { key: 'dim', label: 'flyer.dim', fallback: 'Darken image', min: 0, max: 85, value: 25, unit: '%', rand: [0, 50] },
+      { key: 'align', label: 'flyer.alignment', fallback: 'Alignment', type: 'select', value: 'left', advanced: true, show: p => p.style === 'swiss' || p.style === 'bottom', options: [
+        { value: 'left', label: 'flyer.alignLeft', fallback: 'Left' },
+        { value: 'right', label: 'flyer.alignRight', fallback: 'Right' },
+        { value: 'center', label: 'flyer.alignCenter', fallback: 'Center' } ] },
+      { key: 'upper', label: 'flyer.uppercase', fallback: 'Uppercase', type: 'toggle', value: true, advanced: true, randChance: 0.7 },
+      { key: 'spacing', label: 'flyer.letterSpacing', fallback: 'Letter spacing', min: -10, max: 50, value: 0, unit: '%', advanced: true, rand: [-5, 25] },
+      { key: 'lineHeight', label: 'flyer.lineHeight', fallback: 'Line height', min: 75, max: 160, value: 95, unit: '%', advanced: true, rand: [85, 120] },
+      { key: 'gap', label: 'flyer.gap', fallback: 'Block spacing', min: 0, max: 300, value: 100, unit: '%', advanced: true, rand: [50, 200] },
+      { key: 'margin', label: 'flyer.margin', fallback: 'Margin', min: 0, max: 20, value: 6, unit: '%', advanced: true, rand: [3, 12] },
+      { key: 'offsetX', label: 'flyer.offsetX', fallback: 'Move X', min: -50, max: 50, value: 0, unit: '%', advanced: true, rand: false },
+      { key: 'offsetY', label: 'flyer.offsetY', fallback: 'Move Y', min: -50, max: 50, value: 0, unit: '%', advanced: true, rand: false },
+      { key: 'rotation', label: 'flyer.rotation', fallback: 'Rotation', min: -45, max: 45, value: 0, unit: '°', advanced: true, rand: [-8, 8] },
+      { key: 'box', label: 'flyer.enableBg', fallback: 'Text background', type: 'toggle', value: false, advanced: true, randChance: 0.3 },
+      { key: 'boxColor', label: 'flyer.bgColor', fallback: 'Background color', type: 'color', value: '#000000', advanced: true, show: p => p.box },
+      { key: 'boxOpacity', label: 'flyer.bgOpacity', fallback: 'Background opacity', min: 10, max: 100, value: 70, unit: '%', advanced: true, show: p => p.box, rand: [40, 100] },
+      { key: 'stroke', label: 'flyer.enableStroke', fallback: 'Text outline', type: 'toggle', value: false, advanced: true, randChance: 0.2 },
+      { key: 'strokeColor', label: 'flyer.strokeColor', fallback: 'Outline color', type: 'color', value: '#000000', advanced: true, show: p => p.stroke },
+      { key: 'strokeWidth', label: 'flyer.strokeWidth', fallback: 'Outline width', min: 0.5, max: 10, step: 0.5, value: 2, advanced: true, show: p => p.stroke, rand: [1, 4] },
+      { key: 'watermark', label: 'flyer.watermark', fallback: 'pudrus.xyz watermark', type: 'toggle', value: true, advanced: true, rand: false },
+    ],
+    presets: [
+      { label: 'flyer.presetSwiss', fallback: 'Swiss', values: { style: 'swiss', font: 'inter', size: 115, dim: 30, spacing: -3, lineHeight: 88 } },
+      { label: 'flyer.presetRave', fallback: 'Rave', values: { style: 'center', font: 'archivo', color: '#66ff33', size: 130, dim: 45, spacing: 5 } },
+      { label: 'flyer.presetPoster', fallback: 'Poster', values: { style: 'poster', font: 'bebas', size: 150, dim: 20, spacing: 4 } },
+      { label: 'flyer.presetZine', fallback: 'Zine', values: { style: 'bottom', font: 'space', size: 95, dim: 10, box: true, boxColor: '#000000', boxOpacity: 85 } },
+    ],
+    draw,
   });
 
-});
+  // Canvas can't trigger web-font downloads by itself: load them, then redraw
+  if (document.fonts) {
+    Promise.all(['Archivo Black', 'Bebas Neue', 'Inter', 'Major Mono Display', 'Space Mono'].map(f => document.fonts.load(`40px "${f}"`)))
+      .then(tool.render, () => {});
+    document.fonts.load('800 40px Inter').then(tool.render, () => {});
+    document.fonts.load('700 40px "Space Mono"').then(tool.render, () => {});
+  }
+})();
 </script>
 </body>
 </html>

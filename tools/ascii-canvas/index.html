@@ -2,433 +2,125 @@
 <html lang="es">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="theme-color" content="#050508">
   <title>ASCII Canvas — PUDRUS.XYZ</title>
   <link rel="icon" type="image/svg+xml" href="../../favicon.svg">
   <link rel="stylesheet" href="../../css/style.css">
+  <link rel="stylesheet" href="../../css/tool-shell.css">
 </head>
 <body>
 
 <nav>
   <a href="../../index.html" class="nav-logo">PUDRUS<span>.xyz</span></a>
   <ul class="nav-links">
-    <li><a href="../../index.html#tools">All Tools</a></li>
+    <li><a href="../../index.html#tools" data-i18n="nav.tools">Tools</a></li>
   </ul>
+  <div class="nav-lang">
+    <select id="langSelect" aria-label="Language selector">
+      <option value="es">ES</option>
+      <option value="en">EN</option>
+    </select>
+  </div>
 </nav>
 
-<div class="tool-layout">
-
-  <!-- ── PANEL ── -->
-  <div class="tool-panel">
-    <div class="tool-panel-header">
-      <a href="../../index.html" class="back" data-i18n="nav.tools">← Back</a>
-      <h2 data-i18n="ascii.name">◊ ASCII Canvas</h2>
-      <p data-i18n="ascii.desc">Transform images into creative ASCII art with custom characters and effects.</p>
-    </div>
-
-    <div class="tool-panel-body">
-
-      <!-- Aspect Ratio -->
-      <div class="control-group">
-        <span class="control-label">Aspect Ratio</span>
-        <div class="control-row">
-          <label>Aspect</label>
-          <select id="aspectRatio">
-            <option value="free">Free</option>
-            <option value="1:1">Square (1:1)</option>
-            <option value="4:5">Portrait (4:5)</option>
-            <option value="9:16">Story (9:16)</option>
-          </select>
-        </div>
-        <div class="control-row">
-          <label>Offset X</label>
-          <input type="range" id="cropOffsetX" min="-50" max="50" value="0"><span class="val" id="cropOffsetXVal">0%</span>
-        </div>
-        <div class="control-row">
-          <label>Offset Y</label>
-          <input type="range" id="cropOffsetY" min="-50" max="50" value="0"><span class="val" id="cropOffsetYVal">0%</span>
-        </div>
-      </div>
-
-      <!-- Granularity -->
-      <div class="control-group">
-        <span class="control-label" data-i18n="ascii.granularity">Granularity</span>
-        <div class="control-row">
-          <label data-i18n="ascii.charSize">Character Size</label>
-          <input type="range" id="charSize" min="4" max="16" value="8">
-          <span class="val" id="charSizeVal">8px</span>
-        </div>
-        <div class="control-row">
-          <label data-i18n="ascii.charSpacing">Line Spacing</label>
-          <input type="range" id="lineSpacing" min="0.5" max="2.0" step="0.1" value="1.2">
-          <span class="val" id="lineSpacingVal">1.2x</span>
-        </div>
-      </div>
-
-      <hr class="divider">
-
-      <!-- Character Set -->
-      <div class="control-group">
-        <span class="control-label" data-i18n="ascii.charSet">Character Set</span>
-        <div class="preset-buttons" style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 10px;">
-          <button class="preset-btn active" data-preset="standard">Standard</button>
-          <button class="preset-btn" data-preset="extended">Extended</button>
-          <button class="preset-btn" data-preset="minimal">Minimal</button>
-          <button class="preset-btn" data-preset="blocks">Blocks</button>
-          <button class="preset-btn" data-preset="dense">Dense</button>
-          <button class="preset-btn" data-preset="custom">Custom</button>
-        </div>
-        <div id="customCharRow" class="custom-char-row" style="display: none;">
-          <input type="text" id="customChars" class="text-input" placeholder="Custom characters..." value="@%#*+=-:. ">
-        </div>
-      </div>
-
-      <hr class="divider">
-
-      <!-- Effects -->
-      <div class="control-group">
-        <span class="control-label" data-i18n="ascii.effects">Effects</span>
-        <div class="control-row">
-          <label data-i18n="ascii.contrast">Contrast</label>
-          <input type="range" id="contrast" min="-100" max="100" value="0">
-          <span class="val" id="contrastVal">0</span>
-        </div>
-        <div class="control-row">
-          <label data-i18n="ascii.brightness">Brightness</label>
-          <input type="range" id="brightness" min="-100" max="100" value="0">
-          <span class="val" id="brightnessVal">0</span>
-        </div>
-        <div class="control-row">
-          <label data-i18n="ascii.colorMode">Color Mode</label>
-          <select id="colorMode">
-            <option value="mono">Monochrome</option>
-            <option value="original">Original Colors</option>
-            <option value="inverted">Inverted</option>
-            <option value="cyan">Cyan</option>
-            <option value="green">Green Terminal</option>
-          </select>
-        </div>
-      </div>
-
-    </div>
-
-    <div class="status-bar" id="statusBar">◈ Ready</div>
-
-    <div class="action-btns">
-      <button class="btn btn-primary" id="applyBtn" style="width:100%" data-i18n="ascii.apply">◈ Apply</button>
-      <button class="btn btn-outline" id="randomizeBtn" style="width:100%" data-i18n="ascii.randomize">◈ Randomize Set</button>
-      <button class="btn btn-outline" id="sendToFlyerBtn" style="width:100%" data-i18n="dithering.continueBtn">→ Continue in Flyer Forge</button>
-      <button class="btn btn-outline" id="downloadBtn" style="width:100%" data-i18n="ascii.download">⬇ Download PNG</button>
-    </div>
-  </div>
-
-  <!-- ── CANVAS ── -->
-  <div class="tool-canvas-area" id="canvasArea">
-    <div class="file-upload" id="dropZone">
-      <span class="icon">◊</span>
-      <span data-i18n="ascii.fileDrop">Click or drop an image here</span>
-      <input type="file" id="fileInput" accept="image/*">
-    </div>
-    <canvas id="asciiCanvas" style="display:none;"></canvas>
-    <div class="canvas-info" id="canvasInfo" style="display:none;">No image loaded</div>
-  </div>
-
-</div>
+<main id="tool"></main>
 
 <script src="../../js/i18n.js"></script>
 <script src="../../js/utils.js"></script>
+<script src="../../js/tool-shell.js"></script>
 <script>
-document.addEventListener('DOMContentLoaded', () => {
-  // Configuration & State
-  let imageData = null;
-  let currentPreset = 'standard';
-  let currentChars = '@%#*+=-:. ';
-  let cropRect = null;
-
-  const charPresets = {
+(function () {
+  // Character sets from dense to light
+  const SETS = {
     standard: '@%#*+=-:. ',
-    extended: '@%#*+=-:.\'"`,\'^"^"|/\\()[]{}',
-    minimal: '@#*:. ',
-    blocks: '████▓▒░  ',
-    dense: '@@@%%%###***+++===---:::...   ',
+    detailed: '$@B%8&WM#*oahkbdpqwmZO0QLCJUYXzcvunxrjft/\\|()1{}[]?-_+~<>i!lI;:,"^`\'. ',
+    blocks: '█▓▒░ ',
+    minimal: '#=:. ',
+    binary: '10 ',
   };
+  const TINTS = { green: [102, 255, 51], white: [235, 235, 235], amber: [255, 176, 0], cyan: [0, 212, 255] };
+  const CHAR_ASPECT = 0.6;  // monospace glyph width / height
 
-  const canvas = document.getElementById('asciiCanvas');
-  const ctx = canvas.getContext('2d', { willReadFrequently: true });
-  const fileInput = document.getElementById('fileInput');
-  const dropZone = document.querySelector('.tool-canvas-area');
-  const statusBar = document.getElementById('statusBar');
-  const canvasInfo = document.getElementById('canvasInfo');
+  function draw({ ctx, srcCanvas, W, H, p }) {
+    const chars = p.charset === 'custom' ? (p.custom || ' ') : SETS[p.charset];
+    const n = chars.length;
+    const cellW = W / p.cols;
+    const cellH = cellW / CHAR_ASPECT * (p.lineHeight / 100);
+    const rows = Math.max(1, Math.floor(H / cellH));
+    const cols = Math.max(1, Math.round(p.cols));
 
-  // File handling
-  dropZone.addEventListener('dragover', (e) => {
-    e.preventDefault();
-    dropZone.style.borderColor = 'var(--c1)';
-  });
-  dropZone.addEventListener('dragleave', () => { dropZone.style.borderColor = ''; });
-  dropZone.addEventListener('drop', (e) => {
-    e.preventDefault();
-    dropZone.style.borderColor = '';
-    const file = e.dataTransfer.files[0];
-    if (file) loadImage(file);
-  });
+    const s = document.createElement('canvas');
+    s.width = cols; s.height = rows;
+    const sctx = s.getContext('2d', { willReadFrequently: true });
+    sctx.imageSmoothingQuality = 'high';
+    sctx.drawImage(srcCanvas, 0, 0, cols, rows);
+    const d = sctx.getImageData(0, 0, cols, rows).data;
 
-  fileInput.addEventListener('change', (e) => {
-    const file = e.target.files[0];
-    if (file) loadImage(file);
-  });
-
-  async function loadImage(file) {
-    try {
-      const loadedData = await loadImageFile(file, canvas, ctx, 
-        document.getElementById('canvasArea'), 
-        document.getElementById('canvasInfo'),
-        document.querySelector('.file-upload')
-      );
-      
-      imageData = { 
-        img: loadedData.img, 
-        width: loadedData.width, 
-        height: loadedData.height,
-        data: loadedData.data
-      };
-      canvas.style.display = 'block';
-      setupCrop(imageData.width, imageData.height);
-      updateStatus('Image loaded. Adjust settings or click Apply.');
-      renderPreview();
-    } catch (error) {
-      updateStatus('Error loading image');
-      console.error(error);
-    }
-  }
-
-  function updateLabel(id, value) {
-    document.getElementById(id).textContent = value;
-  }
-
-  // Render ASCII
-  function renderPreview() {
-    if (!imageData) return;
-
-    const charSize = parseInt(document.getElementById('charSize').value);
-    const lineSpacing = parseFloat(document.getElementById('lineSpacing').value);
-    const contrast = parseInt(document.getElementById('contrast').value);
-    const brightness = parseInt(document.getElementById('brightness').value);
-    const colorMode = document.getElementById('colorMode').value;
-
-    let sourceX = cropRect ? cropRect.x : 0;
-    let sourceY = cropRect ? cropRect.y : 0;
-    let sourceWidth = cropRect ? cropRect.w : imageData.width;
-    let sourceHeight = cropRect ? cropRect.h : imageData.height;
-
-    const container = document.querySelector('.tool-canvas-area');
-    const maxW = container.clientWidth - 40;
-    const maxH = container.clientHeight - 40;
-
-    const gridW = Math.floor(maxW / charSize);
-    const gridH = Math.floor(maxH / (charSize * lineSpacing));
-
-    const imgAspectRatio = sourceHeight / sourceWidth;
-    let width = gridW;
-    let height = Math.round(width * imgAspectRatio / lineSpacing);
-
-    if (height > gridH) {
-      height = gridH;
-      width = Math.round(height * lineSpacing / imgAspectRatio);
-    }
-
-    // Always resize canvas to ensure crop changes are applied
-    canvas.width = width * charSize;
-    canvas.height = height * charSize * lineSpacing;
-    
-    canvas.asciiWidth = width;
-    canvas.asciiHeight = height;
-    
-    ctx.fillStyle = '#0a0a0a';
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-    const tempCanvas = document.createElement('canvas');
-    tempCanvas.width = width;
-    tempCanvas.height = height;
-    const tempCtx = tempCanvas.getContext('2d');
-    tempCtx.drawImage(imageData.img, sourceX, sourceY, sourceWidth, sourceHeight, 0, 0, width, height);
-
-    const imgData = tempCtx.getImageData(0, 0, width, height);
-    const data = imgData.data;
-
-    ctx.font = `${charSize}px monospace`;
+    const paper = p.paper;
+    ctx.fillStyle = paper ? '#f4f0e6' : '#050508';
+    ctx.fillRect(0, 0, W, H);
+    const fontSize = cellW / CHAR_ASPECT;
+    ctx.font = `${fontSize}px "Courier New", ui-monospace, monospace`;
     ctx.textBaseline = 'top';
+    ctx.textAlign = 'left';
+    const cf = (259 * (p.contrast + 255)) / (255 * (259 - p.contrast));
+    const tint = TINTS[p.color];
+    if (tint) ctx.fillStyle = paper ? '#111111' : `rgb(${tint})`;
+    const offY = (H - rows * cellH) / 2;
 
-    for (let i = 0; i < width * height; i++) {
-      const r = data[i * 4];
-      const g = data[i * 4 + 1];
-      const b = data[i * 4 + 2];
-      const a = data[i * 4 + 3];
-
-      let gray = (r * 0.299 + g * 0.587 + b * 0.114);
-      gray = Math.max(0, Math.min(255, gray + brightness));
-      gray = Math.pow(gray / 255, 1 - contrast / 100) * 255;
-
-      const charIndex = Math.floor((gray / 255) * (currentChars.length - 1));
-      const char = currentChars[charIndex];
-
-      const x = (i % width) * charSize;
-      const y = Math.floor(i / width) * charSize * lineSpacing;
-
-      if (colorMode === 'mono') {
-        ctx.fillStyle = `rgba(0, 212, 255, ${a / 255})`;
-      } else if (colorMode === 'original') {
-        ctx.fillStyle = `rgba(${r}, ${g}, ${b}, ${a / 255})`;
-      } else if (colorMode === 'inverted') {
-        ctx.fillStyle = `rgba(${255 - r}, ${255 - g}, ${255 - b}, ${a / 255})`;
-      } else if (colorMode === 'cyan') {
-        const intensity = gray / 255;
-        ctx.fillStyle = `rgba(0, ${Math.round(212 * intensity)}, ${Math.round(255 * intensity)}, ${a / 255})`;
-      } else if (colorMode === 'green') {
-        const intensity = gray / 255;
-        ctx.fillStyle = `rgba(0, ${Math.round(255 * intensity)}, 0, ${a / 255})`;
+    for (let y = 0; y < rows; y++) {
+      let line = '';
+      for (let x = 0; x < cols; x++) {
+        const i = (y * cols + x) * 4;
+        const r = d[i], g = d[i + 1], b = d[i + 2];
+        let l = Math.max(0, Math.min(255, cf * (0.299 * r + 0.587 * g + 0.114 * b - 128) + 128 + p.brightness * 1.28)) / 255;
+        // dark background: bright pixel -> dense char; paper: dark pixel -> dense char
+        const t = paper ? l : 1 - l;
+        const ch = chars[Math.min(n - 1, Math.floor(t * n))];
+        if (tint) { line += ch; continue; }
+        if (ch === ' ') continue;
+        ctx.fillStyle = `rgb(${r},${g},${b})`;
+        ctx.fillText(ch, x * cellW, offY + y * cellH);
       }
-
-      ctx.fillText(char, x, y);
+      // Single-colour modes keep one fillStyle for everything (no per-char style changes)
+      if (tint) for (let x = 0; x < line.length; x++) if (line[x] !== ' ') ctx.fillText(line[x], x * cellW, offY + y * cellH);
     }
   }
 
-  // Presets
-  document.querySelectorAll('.preset-btn').forEach(btn => {
-    btn.addEventListener('click', () => {
-      document.querySelectorAll('.preset-btn').forEach(b => b.classList.remove('active'));
-      btn.classList.add('active');
-
-      const preset = btn.dataset.preset;
-      currentPreset = preset;
-
-      if (preset === 'custom') {
-        document.getElementById('customCharRow').style.display = 'flex';
-        currentChars = document.getElementById('customChars').value || '@%#*+=-:. ';
-      } else {
-        document.getElementById('customCharRow').style.display = 'none';
-        currentChars = charPresets[preset];
-      }
-
-      if (imageData) renderPreview();
-    });
+  PudrusTool.create({
+    id: 'ascii-canvas', i18n: 'ascii', icon: '◊',
+    name: '◊ ASCII Canvas', desc: 'Turn images into ASCII art.',
+    controls: [
+      { key: 'cols', label: 'ascii.cols', fallback: 'Characters per row', min: 20, max: 300, step: 2, value: 110, rand: [50, 200] },
+      { key: 'charset', label: 'ascii.charset', fallback: 'Characters', type: 'select', value: 'standard', options: [
+        { value: 'standard', label: 'ascii.setStandard', fallback: 'Standard' },
+        { value: 'detailed', label: 'ascii.setDetailed', fallback: 'Detailed' },
+        { value: 'blocks', label: 'ascii.setBlocks', fallback: 'Blocks' },
+        { value: 'minimal', label: 'ascii.setMinimal', fallback: 'Minimal' },
+        { value: 'binary', label: 'ascii.setBinary', fallback: 'Binary' },
+        { value: 'custom', label: 'ascii.setCustom', fallback: 'Custom' } ] },
+      { key: 'custom', label: 'ascii.custom', fallback: 'Your characters (dense → light)', type: 'text', value: 'PUDRUS. ', show: p => p.charset === 'custom' },
+      { key: 'color', label: 'ascii.color', fallback: 'Color', type: 'select', value: 'green', options: [
+        { value: 'green', label: 'ascii.colorGreen', fallback: 'Terminal green' },
+        { value: 'original', label: 'ascii.colorOriginal', fallback: 'Image colors' },
+        { value: 'white', label: 'ascii.colorWhite', fallback: 'White' },
+        { value: 'amber', label: 'ascii.colorAmber', fallback: 'Amber' },
+        { value: 'cyan', label: 'ascii.colorCyan', fallback: 'Cyan' } ] },
+      { key: 'contrast', label: 'ascii.contrast', fallback: 'Contrast', min: -100, max: 100, value: 20, rand: [0, 60] },
+      { key: 'brightness', label: 'ascii.brightness', fallback: 'Brightness', min: -100, max: 100, value: 0, advanced: true, rand: [-20, 20] },
+      { key: 'lineHeight', label: 'ascii.lineHeight', fallback: 'Line height', min: 70, max: 160, value: 100, unit: '%', advanced: true, rand: false },
+      { key: 'paper', label: 'ascii.paper', fallback: 'Light background', type: 'toggle', value: false, advanced: true, randChance: 0.2 },
+    ],
+    presets: [
+      { label: 'ascii.presetTerminal', fallback: 'Terminal', values: { cols: 120, charset: 'standard', color: 'green', contrast: 30 } },
+      { label: 'ascii.presetColor', fallback: 'Color', values: { cols: 150, charset: 'detailed', color: 'original', contrast: 20 } },
+      { label: 'ascii.presetBlocks', fallback: 'Blocks', values: { cols: 80, charset: 'blocks', color: 'amber', contrast: 25 } },
+      { label: 'ascii.presetPrint', fallback: 'Typewriter', values: { cols: 140, charset: 'detailed', color: 'white', paper: true, contrast: 30 } },
+    ],
+    draw,
   });
-
-  document.getElementById('customChars').addEventListener('input', () => {
-    if (currentPreset === 'custom') {
-      currentChars = document.getElementById('customChars').value || '@%#*+=-:. ';
-      if (imageData) renderPreview();
-    }
-  });
-
-  // Controls with real-time preview
-  const controls = ['charSize', 'lineSpacing', 'contrast', 'brightness', 'colorMode'];
-  controls.forEach(id => {
-    const el = document.getElementById(id);
-    el.addEventListener('input', () => {
-      const valDisplay = document.getElementById(id + 'Val');
-      if (valDisplay) {
-        const val = el.value;
-        if (id === 'charSize') valDisplay.textContent = val + 'px';
-        else if (id === 'lineSpacing') valDisplay.textContent = val + 'x';
-        else valDisplay.textContent = val;
-      }
-      if (imageData) renderPreview();
-    });
-  });
-
-  // Buttons
-  document.getElementById('applyBtn').addEventListener('click', () => {
-    if (imageData) {
-      renderPreview();
-      updateStatus('ASCII art rendered! Ready to download.');
-    }
-  });
-
-  function setupCrop(W, H) {
-      const aspectRatioSelect = document.getElementById('aspectRatio');
-      const offsetXSlider = document.getElementById('cropOffsetX');
-      const offsetYSlider = document.getElementById('cropOffsetY');
-
-      function updateCropRect() {
-          const ratio = aspectRatioSelect.value;
-          if (ratio === 'free') {
-              cropRect = null;
-              offsetXSlider.disabled = true;
-              offsetYSlider.disabled = true;
-          } else {
-              offsetXSlider.disabled = false;
-              offsetYSlider.disabled = false;
-              const [w, h] = ratio.split(':').map(Number);
-              const targetRatio = w / h;
-              const currentRatio = W / H;
-              let cropW, cropH, cropX, cropY;
-              if (currentRatio > targetRatio) {
-                  cropH = H;
-                  cropW = H * targetRatio;
-                  cropX = (W - cropW) / 2 * (1 + offsetXSlider.value / 50);
-                  cropY = 0;
-              } else {
-                  cropW = W;
-                  cropH = W / targetRatio;
-                  cropX = 0;
-                  cropY = (H - cropH) / 2 * (1 + offsetYSlider.value / 50);
-              }
-              cropRect = { x: cropX, y: cropY, w: cropW, h: cropH };
-          }
-          if (imageData) renderPreview();
-      }
-      
-      aspectRatioSelect.addEventListener('change', updateCropRect);
-      offsetXSlider.addEventListener('input', () => {
-        document.getElementById('cropOffsetXVal').textContent = offsetXSlider.value + '%';
-        updateCropRect();
-      });
-      offsetYSlider.addEventListener('input', () => {
-        document.getElementById('cropOffsetYVal').textContent = offsetYSlider.value + '%';
-        updateCropRect();
-      });
-      
-      // Initial calculation
-      updateCropRect();
-  }
-
-  document.getElementById('randomizeBtn').addEventListener('click', () => {
-    const presets = Object.keys(charPresets);
-    const randomPreset = presets[Math.floor(Math.random() * presets.length)];
-    currentPreset = randomPreset;
-    currentChars = charPresets[randomPreset];
-
-    document.querySelectorAll('.preset-btn').forEach(b => b.classList.remove('active'));
-    document.querySelector(`[data-preset="${randomPreset}"]`).classList.add('active');
-
-    if (imageData) renderPreview();
-    updateStatus(`Randomized to ${randomPreset} preset.`);
-  });
-
-  document.getElementById('sendToFlyerBtn').addEventListener('click', () => {
-    if (!imageData) { updateStatus('Please load an image first.'); return; }
-    sendTo('flyer-forge', canvas, cropRect);
-  });
-
-  document.getElementById('downloadBtn').addEventListener('click', () => {
-    if (!imageData) {
-      updateStatus('Please load an image first.');
-      return;
-    }
-    exportToPNG(canvas, cropRect, 'ascii-canvas');
-    updateStatus('Downloaded!');
-  });
-
-  function updateStatus(msg) {
-    statusBar.textContent = '◈ ' + msg;
-  }
-
-  const incomingImageDataUrl = receiveImage();
-  if (incomingImageDataUrl) {
-      loadImage(incomingImageDataUrl);
-  }
-});
+})();
 </script>
 </body>
 </html>

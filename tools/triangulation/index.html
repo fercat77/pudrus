@@ -2,363 +2,165 @@
 <html lang="es">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="theme-color" content="#050508">
   <title>Triangulation — PUDRUS.XYZ</title>
   <link rel="icon" type="image/svg+xml" href="../../favicon.svg">
   <link rel="stylesheet" href="../../css/style.css">
+  <link rel="stylesheet" href="../../css/tool-shell.css">
 </head>
 <body>
 
 <nav>
   <a href="../../index.html" class="nav-logo">PUDRUS<span>.xyz</span></a>
   <ul class="nav-links">
-    <li><a href="../../index.html#tools">All Tools</a></li>
+    <li><a href="../../index.html#tools" data-i18n="nav.tools">Tools</a></li>
   </ul>
+  <div class="nav-lang">
+    <select id="langSelect" aria-label="Language selector">
+      <option value="es">ES</option>
+      <option value="en">EN</option>
+    </select>
+  </div>
 </nav>
 
-<div class="tool-layout">
-
-  <!-- ── PANEL ── -->
-  <div class="tool-panel">
-    <div class="tool-panel-header">
-      <a href="../../index.html" class="back" data-i18n="nav.tools">← Back</a>
-      <h2 data-i18n="triangulation.name">△ Triangulation</h2>
-      <p data-i18n="triangulation.desc">Reconstruct images into a low-poly vector style.</p>
-    </div>
-
-    <div class="tool-panel-body">
-
-      <!-- Export Controls -->
-      <div class="control-group">
-        <span class="control-label" data-i18n="triangulation.aspectRatio">Aspect Ratio</span>
-        <div class="control-row">
-          <label data-i18n="triangulation.aspect">Aspect</label>
-          <select id="aspectRatio">
-            <option value="free">Free</option>
-            <option value="1:1">Square (1:1)</option>
-            <option value="4:5">Portrait (4:5)</option>
-            <option value="9:16">Story (9:16)</option>
-          </select>
-        </div>
-        <div class="control-row">
-          <label data-i18n="triangulation.offsetX">Offset X</label>
-          <input type="range" id="cropOffsetX" min="-50" max="50" value="0"><span class="val" id="cropOffsetXVal">0%</span>
-        </div>
-        <div class="control-row">
-          <label data-i18n="triangulation.offsetY">Offset Y</label>
-          <input type="range" id="cropOffsetY" min="-50" max="50" value="0"><span class="val" id="cropOffsetYVal">0%</span>
-        </div>
-      </div>
-
-      <hr class="divider">
-
-      <!-- Parameters -->
-      <div class="control-group">
-        <span class="control-label" data-i18n="triangulation.parameters">Parameters</span>
-        <div class="control-row">
-          <label data-i18n="triangulation.pointCount">Point Count</label>
-          <input type="range" id="pointCount" min="50" max="2000" value="400">
-          <span class="val" id="pointCountVal">400</span>
-        </div>
-        <div class="control-row">
-          <label data-i18n="triangulation.threshold">Threshold</label>
-          <input type="range" id="edgeThreshold" min="1" max="100" value="20">
-          <span class="val" id="edgeThresholdVal">20</span>
-        </div>
-      </div>
-
-      <div class="control-group">
-        <span class="control-label" data-i18n="triangulation.renderStyle">Render Style</span>
-        <div class="control-row">
-          <select id="renderStyle">
-            <option value="fill">Solid Fill</option>
-            <option value="wireframe">Wireframe</option>
-            <option value="both">Fill + Wireframe</option>
-          </select>
-        </div>
-        <div class="control-row">
-          <label data-i18n="triangulation.strokeWidth">Stroke Width</label>
-          <input type="range" id="strokeWidth" min="0.1" max="5" step="0.1" value="1">
-          <span class="val" id="strokeWidthVal">1</span>
-        </div>
-      </div>
-
-    </div>
-
-    <div class="status-bar" id="statusBar" data-i18n="triangulation.statusNoImage">◈ No image loaded</div>
-
-    <div class="action-btns">
-      <button class="btn btn-primary" id="applyBtn" style="width:100%" data-i18n="triangulation.applyBtn">◈ Triangulate</button>
-      <button class="btn btn-outline" id="resetBtn" style="width:100%" data-i18n="triangulation.resetBtn">Reset</button>
-      <button class="btn btn-outline" id="sendToFlyerBtn" style="width:100%" data-i18n="triangulation.continueBtn">→ Continue in Flyer Forge</button>
-      <button class="btn btn-outline" id="exportBtn" style="width:100%" data-i18n="triangulation.exportBtn">Export PNG</button>
-    </div>
-  </div>
-
-  <!-- ── CANVAS ── -->
-  <div class="tool-canvas-area" id="canvasArea">
-    <div class="file-upload" id="dropZone">
-      <span class="icon">△</span>
-      <span data-i18n="triangulation.fileDrop">Click or drop an image here</span>
-      <input type="file" id="fileInput" accept="image/*">
-    </div>
-    <canvas id="mainCanvas"></canvas>
-    <div class="canvas-info" id="canvasInfo">No image loaded</div>
-  </div>
-
-</div>
+<main id="tool"></main>
 
 <script src="https://cdn.jsdelivr.net/npm/d3-delaunay@6.0.4/dist/d3-delaunay.min.js"></script>
 <script src="../../js/i18n.js"></script>
 <script src="../../js/utils.js"></script>
+<script src="../../js/tool-shell.js"></script>
 <script>
-document.addEventListener('DOMContentLoaded', () => {
+(function () {
+  // Edge map computed once per source image, at a fixed analysis size,
+  // so the triangulation is identical in the preview and the export.
+  const ANALYSIS = 360;
+  let cache = { aspect: 0, sig: '', edges: null, aw: 0, ah: 0 };
 
-let origImageData = null;
-let img = null;
-let canvas = document.getElementById('mainCanvas');
-let ctx = canvas.getContext('2d');
-let cropRect = null;
-
-// UI Helpers
-function slider(id, valId, suffix='') {
-  let el = document.getElementById(id);
-  let vl = document.getElementById(valId);
-  el.addEventListener('input', () => { vl.textContent = el.value + suffix; });
-}
-slider('pointCount', 'pointCountVal');
-slider('edgeThreshold', 'edgeThresholdVal');
-slider('strokeWidth', 'strokeWidthVal');
-let cropXSlider = document.getElementById('cropOffsetX');
-cropXSlider.addEventListener('input', () => { document.getElementById('cropOffsetXVal').textContent = cropXSlider.value + '%'; applyTriangulation(); });
-let cropYSlider = document.getElementById('cropOffsetY');
-cropYSlider.addEventListener('input', () => { document.getElementById('cropOffsetYVal').textContent = cropYSlider.value + '%'; applyTriangulation(); });
-
-
-function status(msg) {
-  document.getElementById('statusBar').textContent = '◈ ' + msg;
-}
-
-// File Load
-let dropZone = document.querySelector('.tool-canvas-area');
-let fileInput = document.getElementById('fileInput');
-
-dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.style.borderColor='var(--c1)'; });
-dropZone.addEventListener('dragleave', () => dropZone.style.borderColor='');
-dropZone.addEventListener('drop', e => {
-  e.preventDefault(); dropZone.style.borderColor='';
-  let file = e.dataTransfer.files[0];
-  if (file && file.type.startsWith('image/')) loadFile(file);
-});
-fileInput.addEventListener('change', () => {
-  if (fileInput.files[0]) loadFile(fileInput.files[0]);
-});
-
-function loadFile(file) {
-  img = new Image();
-  img.onload = () => {
-    let area = document.getElementById('canvasArea');
-    let maxW = area.clientWidth - 40;
-    let maxH = area.clientHeight - 40;
-    let scale = Math.min(maxW/img.width, maxH/img.height, 1);
-    canvas.width  = img.width;
-    canvas.height = img.height;
-    canvas.style.width  = (img.width  * scale) + 'px';
-    canvas.style.height = (img.height * scale) + 'px';
-    ctx.drawImage(img, 0, 0);
-    origImageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-    document.getElementById('canvasInfo').textContent = `${img.width} × ${img.height} px`;
-    document.getElementById('canvasArea').classList.add('has-image');
-    document.getElementById('canvasInfo').style.display = 'block';
-    setupCrop(canvas.width, canvas.height);
-    status('Image loaded — click Triangulate');
-  };
-
-  if (typeof file === 'string') {
-      img.src = file; // It's already a data URL
-  } else {
-    const reader = new FileReader();
-    reader.onload = e => { img.src = e.target.result; };
-    reader.readAsDataURL(file);
+  function edgeMap(srcCanvas) {
+    const aspect = srcCanvas.width / srcCanvas.height;
+    const sig = signature(srcCanvas);
+    if (cache.edges && cache.aspect === aspect && cache.sig === sig) return cache;
+    const aw = aspect >= 1 ? ANALYSIS : Math.round(ANALYSIS * aspect);
+    const ah = aspect >= 1 ? Math.round(ANALYSIS / aspect) : ANALYSIS;
+    const c = document.createElement('canvas');
+    c.width = aw; c.height = ah;
+    const cx = c.getContext('2d', { willReadFrequently: true });
+    cx.drawImage(srcCanvas, 0, 0, aw, ah);
+    const d = cx.getImageData(0, 0, aw, ah).data;
+    const g = new Float32Array(aw * ah);
+    for (let i = 0; i < aw * ah; i++) g[i] = 0.299 * d[i * 4] + 0.587 * d[i * 4 + 1] + 0.114 * d[i * 4 + 2];
+    const edges = new Float32Array(aw * ah);
+    for (let y = 1; y < ah - 1; y++) for (let x = 1; x < aw - 1; x++) {
+      const i = y * aw + x;
+      const gx = -g[i - aw - 1] - 2 * g[i - 1] - g[i + aw - 1] + g[i - aw + 1] + 2 * g[i + 1] + g[i + aw + 1];
+      const gy = -g[i - aw - 1] - 2 * g[i - aw] - g[i - aw + 1] + g[i + aw - 1] + 2 * g[i + aw] + g[i + aw + 1];
+      edges[i] = Math.sqrt(gx * gx + gy * gy);
+    }
+    cache = { aspect, sig, edges, aw, ah };
+    return cache;
   }
-}
+  // Cheap fingerprint so preview and full-res versions of the same photo share the edge map
+  function signature(c) {
+    const t = document.createElement('canvas');
+    t.width = 8; t.height = 8;
+    const x = t.getContext('2d', { willReadFrequently: true });
+    x.drawImage(c, 0, 0, 8, 8);
+    return Array.from(x.getImageData(0, 0, 8, 8).data.filter((_, i) => i % 4 !== 3)).map(v => v >> 4).join('');
+  }
 
-function setupCrop(W, H) {
-    const aspectRatioSelect = document.getElementById('aspectRatio');
-    const offsetXSlider = document.getElementById('cropOffsetX');
-    const offsetYSlider = document.getElementById('cropOffsetY');
-
-    function updateCropRect() {
-        const ratio = aspectRatioSelect.value;
-        if (ratio === 'free') {
-            cropRect = null;
-            offsetXSlider.disabled = true;
-            offsetYSlider.disabled = true;
-        } else {
-            offsetXSlider.disabled = false;
-            offsetYSlider.disabled = false;
-            const [w, h] = ratio.split(':').map(Number);
-            const targetRatio = w / h;
-            const currentRatio = W / H;
-            let cropW, cropH, cropX, cropY;
-            if (currentRatio > targetRatio) {
-                cropH = H;
-                cropW = H * targetRatio;
-                cropX = (W - cropW) / 2 * (1 + offsetXSlider.value / 50);
-                cropY = 0;
-            } else {
-                cropW = W;
-                cropH = W / targetRatio;
-                cropX = 0;
-                cropY = (H - cropH) / 2 * (1 + offsetYSlider.value / 50);
-            }
-            cropRect = { x: cropX, y: cropY, w: cropW, h: cropH };
-        }
-        applyTriangulation();
+  function points({ srcCanvas, W, H, p, rng }) {
+    const { edges, aw, ah } = edgeMap(srcCanvas);
+    // Probability per analysis pixel: mix of uniform and edge strength
+    const focus = p.focus / 100;
+    let mean = 0;
+    for (let i = 0; i < edges.length; i++) mean += edges[i];
+    mean /= edges.length;
+    const cdf = new Float64Array(edges.length);
+    let acc = 0;
+    for (let i = 0; i < edges.length; i++) { acc += (1 - focus) * mean + focus * edges[i] * edges[i] / (mean || 1); cdf[i] = acc; }
+    const pts = [];
+    // Frame points so the mesh covers the whole image
+    const n = 10;
+    for (let i = 0; i <= n; i++) {
+      pts.push([i / n * W, 0], [i / n * W, H], [0, i / n * H], [W, i / n * H]);
     }
-    aspectRatioSelect.addEventListener('change', updateCropRect);
-    offsetXSlider.addEventListener('input', updateCropRect);
-    offsetYSlider.addEventListener('input', updateCropRect);
-    updateCropRect();
-}
-
-
-// Triangulation Logic
-function applyTriangulation() {
-  if (!origImageData) { status('Load an image first'); return; }
-  status('Processing...');
-
-  setTimeout(() => {
-    const W = canvas.width;
-    const H = canvas.height;
-    const pointCount = parseInt(document.getElementById('pointCount').value);
-    const edgeThreshold = parseInt(document.getElementById('edgeThreshold').value);
-    const renderStyle = document.getElementById('renderStyle').value;
-    const strokeWidth = parseFloat(document.getElementById('strokeWidth').value);
-
-    // 1. Point Sampling (Sobel edge detection + random)
-    const gray = new Uint8ClampedArray(W * H);
-    const sobel = new Uint8ClampedArray(W * H);
-    for (let y = 0; y < H; y++) {
-      for (let x = 0; x < W; x++) {
-        const i = (y * W + x) * 4;
-        gray[y * W + x] = 0.299 * origImageData.data[i] + 0.587 * origImageData.data[i+1] + 0.114 * origImageData.data[i+2];
-      }
+    for (let q = 0; q < p.points; q++) {
+      const target = rng() * acc;
+      let lo = 0, hi = cdf.length - 1;
+      while (lo < hi) { const mid = (lo + hi) >> 1; if (cdf[mid] < target) lo = mid + 1; else hi = mid; }
+      const x = (lo % aw + rng()) / aw * W, y = (((lo / aw) | 0) + rng()) / ah * H;
+      pts.push([x, y]);
     }
+    return pts;
+  }
 
-    for (let y = 1; y < H - 1; y++) {
-      for (let x = 1; x < W - 1; x++) {
-        const gx = -gray[(y-1)*W+x-1] - 2*gray[y*W+x-1] - gray[(y+1)*W+x-1] +
-                    gray[(y-1)*W+x+1] + 2*gray[y*W+x+1] + gray[(y+1)*W+x+1];
-        const gy = -gray[(y-1)*W+x-1] - 2*gray[(y-1)*W+x] - gray[(y-1)*W+x+1] +
-                    gray[(y+1)*W+x-1] + 2*gray[(y+1)*W+x] + gray[(y+1)*W+x+1];
-        sobel[y * W + x] = Math.sqrt(gx*gx + gy*gy);
-      }
-    }
-
-    const points = [[0,0], [W-1,0], [0,H-1], [W-1,H-1]];
-    for (let i = 0; i < pointCount; i++) {
-      const x = Math.floor(Math.random() * W);
-      const y = Math.floor(Math.random() * H);
-      if (sobel[y * W + x] > edgeThreshold) {
-        points.push([x, y]);
-      } else if (i % 4 === 0) { // Add some random points too
-        points.push([x, y]);
-      }
-    }
-
-    // 2. Delaunay Triangulation
-    const delaunay = d3.Delaunay.from(points);
-    const triangles = delaunay.triangles;
-
-    // 3. Render
-    ctx.clearRect(0, 0, W, H);
-    ctx.drawImage(img, 0, 0); // Draw base image
-    ctx.lineWidth = strokeWidth;
-    ctx.strokeStyle = 'rgba(255,255,255,0.5)';
-
-    for (let i = 0; i < triangles.length; i += 3) {
-      const p1 = points[triangles[i]];
-      const p2 = points[triangles[i+1]];
-      const p3 = points[triangles[i+2]];
-
-      // Centroid to sample color
-      const cx = Math.floor((p1[0] + p2[0] + p3[0]) / 3);
-      const cy = Math.floor((p1[1] + p2[1] + p3[1]) / 3);
-      const cIdx = (cy * W + cx) * 4;
-      const r = origImageData.data[cIdx];
-      const g = origImageData.data[cIdx+1];
-      const b = origImageData.data[cIdx+2];
-      ctx.fillStyle = `rgb(${r},${g},${b})`;
-
+  function draw({ ctx, src, srcCanvas, W, H, p, rng, k }) {
+    const pts = points({ srcCanvas, W, H, p, rng });
+    const tri = d3.Delaunay.from(pts).triangles;
+    const d = src.data;
+    const sample = (x, y) => {
+      const i = (Math.min(H - 1, Math.max(0, y | 0)) * W + Math.min(W - 1, Math.max(0, x | 0))) * 4;
+      return [d[i], d[i + 1], d[i + 2]];
+    };
+    ctx.fillStyle = p.style === 'wire' ? p.bg : '#000';
+    ctx.fillRect(0, 0, W, H);
+    ctx.lineJoin = 'round';
+    const lw = p.stroke * k;
+    for (let t = 0; t < tri.length; t += 3) {
+      const a = pts[tri[t]], b = pts[tri[t + 1]], c = pts[tri[t + 2]];
       ctx.beginPath();
-      ctx.moveTo(p1[0], p1[1]);
-      ctx.lineTo(p2[0], p2[1]);
-      ctx.lineTo(p3[0], p3[1]);
-      ctx.closePath();
-
-      if (renderStyle === 'fill' || renderStyle === 'both') {
+      ctx.moveTo(a[0], a[1]); ctx.lineTo(b[0], b[1]); ctx.lineTo(c[0], c[1]); ctx.closePath();
+      if (p.style !== 'wire') {
+        // average of the centroid and the three edge midpoints
+        const cx = (a[0] + b[0] + c[0]) / 3, cy = (a[1] + b[1] + c[1]) / 3;
+        const s = [sample(cx, cy), sample((a[0] + cx) / 2, (a[1] + cy) / 2), sample((b[0] + cx) / 2, (b[1] + cy) / 2), sample((c[0] + cx) / 2, (c[1] + cy) / 2)];
+        const col = `rgb(${(s[0][0] + s[1][0] + s[2][0] + s[3][0]) >> 2},${(s[0][1] + s[1][1] + s[2][1] + s[3][1]) >> 2},${(s[0][2] + s[1][2] + s[2][2] + s[3][2]) >> 2})`;
+        ctx.fillStyle = col;
         ctx.fill();
-      }
-      if (renderStyle === 'wireframe' || renderStyle === 'both') {
-        ctx.stroke();
+        // hide hairline gaps between filled triangles
+        if (p.style === 'fill') { ctx.strokeStyle = col; ctx.lineWidth = Math.max(0.6, 0.6 * k); ctx.stroke(); }
       }
     }
-    drawCropOverlay(ctx, canvas, cropRect);
-    status('Triangulation complete!');
-  }, 10);
-}
+    if (p.style !== 'fill' && lw > 0) {
+      ctx.strokeStyle = p.line;
+      ctx.globalAlpha = p.lineOpacity / 100;
+      ctx.lineWidth = lw;
+      ctx.beginPath();
+      for (let t = 0; t < tri.length; t += 3) {
+        const a = pts[tri[t]], b = pts[tri[t + 1]], c = pts[tri[t + 2]];
+        ctx.moveTo(a[0], a[1]); ctx.lineTo(b[0], b[1]); ctx.lineTo(c[0], c[1]); ctx.closePath();
+      }
+      ctx.stroke();
+      ctx.globalAlpha = 1;
+    }
+  }
 
-// Buttons
-document.getElementById('applyBtn').addEventListener('click', applyTriangulation);
-
-document.getElementById('resetBtn').addEventListener('click', () => {
-  if (!origImageData) return;
-  ctx.putImageData(origImageData, 0, 0);
-  status('Reset to original');
-});
-
-document.getElementById('sendToFlyerBtn').addEventListener('click', () => {
-    if (!origImageData) { status('Nothing to send'); return; }
-    sendTo('flyer-forge', canvas, cropRect);
-});
-
-document.getElementById('exportBtn').addEventListener('click', () => {
-  if (!origImageData) { status('Nothing to export'); return; }
-  
-  let exportCanvas = document.createElement('canvas');
-  let exportCtx = exportCanvas.getContext('2d');
-  
-  let sx = cropRect ? cropRect.x : 0;
-  let sy = cropRect ? cropRect.y : 0;
-  let sWidth = cropRect ? cropRect.w : canvas.width;
-  let sHeight = cropRect ? cropRect.h : canvas.height;
-
-  exportCanvas.width = sWidth;
-  exportCanvas.height = sHeight;
-  
-  exportCtx.drawImage(canvas, sx, sy, sWidth, sHeight, 0, 0, sWidth, sHeight);
-  
-  let link = document.createElement('a');
-  link.download = `pudrus_triangulation_${Date.now()}.png`;
-  link.href = exportCanvas.toDataURL('image/png');
-  link.click();
-  status('Exported!');
-});
-
-// Real-time preview
-['pointCount', 'edgeThreshold', 'renderStyle', 'strokeWidth'].forEach(id => {
-    document.getElementById(id).addEventListener('input', () => {
-        if (origImageData) applyTriangulation();
-    });
-});
-
-const incomingImageDataUrl = receiveImage();
-if (incomingImageDataUrl) {
-    loadFile(incomingImageDataUrl);
-}
-
-});
+  const hasLines = p => p.style !== 'fill';
+  PudrusTool.create({
+    id: 'triangulation', i18n: 'triangulation', icon: '△',
+    name: '△ Triangulation', desc: 'Low-poly reconstruction with Delaunay triangulation.',
+    controls: [
+      { key: 'points', label: 'triangulation.points', fallback: 'Detail', min: 50, max: 4000, step: 50, value: 900, rand: [200, 2500] },
+      { key: 'focus', label: 'triangulation.focus', fallback: 'Follow edges', min: 0, max: 100, value: 70, unit: '%', rand: [30, 95] },
+      { key: 'style', label: 'triangulation.style', fallback: 'Style', type: 'select', value: 'fill', options: [
+        { value: 'fill', label: 'triangulation.styleFill', fallback: 'Solid' },
+        { value: 'both', label: 'triangulation.styleBoth', fallback: 'Solid + lines' },
+        { value: 'wire', label: 'triangulation.styleWire', fallback: 'Lines only' } ] },
+      { key: 'line', label: 'triangulation.line', fallback: 'Line color', type: 'color', value: '#66ff33', show: hasLines },
+      { key: 'bg', label: 'triangulation.bg', fallback: 'Background', type: 'color', value: '#050508', show: p => p.style === 'wire' },
+      { key: 'stroke', label: 'triangulation.stroke', fallback: 'Line width', min: 0.2, max: 5, step: 0.1, value: 1, advanced: true, show: hasLines, rand: [0.4, 2] },
+      { key: 'lineOpacity', label: 'triangulation.lineOpacity', fallback: 'Line opacity', min: 5, max: 100, value: 60, unit: '%', advanced: true, show: hasLines, rand: [20, 90] },
+    ],
+    presets: [
+      { label: 'triangulation.presetLowpoly', fallback: 'Low-poly', values: { points: 400, focus: 60, style: 'fill' } },
+      { label: 'triangulation.presetDetail', fallback: 'Detailed', values: { points: 2800, focus: 85, style: 'fill' } },
+      { label: 'triangulation.presetMesh', fallback: 'Mesh', values: { points: 1200, focus: 75, style: 'both', line: '#ffffff', lineOpacity: 35 } },
+      { label: 'triangulation.presetWire', fallback: 'Wireframe', values: { points: 1500, focus: 80, style: 'wire', line: '#66ff33', bg: '#050508', stroke: 0.8, lineOpacity: 90 } },
+    ],
+    draw,
+  });
+})();
 </script>
 </body>
 </html>

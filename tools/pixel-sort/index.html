@@ -2,488 +2,113 @@
 <html lang="es">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="theme-color" content="#050508">
   <title>Pixel Sorter — PUDRUS.XYZ</title>
   <link rel="icon" type="image/svg+xml" href="../../favicon.svg">
   <link rel="stylesheet" href="../../css/style.css">
+  <link rel="stylesheet" href="../../css/tool-shell.css">
 </head>
 <body>
 
 <nav>
   <a href="../../index.html" class="nav-logo">PUDRUS<span>.xyz</span></a>
   <ul class="nav-links">
-    <li><a href="../../index.html#tools">All Tools</a></li>
+    <li><a href="../../index.html#tools" data-i18n="nav.tools">Tools</a></li>
   </ul>
+  <div class="nav-lang">
+    <select id="langSelect" aria-label="Language selector">
+      <option value="es">ES</option>
+      <option value="en">EN</option>
+    </select>
+  </div>
 </nav>
 
-<div class="tool-layout">
-
-  <!-- ── PANEL ── -->
-  <div class="tool-panel">
-    <div class="tool-panel-header">
-      <a href="../../index.html" class="back" data-i18n="nav.tools">← Back</a>
-      <h2 data-i18n="pixel.name">⟆ Pixel Sorter</h2>
-      <p data-i18n="pixel.desc">Sort pixels by brightness, hue or saturation. Load an image to start.</p>
-    </div>
-
-    <div class="tool-panel-body">
-
-      <!-- Crop Controls -->
-      <div class="control-group">
-        <span class="control-label">Aspect Ratio</span>
-        <div class="control-row">
-          <label data-i18n="pixel.aspect">Aspect</label>
-          <select id="aspectRatio">
-            <option value="free" data-i18n="pixel.aspectFree">Free</option>
-            <option value="1:1" data-i18n="pixel.aspectSquare">Square (1:1)</option>
-            <option value="4:5" data-i18n="pixel.aspectPortrait">Portrait (4:5)</option>
-            <option value="9:16" data-i18n="pixel.aspectStory">Story (9:16)</option>
-          </select>
-        </div>
-        <div class="control-row">
-          <label>Offset X</label>
-          <input type="range" id="cropOffsetX" min="-50" max="50" value="0"><span class="val" id="cropOffsetXVal">0%</span>
-        </div>
-        <div class="control-row">
-          <label>Offset Y</label>
-          <input type="range" id="cropOffsetY" min="-50" max="50" value="0"><span class="val" id="cropOffsetYVal">0%</span>
-        </div>
-      </div>
-
-      <hr class="divider">
-
-      <!-- Sort Direction -->
-      <div class="control-group">
-        <span class="control-label" data-i18n="pixel.sortDir">Sort Direction</span>
-        <div class="control-row">
-          <select id="direction">
-            <option value="horizontal" data-i18n="pixel.dirHoriz">Horizontal</option>
-            <option value="vertical" data-i18n="pixel.dirVert">Vertical</option>
-            <option value="diagonal" data-i18n="pixel.dirDiag">Diagonal</option>
-          </select>
-        </div>
-      </div>
-
-      <!-- Sort By -->
-      <div class="control-group">
-        <span class="control-label" data-i18n="pixel.sortBy">Sort By</span>
-        <div class="control-row">
-          <select id="sortBy">
-            <option value="brightness">Brightness</option>
-            <option value="hue">Hue</option>
-            <option value="saturation">Saturation</option>
-            <option value="red">Red Channel</option>
-            <option value="green">Green Channel</option>
-            <option value="blue">Blue Channel</option>
-          </select>
-        </div>
-      </div>
-
-      <hr class="divider">
-
-      <!-- Threshold -->
-      <div class="control-group">
-        <span class="control-label">Threshold</span>
-        <div class="control-row">
-          <label>Min</label>
-          <input type="range" id="threshMin" min="0" max="255" value="20">
-          <span class="val" id="threshMinVal">20</span>
-        </div>
-        <div class="control-row">
-          <label>Max</label>
-          <input type="range" id="threshMax" min="0" max="255" value="235">
-          <span class="val" id="threshMaxVal">235</span>
-        </div>
-      </div>
-
-      <!-- Interval -->
-      <div class="control-group">
-        <span class="control-label">Interval Length</span>
-        <div class="control-row">
-          <label>Min Len</label>
-          <input type="range" id="intervalMin" min="1" max="200" value="10">
-          <span class="val" id="intervalMinVal">10</span>
-        </div>
-        <div class="control-row">
-          <label>Max Len</label>
-          <input type="range" id="intervalMax" min="10" max="1000" value="200">
-          <span class="val" id="intervalMaxVal">200</span>
-        </div>
-      </div>
-
-      <!-- Intensity -->
-      <div class="control-group">
-        <span class="control-label">Effect Intensity</span>
-        <div class="control-row">
-          <label>Coverage</label>
-          <input type="range" id="coverage" min="0" max="100" value="100">
-          <span class="val" id="coverageVal">100%</span>
-        </div>
-        <div class="control-row">
-          <label>Randomness</label>
-          <input type="range" id="randomness" min="0" max="100" value="0">
-          <span class="val" id="randomnessVal">0%</span>
-        </div>
-      </div>
-
-      <!-- Reverse -->
-      <div class="control-group">
-        <span class="control-label" data-i18n="pixel.options">Options</span>
-        <div class="toggle-row">
-          <label data-i18n="pixel.reverse">Reverse</label>
-          <div class="toggle" id="reverseToggle"></div>
-        </div>
-        <div class="toggle-row">
-          <label>Preserve Edges</label>
-          <div class="toggle" id="edgesToggle"></div>
-        </div>
-      </div>
-
-    </div>
-
-    <div class="status-bar" id="statusBar">◈ No image loaded</div>
-
-    <div class="action-btns">
-      <button class="btn btn-primary" id="applyBtn" style="width:100%">◈ Apply Sort</button>
-      <button class="btn btn-outline" id="randomBtn" style="width:100%">◈ Random Sort</button>
-      <button class="btn btn-outline" id="resetBtn" style="width:100%">Reset</button>
-      <button class="btn btn-outline" id="sendToFlyerBtn" style="width:100%">→ Continue in Flyer Forge</button>
-      <button class="btn btn-outline" id="exportBtn" style="width:100%">Export PNG</button>
-    </div>
-  </div>
-
-  <!-- ── CANVAS ── -->
-  <div class="tool-canvas-area" id="canvasArea">
-    <div class="file-upload" id="dropZone">
-      <span class="icon">⟆</span>
-      <span>Click or drop an image here</span>
-      <input type="file" id="fileInput" accept="image/*">
-    </div>
-    <canvas id="mainCanvas"></canvas>
-    <div class="canvas-info" id="canvasInfo">No image loaded</div>
-  </div>
-
-</div>
+<main id="tool"></main>
 
 <script src="../../js/i18n.js"></script>
 <script src="../../js/utils.js"></script>
+<script src="../../js/tool-shell.js"></script>
 <script>
-// Este listener se asegura de que todo el código se ejecute después de que la página haya cargado.
-document.addEventListener('DOMContentLoaded', () => {
-// ── STATE ─────────────────────────────────────────────
-let origImageData = null;
-let img = null;
-let canvas = document.getElementById('mainCanvas');
-let ctx = canvas.getContext('2d');
-let isReverse = false;
-let cropRect = null;
-let preserveEdges = false;
-let renderScheduled = false;
+(function () {
+  // Sort key 0..255 for a packed RGBA pixel (little endian: 0xAABBGGRR)
+  const KEYS = {
+    brightness: (r, g, b) => 0.299 * r + 0.587 * g + 0.114 * b,
+    hue: (r, g, b) => {
+      const mx = Math.max(r, g, b), mn = Math.min(r, g, b), c = mx - mn;
+      if (!c) return 0;
+      let h = mx === r ? ((g - b) / c) % 6 : mx === g ? (b - r) / c + 2 : (r - g) / c + 4;
+      return ((h * 60 + 360) % 360) / 360 * 255;
+    },
+    saturation: (r, g, b) => { const mx = Math.max(r, g, b); return mx ? (mx - Math.min(r, g, b)) / mx * 255 : 0; },
+  };
 
-// ── UI HELPERS ────────────────────────────────────────
-function slider(id, valId, suffix='') {
-  let el = document.getElementById(id);
-  let vl = document.getElementById(valId);
-  if (el && vl) {
-    vl.textContent = el.value + suffix;
-    el.addEventListener('input', () => { vl.textContent = el.value + suffix; });
-  } else {
-    console.warn(`Slider or value element not found for: ${id}`);
-  }
-}
-slider('threshMin',    'threshMinVal');
-slider('threshMax',    'threshMaxVal');
-slider('intervalMin',  'intervalMinVal');
-slider('intervalMax',  'intervalMaxVal');
-slider('coverage',     'coverageVal', '%');
-slider('randomness',   'randomnessVal', '%');
+  function render({ src, out, W, H, p, rng }) {
+    out.data.set(src.data);
+    const px = new Uint32Array(out.data.buffer);
+    const keyFn = KEYS[p.sortBy];
+    const lo = p.low / 100 * 255, hi = p.high / 100 * 255;
+    const vertical = p.direction === 'vertical';
+    const lines = vertical ? W : H, len = vertical ? H : W;
+    const maxRun = Math.max(2, Math.round(len * p.length / 100));
 
-function toggle(id, callback) {
-  const el = document.getElementById(id);
-  el.addEventListener('click', () => {
-    el.classList.toggle('on');
-    callback(el.classList.contains('on'));
-    if (origImageData) scheduleRender();
-  });
-}
-toggle('reverseToggle', v => { isReverse = v; });
-toggle('edgesToggle',   v => { preserveEdges = v; });
-
-function status(msg) { document.getElementById('statusBar').textContent = '◈ ' + msg; }
-
-// ── FILE LOAD ─────────────────────────────────────────
-const dropZone = document.querySelector('.tool-canvas-area');
-const fileInput = document.getElementById('fileInput');
-
-dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.style.outline = '1px dashed var(--c1)'; });
-dropZone.addEventListener('dragleave', () => { dropZone.style.outline = 'none'; });
-dropZone.addEventListener('drop', e => {
-  e.preventDefault(); dropZone.style.outline = 'none';
-  let file = e.dataTransfer.files[0];
-  if (file && file.type.startsWith('image/')) { loadFile(file); }
-});
-fileInput.addEventListener('change', () => {
-  if (fileInput.files[0]) loadFile(fileInput.files[0]);
-});
-async function loadFile(file) {
-  try {
-    const imageData = await loadImageFile(file, canvas, ctx, 
-      document.getElementById('canvasArea'), 
-      document.getElementById('canvasInfo'),
-      document.querySelector('.file-upload')
-    );
-    
-    img = imageData.img;
-    origImageData = imageData.data;
-    setupCrop(canvas.width, canvas.height);
-    // Draw initial crop overlay
-    drawCropOverlay(ctx, canvas, cropRect);
-    status('Image loaded. Adjust parameters or click Apply Sort.');
-  } catch (error) {
-    status('Error loading image');
-    console.error(error);
-  }
-}
-
-function setupCrop(W, H) {
-    const aspectRatioSelect = document.getElementById('aspectRatio');
-    const offsetXSlider = document.getElementById('cropOffsetX');
-    const offsetYSlider = document.getElementById('cropOffsetY');
-
-    function updateCropRect() {
-        const ratio = aspectRatioSelect.value;
-        if (ratio === 'free') {
-            cropRect = null;
-            offsetXSlider.disabled = true;
-            offsetYSlider.disabled = true;
-        } else {
-            offsetXSlider.disabled = false;
-            offsetYSlider.disabled = false;
-            const [w, h] = ratio.split(':').map(Number);
-            const targetRatio = w / h;
-            const currentRatio = W / H;
-            let cropW, cropH, cropX, cropY;
-            if (currentRatio > targetRatio) {
-                cropH = H;
-                cropW = H * targetRatio;
-                cropX = (W - cropW) / 2 * (1 + offsetXSlider.value / 50);
-                cropY = 0;
-            } else {
-                cropW = W;
-                cropH = W / targetRatio;
-                cropX = 0;
-                cropY = (H - cropH) / 2 * (1 + offsetYSlider.value / 50);
-            }
-            cropRect = { x: cropX, y: cropY, w: cropW, h: cropH };
+    const keys = new Float32Array(len), idx = new Uint32Array(len), seg = new Uint32Array(len);
+    const order = new Uint32Array(len);
+    for (let l = 0; l < lines; l++) {
+      if (rng() > p.coverage / 100) continue;
+      // positions of this line in the pixel array
+      for (let i = 0; i < len; i++) {
+        const pi = vertical ? i * W + l : l * W + i;
+        idx[i] = pi;
+        const v = px[pi];
+        keys[i] = keyFn(v & 255, (v >>> 8) & 255, (v >>> 16) & 255);
+      }
+      let i = 0;
+      while (i < len) {
+        if (keys[i] < lo || keys[i] > hi) { i++; continue; }
+        // run of pixels inside the threshold, cut to a (random) maximum length
+        const runMax = Math.max(2, Math.round(maxRun * (1 - (p.randomness / 100) * rng())));
+        let j = i;
+        while (j < len && j - i < runMax && keys[j] >= lo && keys[j] <= hi) j++;
+        const n = j - i;
+        if (n > 1) {
+          for (let q = 0; q < n; q++) { order[q] = i + q; seg[q] = px[idx[i + q]]; }
+          const sub = order.subarray(0, n);
+          sub.sort(p.reverse ? (a, b) => keys[b] - keys[a] : (a, b) => keys[a] - keys[b]);
+          for (let q = 0; q < n; q++) px[idx[i + q]] = seg[sub[q] - i];
         }
-        // Redraw original image with new crop overlay
-        if (origImageData) {
-            ctx.putImageData(origImageData, 0, 0);
-            drawCropOverlay(ctx, canvas, cropRect);
-        }
+        i = j + 1;
+      }
     }
-    
-    aspectRatioSelect.addEventListener('change', updateCropRect);
-    offsetXSlider.addEventListener('input', updateCropRect);
-    offsetYSlider.addEventListener('input', updateCropRect);
-    
-    // Initial calculation
-    updateCropRect();
-}
-
-// ── PIXEL SORT ────────────────────────────────────────
-function getBrightness(r,g,b) { return 0.299*r + 0.587*g + 0.114*b; }
-function getHue(r,g,b) {
-  r/=255; g/=255; b/=255;
-  let max=Math.max(r,g,b), min=Math.min(r,g,b), h=0, d=max-min;
-  if(d===0) return 0;
-  if(max===r) h=(g-b)/d%6;
-  else if(max===g) h=(b-r)/d+2;
-  else h=(r-g)/d+4;
-  return (h*60+360)%360;
-}
-function getSaturation(r,g,b) {
-  r/=255; g/=255; b/=255;
-  let max=Math.max(r,g,b), min=Math.min(r,g,b);
-  return max===0 ? 0 : (max-min)/max*255;
-}
-
-function getSortValue(data, idx, sortBy) {
-  let r=data[idx], g=data[idx+1], b=data[idx+2];
-  switch(sortBy) {
-    case 'brightness':  return getBrightness(r,g,b);
-    case 'hue':         return getHue(r,g,b)/360*255;
-    case 'saturation':  return getSaturation(r,g,b);
-    case 'red':         return r;
-    case 'green':       return g;
-    case 'blue':        return b;
-    default: return getBrightness(r,g,b);
   }
-}
 
-function scheduleRender() {
-    if (!origImageData || renderScheduled) return;
-    renderScheduled = true;
-    requestAnimationFrame(() => {
-        applySort();
-        renderScheduled = false;
-    });
-}
-
-function applySort() {
-  if (!origImageData) { status('Load an image first'); return; }
-  status('Sorting...');
-
-    ctx.drawImage(img, 0, 0);
-    const src = ctx.getImageData(0, 0, canvas.width, canvas.height);
-    const data = src.data;
-    const W = src.width, H = src.height;
-    const sortBy  = document.getElementById('sortBy').value;
-    let dir     = document.getElementById('direction').value;
-    let tMin    = parseInt(document.getElementById('threshMin').value);
-    let tMax    = parseInt(document.getElementById('threshMax').value);
-    let iMin    = parseInt(document.getElementById('intervalMin').value);
-    let iMax    = parseInt(document.getElementById('intervalMax').value);
-    let cov     = parseInt(document.getElementById('coverage').value) / 100;
-    let rnd     = parseInt(document.getElementById('randomness').value) / 100;
-
-    if (dir === 'horizontal') {
-      for (let y = 0; y < H; y++) {
-        if (Math.random() > cov) continue;
-        sortLine(data, W, H, y, sortBy, tMin, tMax, iMin, iMax, rnd, 'h');
-      }
-    } else if (dir === 'vertical') {
-      for (let x = 0; x < W; x++) {
-        if (Math.random() > cov) continue;
-        sortLine(data, W, H, x, sortBy, tMin, tMax, iMin, iMax, rnd, 'v');
-      }
-    } else {
-      // Diagonal
-      for (let y = 0; y < H; y++) {
-        if (Math.random() > cov) continue;
-        sortLine(data, W, H, y, sortBy, tMin, tMax, iMin, iMax, rnd, 'h');
-      }
-      for (let x = 0; x < W; x++) {
-        if (Math.random() > cov) continue;
-        sortLine(data, W, H, x, sortBy, tMin, tMax, iMin, iMax, rnd, 'v');
-      }
-    }
-
-    ctx.putImageData(src, 0, 0);
-    drawCropOverlay(ctx, canvas, cropRect);
-    status('Done — ' + W + '×' + H + ' px');
-}
-
-
-function sortLine(data, W, H, lineIdx, sortBy, tMin, tMax, iMin, iMax, rnd, axis) {
-  let len = axis==='h' ? W : H;
-  let i = 0;
-  while (i < len) {
-    // Saltar si fuera del threshold
-    let idx = axis==='h'
-      ? (lineIdx * W + i) * 4
-      : (i * W + lineIdx) * 4;
-    let val = getSortValue(data, idx, sortBy);
-
-    if (val < tMin || val > tMax) { i++; continue; }
-
-    // Intervalo a ordenar
-    let intLen = iMin + Math.floor(Math.random() * (iMax - iMin));
-    if (rnd > 0) intLen = Math.floor(intLen * (1 + (Math.random()-0.5) * rnd * 2));
-    let end = Math.min(i + intLen, len);
-
-    // Extraer segmento
-    let segment = [];
-    for (let j = i; j < end; j++) {
-      let si = axis==='h'
-        ? (lineIdx * W + j) * 4
-        : (j * W + lineIdx) * 4;
-      let sv = getSortValue(data, si, sortBy);
-      if (sv < tMin || sv > tMax) { end=j; break; }
-      segment.push({ r:data[si], g:data[si+1], b:data[si+2], a:data[si+3], v:sv });
-    }
-
-    // Ordenar
-    segment.sort((a,b) => isReverse ? b.v-a.v : a.v-b.v);
-
-    // Escribir de vuelta
-    for (let j = 0; j < segment.length; j++) {
-      let si = axis==='h'
-        ? (lineIdx * W + (i+j)) * 4
-        : ((i+j) * W + lineIdx) * 4;
-      data[si]   = segment[j].r;
-      data[si+1] = segment[j].g;
-      data[si+2] = segment[j].b;
-      data[si+3] = segment[j].a;
-    }
-
-    i = end + 1;
-  }
-}
-
-// ── REAL-TIME PREVIEW ─────────────────────────────────
-const realTimeControls = ['direction', 'sortBy', 'threshMin', 'threshMax', 'intervalMin', 'intervalMax', 'coverage', 'randomness'];
-realTimeControls.forEach(id => {
-    const el = document.getElementById(id);
-    const eventType = el.tagName === 'SELECT' ? 'change' : 'input';
-    el.addEventListener(eventType, () => {
-        scheduleRender(); // Then render
-    });
-});
-
-// Update labels for crop sliders
-document.getElementById('cropOffsetX').addEventListener('input', (e) => document.getElementById('cropOffsetXVal').textContent = e.target.value + '%');
-document.getElementById('cropOffsetY').addEventListener('input', (e) => document.getElementById('cropOffsetYVal').textContent = e.target.value + '%');
-
-// ── BUTTONS ───────────────────────────────────────────
-document.getElementById('applyBtn').addEventListener('click', scheduleRender);
-
-function randomSort() {
-  if (!origImageData) { status('Load an image first'); return; }
-  const directions = ['horizontal','vertical','diagonal'];
-  const sortBys    = ['brightness','hue','saturation','red','green','blue'];
-  document.getElementById('direction').value   = directions[Math.floor(Math.random()*directions.length)];
-  document.getElementById('sortBy').value      = sortBys[Math.floor(Math.random()*sortBys.length)];
-  document.getElementById('threshMin').value   = Math.floor(Math.random()*80);
-  document.getElementById('threshMax').value   = Math.floor(Math.random()*80+160);
-  document.getElementById('intervalMin').value = Math.floor(Math.random()*50+5);
-  document.getElementById('intervalMax').value = Math.floor(Math.random()*400+100);
-  document.getElementById('coverage').value    = Math.floor(Math.random()*60+40);
-  document.getElementById('randomness').value  = Math.floor(Math.random()*60);
-  // Update labels
-  ['threshMin','threshMax','intervalMin','intervalMax'].forEach(id=>{
-    document.getElementById(id+'Val').textContent = document.getElementById(id).value;
+  PudrusTool.create({
+    id: 'pixel-sort', i18n: 'pixel', icon: '⟆',
+    name: '⟆ Pixel Sorter', desc: 'Sort pixels by brightness, hue or saturation.',
+    controls: [
+      { key: 'direction', label: 'pixel.direction', fallback: 'Direction', type: 'select', value: 'vertical', options: [
+        { value: 'vertical', label: 'pixel.dirVertical', fallback: 'Vertical' },
+        { value: 'horizontal', label: 'pixel.dirHorizontal', fallback: 'Horizontal' } ] },
+      { key: 'sortBy', label: 'pixel.sortBy', fallback: 'Sort by', type: 'select', value: 'brightness', options: [
+        { value: 'brightness', label: 'pixel.byBrightness', fallback: 'Brightness' },
+        { value: 'hue', label: 'pixel.byHue', fallback: 'Hue' },
+        { value: 'saturation', label: 'pixel.bySaturation', fallback: 'Saturation' } ] },
+      { key: 'low', label: 'pixel.low', fallback: 'Ignore darker than', min: 0, max: 100, value: 25, unit: '%', rand: [5, 50] },
+      { key: 'high', label: 'pixel.high', fallback: 'Ignore brighter than', min: 0, max: 100, value: 90, unit: '%', rand: [60, 100] },
+      { key: 'length', label: 'pixel.length', fallback: 'Streak length', min: 1, max: 100, value: 40, unit: '%', rand: [10, 90] },
+      { key: 'coverage', label: 'pixel.coverage', fallback: 'Coverage', min: 0, max: 100, value: 100, unit: '%', advanced: true, rand: [50, 100] },
+      { key: 'randomness', label: 'pixel.randomness', fallback: 'Randomness', min: 0, max: 100, value: 30, unit: '%', advanced: true, rand: [0, 80] },
+      { key: 'reverse', label: 'pixel.reverse', fallback: 'Reverse order', type: 'toggle', value: false, advanced: true, randChance: 0.4 },
+    ],
+    presets: [
+      { label: 'pixel.presetMelt', fallback: 'Melt', values: { direction: 'vertical', low: 20, high: 95, length: 70, randomness: 20 } },
+      { label: 'pixel.presetWind', fallback: 'Wind', values: { direction: 'horizontal', low: 30, high: 85, length: 45, randomness: 50 } },
+      { label: 'pixel.presetShards', fallback: 'Shards', values: { direction: 'vertical', sortBy: 'hue', low: 10, high: 70, length: 25, randomness: 70, coverage: 80 } },
+      { label: 'pixel.presetSoft', fallback: 'Subtle', values: { direction: 'horizontal', low: 45, high: 80, length: 15, randomness: 40 } },
+    ],
+    render,
   });
-  document.getElementById('coverageVal').textContent    = document.getElementById('coverage').value+'%';
-  document.getElementById('randomnessVal').textContent  = document.getElementById('randomness').value+'%';
-  scheduleRender();
-}
-
-document.getElementById('randomBtn').addEventListener('click', randomSort);
-
-document.getElementById('resetBtn').addEventListener('click', () => {
-  if (!origImageData) return;
-  ctx.putImageData(origImageData, 0, 0);
-  status('Reset to original');
-});
-
-document.getElementById('sendToFlyerBtn').addEventListener('click', () => {
-    if (!origImageData) { status('Nothing to send'); return; }
-    sendTo('flyer-forge', canvas, cropRect);
-});
-
-// ── EXPORT WITH QUALITY & ASPECT RATIO ────────────────
-document.getElementById('exportBtn').addEventListener('click', () => {
-  if (!origImageData) { status('Nothing to export'); return; }
-  exportToPNG(canvas, cropRect, 'pudrus_pixelsort');
-  status('Exported!');
-});
-// Cargar imagen si viene de otra herramienta
-const incomingImageDataUrl = receiveImage();
-if (incomingImageDataUrl) {
-    loadFile(incomingImageDataUrl);
-}
-});
+})();
 </script>
 </body>
 </html>

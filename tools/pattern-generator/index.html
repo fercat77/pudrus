@@ -2,743 +2,228 @@
 <html lang="es">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="theme-color" content="#050508">
   <title>Pattern Generator — PUDRUS.XYZ</title>
   <link rel="icon" type="image/svg+xml" href="../../favicon.svg">
   <link rel="stylesheet" href="../../css/style.css">
-  <style>
-    .slider-row {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      margin-bottom: 8px;
-    }
-    .slider-row label {
-      min-width: 70px;
-      font-size: 12px;
-      color: var(--text2);
-    }
-    .slider-row input[type="range"] {
-      flex: 1;
-    }
-    .slider-row .val {
-      min-width: 45px;
-      text-align: right;
-      font-size: 11px;
-      color: var(--c1);
-      font-weight: bold;
-    }
-    .btn {
-      pointer-events: auto;
-      cursor: pointer;
-    }
-    .param-group {
-      display: none;
-    }
-    .palette-grid {
-      display: grid;
-      grid-template-columns: repeat(4, 1fr);
-      gap: 6px;
-    }
-    .palette-btn {
-      height: 20px;
-      border: 2px solid transparent;
-      cursor: pointer;
-      transition: border-color 0.2s;
-      display: flex;
-      border-radius: 3px;
-      overflow: hidden;
-    }
-    .palette-btn.active { border-color: var(--c1); }
-    .palette-color {
-      flex: 1;
-    }
-  </style>
+  <link rel="stylesheet" href="../../css/tool-shell.css">
 </head>
 <body>
 
 <nav>
   <a href="../../index.html" class="nav-logo">PUDRUS<span>.xyz</span></a>
   <ul class="nav-links">
-    <li><a href="../../index.html#tools">All Tools</a></li>
+    <li><a href="../../index.html#tools" data-i18n="nav.tools">Tools</a></li>
   </ul>
+  <div class="nav-lang">
+    <select id="langSelect" aria-label="Language selector">
+      <option value="es">ES</option>
+      <option value="en">EN</option>
+    </select>
+  </div>
 </nav>
 
-<div class="tool-layout">
-
-  <!-- ── PANEL ── -->
-  <div class="tool-panel">
-    <div class="tool-panel-header">
-      <a href="../../index.html" class="back" data-i18n="nav.tools">← Back</a>
-      <h2 data-i18n="pattern.name">▦ Generador de Patrones</h2>
-      <p data-i18n="pattern.desc">Genera patrones abstractos, diseños geométricos y estructuras orgánicas usando ruido Perlin, Voronoi y campos de flujo.</p>
-    </div>
-
-    <div class="tool-panel-body">
-
-      <!-- Seed -->
-      <div class="control-group">
-        <span class="control-label" data-i18n="pattern.seed">Seed</span>
-        <div class="control-row">
-          <input type="number" id="seedInput" value="12345" style="flex: 1;">
-          <button class="btn btn-outline" id="newSeedBtn" style="padding: 4px 8px;">🎲</button>
-        </div>
-      </div>
-
-      <hr class="divider">
-
-      <!-- Algorithm Selection -->
-      <div class="control-group">
-        <span class="control-label" data-i18n="pattern.algorithm">Algorithm</span>
-        <div class="algo-tabs" id="algoTabs">
-          <button class="algo-tab" data-algo="noise" data-i18n="pattern.noise">Noise</button>
-          <button class="algo-tab" data-algo="flow" data-i18n="pattern.flow">Flow Field</button>
-          <button class="algo-tab" data-algo="voronoi" data-i18n="pattern.voronoi">Voronoi</button>
-          <button class="algo-tab" data-algo="geometric" data-i18n="pattern.geometric">Geometric</button>
-        </div>
-      </div>
-
-      <hr class="divider">
-
-      <!-- Algorithm Parameters -->
-      <div class="control-group">
-        <span class="control-label" data-i18n="pattern.parameters">Parameters</span>
-        <div id="algoParamsContainer" style="max-height: 300px; overflow-y: auto;">
-          <div class="param-group" data-algo="voronoi">
-            <!-- Voronoi Params will be generated here -->
-          </div>
-          <div class="param-group" data-algo="noise">
-            <!-- Noise Params will be generated here -->
-          </div>
-          <div class="param-group" data-algo="flow">
-            <!-- Flow Field Params will be generated here -->
-          </div>
-          <div class="param-group" data-algo="geometric">
-            <!-- Geometric Params -->
-          </div>
-        </div>
-      </div>
-
-      <hr class="divider">
-
-      <!-- Color Palette -->
-      <div class="control-group">
-        <span class="control-label">Color Palette</span>
-        <div id="palette-selector" class="palette-grid">
-          <!-- Palettes will be added here by JS -->
-        </div>
-      </div>
-
-      <hr class="divider">
-
-      <!-- Animation -->
-      <div class="control-group">
-        <span class="control-label" data-i18n="pattern.animation">Animation</span>
-        <div class="toggle-row">
-          <label data-i18n="pattern.animate">Animate</label>
-          <div class="toggle" id="animateToggle"></div>
-        </div>
-        <div id="animControls" style="display:none;">
-          <div class="slider-row">
-            <label data-i18n="pattern.speed">Speed</label>
-            <input type="range" id="animSpeed" min="0.1" max="5" step="0.1" value="1">
-            <span class="val" id="animSpeedVal">1x</span>
-          </div>
-        </div>
-      </div>
-
-    </div>
-
-    <div class="status-bar" id="statusBar" data-i18n="pattern.statusReady">◈ Ready</div>
-
-    <div class="action-btns">
-      <button class="btn btn-primary" id="renderBtn" style="grid-column: 1 / -1;" data-i18n="pattern.renderBtn">◈ Render</button>
-      <button class="btn btn-outline" id="rotateBtn" style="width:100%;" data-i18n="pattern.rotateBtn">Rotar 90°</button>
-      <button class="btn btn-outline" id="randomBtn" style="width:100%" data-i18n="pattern.randomBtn">🎲 Randomize</button>
-      <button class="btn btn-outline" id="downloadPngBtn" style="width:100%" data-i18n="pattern.pngBtn">⬇ PNG</button>
-      <button class="btn btn-outline" id="exportAnimBtn" style="width:100%" data-i18n="pattern.animBtn">🎬 Animation</button>
-      <button class="btn btn-outline" id="sendToFlyerBtn" style="width:100%" data-i18n="pattern.continueBtn">→ Continuar en Flyer Forge</button>
-    </div>
-  </div>
-
-  <!-- ── CANVAS ── -->
-  <div class="tool-canvas-area has-image pattern-generator-canvas" id="canvasArea">
-    <canvas id="mainCanvas" style="display: block;"></canvas>
-    <div class="canvas-info" id="canvasInfo" data-i18n="pattern.canvasInfo">▦ Pattern Generator</div>
-  </div>
-
-</div>
+<main id="tool"></main>
 
 <script src="../../js/i18n.js"></script>
 <script src="../../js/utils.js"></script>
+<script src="../../js/tool-shell.js"></script>
 <script>
-    const canvas = document.getElementById('mainCanvas');
-    const ctx = canvas.getContext('2d', { willReadFrequently: true });
-    const canvasArea = document.getElementById('canvasArea');
-    const offscreenCanvas = document.createElement('canvas');
-    const offscreenCtx = offscreenCanvas.getContext('2d', { willReadFrequently: true });
-    const statusBar = document.getElementById('statusBar');
+(function () {
+  const PALETTES = {
+    neon:  ['#050508', '#00331a', '#00bb16', '#66ff33', '#e6ffd9'],
+    ember: ['#120404', '#731717', '#bf311a', '#f27405', '#f2d705'],
+    ocean: ['#010d1a', '#033e73', '#0468bf', '#049dd9', '#a6f2ff'],
+    vapor: ['#12002b', '#4b0082', '#ff00c8', '#00e5ff', '#ffffff'],
+    mono:  ['#000000', '#333333', '#777777', '#bbbbbb', '#ffffff'],
+  };
+  const hex = h => [parseInt(h.slice(1, 3), 16), parseInt(h.slice(3, 5), 16), parseInt(h.slice(5, 7), 16)];
+  const lutCache = {};
+  function lut(name) {
+    if (lutCache[name]) return lutCache[name];
+    const pal = PALETTES[name].map(hex), out = new Uint8ClampedArray(256 * 3);
+    for (let i = 0; i < 256; i++) {
+      const v = i / 255 * (pal.length - 1), a = Math.floor(v), t = v - a, b = Math.min(pal.length - 1, a + 1);
+      for (let c = 0; c < 3; c++) out[i * 3 + c] = pal[a][c] + (pal[b][c] - pal[a][c]) * t;
+    }
+    return (lutCache[name] = out);
+  }
 
-    let currentAlgo = 'noise'; // Changed initial algorithm to 'noise'
-    let animating = false;
-    let animTime = 0;
-    let seed = 12345;
-    let algorithmState = {};
-    let rotation = 0;
-    let baseWidth, baseHeight;
-    let noiseGenerator = null;
-    let tempVoronoiCanvas = null; // Canvas for Voronoi optimization
-
-    const palettes = {
-        neon: ['#000000', '#050508', '#00662c', '#00bb16', '#59ff00'],
-        ember: ['#260C0C', '#731717', '#BF311A', '#F27405', '#F2B705'],
-        ocean: ['#022140', '#033E73', '#0468BF', '#049DD9', '#04D9D9'],
-        mono: ['#000000', '#444444', '#888888', '#CCCCCC', '#FFFFFF'],
+  // Seeded 3D Perlin noise
+  function perlin(seed) {
+    let s = seed >>> 0 || 1;
+    const rnd = () => (s = (s * 1664525 + 1013904223) >>> 0) / 4294967296;
+    const perm = new Uint8Array(512), base = [...Array(256).keys()];
+    for (let i = 255; i > 0; i--) { const j = (rnd() * (i + 1)) | 0; [base[i], base[j]] = [base[j], base[i]]; }
+    for (let i = 0; i < 512; i++) perm[i] = base[i & 255];
+    const fade = t => t * t * t * (t * (t * 6 - 15) + 10), lerp = (t, a, b) => a + t * (b - a);
+    const grad = (h, x, y, z) => { h &= 15; const u = h < 8 ? x : y, v = h < 4 ? y : h === 12 || h === 14 ? x : z; return ((h & 1) ? -u : u) + ((h & 2) ? -v : v); };
+    return (x, y, z) => {
+      const X = Math.floor(x) & 255, Y = Math.floor(y) & 255, Z = Math.floor(z) & 255;
+      x -= Math.floor(x); y -= Math.floor(y); z -= Math.floor(z);
+      const u = fade(x), v = fade(y), w = fade(z);
+      const A = perm[X] + Y, AA = perm[A] + Z, AB = perm[A + 1] + Z, B = perm[X + 1] + Y, BA = perm[B] + Z, BB = perm[B + 1] + Z;
+      return lerp(w, lerp(v, lerp(u, grad(perm[AA], x, y, z), grad(perm[BA], x - 1, y, z)), lerp(u, grad(perm[AB], x, y - 1, z), grad(perm[BB], x - 1, y - 1, z))),
+        lerp(v, lerp(u, grad(perm[AA + 1], x, y, z - 1), grad(perm[BA + 1], x - 1, y, z - 1)), lerp(u, grad(perm[AB + 1], x, y - 1, z - 1), grad(perm[BB + 1], x - 1, y - 1, z - 1))));
     };
-    let currentPalette = 'neon';
+  }
+  let noiseCache = { seed: null, fn: null };
+  const noiseFor = seed => (noiseCache.seed === seed ? noiseCache.fn : (noiseCache = { seed, fn: perlin(seed) }).fn);
 
+  // Paints a small Uint8 RGB buffer computed by fn(x, y) -> 0..255, then scales it up smoothly
+  function lowRes(ctx, W, H, ds, fn) {
+    const w = Math.ceil(W / ds), h = Math.ceil(H / ds);
+    const c = document.createElement('canvas'); c.width = w; c.height = h;
+    const cx = c.getContext('2d'), img = cx.createImageData(w, h), d = img.data;
+    fn(d, w, h);
+    cx.putImageData(img, 0, 0);
+    ctx.imageSmoothingEnabled = true; ctx.imageSmoothingQuality = 'high';
+    ctx.drawImage(c, 0, 0, W, H);
+  }
 
-    const params = {
-        voronoi: { sites: 40, downscale: 4 },
-        noise: { scale: 50, octaves: 4, persistence: 0.5, lacunarity: 2.0, time: 0 },
-        flow: { particles: 1000, speed: 1.5, turbulence: 0.01, lineOpacity: 0.1 },
-        geometric: { a: 1.4, b: 1.56, c: 1.4, d: -2.8, iterations: 50000, scale: 0.5, offsetX: 0, offsetY: 0 },
-    };
-
-    const algoSpec = {
-        voronoi: [
-            { name: 'sites', min: 10, max: 150, step: 10, i18n: 'pattern.params.sites' },
-            { name: 'downscale', min: 1, max: 8, step: 1, i18n: 'pattern.params.downscale' },
-        ],
-        noise: [
-            { name: 'scale', min: 5, max: 200, step: 5, i18n: 'pattern.params.scale' },
-            { name: 'octaves', min: 1, max: 8, step: 1, i18n: 'pattern.params.octaves' },
-            { name: 'persistence', min: 0.1, max: 1, step: 0.1, i18n: 'pattern.params.persistence' },
-            { name: 'lacunarity', min: 1.5, max: 4, step: 0.1, i18n: 'pattern.params.lacunarity' },
-            { name: 'time', min: 0, max: 10, step: 0.1, i18n: 'pattern.params.time' },
-        ],
-        flow: [
-            { name: 'particles', min: 100, max: 5000, step: 100, i18n: 'pattern.params.particles' },
-            { name: 'speed', min: 0.5, max: 5, step: 0.1, i18n: 'pattern.params.speed' },
-            { name: 'turbulence', min: 0.001, max: 0.05, step: 0.001, i18n: 'pattern.params.turbulence' },
-            { name: 'lineOpacity', min: 0.01, max: 0.5, step: 0.01, i18n: 'pattern.params.lineOpacity' },
-        ],
-        geometric: [
-            { name: 'a', min: -3, max: 3, step: 0.02, i18n: 'pattern.params.a' },
-            { name: 'b', min: -3, max: 3, step: 0.02, i18n: 'pattern.params.b' },
-            { name: 'c', min: -3, max: 3, step: 0.02, i18n: 'pattern.params.c' },
-            { name: 'd', min: -3, max: 3, step: 0.02, i18n: 'pattern.params.d' },
-            { name: 'iterations', min: 10000, max: 200000, step: 1000, i18n: 'pattern.params.iterations' },
-            { name: 'scale', min: 0.1, max: 1.5, step: 0.05, i18n: 'pattern.params.scale' },
-            { name: 'offsetX', min: -1, max: 1, step: 0.05, i18n: 'pattern.params.offsetX' },
-            { name: 'offsetY', min: -1, max: 1, step: 0.05, i18n: 'pattern.params.offsetY' },
-        ],
-    };
-
-    function getColor(value, palette = palettes[currentPalette]) {
-        // value is normalized 0-1
-        value = Math.max(0, Math.min(1, value));
-        const index = Math.floor(value * (palette.length - 1));
-        const t = (value * (palette.length - 1)) - index;
-        const color1 = palette[index];
-        const color2 = palette[index + 1] || palette[index];
-        return lerpColor(color1, color2, t);
-    }
-
-    // 256-entry RGB lookup table for the current palette (avoids hex parsing per pixel)
-    let lutCache = { name: null, lut: null };
-    function paletteLUT() {
-        if (lutCache.name !== currentPalette) {
-            const lut = new Uint8ClampedArray(256 * 3);
-            for (let i = 0; i < 256; i++) {
-                const c = getColor(i / 255);
-                lut[i * 3] = c[0]; lut[i * 3 + 1] = c[1]; lut[i * 3 + 2] = c[2];
-            }
-            lutCache = { name: currentPalette, lut };
+  const ALGOS = {
+    noise({ ctx, W, H, p, k, t, seed }) {
+      const noise = noiseFor(seed), L = lut(p.palette), ds = 3;
+      const sc = p.scale * k, z = t * p.speed * 0.15;
+      lowRes(ctx, W, H, ds, (d, w, h) => {
+        for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+          let tot = 0, amp = 1, freq = 1, max = 0;
+          for (let o = 0; o < p.octaves; o++) {
+            tot += noise(x * ds / sc * freq, y * ds / sc * freq, z * freq) * amp;
+            max += amp; amp *= p.detail / 100; freq *= 2;
+          }
+          const li = Math.max(0, Math.min(255, ((tot / max) * 1.4 + 1) * 127.5 | 0)) * 3, i = (y * w + x) * 4;
+          d[i] = L[li]; d[i + 1] = L[li + 1]; d[i + 2] = L[li + 2]; d[i + 3] = 255;
         }
-        return lutCache.lut;
-    }
+      });
+    },
 
-    function updateSeed(newSeed) {
-        seed = newSeed;
-        noiseGenerator.setSeed(seed);
-        algorithmState = {}; // Invalidate state
-    }
-
-    // --- RENDER LOGIC ---
-    const renderFunctions = {
-        voronoi: () => {
-            const p = params.voronoi;
-            const downscale = p.downscale;
-            const w = Math.floor(offscreenCanvas.width / downscale);
-            const h = Math.floor(offscreenCanvas.height / downscale);
-
-            // Use a smaller temp canvas for calculation, create it only once
-            if (!tempVoronoiCanvas) {
-                tempVoronoiCanvas = document.createElement('canvas');
-            }
-            tempVoronoiCanvas.width = w;
-            tempVoronoiCanvas.height = h;
-            const tempCtx = tempVoronoiCanvas.getContext('2d');
-
-            if (!algorithmState.sites || algorithmState.seed !== seed || algorithmState.sites.length !== p.sites || algorithmState.vw !== w) {
-                algorithmState.sites = [];
-                for (let i = 0; i < p.sites; i++) {
-                    const s = seed + i;
-                    algorithmState.sites.push({
-                        x: ((Math.sin(s * 1.2) + 1) / 2) * w,
-                        y: ((Math.cos(s * 1.7) + 1) / 2) * h,
-                    });
-                }
-                algorithmState.seed = seed;
-                algorithmState.vw = w;
-            }
-
-            const sites = algorithmState.sites;
-            const lut = paletteLUT();
-            const maxD = w / 3;
-            const imageData = tempCtx.getImageData(0, 0, w, h);
-            const data = imageData.data;
-
-            for (let y = 0; y < h; y++) {
-                for (let x = 0; x < w; x++) {
-                    let minD2 = Infinity;
-                    for (let i = 0; i < sites.length; i++) {
-                        const dx = sites[i].x - x, dy = sites[i].y - y;
-                        const d2 = dx * dx + dy * dy;
-                        if (d2 < minD2) minD2 = d2;
-                    }
-                    const idx = (y * w + x) * 4;
-                    const li = Math.min(255, (Math.sqrt(minD2) / maxD * 255) | 0) * 3;
-                    data[idx] = lut[li]; data[idx+1] = lut[li+1]; data[idx+2] = lut[li+2];
-                    data[idx + 3] = 255;
-                }
-            }
-            tempCtx.putImageData(imageData, 0, 0);
-            offscreenCtx.fillStyle = palettes[currentPalette][0];
-            offscreenCtx.fillRect(0, 0, offscreenCanvas.width, offscreenCanvas.height);
-            offscreenCtx.imageSmoothingEnabled = false;
-            offscreenCtx.drawImage(tempVoronoiCanvas, 0, 0, offscreenCanvas.width, offscreenCanvas.height);
-        },
-        geometric: () => {
-            const p = params.geometric;
-            offscreenCtx.fillStyle = palettes[currentPalette][0];
-            offscreenCtx.fillRect(0, 0, offscreenCanvas.width, offscreenCanvas.height);
-            offscreenCtx.strokeStyle = palettes[currentPalette][4];
-            
-            const cx = offscreenCanvas.width / 2 + (p.offsetX * offscreenCanvas.width / 2);
-            const cy = offscreenCanvas.height / 2 + (p.offsetY * offscreenCanvas.height / 2);
-            const scale = Math.min(offscreenCanvas.width, offscreenCanvas.height) * p.scale;
-            let x = 0.1, y = 0.1;
-
-            offscreenCtx.fillStyle = palettes[currentPalette][4];
-
-            for (let i = 0; i < p.iterations; i++) {
-                const prevX = x;
-                const prevY = y;
-
-                x = Math.sin(p.a * prevY) - Math.cos(p.b * prevX);
-                y = Math.sin(p.c * prevX) - Math.cos(p.d * prevY);
-
-                const px = cx + x * scale / 2.5;
-                const py = cy + y * scale / 2.5;
-                offscreenCtx.fillRect(px, py, 1, 1);
-            }
-        },
-        noise: () => { // New Noise algorithm
-            const p = params.noise;
-            const NOISE_DOWNSCALE = 3; // compute at 1/3 resolution, upscale smoothly
-            const w = Math.ceil(offscreenCanvas.width / NOISE_DOWNSCALE);
-            const h = Math.ceil(offscreenCanvas.height / NOISE_DOWNSCALE);
-            if (!tempVoronoiCanvas) tempVoronoiCanvas = document.createElement('canvas');
-            if (tempVoronoiCanvas.width !== w || tempVoronoiCanvas.height !== h) {
-                tempVoronoiCanvas.width = w; tempVoronoiCanvas.height = h;
-            }
-            const tempCtx = tempVoronoiCanvas.getContext('2d');
-            const imageData = tempCtx.createImageData(w, h);
-            const data = imageData.data;
-            const lut = paletteLUT();
-            const sc = p.scale / NOISE_DOWNSCALE;
-            const time = animating ? animTime : p.time;
-
-            for (let y = 0; y < h; y++) {
-                for (let x = 0; x < w; x++) {
-                    const value = noiseGenerator.fractal(x / sc, y / sc, time, p.octaves, p.persistence, p.lacunarity);
-                    const li = Math.max(0, Math.min(255, ((value + 1) * 127.5) | 0)) * 3; // [-1,1] -> LUT index
-                    const idx = (y * w + x) * 4;
-                    data[idx] = lut[li];
-                    data[idx + 1] = lut[li + 1];
-                    data[idx + 2] = lut[li + 2];
-                    data[idx + 3] = 255;
-                }
-            }
-            tempCtx.putImageData(imageData, 0, 0);
-            offscreenCtx.imageSmoothingEnabled = true;
-            offscreenCtx.drawImage(tempVoronoiCanvas, 0, 0, offscreenCanvas.width, offscreenCanvas.height);
-        },
-        flow: () => { // New Flow Field algorithm
-            const p = params.flow;
-            const w = offscreenCanvas.width;
-            const h = offscreenCanvas.height;
-
-            if (!animating || !algorithmState.particles || algorithmState.seed !== seed || algorithmState.particles.length !== p.particles) {
-                const rng = () => (Math.sin(++algorithmState.rngSeed) * 10000) % 1;
-                algorithmState.rngSeed = seed;
-                algorithmState.particles = [];
-                for (let i = 0; i < p.particles; i++) {
-                    algorithmState.particles.push({
-                        x: rng() * w, y: rng() * h,
-                        prevX: -1, prevY: -1,
-                    });
-                }
-                algorithmState.seed = seed;
-                // Clear canvas for new seed
-                offscreenCtx.fillStyle = palettes[currentPalette][0];
-                offscreenCtx.fillRect(0, 0, w, h);
-            }
-
-            if (animating) {
-                offscreenCtx.fillStyle = `rgba(${hexToRgb(palettes[currentPalette][0])}, 0.1)`;
-                offscreenCtx.fillRect(0, 0, w, h);
-            }
-
-            const particleColor = palettes[currentPalette][4];
-            offscreenCtx.strokeStyle = `rgba(${hexToRgb(particleColor)}, ${p.lineOpacity})`;
-            offscreenCtx.lineWidth = 1;
-
-            // A static render simulates many steps so the trails are visible; animation advances one step per frame
-            const steps = animating ? 1 : 250;
-            for (let step = 0; step < steps; step++) {
-            offscreenCtx.beginPath();
-            algorithmState.particles.forEach(pt => {
-                const angle = noiseGenerator.get(pt.x * p.turbulence, pt.y * p.turbulence, animTime) * Math.PI * 2;
-                const vx = Math.cos(angle) * p.speed;
-                const vy = Math.sin(angle) * p.speed;
-
-                pt.prevX = pt.x;
-                pt.prevY = pt.y;
-                pt.x += vx;
-                pt.y += vy;
-
-                if (pt.x < 0 || pt.x > w || pt.y < 0 || pt.y > h) {
-                    pt.x = ((Math.sin(pt.y * pt.x + seed) + 1) / 2) * w;
-                    pt.y = ((Math.cos(pt.x * pt.y + seed) + 1) / 2) * h;
-                    pt.prevX = -1; // Don't draw line
-                }
-
-                if (pt.prevX > -1) { offscreenCtx.moveTo(pt.prevX, pt.prevY); offscreenCtx.lineTo(pt.x, pt.y); }
-            });
-            offscreenCtx.stroke(); // one stroke per step instead of one per particle
-            }
+    flow({ ctx, W, H, p, k, t, rng, seed }) {
+      const noise = noiseFor(seed), pal = PALETTES[p.palette];
+      ctx.fillStyle = pal[0]; ctx.fillRect(0, 0, W, H);
+      const sc = p.scale * k * 2, step = 2 * k, z = t * p.speed * 0.08;
+      ctx.lineWidth = Math.max(0.5, 0.8 * k);
+      ctx.globalAlpha = 0.35;
+      for (let c = 1; c < pal.length; c++) {
+        ctx.strokeStyle = pal[c];
+        ctx.beginPath();
+        const n = Math.round(p.particles / (pal.length - 1));
+        for (let q = 0; q < n; q++) {
+          let x = rng() * W, y = rng() * H;
+          ctx.moveTo(x, y);
+          for (let s = 0; s < p.length; s++) {
+            const a = noise(x / sc, y / sc, z) * Math.PI * 2 * (p.turbulence / 25);
+            x += Math.cos(a) * step; y += Math.sin(a) * step;
+            if (x < 0 || y < 0 || x > W || y > H) break;
+            ctx.lineTo(x, y);
+          }
         }
-    };
+        ctx.stroke();
+      }
+      ctx.globalAlpha = 1;
+    },
 
-    function render() {
-        if (renderFunctions[currentAlgo]) {
-            // Render the pattern to the offscreen canvas
-            renderFunctions[currentAlgo]();
-
-            // Now draw the offscreen canvas to the main canvas with rotation
-            ctx.fillStyle = palettes[currentPalette][0];
-            ctx.fillRect(0, 0, canvas.width, canvas.height);
-            ctx.save();
-            ctx.translate(canvas.width / 2, canvas.height / 2);
-            ctx.rotate(rotation * Math.PI / 180);
-            ctx.drawImage(offscreenCanvas, -offscreenCanvas.width / 2, -offscreenCanvas.height / 2);
-            ctx.restore();
-            if (typeof drawCropOverlay === 'function') {
-                drawCropOverlay(ctx, canvas, null);
-            } else {
-                console.warn("drawCropOverlay function not found. Is utils.js loaded?");
-            }
-        } else {
-            ctx.fillStyle = 'red';
-            ctx.fillRect(0, 0, canvas.width, canvas.height);
-            ctx.fillStyle = 'white';
-            ctx.fillText(`Algorithm '${currentAlgo}' not implemented.`, 10, 20);
+    voronoi({ ctx, W, H, p, t, rng }) {
+      const L = lut(p.palette), ds = 3;
+      const sites = Array.from({ length: p.sites }, () => ({ x: rng(), y: rng(), ph: rng() * 6.28, r: 0.02 + rng() * 0.05 }));
+      const pos = sites.map(s => [(s.x + Math.sin(t * p.speed * 0.3 + s.ph) * s.r) * W, (s.y + Math.cos(t * p.speed * 0.3 + s.ph) * s.r) * H]);
+      const cell = Math.sqrt(W * H / p.sites);
+      lowRes(ctx, W, H, ds, (d, w, h) => {
+        for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+          const fx = x * ds, fy = y * ds;
+          let d1 = Infinity, d2 = Infinity;
+          for (let i = 0; i < pos.length; i++) {
+            const dx = pos[i][0] - fx, dy = pos[i][1] - fy, dd = dx * dx + dy * dy;
+            if (dd < d1) { d2 = d1; d1 = dd; } else if (dd < d2) d2 = dd;
+          }
+          // edges = small (d2 - d1); cells = distance to centre
+          const v = p.cells ? Math.sqrt(d1) / cell : 1 - Math.min(1, (Math.sqrt(d2) - Math.sqrt(d1)) / (cell * 0.35));
+          const li = Math.max(0, Math.min(255, v * 255 | 0)) * 3, i = (y * w + x) * 4;
+          d[i] = L[li]; d[i + 1] = L[li + 1]; d[i + 2] = L[li + 2]; d[i + 3] = 255;
         }
-    }
+      });
+    },
 
-    let renderQueued = false;
-    function scheduleRender() {
-        if (renderQueued) return;
-        renderQueued = true;
-        requestAnimationFrame(() => { renderQueued = false; render(); });
-    }
+    attractor({ ctx, W, H, p, k, t, seed }) {
+      // Peter de Jong attractor, accumulated as a density map
+      const s = seed % 1000 / 1000;
+      const a = p.a + Math.sin(t * p.speed * 0.2) * 0.15 + s * 0.1, b = p.b + Math.cos(t * p.speed * 0.17) * 0.15;
+      const c = p.c, dd = p.d + Math.sin(t * p.speed * 0.13) * 0.1;
+      const ds = Math.max(1, Math.round(k));
+      const w = Math.ceil(W / ds), h = Math.ceil(H / ds);
+      const dens = new Uint32Array(w * h);
+      const zoom = Math.min(w, h) * 0.22 * (p.zoom / 100);
+      let x = 0.1, y = 0.1, max = 0;
+      const n = p.iterations * 1000;
+      for (let i = 0; i < n; i++) {
+        const nx = Math.sin(a * y) - Math.cos(b * x), ny = Math.sin(c * x) - Math.cos(dd * y);
+        x = nx; y = ny;
+        const px = (w / 2 + x * zoom) | 0, py = (h / 2 + y * zoom) | 0;
+        if (px >= 0 && py >= 0 && px < w && py < h) { const v = ++dens[py * w + px]; if (v > max) max = v; }
+      }
+      const L = lut(p.palette), lm = Math.log(max + 1);
+      const cv = document.createElement('canvas'); cv.width = w; cv.height = h;
+      const cx = cv.getContext('2d'), img = cx.createImageData(w, h), dt = img.data;
+      for (let i = 0; i < dens.length; i++) {
+        const li = Math.min(255, (Math.pow(Math.log(dens[i] + 1) / lm, 0.8) * 255) | 0) * 3;
+        dt[i * 4] = L[li]; dt[i * 4 + 1] = L[li + 1]; dt[i * 4 + 2] = L[li + 2]; dt[i * 4 + 3] = 255;
+      }
+      cx.putImageData(img, 0, 0);
+      ctx.imageSmoothingEnabled = true;
+      ctx.drawImage(cv, 0, 0, W, H);
+    },
+  };
 
-    function animate() {
-        if (animating) {
-            const speed = parseFloat(document.getElementById('animSpeed').value || 1);
-            animTime += 0.01 * speed; // Adjusted animation speed
-            render();
-        }
-        requestAnimationFrame(animate);
-    }
-    // --- UI & INITIALIZATION ---
-    function initialize() {
-        // Create parameter sliders
-        console.log("Pattern Generator: Initializing...");
-        Object.keys(algoSpec).forEach(algo => {
-            const container = document.querySelector(`.param-group[data-algo="${algo}"]`);
-            if (!container) return;
-            container.innerHTML = ''; // Clear previous
-            (algoSpec[algo] || []).forEach(spec => {
-                const val = params[algo][spec.name];
-                const row = document.createElement('div');
-                row.className = 'slider-row';
-                const labelText = spec.i18n ? `data-i18n="${spec.i18n}"` : '';
-                row.innerHTML = `
-                  <label ${labelText}>${spec.name}</label>
-                  <input type="range" min="${spec.min}" max="${spec.max}" step="${spec.step}" value="${val}" data-algo="${algo}" data-param="${spec.name}">
-                  <span class="val">${val}</span>
-                `;
-                container.appendChild(row);
-                
-                const input = row.querySelector('input');
-                const valSpan = row.querySelector('.val');
-                input.addEventListener('input', (e) => {
-                    const newValue = parseFloat(e.target.value);
-                    params[algo][spec.name] = newValue;
-                    valSpan.textContent = newValue.toFixed(String(spec.step).includes('.') ? String(spec.step).split('.')[1].length : 0);
-                    if (!animating) scheduleRender();
-                });
-            });
-        });
-
-        // Build palette UI
-        const paletteContainer = document.getElementById('palette-selector');
-        Object.keys(palettes).forEach(name => {
-            const palette = palettes[name];
-            const btn = document.createElement('div');
-            btn.className = 'palette-btn';
-            if (name === currentPalette) btn.classList.add('active');
-            btn.dataset.palette = name;
-            btn.innerHTML = palette.map(color => `<div class="palette-color" style="background-color:${color}"></div>`).join('');
-            btn.addEventListener('click', () => {
-                document.querySelector('.palette-btn.active').classList.remove('active');
-                btn.classList.add('active');
-                currentPalette = name;
-                render();
-            });
-            paletteContainer.appendChild(btn);
-        });
-        // Set up event listeners
-        document.querySelectorAll('.algo-tab').forEach(tab => {
-            tab.addEventListener('click', () => {
-                console.log(`Pattern Generator: Algorithm tab clicked: ${tab.dataset.algo}`);
-                document.querySelector('.algo-tab.active')?.classList.remove('active'); // Use optional chaining
-                tab.classList.add('active');
-                currentAlgo = tab.dataset.algo;
-                updateParamsUI();
-                render();
-            });
-        });
-
-        document.getElementById('renderBtn').addEventListener('click', render);
-        document.getElementById('downloadPngBtn').addEventListener('click', () => {
-            exportToPNG(canvas, null, `pudrus_pattern_${currentAlgo}_${seed}`);
-        });
-
-        document.getElementById('seedInput').addEventListener('change', (e) => {
-            updateSeed(parseInt(e.target.value) || 12345);
-            render();
-            statusBar.textContent = `◈ Seed: ${seed}`;
-        });
-
-        document.getElementById('newSeedBtn').addEventListener('click', () => {
-            const newSeed = Math.floor(Math.random() * 100000);
-            document.getElementById('seedInput').value = newSeed;
-            updateSeed(newSeed);
-            render();
-            statusBar.textContent = `◈ Seed: ${seed}`;
-        });
-
-        document.getElementById('randomBtn').addEventListener('click', () => {
-            const specs = algoSpec[currentAlgo] || [];
-            specs.forEach(spec => {
-                const range = spec.max - spec.min;
-                let randomVal = spec.min + Math.random() * range;
-                // Snap to step
-                randomVal = Math.round(randomVal / spec.step) * spec.step;
-                params[currentAlgo][spec.name] = randomVal;
-            });
-            updateSeed(seed); // Re-init state for randomization
-            updateAllParamUIs(); // ONLY update the UI, don't re-initialize everything
-            render();
-            statusBar.textContent = '◈ Randomized';
-        });
-
-        const animToggle = document.getElementById('animateToggle');
-        animToggle.addEventListener('click', () => {
-            animToggle.classList.toggle('on');
-            animating = animToggle.classList.contains('on');
-            document.getElementById('animControls').style.display = animating ? 'block' : 'none';
-            statusBar.textContent = animating ? '◈ Animating...' : '◈ Animation paused';
-        });
-
-        document.getElementById('animSpeed').addEventListener('input', (e) => {
-            document.getElementById('animSpeedVal').textContent = e.target.value + 'x';
-        });
-
-        document.getElementById('rotateBtn').addEventListener('click', () => {
-            rotation = (rotation + 90) % 360;
-            applyRotationToDimensions(); // This will also trigger a render
-        });
-
-        document.getElementById('exportAnimBtn').addEventListener('click', () => {
-            if (!canvas.captureStream || typeof MediaRecorder === 'undefined') {
-                statusBar.textContent = '◈ Video export not supported in this browser';
-                return;
-            }
-            const btn = document.getElementById('exportAnimBtn');
-            const mime = ['video/webm;codecs=vp9', 'video/webm;codecs=vp8', 'video/webm']
-                .find(t => MediaRecorder.isTypeSupported(t)) || 'video/webm';
-            const recorder = new MediaRecorder(canvas.captureStream(30), { mimeType: mime, videoBitsPerSecond: 8e6 });
-            const chunks = [];
-            const wasAnimating = animating;
-            recorder.ondataavailable = e => { if (e.data.size) chunks.push(e.data); };
-            recorder.onstop = () => {
-                animating = wasAnimating;
-                btn.disabled = false;
-                const link = document.createElement('a');
-                link.download = `pudrus_anim_${currentAlgo}_${seed}.webm`;
-                link.href = URL.createObjectURL(new Blob(chunks, { type: 'video/webm' }));
-                link.click();
-                setTimeout(() => URL.revokeObjectURL(link.href), 10000);
-                statusBar.textContent = '◈ Animation exported (5s WebM)';
-            };
-            btn.disabled = true;
-            animating = true; // the animate() loop drives the frames while recording
-            statusBar.textContent = '◈ Recording 5s animation...';
-            recorder.start();
-            setTimeout(() => recorder.stop(), 5000);
-        });
-
-        document.getElementById('sendToFlyerBtn').addEventListener('click', () => {
-            sendTo('flyer-forge', canvas, null);
-            statusBar.textContent = '◈ Sent to Flyer Forge';
-        });
-
-        // Initial setup
-        document.querySelector(`.algo-tab[data-algo="${currentAlgo}"]`)?.classList.add('active'); // Ensure initial active state
-        resizeCanvas();
-        updateParamsUI();
-        render();
-        statusBar.textContent = `◈ Ready - Seed: ${seed}`;
-        console.log("Pattern Generator: Initialization complete.");
-    }
-
-    function updateAllParamUIs() {
-        Object.keys(algoSpec).forEach(algo => {
-            const specs = algoSpec[algo] || [];
-            (specs || []).forEach(spec => {
-                const input = document.querySelector(`input[data-algo="${algo}"][data-param="${spec.name}"]`);
-                const valSpan = document.querySelector(`.param-group[data-algo="${algo}"] input[data-param="${spec.name}"] + .val`);
-                if (input && valSpan) {
-                    const newValue = params[algo][spec.name];
-                    input.value = newValue;
-                    valSpan.textContent = newValue.toFixed(spec.step < 0.1 ? 3 : (spec.step < 1 ? 2 : 0));
-                }
-            });
-        });
-    }
-    function updateParamsUI() {
-        document.querySelectorAll('.param-group').forEach(group => {
-            group.style.display = group.dataset.algo === currentAlgo ? 'block' : 'none';
-        });
-    }
-
-    function resizeCanvas() {
-        baseWidth = canvasArea.clientWidth > 0 ? canvasArea.clientWidth - 20 : 600;
-        baseHeight = canvasArea.clientHeight > 0 ? canvasArea.clientHeight - 40 : 600;
-        applyRotationToDimensions();
-    }
-
-    function applyRotationToDimensions() {
-        let newWidth, newHeight;
-
-        if (rotation === 90 || rotation === 270) {
-            newWidth = baseHeight;
-            newHeight = baseWidth;
-        } else {
-            newWidth = baseWidth;
-            newHeight = baseHeight;
-        }
-
-        canvas.width = newWidth;
-        canvas.height = newHeight;
-        
-        const diagonal = Math.hypot(baseWidth, baseHeight);
-        offscreenCanvas.width = offscreenCanvas.height = diagonal;
-        updateSeed(seed); // Invalidate state as canvas size changed
-        render();
-    }
-
-    window.addEventListener('resize', resizeCanvas);
-
-    // --- PERLIN NOISE CLASS ---
-    function PerlinNoise(seed) {
-        this.p = new Uint8Array(512);
-        this.setSeed(seed);
-    }
-    PerlinNoise.prototype.setSeed = function(seed) {
-        const rng = () => {
-            seed = (seed * 9301 + 49297) % 233280;
-            return seed / 233280;
-        };
-        let p = Array.from({length: 256}, (_, i) => i);
-        for (let i = p.length - 1; i > 0; i--) {
-            const j = Math.floor(rng() * (i + 1));
-            [p[i], p[j]] = [p[j], p[i]];
-        }
-        this.p = new Uint8Array(512);
-        for (let i = 0; i < 256; i++) {
-            this.p[i] = this.p[i + 256] = p[i];
-        }
-    };
-    PerlinNoise.prototype.get = function(x, y, z = 0) {
-        const fade = t => t * t * t * (t * (t * 6 - 15) + 10);
-        const lerp = (t, a, b) => a + t * (b - a);
-        const grad = (hash, x, y, z) => {
-            const h = hash & 15;
-            const u = h < 8 ? x : y;
-            const v = h < 4 ? y : h === 12 || h === 14 ? x : z;
-            return ((h & 1) === 0 ? u : -u) + ((h & 2) === 0 ? v : -v);
-        };
-        const X = Math.floor(x) & 255, Y = Math.floor(y) & 255, Z = Math.floor(z) & 255;
-        x -= Math.floor(x); y -= Math.floor(y); z -= Math.floor(z);
-        const u = fade(x), v = fade(y), w = fade(z);
-        const p = this.p;
-        const A = p[X] + Y, AA = p[A] + Z, AB = p[A + 1] + Z, B = p[X + 1] + Y, BA = p[B] + Z, BB = p[B + 1] + Z;
-        return lerp(w, lerp(v, lerp(u, grad(p[AA], x, y, z), grad(p[BA], x - 1, y, z)), lerp(u, grad(p[AB], x, y - 1, z), grad(p[BB], x - 1, y - 1, z))), lerp(v, lerp(u, grad(p[AA + 1], x, y, z - 1), grad(p[BA + 1], x - 1, y, z - 1)), lerp(u, grad(p[AB + 1], x, y - 1, z - 1), grad(p[BB + 1], x - 1, y - 1, z - 1))));
-    };
-    PerlinNoise.prototype.fractal = function(x, y, z, octaves, persistence, lacunarity) {
-        let total = 0, frequency = 1, amplitude = 1, maxValue = 0;
-        for (let i = 0; i < octaves; i++) { total += this.get(x * frequency, y * frequency, z * frequency) * amplitude; maxValue += amplitude; amplitude *= persistence; frequency *= lacunarity; }
-        return total / maxValue;
-    };
-    // --- HELPERS ---
-    function lerpColor(a, b, amount) {
-        const ah = parseInt(a.replace(/#/g, ''), 16),
-              ar = ah >> 16, ag = ah >> 8 & 0xff, ab = ah & 0xff,
-              bh = parseInt(b.replace(/#/g, ''), 16),
-              br = bh >> 16, bg = bh >> 8 & 0xff, bb = bh & 0xff,
-              rr = ar + amount * (br - ar),
-              rg = ag + amount * (bg - ag),
-              rb = ab + amount * (bb - ab);
-
-        return [Math.round(rr), Math.round(rg), Math.round(rb)];
-    }
-
-    function hexToRgb(hex) {
-        const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
-        return result ? `${parseInt(result[1], 16)},${parseInt(result[2], 16)},${parseInt(result[3], 16)}` : '0,0,0';
-    }
-
-    noiseGenerator = new PerlinNoise(seed);
-    initialize();
-    animate();
-
+  const algo = (...names) => p => names.includes(p.algo);
+  PudrusTool.create({
+    id: 'pattern', i18n: 'pattern', icon: '▦',
+    name: '▦ Pattern Generator', desc: 'Generative patterns: noise, flow fields, Voronoi and attractors.',
+    generator: { formats: [
+      { value: 'square', label: 'shell.fmtSquare', fallback: 'Square 1:1', w: 2160, h: 2160 },
+      { value: 'portrait', label: 'shell.fmtPortrait', fallback: 'Portrait 4:5', w: 2160, h: 2700 },
+      { value: 'story', label: 'shell.fmtStory', fallback: 'Story 9:16', w: 2160, h: 3840 },
+      { value: 'wide', label: 'shell.fmtWide', fallback: 'Wide 16:9', w: 3840, h: 2160 },
+    ] },
+    animated: true,
+    noFlyer: false,
+    controls: [
+      { key: 'algo', label: 'pattern.algorithm', fallback: 'Algorithm', type: 'select', value: 'noise', options: [
+        { value: 'noise', label: 'pattern.noise', fallback: 'Noise' },
+        { value: 'flow', label: 'pattern.flow', fallback: 'Flow field' },
+        { value: 'voronoi', label: 'pattern.voronoi', fallback: 'Voronoi' },
+        { value: 'attractor', label: 'pattern.attractor', fallback: 'Attractor' } ] },
+      { key: 'palette', label: 'pattern.palette', fallback: 'Palette', type: 'select', value: 'neon', options: [
+        { value: 'neon', label: 'pattern.palNeon', fallback: 'Neon' },
+        { value: 'ember', label: 'pattern.palEmber', fallback: 'Ember' },
+        { value: 'ocean', label: 'pattern.palOcean', fallback: 'Ocean' },
+        { value: 'vapor', label: 'pattern.palVapor', fallback: 'Vapor' },
+        { value: 'mono', label: 'pattern.palMono', fallback: 'Mono' } ] },
+      { key: 'scale', label: 'pattern.params.scale', fallback: 'Scale', min: 20, max: 600, step: 10, value: 220, show: algo('noise', 'flow'), rand: [80, 450] },
+      { key: 'octaves', label: 'pattern.params.octaves', fallback: 'Octaves', min: 1, max: 7, value: 4, show: algo('noise'), rand: [2, 6] },
+      { key: 'detail', label: 'pattern.params.persistence', fallback: 'Roughness', min: 20, max: 80, value: 50, unit: '%', show: algo('noise'), advanced: true, rand: [35, 65] },
+      { key: 'particles', label: 'pattern.params.particles', fallback: 'Particles', min: 100, max: 4000, step: 100, value: 1500, show: algo('flow'), rand: [500, 3000] },
+      { key: 'length', label: 'pattern.params.length', fallback: 'Trail length', min: 10, max: 300, step: 10, value: 120, show: algo('flow'), rand: [40, 250] },
+      { key: 'turbulence', label: 'pattern.params.turbulence', fallback: 'Turbulence', min: 5, max: 100, value: 30, show: algo('flow'), advanced: true, rand: [10, 70] },
+      { key: 'sites', label: 'pattern.params.sites', fallback: 'Cells', min: 5, max: 200, step: 5, value: 40, show: algo('voronoi'), rand: [10, 120] },
+      { key: 'cells', label: 'pattern.params.cells', fallback: 'Fill cells (instead of edges)', type: 'toggle', value: false, show: algo('voronoi'), randChance: 0.5 },
+      { key: 'a', label: 'pattern.params.a', fallback: 'Shape A', min: -3, max: 3, step: 0.02, value: 1.4, show: algo('attractor'), rand: [-3, 3] },
+      { key: 'b', label: 'pattern.params.b', fallback: 'Shape B', min: -3, max: 3, step: 0.02, value: -2.3, show: algo('attractor'), rand: [-3, 3] },
+      { key: 'c', label: 'pattern.params.c', fallback: 'Shape C', min: -3, max: 3, step: 0.02, value: 2.4, show: algo('attractor'), advanced: true, rand: [-3, 3] },
+      { key: 'd', label: 'pattern.params.d', fallback: 'Shape D', min: -3, max: 3, step: 0.02, value: -2.1, show: algo('attractor'), advanced: true, rand: [-3, 3] },
+      { key: 'iterations', label: 'pattern.params.iterations', fallback: 'Density', min: 50, max: 2000, step: 50, value: 400, unit: 'k', show: algo('attractor'), advanced: true, rand: [200, 800] },
+      { key: 'zoom', label: 'pattern.params.zoom', fallback: 'Zoom', min: 40, max: 200, value: 100, unit: '%', show: algo('attractor'), advanced: true, rand: [80, 130] },
+      { key: 'speed', label: 'pattern.params.speed', fallback: 'Animation speed', min: 0.1, max: 5, step: 0.1, value: 1, advanced: true, rand: false },
+    ],
+    presets: [
+      { label: 'pattern.presetClouds', fallback: 'Clouds', values: { algo: 'noise', palette: 'ocean', scale: 400, octaves: 6, detail: 55 } },
+      { label: 'pattern.presetSilk', fallback: 'Silk', values: { algo: 'flow', palette: 'vapor', scale: 300, particles: 2500, length: 200, turbulence: 25 } },
+      { label: 'pattern.presetCells', fallback: 'Cells', values: { algo: 'voronoi', palette: 'neon', sites: 60 } },
+      { label: 'pattern.presetNebula', fallback: 'Nebula', values: { algo: 'attractor', palette: 'ember', a: -2.0, b: -2.0, c: -1.2, d: 2.0, iterations: 600 } },
+    ],
+    draw(args) { ALGOS[args.p.algo](args); },
+  });
+})();
 </script>
 </body>
 </html>
