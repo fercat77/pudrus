@@ -627,17 +627,21 @@
     const rec = new MediaRecorder(out, mime ? { mimeType: mime, videoBitsPerSecond: state.quality === 1080 ? 10e6 : 6e6 } : undefined);
     const chunks = [];
     rec.ondataavailable = e => { if (e.data && e.data.size) chunks.push(e.data); };
+    const began = Date.now();
     rec.onstop = () => {
       if (state.mic) { state.mic.getTracks().forEach(tr => tr.stop()); state.mic = null; }
+      out.getVideoTracks().forEach(tr => tr.stop());
       const type = rec.mimeType || mime || 'video/webm';
       const blob = new Blob(chunks, { type });
-      deliver(blob, `pudrus_camera_${Date.now()}.${type.includes('mp4') ? 'mp4' : 'webm'}`, t('shell.videoSaved', 'Video saved'));
+      const secs = Math.round((Date.now() - began) / 1000);
+      deliver(blob, `pudrus_camera_${Date.now()}.${type.includes('mp4') ? 'mp4' : 'webm'}`, t('camera.savedSecs', 'Video saved ({s} s)', { s: secs }));
     };
-    rec.start(1000);
+    // No timeslice: the browser writes one complete file on stop. Joining 1 s pieces
+    // produced MP4s that some phones only play for the first few seconds.
+    rec.start();
     state.recorder = rec;
     recBtn.classList.add('is-rec');
     setLabel(recBtn, 'camera.stop', 'Stop', '■');
-    const began = Date.now();
     timerEl.hidden = false;
     const tick = () => { const s = Math.floor((Date.now() - began) / 1000); timerEl.textContent = '● ' + String(Math.floor(s / 60)).padStart(2, '0') + ':' + String(s % 60).padStart(2, '0'); };
     tick(); timerInt = setInterval(tick, 500);

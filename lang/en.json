@@ -508,6 +508,7 @@
     "failed": "Could not start the camera. Try a video or the sample.",
     "videoError": "Could not play that video",
     "noMic": "Recording without sound (no microphone permission)",
-    "noWebgl": "Your browser does not support WebGL, which this tool needs."
+    "noWebgl": "Your browser does not support WebGL, which this tool needs.",
+    "savedSecs": "Video saved ({s} s)"
   }
 }

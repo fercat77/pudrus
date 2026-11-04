@@ -508,6 +508,7 @@
     "failed": "No se pudo iniciar la cámara. Probá con un video o la imagen de ejemplo.",
     "videoError": "No se pudo reproducir ese video",
     "noMic": "Grabando sin sonido (sin permiso de micrófono)",
-    "noWebgl": "Tu navegador no soporta WebGL, que esta herramienta necesita."
+    "noWebgl": "Tu navegador no soporta WebGL, que esta herramienta necesita.",
+    "savedSecs": "Video guardado ({s} s)"
   }
 }
