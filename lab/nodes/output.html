@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="robots" content="noindex, nofollow">
+  <title>Salida — PUDRUS Lab</title>
+  <style>
+    html, body { margin: 0; height: 100%; background: #000; overflow: hidden; }
+    canvas { display: block; width: 100vw; height: 100vh; }
+    body.idle { cursor: none; }
+    .hint { position: fixed; left: 50%; bottom: 20px; transform: translateX(-50%); padding: 8px 14px; border-radius: 8px;
+            background: rgba(0,0,0,0.7); color: #ccc; font: 13px ui-monospace, Menlo, Consolas, monospace; transition: opacity .4s; }
+    body.idle .hint { opacity: 0; }
+  </style>
+</head>
+<body>
+<canvas id="out"></canvas>
+<div class="hint" id="hint">Doble clic: pantalla completa · esperando al editor…</div>
+<script src="nodes.js"></script>
+<script>
+(function () {
+  // Mirrors the editor: receives the patch and the clock/audio through a BroadcastChannel
+  const N = window.PudrusNodes;
+  const canvas = document.getElementById('out');
+  const renderer = N.createRenderer(canvas);
+  let graph = null, compiled = null, key = '', time = 0, audio = [0, 0, 0, 0], playing = true, lastMsg = 0;
+  const ch = new BroadcastChannel('pudrus-nodes');
+
+  function size() { renderer.resize(Math.min(3840, innerWidth * devicePixelRatio), Math.min(2160, innerHeight * devicePixelRatio)); }
+  size(); addEventListener('resize', size);
+
+  ch.onmessage = e => {
+    const m = e.data || {};
+    lastMsg = performance.now();
+    if (m.type === 'graph') {
+      graph = m.graph;
+      const k = JSON.stringify({ n: graph.nodes.map(n => [n.id, n.type, n.p]), l: graph.links });
+      try {
+        if (k !== key) { compiled = N.compile(graph); renderer.setGraph(compiled); key = k; }
+        N.applyValues(renderer, graph, compiled);
+        document.getElementById('hint').textContent = 'Doble clic: pantalla completa';
+      } catch (err) { /* keep the last good shader */ }
+    } else if (m.type === 'frame') {
+      time = m.t; audio = m.audio;
+    } else if (m.type === 'play') {
+      playing = m.playing;
+    }
+  };
+  ch.postMessage({ type: 'hello' });
+
+  let last = performance.now();
+  function loop(now) {
+    requestAnimationFrame(loop);
+    // keep running smoothly between editor messages (e.g. when the editor tab is in the background)
+    if (playing && now - lastMsg > 100) time += Math.min(0.1, (now - last) / 1000);
+    last = now;
+    if (graph) renderer.render(time, audio, N.postValues(graph, audio));
+  }
+  requestAnimationFrame(loop);
+
+  addEventListener('dblclick', () => { document.fullscreenElement ? document.exitFullscreen() : document.documentElement.requestFullscreen().catch(() => {}); });
+  let idle;
+  addEventListener('pointermove', () => { document.body.classList.remove('idle'); clearTimeout(idle); idle = setTimeout(() => document.body.classList.add('idle'), 2000); });
+  idle = setTimeout(() => document.body.classList.add('idle'), 4000);
+})();
+</script>
+</body>
+</html>

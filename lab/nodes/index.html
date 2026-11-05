@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="robots" content="noindex, nofollow">
+  <meta name="theme-color" content="#15151d">
+  <title>Nodos — PUDRUS Lab</title>
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600;700&display=swap">
+  <link rel="stylesheet" href="lab.css">
+</head>
+<body>
+
+<header class="lab-bar">
+  <a class="lab-logo" href="/">PUDRUS<span> lab · nodos</span></a>
+  <button class="lab-btn" id="btnAdd" title="Agregar nodo (Shift+A o clic derecho)">＋ Nodo</button>
+  <button class="lab-btn" id="btnExamples">Ejemplos ▾</button>
+  <span class="lab-sep"></span>
+  <button class="lab-btn" id="btnNew">Nuevo</button>
+  <button class="lab-btn" id="btnOpen">Abrir…</button>
+  <button class="lab-btn" id="btnSave" title="Guardar patch (Ctrl+S)">Guardar</button>
+  <input type="file" id="fileOpen" accept=".json,application/json" hidden>
+  <span class="lab-sep"></span>
+  <button class="lab-btn" id="btnPlay" title="Pausar / reanudar el tiempo (Espacio)">❚❚ Pausa</button>
+  <button class="lab-btn" id="btnAudio" title="Audio reactivo">🎤 Audio <span class="lab-meter" id="meter"><i></i><i></i><i></i><i></i></span></button>
+  <span class="lab-sep"></span>
+  <button class="lab-btn" id="btnPhoto" title="Guardar foto">◉ Foto</button>
+  <button class="lab-btn" id="btnRec" title="Grabar video">● Grabar</button>
+  <button class="lab-btn" id="btnOut" title="Abrir ventana de salida para el proyector">⧉ Salida</button>
+  <button class="lab-btn" id="btnFull" title="Vista previa en pantalla completa (F)">⛶</button>
+  <button class="lab-btn" id="btnHelp" title="Atajos">?</button>
+</header>
+
+<div class="lab-work" id="work">
+  <div class="lab-preview" id="preview">
+    <canvas id="view"></canvas>
+    <div class="lab-preview-bar">
+      <button data-size="s" title="Vista chica">S</button>
+      <button data-size="m" class="is-on" title="Vista mediana">M</button>
+      <button data-size="l" title="Vista grande">L</button>
+      <button id="pvBack" title="Como fondo detrás de los nodos (B)">▣</button>
+      <button id="pvFull" title="Pantalla completa (F)">⛶</button>
+    </div>
+  </div>
+  <div id="world"><svg id="links"></svg></div>
+</div>
+
+<div class="lab-pop lab-add" id="addMenu" hidden>
+  <input id="addSearch" placeholder="Buscar nodo…" autocomplete="off">
+  <div id="addList"></div>
+</div>
+<div class="lab-pop" id="examples" hidden></div>
+<div class="lab-pop" id="audioPop" hidden>
+  <label for="audioDevice">Entrada</label>
+  <select id="audioDevice"></select>
+  <label for="audioGain">Ganancia <span id="audioGainVal">1.0×</span></label>
+  <input type="range" id="audioGain" min="0.2" max="5" step="0.1" value="1">
+  <label><input type="checkbox" id="recAudio" checked> Grabar el audio en los videos</label>
+  <button class="item" id="audioOff">Apagar audio</button>
+</div>
+<div class="lab-pop lab-help" id="help" hidden>
+  <p><kbd>Shift</kbd>+<kbd>A</kbd> o clic derecho: agregar nodo</p>
+  <p>Arrastrá desde un círculo de salida a uno de entrada para conectar. Arrastrá desde una entrada conectada para soltarla.</p>
+  <p>Valores: arrastrá a izquierda/derecha (con <kbd>Shift</kbd> más fino) o hacé clic para escribir.</p>
+  <p><kbd>X</kbd> borrar · <kbd>Ctrl</kbd>+<kbd>D</kbd> duplicar · <kbd>Ctrl</kbd>+<kbd>Z</kbd> deshacer</p>
+  <p>Rueda: zoom · arrastrar el fondo: mover · <kbd>.</kbd> encuadrar todo</p>
+  <p><kbd>Espacio</kbd> pausa · <kbd>F</kbd> pantalla completa · <kbd>B</kbd> vista de fondo</p>
+  <p>Con un nodo seleccionado, el nodo nuevo se conecta solo a su salida.</p>
+  <p><b>En vivo:</b> «⧉ Salida» abre una ventana para el proyector (doble clic = pantalla completa) que sigue todo lo que cambies acá.</p>
+</div>
+<div class="lab-toast" id="toast" role="status"></div>
+<div class="lab-mobile-note">Pensado para compu o tablet: en el celular conviene usarlo sólo para mirar.</div>
+
+<script src="nodes.js"></script>
+<script src="presets.js"></script>
+<script src="editor.js"></script>
+</body>
+</html>
