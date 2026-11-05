@@ -10,43 +10,47 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600;700&display=swap">
-  <link rel="stylesheet" href="lab.css?v=13">
+  <link rel="stylesheet" href="lab.css?v=14">
 </head>
 <body>
 
 <header class="lab-bar">
   <a class="lab-logo" href="/">PUDRUS<span> lab · nodos</span></a>
-  <button class="lab-btn" id="btnAdd" title="Agregar nodo (Shift+A o clic derecho)">＋ Nodo</button>
-  <button class="lab-btn" id="btnExamples">Ejemplos ▾</button>
-  <span class="lab-sep"></span>
-  <button class="lab-btn" id="btnNew">Nuevo</button>
+  <button class="lab-btn" id="btnAdd" title="Agregar nodo (Shift+A o clic derecho)">＋ <span class="t">Nodo</span></button>
+  <button class="lab-btn" id="btnExamples" title="Patches de ejemplo">Ejemplos ▾</button>
+  <button class="lab-btn" id="btnPatch" title="Nuevo, abrir y guardar patches">Patch ▾</button>
   <button class="lab-btn" id="btnRandom" title="Patch aleatorio (R) · Shift+clic o clic derecho: variar los valores (Shift+R)">🎲</button>
-  <button class="lab-btn" id="btnOpen">Abrir…</button>
-  <button class="lab-btn" id="btnSave" title="Guardar patch (Ctrl+S)">Guardar</button>
   <input type="file" id="fileOpen" accept=".json,application/json" hidden>
   <span class="lab-sep"></span>
-  <button class="lab-btn" id="btnPlay" title="Pausar / reanudar el tiempo (Espacio)">❚❚ Pausa</button>
+  <button class="lab-btn" id="btnPlay" title="Pausar / reanudar el tiempo (Espacio)">❚❚<span class="t"> Pausa</span></button>
   <span class="lab-sep"></span>
   <button class="lab-btn lab-go" id="btnGo" title="Mandar lo del editor al aire (Enter)">⏵ Al aire</button>
   <select class="lab-btn" id="fadeSel" title="Fundido al mandar al aire">
     <option value="0">Corte</option><option value="0.5">0,5 s</option><option value="1">1 s</option><option value="2">2 s</option><option value="4">4 s</option>
   </select>
   <button class="lab-btn" id="btnDirect" title="Directo: lo que editás sale al aire al instante">Directo</button>
-  <button class="lab-btn" id="btnBlack" title="Fundido a negro (N) · clic derecho: aprender MIDI">■ Negro</button>
-  <button class="lab-btn" id="btnStrobe" title="Strobe mientras lo mantenés apretado (S)">✦ Strobe</button>
+  <button class="lab-btn" id="btnBlack" title="Fundido a negro (N) · clic derecho: aprender MIDI">■<span class="t t1"> Negro</span></button>
+  <button class="lab-btn" id="btnStrobe" title="Strobe mientras lo mantenés apretado (S)">✦<span class="t t1"> Strobe</span></button>
   <button class="lab-btn" id="btnTap" title="Tap tempo: tocá al ritmo (T)">Tap <b id="bpm">120</b></button>
-  <button class="lab-btn" id="btnOverlay" title="Capa superior: logos y textos arriba de todo (O)">▤ Capa</button>
-  <button class="lab-btn" id="btnRemote" title="Usar el celular como controlador">📱 Control</button>
+  <button class="lab-btn" id="btnOverlay" title="Capa superior: logos y textos arriba de todo (O)">▤<span class="t t1"> Capa</span></button>
+  <button class="lab-btn" id="btnRemote" title="Usar el celular como controlador">📱<span class="t t1"> Control</span></button>
   <span class="lab-sep"></span>
-  <button class="lab-btn" id="btnAudio" title="Audio reactivo">🎤 Audio <span class="lab-meter" id="meter"><i></i><i></i><i></i><i></i></span></button>
+  <button class="lab-btn" id="btnAudio" title="Audio reactivo">🎤<span class="t"> Audio</span> <span class="lab-meter" id="meter"><i></i><i></i><i></i><i></i></span></button>
   <span class="lab-sep"></span>
   <button class="lab-btn" id="btnThumbs" title="Miniaturas en los nodos (P)">▦</button>
-  <button class="lab-btn" id="btnPhoto" title="Guardar foto de lo que está al aire">◉ Foto</button>
-  <button class="lab-btn" id="btnRec" title="Grabar video de lo que está al aire">● Grabar</button>
-  <button class="lab-btn" id="btnOut" title="Abrir ventana de salida para el proyector">⧉ Salida</button>
-  <button class="lab-btn" id="btnFull" title="Lo que está al aire en pantalla completa (F)">⛶</button>
-  <button class="lab-btn" id="btnHelp" title="Ayuda y atajos (?)">?</button>
+  <button class="lab-btn" id="btnPhoto" title="Guardar foto de lo que está al aire">◉<span class="t"> Foto</span></button>
+  <button class="lab-btn" id="btnRec" title="Grabar video de lo que está al aire">●<span class="t"> Grabar</span></button>
+  <button class="lab-btn" id="btnOut" title="Abrir ventana de salida para el proyector">⧉<span class="t"> Salida</span></button>
+  <button class="lab-btn lab-full" id="btnFull" title="Lo que está al aire en pantalla completa (F)">⛶</button>
+  <button class="lab-btn lab-helpbtn" id="btnHelp" title="Ayuda y atajos (? o H)">?</button>
 </header>
+<div class="lab-pop" id="patchPop" hidden>
+  <button class="item" id="btnNew">Nuevo</button>
+  <button class="item" id="btnOpen">Abrir…</button>
+  <button class="item" id="btnSave">Guardar <span class="dim">Ctrl+S</span></button>
+  <button class="item" id="pmRandom">🎲 Aleatorio <span class="dim">R</span></button>
+  <button class="item" id="pmVary">✨ Variar valores <span class="dim">Shift+R</span></button>
+</div>
 
 <div class="lab-work" id="work">
   <div class="lab-preview" id="preview">
@@ -234,9 +238,9 @@ Imagen ─── Color ─▶ Encima ├ Superponer ─▶ Salida
 <div class="lab-toast" id="toast" role="status"></div>
 <div class="lab-mobile-note">Pensado para compu o tablet: en el celular conviene usarlo sólo para mirar.</div>
 
-<script src="nodes.js?v=13"></script>
-<script src="presets.js?v=13"></script>
-<script src="generate.js?v=13"></script>
-<script src="editor.js?v=13"></script>
+<script src="nodes.js?v=14"></script>
+<script src="presets.js?v=14"></script>
+<script src="generate.js?v=14"></script>
+<script src="editor.js?v=14"></script>
 </body>
 </html>

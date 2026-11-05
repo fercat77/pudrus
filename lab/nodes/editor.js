@@ -465,6 +465,12 @@
     exPop.append(b);
   });
   $('#btnExamples').addEventListener('click', e => { const r = e.currentTarget.getBoundingClientRect(); openPop(exPop, r.left, r.bottom + 4); e.stopPropagation(); });
+  // Patch menu: new / open / save / random / vary
+  const patchPop = $('#patchPop');
+  $('#btnPatch').addEventListener('click', e => { const r = e.currentTarget.getBoundingClientRect(); openPop(patchPop, r.left, r.bottom + 4); e.stopPropagation(); });
+  patchPop.addEventListener('click', e => { if (e.target.closest('.item')) setTimeout(closePops, 0); });
+  $('#pmRandom').addEventListener('click', () => randomPatch());
+  $('#pmVary').addEventListener('click', () => varyPatch());
   // help: tabs by topic, remembers the last one
   const help = $('#help');
   function helpTab(t) {
@@ -717,7 +723,7 @@
 
   function togglePlay() {
     playing = !playing;
-    $('#btnPlay').textContent = playing ? '❚❚ Pausa' : '▶ Play';
+    $('#btnPlay').innerHTML = playing ? '❚❚<span class="t"> Pausa</span>' : '▶<span class="t"> Play</span>';
     broadcast({ type: 'play', playing });
   }
   $('#btnPlay').addEventListener('click', togglePlay);
@@ -782,7 +788,7 @@
   let rec = null;
   $('#btnRec').addEventListener('click', () => {
     const b = $('#btnRec');
-    if (rec) { rec.stop(); rec = null; b.classList.remove('is-rec'); b.textContent = '● Grabar'; return; }
+    if (rec) { rec.stop(); rec = null; b.classList.remove('is-rec'); b.innerHTML = '●<span class="t"> Grabar</span>'; return; }
     if (!stage.canvas.captureStream || typeof MediaRecorder === 'undefined') { toast('Este navegador no puede grabar video', true); return; }
     const mime = ['video/mp4;codecs=avc1', 'video/webm;codecs=vp9', 'video/webm'].find(m => MediaRecorder.isTypeSupported(m)) || '';
     const stream = stage.canvas.captureStream(60);
@@ -796,7 +802,7 @@
       a.href = URL.createObjectURL(new Blob(chunks, { type })); a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 10000);
       toast('Video guardado');
     };
-    r.start(); rec = r; b.classList.add('is-rec'); b.textContent = '■ Detener';
+    r.start(); rec = r; b.classList.add('is-rec'); b.innerHTML = '■<span class="t"> Detener</span>';
   });
 
   /* ── Output window (second screen / projector) ─────────── */

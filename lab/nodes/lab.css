@@ -281,3 +281,27 @@ span.ctl-kind { display: inline-flex; align-items: center; color: #ff3fa4; }
 .hp-keys p { display: block; }
 .hp-keys p span { float: right; margin-left: 8px; }
 .hp-keys p::after { content: ''; display: block; clear: both; }
+
+/* help: the sample sockets must not catch clicks (their ::after widens the hit area) */
+.hp-socks .sock { position: relative; top: auto; margin-top: 0; cursor: default; pointer-events: none; }
+.hp-socks .sock::after { display: none; }
+
+/* ── Top bar fits the screen ── */
+.lab-btn .t { white-space: nowrap; }
+.lab-helpbtn { position: sticky; right: 0; z-index: 2; box-shadow: -10px 0 10px var(--panel); }
+#patchPop .dim, #examples .dim { color: var(--dim); float: right; margin-left: 16px; }
+@media (max-width: 1800px) {
+  .lab-btn .t:not(.t1) { display: none; } /* icons only; the name stays in the tooltip */
+  .lab-btn { padding: 0 9px; }
+}
+@media (max-width: 1650px) { .lab-logo span { display: none; } }
+@media (max-width: 1340px) { .lab-btn .t1 { display: none; } }   /* Negro / Strobe / Capa / Control last */
+@media (max-width: 1500px) {
+  .lab-bar { gap: 4px; padding: 0 8px; }
+  .lab-sep { margin: 0 2px; }
+  .lab-full { display: none; }            /* ⛶ is also on the EN VIVO monitor and the F key */
+}
+@media (max-width: 1250px) {
+  #btnThumbs { display: none; }           /* P key */
+  .lab-btn { padding: 0 7px; }
+}
