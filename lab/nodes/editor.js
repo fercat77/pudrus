@@ -612,7 +612,9 @@
 
   /* ── Keyboard ──────────────────────────────────────────── */
   document.addEventListener('keydown', e => {
-    if (e.target && e.target.matches && e.target.matches('input, select, textarea')) return;
+    // shortcuts are ignored only while typing (text fields, menus), not on sliders or checkboxes
+    if (e.target && e.target.matches && e.target.matches('textarea, select, input:not([type=range]):not([type=checkbox]):not([type=color]):not([type=button])')) return;
+    if (e.target && e.target.matches && e.target.matches('input[type=range], input[type=checkbox]') && e.key.startsWith('Arrow')) return;   // arrows still move the slider
     const k = e.key.toLowerCase(), mod = e.ctrlKey || e.metaKey;
     if (e.shiftKey && k === 'a') { e.preventDefault(); showAdd(lastPointer[0], lastPointer[1]); }
     else if ((k === 'x' || k === 'delete' || k === 'backspace') && selected.size) { e.preventDefault(); removeNodes([...selected]); }
@@ -1359,12 +1361,18 @@
   let ovTimer = 0;
   function ovChanged(now) {
     stage.setOverlay(ov);
-    $('#btnOverlay').classList.toggle('is-on', ov.on && ov.items.some(i => i.on));
+    const visible = ov.on && ov.items.some(i => i.on);
+    $('#btnOverlay').classList.toggle('is-on', visible);
+    $('#btnOverlay').title = (visible ? 'Capa superior visible' : ov.items.length ? 'Capa superior oculta' : 'Capa superior: logos y textos arriba de todo') + ' (tecla O)';
+    const chk = $('#ovOn'); if (chk) chk.checked = ov.on;
     clearTimeout(ovTimer);
     const send = () => { broadcast({ type: 'overlay', ov }); saveOv(); pushState(); };
     if (now) send(); else ovTimer = setTimeout(send, 30);
   }
-  function setOverlayOn(on) { ov.on = on; ovChanged(true); paintOverlayPanel(); toast(on ? 'Capa superior visible' : 'Capa superior oculta'); }
+  function setOverlayOn(on) {
+    ov.on = on; ovChanged(true); paintOverlayPanel();
+    toast(!ov.items.length ? 'La capa superior está vacía: agregá un logo o un texto en ▤ Capa' : on ? 'Capa superior visible' : 'Capa superior oculta');
+  }
   const OV_FX = [['none', 'sin efecto'], ['beat', 'late con el pulso'], ['bass', 'late con los graves'], ['spin', 'gira'], ['float', 'flota'], ['breathe', 'respira'], ['blink', 'parpadea al pulso'], ['glitch', 'glitch']];
   const OV_BLEND = [['source-over', 'normal'], ['lighter', 'sumar'], ['screen', 'pantalla'], ['multiply', 'multiplicar'], ['difference', 'diferencia']];
   const OV_FONTS = [['sans', 'sans negrita'], ['display', 'display'], ['serif', 'serif'], ['mono', 'mono'], ['hand', 'manuscrita']];
