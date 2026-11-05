@@ -239,7 +239,7 @@
 
   let pan = null;
   work.addEventListener('pointerdown', e => {
-    if (e.target !== work && e.target !== world && e.target !== svg && !e.target.closest('.lab-work.backdrop .lab-preview canvas')) return;
+    if (e.target !== work && e.target !== world && e.target !== svg && !e.target.closest('.lab-work.backdrop.is-direct .lab-preview canvas, .lab-work.backdrop:not(.is-direct) .lab-live canvas')) return;
     if (e.button !== 0 && e.button !== 1) return;
     pan = { x: e.clientX, y: e.clientY, cx: cam.x, cy: cam.y, moved: false };
     work.setPointerCapture(e.pointerId);
@@ -263,7 +263,7 @@
     const xs = graph.nodes.map(n => n.x), ys = graph.nodes.map(n => n.y);
     const minX = Math.min(...xs), maxX = Math.max(...xs) + 210, minY = Math.min(...ys), maxY = Math.max(...ys) + 260;
     const r = work.getBoundingClientRect();
-    const pw = work.classList.contains('backdrop') ? 0 : preview.getBoundingClientRect().width + 20;
+    const pw = Math.max(preview.getBoundingClientRect().width, opts.direct || work.classList.contains('backdrop') ? 0 : $('#live').getBoundingClientRect().width) + 20;
     const z = Math.min(1.2, Math.max(0.7, Math.min((r.width - pw - 60) / (maxX - minX), (r.height - 60) / (maxY - minY))));
     cam = { z, x: 30 - minX * z, y: 30 - minY * z };
     applyCam();
@@ -542,34 +542,50 @@
 
   /* ── Preview: panel sizes, backdrop, fullscreen ────────── */
   const SIZES = { s: [320, 180], m: [480, 270], l: [720, 405] };
-  let size = 'm';
+  let size = opts.size && SIZES[opts.size] ? opts.size : 'm';
+  // View controls (S/M/L, backdrop, fullscreen) act on what the audience sees:
+  // the EN VIVO monitor, or the preview itself when working in Directo.
+  const mainView = () => opts.direct ? preview : $('#live');
   function layoutPreview() {
-    if (document.fullscreenElement === preview) { renderer.resize(Math.min(2560, screen.width * devicePixelRatio), Math.min(1440, screen.height * devicePixelRatio)); return; }
-    if (work.classList.contains('backdrop')) {
-      const r = work.getBoundingClientRect();
-      const s = Math.min(1, 1920 / r.width);
-      renderer.resize(r.width * Math.min(devicePixelRatio, 1.5) * s, r.height * Math.min(devicePixelRatio, 1.5) * s);
-    } else {
-      const [w, h] = SIZES[size];
+    const live = $('#live'), main = mainView(), back = work.classList.contains('backdrop');
+    const bar = document.querySelector('.lab-preview-bar');
+    if (bar.parentNode !== main) main.append(bar);
+    const fsEl = document.fullscreenElement;
+    const workSize = () => { const r = work.getBoundingClientRect(), s = Math.min(1, 1920 / r.width), d = Math.min(devicePixelRatio, 1.5) * s; return [r.width * d, r.height * d]; };
+    const screenSize = () => [Math.min(2560, screen.width * devicePixelRatio), Math.min(1440, screen.height * devicePixelRatio)];
+    // editor preview
+    if (fsEl === preview) renderer.resize(...screenSize());
+    else if (opts.direct && back) renderer.resize(...workSize());
+    else {
+      const [w, h] = opts.direct ? SIZES[size] : SIZES.s;
       preview.style.width = w + 'px'; preview.style.height = h + 'px';
-      renderer.resize(1280, 720);   // always 720p inside, scaled down by CSS
+      renderer.resize(1280, 720);   // 720p inside, scaled down by CSS
     }
-    const live = $('#live');
-    if (live) live.style.top = work.classList.contains('backdrop') ? '12px' : (12 + SIZES[size][1] + 12) + 'px';
+    // on-air monitor (keeps 720p while recording so the video size never changes)
+    if (!opts.direct) {
+      if (fsEl === live && !rec) stage.resize(...screenSize());
+      else if (back && !rec) stage.resize(...workSize());
+      else stage.resize(1280, 720);
+      if (!back) { const [w, h] = SIZES[size]; live.style.width = w + 'px'; live.style.height = h + 'px'; live.style.top = (12 + SIZES.s[1] + 12) + 'px'; }
+      else { live.style.width = live.style.height = live.style.top = ''; }
+    } else stage.resize(1280, 720);
   }
   function setBackdrop(on) {
     work.classList.toggle('backdrop', on);
     $('#pvBack').classList.toggle('is-on', on);
     layoutPreview();
   }
-  document.querySelectorAll('[data-size]').forEach(b => b.addEventListener('click', () => {
-    size = b.dataset.size; setBackdrop(false);
-    document.querySelectorAll('[data-size]').forEach(x => x.classList.toggle('is-on', x === b));
-  }));
+  document.querySelectorAll('[data-size]').forEach(b => {
+    b.classList.toggle('is-on', b.dataset.size === size);
+    b.addEventListener('click', () => {
+      size = opts.size = b.dataset.size; saveOpts(); setBackdrop(false);
+      document.querySelectorAll('[data-size]').forEach(x => x.classList.toggle('is-on', x === b));
+    });
+  });
   $('#pvBack').addEventListener('click', () => setBackdrop(!work.classList.contains('backdrop')));
   function fullscreen() {
     if (document.fullscreenElement) document.exitFullscreen();
-    else preview.requestFullscreen().catch(() => toast('El navegador no permitió pantalla completa', true));
+    else mainView().requestFullscreen().catch(() => toast('El navegador no permitió pantalla completa', true));
   }
   $('#btnFull').addEventListener('click', fullscreen);
   $('#pvFull').addEventListener('click', fullscreen);

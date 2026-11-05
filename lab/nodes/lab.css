@@ -62,10 +62,16 @@ button { cursor: pointer; }
 #links path.t-color { stroke: var(--t-color); }
 #links path.temp { stroke: #fff; stroke-dasharray: 6 5; }
 
-/* Backdrop mode: the preview fills the workspace behind the nodes */
-.lab-work.backdrop .lab-preview { inset: 0; width: auto !important; height: auto !important; border: 0; border-radius: 0; z-index: 0; }
-.lab-work.backdrop .lab-preview-bar { top: auto; bottom: 10px; right: 10px; }
+/* Backdrop mode: what is on air fills the workspace behind the nodes
+   (the EN VIVO monitor, or the preview when working in Directo) */
+.lab-work.backdrop.is-direct .lab-preview,
+.lab-work.backdrop:not(.is-direct) .lab-live { inset: 0; width: auto !important; height: auto !important; border: 0; border-radius: 0; z-index: 0; }
+.lab-work.backdrop .lab-preview-bar { top: auto; bottom: 10px; right: 10px; z-index: 6; }
 .lab-work.backdrop #world { z-index: 1; }
+.lab-work.backdrop:not(.is-direct) .lab-live .lab-tag { display: none; }
+.lab-live .lab-preview-bar { z-index: 3; }
+.lab-live:fullscreen { border: 0; border-radius: 0; cursor: none; }
+.lab-live:fullscreen .lab-preview-bar, .lab-live:fullscreen .lab-tag { display: none; }
 
 /* ── Nodes ── */
 .nd {
@@ -166,7 +172,7 @@ button { cursor: pointer; }
 .lab-work.is-direct .lab-preview { border: 2px solid #ff2a4d; }
 .lab-work.is-direct .lab-preview .lab-tag { color: #ff6680; }
 .lab-work.is-direct .lab-preview .lab-tag::after { content: ' · DIRECTO'; }
-.lab-work.backdrop .lab-preview .lab-tag { display: none; }
+.lab-work.backdrop.is-direct .lab-preview .lab-tag { display: none; }
 .lab-preview:fullscreen .lab-tag { display: none; }
 
 /* ── Scenes ── */
