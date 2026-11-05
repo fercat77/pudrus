@@ -426,6 +426,9 @@ footer a:hover { color: var(--c1); }
   :root { --nav-height: 56px; }
   body { font-size: 13px; }
 
+  /* Blur behind the fixed nav is expensive to repaint while scrolling on modest phones */
+  nav { -webkit-backdrop-filter: none; backdrop-filter: none; background: rgba(5,5,8,0.98); }
+
   /* Nav: logo + language + menu button; links open as a dropdown */
   .nav-toggle {
     display: inline-flex; align-items: center; justify-content: center;

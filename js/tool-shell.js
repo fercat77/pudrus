@@ -37,8 +37,13 @@
  */
 (function () {
   const PHONE = window.matchMedia('(max-width: 768px)').matches;
-  const PREVIEW_MAX = PHONE ? 1100 : 1600;
-  const FULL_MAX = 4096;       // cap for exports (protects phone memory)
+  // Device tier. deviceMemory (GB) is only reported by Chromium browsers; unknown = assume capable.
+  const MEM = navigator.deviceMemory || 0;
+  const CORES = navigator.hardwareConcurrency || 8;
+  const LOW_END = (MEM && MEM <= 2) || (MEM && MEM <= 3 && CORES <= 4);
+  const PREVIEW_MAX = PHONE ? (LOW_END ? 800 : 1100) : 1600;
+  // cap for exports: big canvases can crash phones with little memory
+  const FULL_MAX = MEM && MEM <= 2 ? 2048 : MEM && MEM <= 3 ? 3072 : 4096;
   const HANDOFF_MAX = 2048;    // cap for images passed to another tool (sessionStorage limit)
   const WORKFLOW_KEY = 'pudrus_workflow_image';
 
@@ -394,6 +399,7 @@
       paint(sctx);
       state.srcCanvas = sc;
       state.src = sctx.getImageData(0, 0, w, h);
+      fullMs = 0;
       canvas.width = w; canvas.height = h;
     }
 
@@ -414,12 +420,44 @@
     }
 
     // ── Rendering ────────────────────────────────────────
-    let queued = false;
+    // On slow devices the preview is rendered in two steps: while you move a control a
+    // lower-resolution "draft" keeps it responsive, and the full-quality preview follows
+    // as soon as you pause. Fast devices always get the full preview directly.
+    const BUDGET = 45;           // ms an interactive frame may take
+    let fullMs = 0;              // how long the last full preview took (smoothed)
+    let queued = false, queuedMode = 'full', fullTimer = null;
+    const perf = { full: 0, draft: 0, lastScale: 1 };
     function schedule() {
-      if (queued || !state.src) return;
+      if (!state.src) return;
+      const slow = fullMs > BUDGET;
+      const mode = slow ? 'draft' : 'full';
+      if (slow) {
+        clearTimeout(fullTimer);
+        fullTimer = setTimeout(() => { fullTimer = null; requestAnimationFrame(() => render('full')); }, 220);
+      }
+      queuedMode = queued && queuedMode === 'full' ? 'full' : mode;
+      if (queued) return;
       queued = true;
-      requestAnimationFrame(() => { queued = false; render(); });
+      requestAnimationFrame(() => { queued = false; render(queuedMode); });
     }
+    // Downscaled copies of the source for drafts, reused while the image stays the same
+    let drafts = { ref: null, map: {} };
+    function draftSource(scale) {
+      if (drafts.ref !== state.srcCanvas) drafts = { ref: state.srcCanvas, map: {} };
+      const key = scale.toFixed(2);
+      if (!drafts.map[key]) {
+        const w = Math.max(1, Math.round(state.srcCanvas.width * scale)), h = Math.max(1, Math.round(state.srcCanvas.height * scale));
+        const c = document.createElement('canvas');
+        c.width = w; c.height = h;
+        const x = c.getContext('2d', { willReadFrequently: true });
+        x.imageSmoothingQuality = 'medium';
+        x.drawImage(state.srcCanvas, 0, 0, w, h);
+        drafts.map[key] = { canvas: c, data: x.getImageData(0, 0, w, h) };
+      }
+      return drafts.map[key];
+    }
+    // test/diagnostics hook (read-only)
+    window.__pudrusPerf = { get fullMs() { return fullMs; }, get full() { return perf.full; }, get draft() { return perf.draft; }, get scale() { return perf.lastScale; }, low: LOW_END, previewMax: PREVIEW_MAX, fullMax: FULL_MAX };
 
     // Renders the tool at the size of srcData into a new canvas
     function runRender(srcData, srcCanvas) {
@@ -438,10 +476,25 @@
       return out;
     }
 
-    function render() {
+    function render(mode) {
       if (!state.src) return;
+      let out;
+      if (mode === 'draft' && fullMs > BUDGET) {
+        // time scales with the pixel count: pick the size that fits the budget
+        const scale = Math.max(0.3, Math.min(1, Math.round(Math.sqrt(BUDGET / fullMs) * 20) / 20));
+        const d = draftSource(scale);
+        out = runRender(d.data, d.canvas);
+        perf.draft++; perf.lastScale = scale;
+      } else {
+        const t0 = performance.now();
+        out = runRender(state.src, state.srcCanvas);
+        const dt = performance.now() - t0;
+        fullMs = fullMs ? fullMs * 0.6 + dt * 0.4 : dt;
+        perf.full++; perf.lastScale = 1;
+      }
       ctx.clearRect(0, 0, canvas.width, canvas.height);
-      ctx.drawImage(runRender(state.src, state.srcCanvas), 0, 0);
+      ctx.imageSmoothingEnabled = true;
+      ctx.drawImage(out, 0, 0, canvas.width, canvas.height);
       if (state.split) {
         // original on the left of the divider, effect on the right
         const x = Math.round(state.split * canvas.width);
@@ -567,7 +620,7 @@
       if (!state.playing) return;
       if (lastFrame) state.time += Math.min(0.1, (now - lastFrame) / 1000);
       lastFrame = now;
-      render();
+      render(fullMs > BUDGET ? 'draft' : 'full');
       requestAnimationFrame(tick);
     }
     function setPlaying(on) {

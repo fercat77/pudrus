@@ -491,10 +491,25 @@
     if (!s) return [0, 0];
     return s.tagName === 'VIDEO' ? [s.videoWidth, s.videoHeight] : [s.naturalWidth, s.naturalHeight];
   }
+  // Dynamic resolution: when frames get slow (modest GPUs) render fewer pixels,
+  // and go back up when there is headroom. Never changes while recording.
+  const dyn = { scale: navigator.deviceMemory && navigator.deviceMemory <= 2 ? 0.75 : 1, avg: 16.7, last: 0, checked: 0 };
+  window.__pudrusCam = { get scale() { return dyn.scale; }, get frameMs() { return dyn.avg; } };
+  function adaptResolution(now) {
+    if (dyn.last) dyn.avg = dyn.avg * 0.9 + Math.min(200, now - dyn.last) * 0.1;
+    dyn.last = now;
+    if (now - dyn.checked < 1500) return;
+    dyn.checked = now;
+    if (state.recorder) return;
+    if (dyn.avg > 45 && dyn.scale > 0.5) dyn.scale = Math.max(0.5, Math.round(dyn.scale * 0.8 * 100) / 100);
+    else if (dyn.avg < 22 && dyn.scale < 1) dyn.scale = Math.min(1, Math.round(dyn.scale * 1.15 * 100) / 100);
+  }
+  document.addEventListener('visibilitychange', () => { dyn.last = 0; });
+
   function fitCanvas() {
     const [w, h] = srcSize();
     if (!w || !h) return false;
-    const max = state.quality === 1080 ? 1920 : 1280;
+    const max = (state.quality === 1080 ? 1920 : 1280) * dyn.scale;
     const s = Math.min(1, max / Math.max(w, h));
     const cw = Math.round(w * s), ch = Math.round(h * s);
     if (canvas.width !== cw || canvas.height !== ch) { canvas.width = cw; canvas.height = ch; gl.viewport(0, 0, cw, ch); }
@@ -507,6 +522,7 @@
     const s = state.source;
     if (!s || !gl) return;
     if (s.tagName === 'VIDEO' && s.readyState < 2) return;
+    adaptResolution(now);
     if (!fitCanvas()) return;
     drawOnce(now);
   }
