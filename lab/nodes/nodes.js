@@ -219,6 +219,10 @@ vec3 cosPal(float t, vec3 a, vec3 b, vec3 c, vec3 d){ return a + b * cos(6.28318
                     abs: `abs(${I.a})`, fract: `fract(${I.a})`, step: `step(${I.b}, ${I.a})`, smooth: `smoothstep(0.0, max(${I.b}, 1e-4), ${I.a})` }[P.op];
         return `float ${O.v} = ${e};`;
       } },
+    range: { title: 'Rango', cat: 'Color',
+      inputs: [F('v', 'Valor (0–1)', 0.5, 0, 1), F('min', 'Mín', 0, -10, 10), F('max', 'Máx', 1, -10, 10)],
+      outputs: [['v', 'float', 'Resultado']],
+      glsl: (I, O) => `float ${O.v} = mix(${I.min}, ${I.max}, ${I.v});` },
     adjust: { title: 'Ajustar color', cat: 'Color',
       inputs: [COL('c', 'Color', '#808080'), F('bright', 'Brillo', 0, -1, 1), F('contrast', 'Contraste', 1, 0, 3), F('sat', 'Saturación', 1, 0, 3), F('hue', 'Tono', 0, -1, 1)],
       outputs: [['c', 'color', 'Color']],

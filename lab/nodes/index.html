@@ -58,6 +58,14 @@
   <div class="lab-scenes" id="scenes"></div>
   <div id="world"><svg id="links"></svg></div>
 </div>
+<div class="lab-pop" id="valuePop" hidden>
+  <button class="item" id="vpLfo">∿ Animar con LFO</button>
+  <label>Conectar al audio</label>
+  <button class="item" data-band="level">Volumen</button>
+  <button class="item" data-band="bass">Graves</button>
+  <button class="item" data-band="mid">Medios</button>
+  <button class="item" data-band="high">Agudos</button>
+</div>
 <div class="lab-pop" id="scenePop" hidden>
   <button class="item" id="scSave">Guardar el editor aquí</button>
   <button class="item" id="scGo">Al aire</button>
@@ -80,7 +88,7 @@
 <div class="lab-pop lab-help" id="help" hidden>
   <p><kbd>Shift</kbd>+<kbd>A</kbd> o clic derecho: agregar nodo</p>
   <p>Arrastrá desde un círculo de salida a uno de entrada para conectar. Arrastrá desde una entrada conectada para soltarla.</p>
-  <p>Valores: arrastrá a izquierda/derecha (con <kbd>Shift</kbd> más fino) o hacé clic para escribir.</p>
+  <p>Valores: arrastrá a izquierda/derecha (con <kbd>Shift</kbd> más fino) o hacé clic para escribir. Clic derecho: animarlo con un LFO o conectarlo al audio.</p>
   <p><kbd>X</kbd> borrar · <kbd>Ctrl</kbd>+<kbd>D</kbd> duplicar · <kbd>Ctrl</kbd>+<kbd>Z</kbd> deshacer</p>
   <p>Rueda: zoom · arrastrar el fondo: mover · <kbd>.</kbd> encuadrar todo</p>
   <p><kbd>Espacio</kbd> pausa · <kbd>F</kbd> pantalla completa · <kbd>B</kbd> vista de fondo</p>

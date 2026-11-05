@@ -169,7 +169,9 @@
       rec.ins[inp.k] = s;
       const val = n.v && n.v[inp.k] !== undefined ? n.v[inp.k] : inp.v;
       if (inp.t === 'float' && !isLinked(n.id, inp.k)) {
-        row.append(numWidget(inp.label, val, inp, v => setValue(n, inp.k, v)));
+        const w = numWidget(inp.label, val, inp, v => setValue(n, inp.k, v));
+        w.addEventListener('contextmenu', e => { e.preventDefault(); e.stopPropagation(); valueTarget = { id: n.id, k: inp.k }; openPop($('#valuePop'), e.clientX, e.clientY); });
+        row.append(w);
       } else if (inp.t === 'color' && !isLinked(n.id, inp.k)) {
         const w = el('div', 'colorw'); w.append(el('span', 'lbl', inp.label));
         const c = el('input'); c.type = 'color'; c.value = val;
@@ -457,6 +459,43 @@
     } catch (err) { toast('Ese archivo no es un patch válido', true); }
   });
   $('#btnOpen').addEventListener('click', () => $('#fileOpen').click());
+
+  /* ── Right-click a value: animate it with an LFO or the audio ── */
+  let valueTarget = null;
+  function modulate(kind, band) {
+    closePops();
+    const t = valueTarget && graph.nodes.find(m => m.id === valueTarget.id);
+    if (!t) return;
+    const inp = N.NODES[t.type].inputs.find(i => i.k === valueTarget.k);
+    const cur = t.v && t.v[inp.k] !== undefined ? t.v[inp.k] : inp.v;
+    const range = ((inp.max ?? 1) - (inp.min ?? 0)) || 1;
+    const span = Math.min(range * 0.15, Math.max(Math.abs(cur) * 0.5, range * 0.05));   // a musical amount around the current value
+    const lo = Math.max(inp.min ?? -Infinity, cur - span), hi = Math.min(inp.max ?? Infinity, cur + span);
+    const round = x => Math.round(x * 1000) / 1000;
+    const y = t.y + 30 + N.NODES[t.type].inputs.indexOf(inp) * 18;
+    let id = nextId();
+    const added = [];
+    if (kind === 'lfo') {
+      const d = N.defaultsFor('lfo');
+      const l = { id: id++, type: 'lfo', x: t.x - 240, y, v: { ...d.v, speed: 0.25, min: round(lo), max: round(hi) }, p: d.p };
+      graph.nodes.push(l); added.push(l.id);
+      graph.links = graph.links.filter(x => !(x.b === t.id && x.bi === inp.k));
+      graph.links.push({ a: l.id, ao: 'v', b: t.id, bi: inp.k });
+      toast('LFO conectado: ajustá Velocidad, Mín y Máx');
+    } else {
+      let a = graph.nodes.find(m => m.type === 'audio');
+      if (!a) { a = { id: id++, type: 'audio', x: t.x - 480, y, v: N.defaultsFor('audio').v, p: {} }; graph.nodes.push(a); added.push(a.id); }
+      const r = { id: id++, type: 'range', x: t.x - 240, y, v: { v: 0, min: round(cur), max: round(cur + span * 2 > (inp.max ?? Infinity) ? cur - span * 2 : cur + span * 2) }, p: {} };
+      graph.nodes.push(r); added.push(r.id);
+      graph.links = graph.links.filter(x => !(x.b === t.id && x.bi === inp.k));
+      graph.links.push({ a: a.id, ao: band, b: r.id, bi: 'v' }, { a: r.id, ao: 'v', b: t.id, bi: inp.k });
+      toast(audio.on ? 'Conectado al audio: el nodo Rango define cuánto se mueve' : 'Conectado al audio · activá «🎤 Audio» para que reaccione');
+    }
+    select(added);
+    rebuild(); recompile(); save(); remember();
+  }
+  $('#vpLfo').addEventListener('click', () => modulate('lfo'));
+  document.querySelectorAll('#valuePop [data-band]').forEach(b => b.addEventListener('click', () => modulate('audio', b.dataset.band)));
 
   /* ── Keyboard ──────────────────────────────────────────── */
   document.addEventListener('keydown', e => {
@@ -787,5 +826,5 @@
   requestAnimationFrame(loop);
   // fonts change node sizes -> redraw links once they are in
   if (document.fonts) document.fonts.ready.then(() => drawLinks());
-  window.__nodesEditor = { get graph() { return graph; }, get compiled() { return compiled; }, get liveGraph() { return liveGraph; }, stage, addNode, connect, removeNodes, undo, redo, goLive, setDirect, storeScene, fireScene, openScene, setThumbs, get scenes() { return scenes; } };
+  window.__nodesEditor = { get graph() { return graph; }, get compiled() { return compiled; }, get liveGraph() { return liveGraph; }, stage, addNode, connect, removeNodes, undo, redo, goLive, modulate, set valueTarget(v) { valueTarget = v; }, setDirect, storeScene, fireScene, openScene, setThumbs, get scenes() { return scenes; } };
 })();
