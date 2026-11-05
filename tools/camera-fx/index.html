@@ -816,6 +816,11 @@
   const lookParam = LOOKS.findIndex(L => L.id === q.get('look'));
   if (lookParam >= 0) setLook(lookParam);
   if (q.get('sample') === '1') useImage('../../assets/sample.jpg');
+  // Image handed over from another tool ("Send to…")
+  try {
+    const handed = sessionStorage.getItem('pudrus_workflow_image');
+    if (handed) { sessionStorage.removeItem('pudrus_workflow_image'); useImage(handed); }
+  } catch (e) { /* storage unavailable */ }
   const vid = q.get('video');   // same-site path only, e.g. ?video=/media/clip.mp4
   if (vid && /^\/[\w\/.-]+$/.test(vid)) useVideo(vid);
 })();

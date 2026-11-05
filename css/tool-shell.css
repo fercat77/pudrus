@@ -79,6 +79,27 @@
   opacity: 0; pointer-events: none; transition: opacity .15s;
 }
 .ts-stage.is-comparing .ts-badge { opacity: 1; }
+/* Split compare: "Original" label on the left, drag anywhere on the image */
+.ts-stage.is-split .ts-badge { opacity: 1; left: 20px; transform: none; }
+.ts-stage.is-split .ts-canvas { cursor: ew-resize; touch-action: none; }
+
+/* Undo / redo over the image */
+.ts-history {
+  position: absolute; top: 12px; right: 12px; z-index: 2;
+  display: none; gap: 6px;
+}
+.ts-stage.has-history .ts-history { display: flex; }
+.ts-hbtn {
+  width: 40px; height: 40px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  background: rgba(5,5,8,0.8); border: 1px solid var(--c3); color: var(--text);
+  font-size: 18px; line-height: 1; cursor: pointer;
+  -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px);
+  transition: border-color .15s, color .15s, opacity .15s;
+}
+.ts-hbtn:hover:not(:disabled) { border-color: var(--c1); color: var(--c1); }
+.ts-hbtn:disabled { opacity: 0.3; cursor: default; }
+.ts-hbtn:focus-visible { outline: 2px solid var(--c1); outline-offset: 2px; }
 
 .ts-status {
   position: absolute; bottom: 12px; left: 50%; transform: translate(-50%, 8px);
@@ -212,6 +233,9 @@
   cursor: pointer; text-decoration: underline; text-underline-offset: 3px;
 }
 .ts-link:hover { color: var(--c1); }
+.ts-sendmenu { flex-basis: 100%; display: flex; flex-wrap: wrap; gap: 6px; padding: 4px 0 6px; }
+.ts-sendmenu[hidden] { display: none; }
+.ts-sendmenu .ts-chip { min-height: 34px; font-size: 11px; }
 
 /* ── Action bar ── */
 .ts-bar {
@@ -236,6 +260,7 @@
 .ts-btn-label { font-size: 11px; letter-spacing: 1px; text-transform: uppercase; }
 .ts-btn-primary { background: var(--c1); border-color: var(--c1); color: var(--bg); font-weight: 600; }
 .ts-btn-primary:hover:not(:disabled) { background: #fff; border-color: #fff; }
+.ts-btn.is-on { border-color: var(--c1); color: var(--c1); background: rgba(102,255,51,0.1); }
 
 .ts-file { position: absolute; width: 1px; height: 1px; opacity: 0; pointer-events: none; }
 

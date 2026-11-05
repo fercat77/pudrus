@@ -403,11 +403,10 @@
     "load": "Cargar",
     "random": "Azar",
     "compare": "Comparar",
-    "compareHint": "Mantené presionado para ver el original",
+    "compareHint": "Comparar lado a lado",
     "save": "Guardar",
     "reset": "Restablecer",
     "resetHint": "Doble clic para restablecer",
-    "sendFlyer": "→ Continuar en Flyer Forge",
     "original": "Original",
     "cropFree": "Libre",
     "cropSquare": "1:1",
@@ -435,7 +434,12 @@
     "videoUnsupported": "Este navegador no permite exportar video",
     "video": "Guardar video de 5 s",
     "sendGallery": "◈ Enviar a la galería",
-    "trySample": "o probalo con una imagen de ejemplo"
+    "trySample": "o probalo con una imagen de ejemplo",
+    "undo": "Deshacer",
+    "redo": "Rehacer",
+    "sendTo": "→ Enviar a…",
+    "splitHint": "Arrastrá sobre la imagen para mover la línea",
+    "restored": "Se recuperaron tus últimos ajustes"
   },
   "gallery": {
     "sectionTag": "◈ Galería",

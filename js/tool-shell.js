@@ -6,10 +6,11 @@
  *   - loading (button, drag & drop, paste, image sent from another tool)
  *   - fast preview at reduced resolution, full resolution only on export
  *   - crop presets with drag-to-move on the image
- *   - hold-to-compare with the original
+ *   - side-by-side compare with a draggable divider
+ *   - undo / redo, settings remembered per tool (localStorage), keyboard shortcuts
  *   - presets, randomize (seeded, so effects stay put while you tweak), reset
  *   - save (native share sheet on phones, download on desktop)
- *   - "continue in Flyer Forge" handoff
+ *   - "Send to…" any other tool (image handed over through sessionStorage)
  *   - generator mode (no input image, output format picker, optional animation)
  *
  * PudrusTool.create({
@@ -29,7 +30,6 @@
  *
  *   generator: { formats: [{ value, label, fallback, w, h }] },  // no input image
  *   animated: true,                                 // generator only: play/pause + video export
- *   noFlyer: true,                                  // hide "continue in Flyer Forge"
  * });
  *
  * Renders must be resolution independent: k = max(W, H) / 1000, so "10 * k" means
@@ -51,6 +51,16 @@
   ];
 
   const t = (k, fb, vars) => (window.pudrusT ? window.pudrusT(k, fb, vars) : fb);
+
+  // Tools that accept an image ("Send to…"); folder name, i18n key, fallback name
+  const TARGETS = [
+    ['glitch', 'tools.glitch.name', 'Glitch FX'], ['dithering', 'tools.dither.name', 'Dithering'],
+    ['halftone', 'tools.halftone.name', 'Halftone'], ['triangulation', 'tools.triangulation.name', 'Triangulation'],
+    ['crt-bend', 'tools.crt.name', 'CRT Bend'], ['flyer-forge', 'tools.flyer.name', 'Flyer Forge'],
+    ['pixel-sort', 'tools.pixel.name', 'Pixel Sorter'], ['ascii-canvas', 'tools.ascii.name', 'ASCII Canvas'],
+    ['constellation', 'tools.constellation.name', 'Constellation'], ['camera-fx', 'tools.camera.name', 'Camera FX'],
+  ];
+  const MOD = /Mac|iPhone|iPad/.test(navigator.platform || navigator.userAgent) ? '⌘' : 'Ctrl';
 
   // Small seeded PRNG (mulberry32)
   function rng(seed) {
@@ -95,10 +105,33 @@
       srcCanvas: null,   // canvas with the source at preview resolution
       crop: 'free',
       cropCenter: { x: 0.5, y: 0.5 },
-      comparing: false,
+      split: 0,          // 0 = off, otherwise divider position 0..1 (original on the left)
       playing: false,
       time: 0,
     };
+
+    // ── Remembered settings (per tool, this browser only) ─
+    const STORE = 'pudrus_tool_' + cfg.id;
+    function validValue(c, v) {
+      if (c.type === 'toggle') return typeof v === 'boolean';
+      if (c.type === 'select') return c.options.some(o => String(o.value) === String(v));
+      if (c.type === 'color') return typeof v === 'string' && /^#[0-9a-f]{6}$/i.test(v);
+      if (c.type === 'text') return typeof v === 'string' && v.length <= 300;
+      return typeof v === 'number' && isFinite(v) && v >= +c.min && v <= +c.max;
+    }
+    let restored = false;
+    try {
+      const saved = JSON.parse(localStorage.getItem(STORE) || 'null');
+      if (saved && saved.p) for (const c of controls) {
+        const v = saved.p[c.key];
+        if (v === undefined || !validValue(c, v)) continue;
+        if (v !== state.p[c.key]) restored = true;
+        state.p[c.key] = c.type === 'select' ? c.options.find(o => String(o.value) === String(v)).value : v;
+      }
+    } catch (e) { /* storage unavailable */ }
+    function persist() {
+      try { localStorage.setItem(STORE, JSON.stringify({ p: state.p })); } catch (e) { /* private mode */ }
+    }
 
     // ── DOM ──────────────────────────────────────────────
     document.body.classList.add('ts-page');
@@ -118,7 +151,10 @@
       ]),
       el('button', { class: 'ts-empty-sample', type: 'button', 'data-i18n': 'shell.trySample', text: 'or try it with a sample image', onclick: () => load('../../assets/sample.jpg') }),
     ]);
-    const stage = el('section', { class: 'ts-stage' + (gen ? ' has-image' : '') }, [gen ? null : empty, canvas, badge, statusEl]);
+    const undoBtn = el('button', { type: 'button', class: 'ts-hbtn', 'data-i18n-title': 'shell.undo', title: 'Undo', disabled: '', text: '↶' });
+    const redoBtn = el('button', { type: 'button', class: 'ts-hbtn', 'data-i18n-title': 'shell.redo', title: 'Redo', disabled: '', text: '↷' });
+    const history = el('div', { class: 'ts-history' }, [undoBtn, redoBtn]);
+    const stage = el('section', { class: 'ts-stage' + (gen ? ' has-image' : '') }, [gen ? null : empty, canvas, badge, history, statusEl]);
 
     // Controls
     const inputs = {};
@@ -152,6 +188,7 @@
           state.p[c.key] = input.value;
           clearTimeout(textTimer);
           textTimer = setTimeout(schedule, 120);
+          markChange();
         });
         row = el('div', { class: 'ts-row' }, [label, input]);
       } else {
@@ -208,6 +245,7 @@
       if (key === 'format') resizeGenerator();
       updateVisibility();
       schedule();
+      markChange();
     }
     function showVal(key) {
       const { c, val } = inputs[key];
@@ -222,7 +260,7 @@
       if (c.type === 'toggle') input.checked = !!v;
       else { input.value = v; showVal(key); }
       if (key === 'format') resizeGenerator();
-      if (render) { updateVisibility(); schedule(); }
+      if (render) { updateVisibility(); schedule(); markChange(); }
     }
     function updateVisibility() {
       for (const { c, row } of Object.values(inputs)) if (c.show) row.hidden = !c.show(state.p);
@@ -237,7 +275,7 @@
                 setValue(c.key, c.key in pr.values ? pr.values[c.key] : defaults[c.key]);
               }
               state.seed = (Math.random() * 1e9) | 0;
-              updateVisibility(); schedule();
+              updateVisibility(); schedule(); markChange();
             } })))
       : null;
 
@@ -253,11 +291,16 @@
     ]);
     const videoLink = cfg.animated ? el('button', { type: 'button', class: 'ts-link', 'data-i18n': 'shell.video', text: 'Save 5s video', onclick: recordVideo }) : null;
     const galleryLink = el('a', { class: 'ts-link', 'data-i18n': 'shell.sendGallery', text: '◈ Send to the gallery', hidden: '', target: '_blank', rel: 'noopener noreferrer' });
+    const sendMenu = el('div', { class: 'ts-sendmenu', hidden: '' }, TARGETS.filter(([dir]) => !location.pathname.includes('/' + dir + '/')).map(([dir, key, fb]) =>
+      el('button', { type: 'button', class: 'ts-chip', 'data-i18n': key, text: fb, onclick: () => sendTo(dir) })));
+    const sendLink = el('button', { type: 'button', class: 'ts-link', 'aria-expanded': 'false', 'data-i18n': 'shell.sendTo', text: '→ Send to…',
+      onclick: () => { sendMenu.hidden = !sendMenu.hidden; sendLink.setAttribute('aria-expanded', String(!sendMenu.hidden)); } });
     const extraPanel = el('div', { class: 'ts-more' }, [
       el('button', { type: 'button', class: 'ts-link', 'data-i18n': 'shell.reset', text: 'Reset', onclick: reset }),
       videoLink,
-      cfg.noFlyer ? null : el('button', { type: 'button', class: 'ts-link', 'data-i18n': 'shell.sendFlyer', text: '→ Continue in Flyer Forge', onclick: sendToFlyer }),
+      sendLink,
       galleryLink,
+      sendMenu,
     ]);
     // "Send to the gallery" shows up only once a submission form is configured in gallery/gallery.json
     fetch('../../gallery/gallery.json', { cache: 'no-cache' }).then(r => (r.ok ? r.json() : null)).then(g => {
@@ -281,7 +324,7 @@
     ]);
     const loadBtn = gen ? null : btn('⤒', 'shell.load', 'Load');
     const randBtn = btn('⚄', 'shell.random', 'Random');
-    const cmpBtn = gen ? null : btn('◐', 'shell.compare', 'Compare', { attrs: { 'data-i18n-title': 'shell.compareHint' } });
+    const cmpBtn = gen ? null : btn('◐', 'shell.compare', 'Compare', { attrs: { 'data-i18n-title': 'shell.compareHint', 'aria-pressed': 'false' } });
     const playBtn = cfg.animated ? btn('▶', 'shell.play', 'Play') : null;
     const seedBtn = gen && !cfg.animated ? btn('✦', 'shell.newSeed', 'New') : null;
     const saveBtn = btn('⤓', 'shell.save', 'Save', { primary: true });
@@ -367,6 +410,7 @@
 
     function setDisabled(d) {
       [randBtn, cmpBtn, saveBtn].forEach(b => { if (b) b.disabled = d; });
+      stage.classList.toggle('has-history', !d);
     }
 
     // ── Rendering ────────────────────────────────────────
@@ -397,8 +441,24 @@
     function render() {
       if (!state.src) return;
       ctx.clearRect(0, 0, canvas.width, canvas.height);
-      if (state.comparing) ctx.putImageData(state.src, 0, 0);
-      else ctx.drawImage(runRender(state.src, state.srcCanvas), 0, 0);
+      ctx.drawImage(runRender(state.src, state.srcCanvas), 0, 0);
+      if (state.split) {
+        // original on the left of the divider, effect on the right
+        const x = Math.round(state.split * canvas.width);
+        ctx.putImageData(state.src, 0, 0, 0, 0, x, canvas.height);
+        const px = canvas.width / (canvas.getBoundingClientRect().width || canvas.width);   // canvas px per screen px
+        ctx.save();
+        ctx.fillStyle = '#66ff33';
+        ctx.fillRect(x - px, 0, 2 * px, canvas.height);
+        const cy = canvas.height / 2, r = 16 * px;
+        ctx.beginPath(); ctx.arc(x, cy, r, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = '#050508';
+        ctx.beginPath();
+        ctx.moveTo(x - 9 * px, cy); ctx.lineTo(x - 3 * px, cy - 6 * px); ctx.lineTo(x - 3 * px, cy + 6 * px); ctx.closePath();
+        ctx.moveTo(x + 9 * px, cy); ctx.lineTo(x + 3 * px, cy - 6 * px); ctx.lineTo(x + 3 * px, cy + 6 * px); ctx.closePath();
+        ctx.fill();
+        ctx.restore();
+      }
       drawCropOverlay(ctx, canvas, cropRect(canvas.width, canvas.height));
     }
 
@@ -422,12 +482,25 @@
     }
     let drag = null;
     canvas.addEventListener('pointerdown', e => {
-      if (state.crop === 'free' || !state.src) return;
+      if (!state.src) return;
+      if (state.split) {
+        drag = { split: true };
+        moveSplit(e);
+        try { canvas.setPointerCapture(e.pointerId); } catch (err) { /* ignore */ }
+        return;
+      }
+      if (state.crop === 'free') return;
       drag = { x: e.clientX, y: e.clientY, c: { ...state.cropCenter } };
       canvas.setPointerCapture(e.pointerId);
     });
+    function moveSplit(e) {
+      const r = canvas.getBoundingClientRect();
+      state.split = Math.min(0.98, Math.max(0.02, (e.clientX - r.left) / r.width));
+      schedule();
+    }
     canvas.addEventListener('pointermove', e => {
       if (!drag) return;
+      if (drag.split) { moveSplit(e); return; }
       const r = canvas.getBoundingClientRect();
       state.cropCenter = {
         x: Math.min(1, Math.max(0, drag.c.x + (e.clientX - drag.x) / r.width)),
@@ -437,16 +510,56 @@
     });
     ['pointerup', 'pointercancel'].forEach(ev => canvas.addEventListener(ev, () => { drag = null; }));
 
-    // ── Compare (hold) ───────────────────────────────────
-    if (cmpBtn) {
-      const startCmp = e => { if (!state.src) return; e.preventDefault(); state.comparing = true; stage.classList.add('is-comparing'); render(); };
-      const endCmp = () => { if (!state.comparing) return; state.comparing = false; stage.classList.remove('is-comparing'); render(); };
-      cmpBtn.addEventListener('pointerdown', startCmp);
-      ['pointerup', 'pointerleave', 'pointercancel'].forEach(ev => cmpBtn.addEventListener(ev, endCmp));
-      cmpBtn.addEventListener('contextmenu', e => e.preventDefault());
-      cmpBtn.addEventListener('keydown', e => { if (e.key === ' ' || e.key === 'Enter') startCmp(e); });
-      cmpBtn.addEventListener('keyup', endCmp);
+    // ── Compare: side-by-side split, drag on the image to move the divider ─
+    function toggleSplit(on) {
+      if (!state.src || !cmpBtn) return;
+      state.split = on === undefined ? (state.split ? 0 : 0.5) : (on ? state.split || 0.5 : 0);
+      cmpBtn.classList.toggle('is-on', !!state.split);
+      cmpBtn.setAttribute('aria-pressed', String(!!state.split));
+      stage.classList.toggle('is-split', !!state.split);
+      if (state.split) status(t('shell.splitHint', 'Drag on the image to move the divider'));
+      render();
     }
+    if (cmpBtn) cmpBtn.addEventListener('click', () => toggleSplit());
+
+    // ── Undo / redo ──────────────────────────────────────
+    // One snapshot per pause in editing (a whole slider drag is a single step)
+    const snap = () => ({ p: { ...state.p }, seed: state.seed });
+    let hist = [snap()], hIndex = 0, hTimer = null;
+    function commitHistory() {
+      hTimer = null;
+      const sn = snap();
+      if (JSON.stringify(sn) === JSON.stringify(hist[hIndex])) return;
+      hist = hist.slice(0, hIndex + 1);
+      hist.push(sn);
+      if (hist.length > 60) hist.shift();
+      hIndex = hist.length - 1;
+      updateHistoryUI();
+    }
+    function markChange() {
+      clearTimeout(hTimer);
+      hTimer = setTimeout(() => { commitHistory(); persist(); }, 450);
+    }
+    function applySnap(sn) {
+      for (const c of controls) if (c.key in sn.p) setValue(c.key, sn.p[c.key]);
+      state.seed = sn.seed;
+      updateVisibility(); schedule(); persist();
+    }
+    function undo() {
+      if (hTimer) { clearTimeout(hTimer); commitHistory(); }
+      if (hIndex <= 0) return;
+      hIndex--; applySnap(hist[hIndex]); updateHistoryUI();
+    }
+    function redo() {
+      if (hIndex >= hist.length - 1) return;
+      hIndex++; applySnap(hist[hIndex]); updateHistoryUI();
+    }
+    function updateHistoryUI() {
+      undoBtn.disabled = hIndex <= 0;
+      redoBtn.disabled = hIndex >= hist.length - 1;
+    }
+    undoBtn.addEventListener('click', undo);
+    redoBtn.addEventListener('click', redo);
 
     // ── Animation (generators) ───────────────────────────
     let lastFrame = 0;
@@ -506,11 +619,13 @@
       state.seed = (Math.random() * 1e9) | 0;
       updateVisibility();
       schedule();
+      markChange();
     });
     function reset() {
       for (const c of controls) if (c.type !== 'text') setValue(c.key, defaults[c.key]);
       updateVisibility();
       if (gen) { resizeGenerator(); render(); } else setCrop('free');
+      markChange();
     }
 
     // ── Export ───────────────────────────────────────────
@@ -564,8 +679,9 @@
       }, 30);
     });
 
-    function sendToFlyer() {
+    function sendTo(dir) {
       if (!state.src) { status(t('shell.needImage', 'Load an image first')); return; }
+      if (hTimer) { clearTimeout(hTimer); commitHistory(); persist(); }
       const out = renderFull();
       const [w, h] = fitSize(out.width, out.height, HANDOFF_MAX);
       const c = document.createElement('canvas');
@@ -573,7 +689,7 @@
       c.getContext('2d').drawImage(out, 0, 0, w, h);
       try { sessionStorage.setItem(WORKFLOW_KEY, c.toDataURL('image/png')); }
       catch (e) { sessionStorage.setItem(WORKFLOW_KEY, c.toDataURL('image/jpeg', 0.9)); }
-      location.href = '../flyer-forge/index.html';
+      location.href = '../' + dir + '/index.html';
     }
 
     // ── Misc ─────────────────────────────────────────────
@@ -587,8 +703,33 @@
     document.addEventListener('pudrus:i18n', () => {
       document.querySelectorAll('.ts-row label[title]').forEach(l => { l.title = t('shell.resetHint', 'Double-click to reset'); });
       if (playBtn) setPlaying(state.playing);
+      shortcutTitles();
       if (cfg.onLanguage) { cfg.onLanguage(); schedule(); }
     });
+    // ── Keyboard shortcuts (desktop) ─────────────────────
+    document.addEventListener('keydown', e => {
+      const typing = e.target && e.target.matches && e.target.matches('input[type=text], textarea, select');
+      const mod = e.ctrlKey || e.metaKey;
+      const k = e.key.toLowerCase();
+      if (mod && k === 's') { e.preventDefault(); if (!saveBtn.disabled) saveBtn.click(); return; }
+      if (mod && k === 'o' && !gen) { e.preventDefault(); fileInput.click(); return; }
+      if (typing) return;
+      if (mod && k === 'z' && !e.shiftKey) { e.preventDefault(); undo(); return; }
+      if (mod && ((k === 'z' && e.shiftKey) || k === 'y')) { e.preventDefault(); redo(); return; }
+      if (mod || e.altKey || (e.target && e.target.matches && e.target.matches('input, button'))) return;
+      if (k === 'r' && !randBtn.disabled) randBtn.click();
+      else if (k === 'c' && cmpBtn && !cmpBtn.disabled) toggleSplit();
+    });
+    function shortcutTitles() {
+      saveBtn.title = t('shell.save', 'Save') + ' (' + MOD + '+S)';
+      randBtn.title = t('shell.random', 'Random') + ' (R)';
+      if (cmpBtn) cmpBtn.title = t('shell.compareHint', 'Compare side by side') + ' (C)';
+      if (loadBtn) loadBtn.title = t('shell.load', 'Load') + ' (' + MOD + '+O)';
+      undoBtn.title = t('shell.undo', 'Undo') + ' (' + MOD + '+Z)';
+      redoBtn.title = t('shell.redo', 'Redo') + ' (' + MOD + '+Shift+Z)';
+    }
+    shortcutTitles();
+
     // Web fonts used by a tool may load after the first render
     if (document.fonts && document.fonts.ready) document.fonts.ready.then(schedule);
 
@@ -602,6 +743,7 @@
       const incoming = typeof receiveImage === 'function' ? receiveImage() : null;
       if (incoming) load(incoming);
     }
+    if (restored) setTimeout(() => status(t('shell.restored', 'Your last settings were restored')), 600);
 
     return { state, render: schedule, setValue };
   }

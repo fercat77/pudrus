@@ -403,11 +403,10 @@
     "load": "Load",
     "random": "Random",
     "compare": "Compare",
-    "compareHint": "Hold to see the original",
+    "compareHint": "Compare side by side",
     "save": "Save",
     "reset": "Reset",
     "resetHint": "Double-click to reset",
-    "sendFlyer": "→ Continue in Flyer Forge",
     "original": "Original",
     "cropFree": "Free",
     "cropSquare": "1:1",
@@ -435,7 +434,12 @@
     "videoUnsupported": "Video export is not supported in this browser",
     "video": "Save 5s video",
     "sendGallery": "◈ Send to the gallery",
-    "trySample": "or try it with a sample image"
+    "trySample": "or try it with a sample image",
+    "undo": "Undo",
+    "redo": "Redo",
+    "sendTo": "→ Send to…",
+    "splitHint": "Drag on the image to move the divider",
+    "restored": "Your last settings were restored"
   },
   "gallery": {
     "sectionTag": "◈ Gallery",
