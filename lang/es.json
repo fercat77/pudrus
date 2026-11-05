@@ -524,5 +524,14 @@
     "exporting": "Exportando: el video se reproduce una vez de principio a fin",
     "notReady": "El video todavía está cargando, probá de nuevo en un momento",
     "videoAudio": "Mantener el sonido del video al exportar"
+  },
+  "pwa": {
+    "install": "⤓ Instalar como app",
+    "iosHint": "En iPhone: tocá Compartir (el cuadrado con la flecha) y después \"Agregar a inicio\"."
+  },
+  "share": {
+    "tag": "◈ Compartido con PUDRUS",
+    "title": "Abrir con…",
+    "empty": "No llegó nada. Compartí una imagen o un video desde la galería del teléfono y elegí PUDRUS."
   }
 }

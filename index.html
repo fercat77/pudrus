@@ -18,6 +18,12 @@
   <meta name="description" content="Glitch, dithering, halftone, pixel sort, ASCII, flyers y una cámara con efectos en vivo: 11 herramientas visuales que corren en tu navegador. Gratis, sin cuentas y sin subir tus imágenes.">
   <title>PUDRUS.XYZ — Creative Visual Suite</title>
   <link rel="icon" type="image/svg+xml" href="favicon.svg">
+  <link rel="manifest" href="/manifest.webmanifest">
+  <link rel="apple-touch-icon" href="/assets/icons/apple-touch-icon.png">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="PUDRUS">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600;700&display=swap">
@@ -58,6 +64,7 @@
       <a href="#tools" class="btn btn-primary" data-i18n="hero.explore">◈ Explore Tools</a>
       <a href="#about" class="btn btn-outline" data-i18n="hero.learn">Learn More</a>
     </div>
+    <button type="button" class="hero-install" data-install hidden data-i18n="pwa.install">⤓ Install as an app</button>
     <div class="hero-line"></div>
     <div class="hero-stats">
       <div class="stat">
@@ -272,5 +279,6 @@
 <script src="js/i18n.js"></script>
 <script src="js/gallery.js"></script>
 <script src="js/nav.js"></script>
+<script src="/js/pwa.js"></script>
 </body>
 </html>

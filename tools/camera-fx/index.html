@@ -18,6 +18,12 @@
   <meta name="description" content="Efectos en vivo para tu cámara: glitch, VHS, dither, halftone, ASCII, neón y más. Sacá fotos y grabá video. Gratis, en tu navegador.">
   <title>Cámara FX — PUDRUS.XYZ</title>
   <link rel="icon" type="image/svg+xml" href="../../favicon.svg">
+  <link rel="manifest" href="/manifest.webmanifest">
+  <link rel="apple-touch-icon" href="/assets/icons/apple-touch-icon.png">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="PUDRUS">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600;700&display=swap">
@@ -816,6 +822,15 @@
   const lookParam = LOOKS.findIndex(L => L.id === q.get('look'));
   if (lookParam >= 0) setLook(lookParam);
   if (q.get('sample') === '1') useImage('../../assets/sample.jpg');
+  // Video or photo shared from the phone's gallery ("Share to PUDRUS", see /sw.js and /share/)
+  if (q.get('shared') === '1' && window.caches) {
+    caches.open('pudrus-share').then(c => c.match('/__shared-media').then(res => res && res.blob().then(b => {
+      c.delete('/__shared-media');
+      if (!b.size) return;
+      const url = URL.createObjectURL(b);
+      if (b.type.startsWith('image/')) useImage(url); else useVideo(url);
+    }))).catch(() => {});
+  }
   // Image handed over from another tool ("Send to…")
   try {
     const handed = sessionStorage.getItem('pudrus_workflow_image');
@@ -825,5 +840,6 @@
   if (vid && /^\/[\w\/.-]+$/.test(vid)) useVideo(vid);
 })();
 </script>
+<script src="/js/pwa.js"></script>
 </body>
 </html>

@@ -524,5 +524,14 @@
     "exporting": "Exporting: the video plays once from start to end",
     "notReady": "The video is still loading, try again in a moment",
     "videoAudio": "Keep the video's sound when exporting"
+  },
+  "pwa": {
+    "install": "⤓ Install as an app",
+    "iosHint": "On iPhone: tap Share (the square with an arrow) and then \"Add to Home Screen\"."
+  },
+  "share": {
+    "tag": "◈ Shared with PUDRUS",
+    "title": "Open with…",
+    "empty": "Nothing was received. Share an image or a video from your phone's gallery and pick PUDRUS."
   }
 }

@@ -188,6 +188,21 @@ nav {
   margin-bottom: clamp(28px, 6vh, 48px);
 }
 .hero-cta { display: flex; gap: 16px; flex-wrap: wrap; justify-content: center; }
+.hero-install {
+  margin-top: 14px; min-height: 40px; padding: 0 10px;
+  background: none; border: 0; cursor: pointer;
+  color: var(--c1); font-family: var(--font); font-size: 11px; letter-spacing: 2px; text-transform: uppercase;
+  text-decoration: underline; text-underline-offset: 5px;
+}
+.hero-install:hover { color: #fff; }
+.pwa-toast {
+  position: fixed; left: 50%; bottom: calc(18px + env(safe-area-inset-bottom)); z-index: 300;
+  width: min(420px, calc(100% - 32px)); transform: translate(-50%, 20px);
+  padding: 14px 16px; border: 1px solid var(--c1); border-radius: 10px;
+  background: rgba(5,5,8,0.96); color: var(--text); font-size: 13px; line-height: 1.5; text-align: center;
+  opacity: 0; pointer-events: none; transition: opacity .25s, transform .25s;
+}
+.pwa-toast.is-on { opacity: 1; transform: translate(-50%, 0); pointer-events: auto; }
 .hero-line { width: 60px; height: 1px; background: var(--c1); margin: clamp(24px, 5vh, 40px) auto; }
 .hero-stats { display: flex; justify-content: center; gap: clamp(20px, 5vw, 56px); }
 .stat { text-align: center; }

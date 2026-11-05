@@ -1,0 +1,32 @@
+{
+  "id": "/",
+  "name": "PUDRUS.XYZ — Suite visual creativa",
+  "short_name": "PUDRUS",
+  "description": "Herramientas visuales creativas en tu navegador: glitch, dithering, halftone, pixel sort, ASCII, flyers y cámara con efectos en vivo.",
+  "lang": "es",
+  "start_url": "/?source=pwa",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#050508",
+  "theme_color": "#050508",
+  "categories": ["photo", "graphics", "entertainment"],
+  "icons": [
+    { "src": "/assets/icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/assets/icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "/assets/icons/maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ],
+  "shortcuts": [
+    { "name": "Cámara FX", "url": "/tools/camera-fx/", "icons": [{ "src": "/assets/icons/icon-192.png", "sizes": "192x192" }] },
+    { "name": "Glitch FX", "url": "/tools/glitch/", "icons": [{ "src": "/assets/icons/icon-192.png", "sizes": "192x192" }] },
+    { "name": "Galería", "url": "/gallery/", "icons": [{ "src": "/assets/icons/icon-192.png", "sizes": "192x192" }] }
+  ],
+  "share_target": {
+    "action": "/share/",
+    "method": "POST",
+    "enctype": "multipart/form-data",
+    "params": {
+      "files": [{ "name": "media", "accept": ["image/*", "video/*"] }]
+    }
+  }
+}
