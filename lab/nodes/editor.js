@@ -82,6 +82,7 @@
     }
     if (opts.direct) sendDirect();
     markPending();
+    if (typeof pushState === 'function') pushState();
   }
 
   /* ── Node DOM ──────────────────────────────────────────── */
@@ -189,11 +190,11 @@
       if (inp.t === 'float' && !isLinked(n.id, inp.k)) {
         const w = numWidget(inp.label, val, inp, v => setValue(n, inp.k, v));
         rec.nums[inp.k] = w;
-        if (controls.some(c => c.id === n.id && c.k === inp.k)) w.classList.add('is-ctl');
+        if (ctlList(graph).some(c => c.id === n.id && c.k === inp.k)) w.classList.add('is-ctl');
         w.addEventListener('contextmenu', e => {
           e.preventDefault(); e.stopPropagation();
           valueTarget = { id: n.id, k: inp.k };
-          const has = controls.some(c => c.id === n.id && c.k === inp.k);
+          const has = ctlList(graph).some(c => c.id === n.id && c.k === inp.k);
           $('#vpCtl').textContent = has ? '🎛 Quitar del control' : '🎛 Al control (celular / MIDI)';
           $('#vpMidiForget').hidden = !Object.values(midiMap).some(t => t.kind === 'value' && t.id === n.id && t.k === inp.k);
           openPop($('#valuePop'), e.clientX, e.clientY);
@@ -534,7 +535,7 @@
   }
   $('#vpLfo').addEventListener('click', () => modulate('lfo'));
   $('#vpCtl').addEventListener('click', () => { closePops(); if (valueTarget) toggleControl(valueTarget.id, valueTarget.k); });
-  $('#vpMidi').addEventListener('click', () => { closePops(); if (valueTarget) midiLearn({ kind: 'value', id: valueTarget.id, k: valueTarget.k }); });
+  $('#vpMidi').addEventListener('click', () => { closePops(); if (!valueTarget) return; const n = graph.nodes.find(m => m.id === valueTarget.id); midiLearn({ kind: 'value', id: valueTarget.id, k: valueTarget.k, t: n && n.type }); });
   $('#vpMidiForget').addEventListener('click', () => { closePops(); if (valueTarget) midiForget(t => t.kind === 'value' && t.id === valueTarget.id && t.k === valueTarget.k); });
   document.querySelectorAll('#valuePop [data-band]').forEach(b => b.addEventListener('click', () => modulate('audio', b.dataset.band)));
 
@@ -788,6 +789,7 @@
     liveGraph = next; liveKey = contentKey(next);
     broadcast({ type: 'live', graph: next, fade: sec });
     markPending();
+    pushState(); paintControls();
     liveBox.classList.remove('is-flash'); void liveBox.offsetWidth; liveBox.classList.add('is-flash');
   }
   $('#btnGo').addEventListener('click', () => goLive());
@@ -953,41 +955,67 @@
   /* ── Live controls: values you play from the phone or MIDI ── */
   const CTL_STORE = 'pudrus_nodes_ctl_v1', MIDI_STORE = 'pudrus_nodes_midi_v1';
   const readJSON = (k, d) => { try { const v = JSON.parse(localStorage.getItem(k) || 'null'); return v || d; } catch (e) { return d; } };
-  let controls = readJSON(CTL_STORE, []).filter(c => c && typeof c.id === 'number' && typeof c.k === 'string').slice(0, 8);
   let midiMap = readJSON(MIDI_STORE, {});
-  const saveControls = () => { try { localStorage.setItem(CTL_STORE, JSON.stringify(controls)); } catch (e) { /* ignore */ } };
   const saveMidi = () => { try { localStorage.setItem(MIDI_STORE, JSON.stringify(midiMap)); } catch (e) { /* ignore */ } };
 
-  function findInput(g, id, k) {
-    const n = g.nodes.find(m => m.id === id);
-    const inp = n && (N.NODES[n.type].inputs || []).find(i => i.k === k && i.t === 'float');
+  // Each patch carries its own controls (graph.ctl = [{ id, k, t: node type }]): they travel
+  // with scenes and saved files, and the phone only shows the ones of the patch ON AIR.
+  const ctlList = g => (g && Array.isArray(g.ctl) ? g.ctl : []);
+  const linkedIn = (g, id, k) => g.links.some(l => l.b === id && l.bi === k);
+  function findInput(g, id, k, type) {
+    const n = g && g.nodes.find(m => m.id === id);
+    if (!n || (type && n.type !== type)) return null;
+    const inp = (N.NODES[n.type].inputs || []).find(i => i.k === k && i.t === 'float');
     return inp ? { n, inp } : null;
   }
-  function targetLabel(id, k) {
-    const f = findInput(graph, id, k) || findInput(liveGraph, id, k);
+  const usable = (g, c) => !!findInput(g, c.id, c.k, c.t) && !linkedIn(g, c.id, c.k);
+  const liveControls = () => ctlList(liveGraph).filter(c => usable(liveGraph, c));
+  function targetLabel(id, k, type, g) {
+    const f = (g && findInput(g, id, k, type)) || findInput(graph, id, k, type) || findInput(liveGraph, id, k, type);
     return f ? `${N.NODES[f.n.type].title} · ${f.inp.label}` : '(nodo borrado)';
   }
-  function normOf(id, k) {
-    const f = findInput(liveGraph, id, k) || findInput(graph, id, k);
+  function normOf(id, k, type) {
+    const f = findInput(liveGraph, id, k, type) || findInput(graph, id, k, type);
     if (!f) return 0;
     const v = f.n.v && f.n.v[k] !== undefined ? f.n.v[k] : f.inp.v;
     return Math.min(1, Math.max(0, (v - f.inp.min) / ((f.inp.max - f.inp.min) || 1)));
   }
+  // older versions kept one global list: move it into the current patch once
+  (() => {
+    const old = readJSON(CTL_STORE, null);
+    if (!Array.isArray(old)) return;
+    for (const g of [graph, liveGraph]) {
+      if (ctlList(g).length) continue;
+      g.ctl = old.map(c => { const n = g.nodes.find(m => m.id === c.id); return n && { id: c.id, k: c.k, t: n.type }; }).filter(c => c && findInput(g, c.id, c.k, c.t)).slice(0, 8);
+    }
+    try { localStorage.removeItem(CTL_STORE); } catch (e) { /* ignore */ }
+    save();
+  })();
   function toggleControl(id, k) {
-    const i = controls.findIndex(c => c.id === id && c.k === k);
-    if (i >= 0) controls.splice(i, 1);
-    else if (controls.length >= 8) { toast('Ya hay 8 controles: quitá alguno primero', true); return; }
-    else controls.push({ id, k });
-    saveControls(); rebuild(); paintControls(); pushState();
-    toast(i >= 0 ? 'Quitado del control' : `Control ${controls.length}: ${targetLabel(id, k)}`);
+    const n = graph.nodes.find(m => m.id === id);
+    if (!n) return;
+    const list = ctlList(graph).slice();
+    const i = list.findIndex(c => c.id === id && c.k === k);
+    if (i >= 0) list.splice(i, 1);
+    else if (list.length >= 8) { toast('Este patch ya tiene 8 controles: quitá alguno primero', true); return; }
+    else list.push({ id, k, t: n.type });
+    graph.ctl = list;
+    // same node on air -> it shows up (or goes away) on the phone right now
+    if (liveGraph !== graph) {
+      const lc = ctlList(liveGraph).filter(c => !(c.id === id && c.k === k));
+      if (i < 0 && findInput(liveGraph, id, k, n.type) && lc.length < 8) lc.push({ id, k, t: n.type });
+      liveGraph.ctl = lc;
+    }
+    save(); remember(); rebuild(); paintControls(); pushState();
+    toast(i >= 0 ? 'Quitado del control' : `Control ${list.length}: ${targetLabel(id, k, n.type)}`);
   }
   // Move a value from outside (phone fader, MIDI knob): 0–1 across the slider range.
   // Changes the editor AND what is on air, so it works live without pressing "Al aire".
   let liveDirty = false;
-  function applyControl(id, k, norm) {
+  function applyControl(id, k, norm, type) {
     norm = Math.min(1, Math.max(0, +norm || 0));
     for (const g of liveGraph === graph ? [graph] : [graph, liveGraph]) {
-      const f = findInput(g, id, k);
+      const f = findInput(g, id, k, type);
       if (!f) continue;
       let v = f.inp.min + norm * (f.inp.max - f.inp.min);
       if (f.inp.step) v = Math.round(v / f.inp.step) * f.inp.step;
@@ -1011,10 +1039,13 @@
   function paintControls() {
     const list = $('#ctlList');
     list.textContent = '';
-    if (!controls.length) { list.append(el('p', 'dim', 'Todavía no hay controles: clic derecho sobre un valor → «Al control».')); return; }
-    controls.forEach((c, i) => {
+    const ctl = ctlList(graph);
+    if (!ctl.length) { list.append(el('p', 'dim', 'Este patch todavía no tiene controles: clic derecho sobre un valor → «Al control». Cada patch y cada escena guarda los suyos.')); return; }
+    ctl.forEach((c, i) => {
       const row = el('div', 'ctl-row');
-      row.append(el('b', '', String(i + 1)), el('span', '', targetLabel(c.id, c.k)));
+      const off = !usable(liveGraph, c);
+      row.append(el('b', '', String(i + 1)), el('span', '', targetLabel(c.id, c.k, c.t, graph) + (off ? ' · (no está al aire)' : '')));
+      if (off) row.classList.add('is-off');
       const x = el('button', '', '×'); x.title = 'Quitar';
       x.addEventListener('click', () => toggleControl(c.id, c.k));
       row.append(x); list.append(row);
@@ -1032,7 +1063,7 @@
     hook(); midi.onstatechange = hook;
     return true;
   }
-  const describe = t => t.kind === 'value' ? targetLabel(t.id, t.k) : t.kind === 'scene' ? `Escena ${t.i + 1}` : { go: 'Al aire', black: 'Negro', strobe: 'Strobe', tap: 'Tap' }[t.kind];
+  const describe = t => t.kind === 'value' ? targetLabel(t.id, t.k, t.t) : t.kind === 'scene' ? `Escena ${t.i + 1}` : { go: 'Al aire', black: 'Negro', strobe: 'Strobe', tap: 'Tap' }[t.kind];
   async function midiLearn(t) {
     if (!(await ensureMidi())) return;
     learning = t;
@@ -1063,7 +1094,7 @@
     const was = ccLast[key] || 0; ccLast[key] = v;
     const pressed = isCC ? v >= 0.5 && was < 0.5 : v > 0;
     const released = isCC ? v < 0.5 && was >= 0.5 : v === 0;
-    if (t.kind === 'value') applyControl(t.id, t.k, v);
+    if (t.kind === 'value') applyControl(t.id, t.k, v, t.t);
     else if (t.kind === 'strobe') { if (pressed) setStrobe(true); if (released) setStrobe(false); }
     else if (!pressed) return;
     else if (t.kind === 'scene') fireScene(t.i);
@@ -1130,7 +1161,7 @@
   function fullState() {
     return {
       t: 'state',
-      controls: controls.map(c => ({ label: targetLabel(c.id, c.k), v: normOf(c.id, c.k) })),
+      controls: liveControls().map(c => ({ label: targetLabel(c.id, c.k, c.t, liveGraph), v: normOf(c.id, c.k, c.t) })),
       scenes: Array.from({ length: 8 }, (_, i) => { const sc = scenes[i]; return { filled: !!sc, thumb: sc ? sc.thumb || '' : '', live: i === liveScene }; }),
       black: stage.black, bpm: Math.round(bpm), fade: opts.fade, direct: opts.direct,
     };
@@ -1145,7 +1176,7 @@
   function pushValues(now) {
     if (!conns.size || now - valsAt < 200) return;
     valsAt = now;
-    const v = controls.map(c => Math.round(normOf(c.id, c.k) * 1000) / 1000);
+    const v = liveControls().map(c => Math.round(normOf(c.id, c.k, c.t) * 1000) / 1000);
     const key = v.join(',');
     if (key === lastVals) return;
     lastVals = key;
@@ -1155,7 +1186,8 @@
   function remoteMsg(m) {
     if (!m || typeof m !== 'object') return;
     const i = Number.isInteger(m.i) ? m.i : -1;
-    if (m.t === 'ctl' && controls[i] && typeof m.v === 'number') applyControl(controls[i].id, controls[i].k, m.v);
+    const lc = liveControls();
+    if (m.t === 'ctl' && lc[i] && typeof m.v === 'number') applyControl(lc[i].id, lc[i].k, m.v, lc[i].t);
     else if (m.t === 'scene' && i >= 0 && i < 8) fireScene(i);
     else if (m.t === 'go') goLive();
     else if (m.t === 'black') setBlack(!stage.black);
@@ -1199,5 +1231,5 @@
   requestAnimationFrame(loop);
   // fonts change node sizes -> redraw links once they are in
   if (document.fonts) document.fonts.ready.then(() => drawLinks());
-  window.__nodesEditor = { get graph() { return graph; }, get compiled() { return compiled; }, get liveGraph() { return liveGraph; }, stage, addNode, connect, removeNodes, undo, redo, goLive, modulate, set valueTarget(v) { valueTarget = v; }, setDirect, storeScene, fireScene, openScene, setThumbs, get scenes() { return scenes; }, get controls() { return controls; }, toggleControl, applyControl, onMidi, midiLearn, setLearning(t) { learning = t; }, get midiMap() { return midiMap; }, remoteMsg, fullState, tap, get bpm() { return bpm; }, setBlack, setStrobe };
+  window.__nodesEditor = { get graph() { return graph; }, get compiled() { return compiled; }, get liveGraph() { return liveGraph; }, stage, addNode, connect, removeNodes, undo, redo, goLive, modulate, set valueTarget(v) { valueTarget = v; }, setDirect, storeScene, fireScene, openScene, setThumbs, get scenes() { return scenes; }, get controls() { return ctlList(graph); }, liveControls, toggleControl, applyControl, onMidi, midiLearn, setLearning(t) { learning = t; }, get midiMap() { return midiMap; }, remoteMsg, fullState, tap, get bpm() { return bpm; }, setBlack, setStrobe };
 })();

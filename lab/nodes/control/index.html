@@ -140,7 +140,7 @@
       fd.append(b);
     });
     const fs = $('faders'); fs.textContent = '';
-    if (!state.controls.length) fs.append(el('p', 'empty-msg', 'Todavía no hay controles. En el editor: clic derecho sobre un valor → «Al control».'));
+    if (!state.controls.length) fs.append(el('p', 'empty-msg', 'El patch que está al aire no tiene controles. En el editor: clic derecho sobre un valor → «Al control».'));
     state.controls.forEach((c, i) => {
       const f = el('div', 'fader'); f.dataset.i = i;
       const lab = el('span'); lab.append(el('b', '', String(i + 1)), document.createTextNode(c.label));
