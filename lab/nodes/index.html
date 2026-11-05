@@ -25,10 +25,18 @@
   <input type="file" id="fileOpen" accept=".json,application/json" hidden>
   <span class="lab-sep"></span>
   <button class="lab-btn" id="btnPlay" title="Pausar / reanudar el tiempo (Espacio)">❚❚ Pausa</button>
+  <span class="lab-sep"></span>
+  <button class="lab-btn lab-go" id="btnGo" title="Mandar lo del editor al aire (Enter)">⏵ Al aire</button>
+  <select class="lab-btn" id="fadeSel" title="Fundido al mandar al aire">
+    <option value="0">Corte</option><option value="0.5">0,5 s</option><option value="1">1 s</option><option value="2">2 s</option><option value="4">4 s</option>
+  </select>
+  <button class="lab-btn" id="btnDirect" title="Directo: lo que editás sale al aire al instante">Directo</button>
+  <span class="lab-sep"></span>
   <button class="lab-btn" id="btnAudio" title="Audio reactivo">🎤 Audio <span class="lab-meter" id="meter"><i></i><i></i><i></i><i></i></span></button>
   <span class="lab-sep"></span>
-  <button class="lab-btn" id="btnPhoto" title="Guardar foto">◉ Foto</button>
-  <button class="lab-btn" id="btnRec" title="Grabar video">● Grabar</button>
+  <button class="lab-btn" id="btnThumbs" title="Miniaturas en los nodos (P)">▦</button>
+  <button class="lab-btn" id="btnPhoto" title="Guardar foto de lo que está al aire">◉ Foto</button>
+  <button class="lab-btn" id="btnRec" title="Grabar video de lo que está al aire">● Grabar</button>
   <button class="lab-btn" id="btnOut" title="Abrir ventana de salida para el proyector">⧉ Salida</button>
   <button class="lab-btn" id="btnFull" title="Vista previa en pantalla completa (F)">⛶</button>
   <button class="lab-btn" id="btnHelp" title="Atajos">?</button>
@@ -37,6 +45,7 @@
 <div class="lab-work" id="work">
   <div class="lab-preview" id="preview">
     <canvas id="view"></canvas>
+    <span class="lab-tag">PREVIEW</span>
     <div class="lab-preview-bar">
       <button data-size="s" title="Vista chica">S</button>
       <button data-size="m" class="is-on" title="Vista mediana">M</button>
@@ -45,7 +54,14 @@
       <button id="pvFull" title="Pantalla completa (F)">⛶</button>
     </div>
   </div>
+  <div class="lab-live" id="live"><span class="lab-tag">● EN VIVO</span></div>
+  <div class="lab-scenes" id="scenes"></div>
   <div id="world"><svg id="links"></svg></div>
+</div>
+<div class="lab-pop" id="scenePop" hidden>
+  <button class="item" id="scSave">Guardar el editor aquí</button>
+  <button class="item" id="scGo">Al aire</button>
+  <button class="item" id="scDel">Borrar escena</button>
 </div>
 
 <div class="lab-pop lab-add" id="addMenu" hidden>
@@ -69,6 +85,9 @@
   <p>Rueda: zoom · arrastrar el fondo: mover · <kbd>.</kbd> encuadrar todo</p>
   <p><kbd>Espacio</kbd> pausa · <kbd>F</kbd> pantalla completa · <kbd>B</kbd> vista de fondo</p>
   <p>Con un nodo seleccionado, el nodo nuevo se conecta solo a su salida.</p>
+  <p><b>Preview / al aire:</b> editás en PREVIEW sin que se vea; <kbd>Enter</kbd> o «⏵ Al aire» lo manda con el fundido elegido. «Directo» saltea la preview. Foto, Grabar y la ventana de salida usan lo que está EN VIVO.</p>
+  <p><b>Escenas:</b> <kbd>Shift</kbd>+<kbd>1</kbd>…<kbd>8</kbd> guarda el editor · <kbd>1</kbd>…<kbd>8</kbd> la manda al aire · clic la abre en el editor.</p>
+  <p><kbd>P</kbd> miniaturas en los nodos (lo que sale de cada uno).</p>
   <p><b>En vivo:</b> «⧉ Salida» abre una ventana para el proyector (doble clic = pantalla completa) que sigue todo lo que cambies acá.</p>
 </div>
 <div class="lab-toast" id="toast" role="status"></div>

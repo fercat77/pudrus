@@ -282,7 +282,7 @@ vec3 cosPal(float t, vec3 a, vec3 b, vec3 c, vec3 d){ return a + b * cos(6.28318
   }
 
   /* ── Compiler ───────────────────────────────────────────── */
-  function compile(graph) {
+  function compile(graph, target) {   // target = { id, out }: render that output instead of the Output node
     const byId = new Map(graph.nodes.map(n => [n.id, n]));
     const out = graph.nodes.find(n => n.type === 'output');
     const uniforms = [];      // { name, type: 'float' | 'color', node, key }
@@ -325,7 +325,16 @@ vec3 cosPal(float t, vec3 a, vec3 b, vec3 c, vec3 d){ return a + b * cos(6.28318
     }
 
     let finalExpr = 'vec3(0.0)';
-    if (out) {
+    if (target) {
+      const src = byId.get(target.id);
+      const o = src && (NODES[src.type].outputs || []).find(x => x[0] === target.out);
+      if (o) {
+        emit(src);
+        const v = outVar(src.id, o[0]);
+        // coordinates are shown as a red/green field so you can see what they do
+        finalExpr = o[1] === 'vec2' ? `vec3(fract(${v} + 0.5), 0.6)` : convert(v, o[1], 'color');
+      }
+    } else if (out) {
       const link = graph.links.find(l => l.b === out.id && l.bi === 'c');
       const src = link && byId.get(link.a);
       if (src) {
@@ -384,6 +393,22 @@ void main(){
 
   const hexToRgb = h => [1, 3, 5].map(i => parseInt(h.slice(i, i + 2), 16) / 255);
 
+  function makeProgram(gl, fragSrc) {
+    const mk = (type, src) => {
+      const sh = gl.createShader(type);
+      gl.shaderSource(sh, src); gl.compileShader(sh);
+      if (!gl.getShaderParameter(sh, gl.COMPILE_STATUS)) { const e = gl.getShaderInfoLog(sh); gl.deleteShader(sh); throw new Error(e); }
+      return sh;
+    };
+    const pr = gl.createProgram();
+    gl.attachShader(pr, mk(gl.VERTEX_SHADER, VERT));
+    gl.attachShader(pr, mk(gl.FRAGMENT_SHADER, fragSrc));
+    gl.linkProgram(pr);
+    if (!gl.getProgramParameter(pr, gl.LINK_STATUS)) throw new Error(gl.getProgramInfoLog(pr));
+    return pr;
+  }
+  const QUAD = new Float32Array([-1, -1, 1, -1, -1, 1, -1, 1, 1, -1, 1, 1]);
+
   function createRenderer(canvas) {
     const gl = canvas.getContext('webgl', { preserveDrawingBuffer: true, antialias: false, alpha: false });
     if (!gl) throw new Error('Este navegador no soporta WebGL');
@@ -391,20 +416,7 @@ void main(){
     gl.bindBuffer(gl.ARRAY_BUFFER, buf);
     gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, 1, -1, -1, 1, -1, 1, 1, -1, 1, 1]), gl.STATIC_DRAW);
 
-    function program(fragSrc) {
-      const mk = (type, src) => {
-        const s = gl.createShader(type);
-        gl.shaderSource(s, src); gl.compileShader(s);
-        if (!gl.getShaderParameter(s, gl.COMPILE_STATUS)) { const e = gl.getShaderInfoLog(s); gl.deleteShader(s); throw new Error(e); }
-        return s;
-      };
-      const pr = gl.createProgram();
-      gl.attachShader(pr, mk(gl.VERTEX_SHADER, VERT));
-      gl.attachShader(pr, mk(gl.FRAGMENT_SHADER, fragSrc));
-      gl.linkProgram(pr);
-      if (!gl.getProgramParameter(pr, gl.LINK_STATUS)) throw new Error(gl.getProgramInfoLog(pr));
-      return pr;
-    }
+    const program = fragSrc => makeProgram(gl, fragSrc);
     const post = program(POST);
     const postU = ['u_img', 'u_res', 'u_time', 'u_post'].reduce((o, n) => (o[n] = gl.getUniformLocation(post, n), o), {});
 
@@ -508,5 +520,136 @@ void main(){
     }
   }
 
-  window.PudrusNodes = { NODES, CATEGORIES, compile, createRenderer, defaultsFor, dependsOn, uniformName, postValues, applyValues };
+  // What changes the shader (node types, option menus, links); values are excluded
+  function structureKey(graph) {
+    return JSON.stringify({ n: graph.nodes.map(n => [n.id, n.type, n.p]), l: graph.links });
+  }
+
+  // name -> value (numbers, or [r,g,b] for colors) for every uniform of a compiled graph
+  function uniformValues(graph, compiled) {
+    const out = {};
+    for (const u of compiled.uniforms) {
+      const node = graph.nodes.find(n => n.id === u.node);
+      if (!node) continue;
+      const inp = NODES[node.type].inputs.find(i => i.k === u.key);
+      const v = node.v && node.v[u.key] !== undefined ? node.v[u.key] : inp.v;
+      out[u.name] = typeof v === 'string' ? hexToRgb(v) : v;
+    }
+    return out;
+  }
+
+  /* ── Node thumbnails: one small GL canvas, programs cached per node ── */
+  function createThumbs(w = 160, h = 90) {
+    const canvas = document.createElement('canvas');
+    canvas.width = w; canvas.height = h;
+    const gl = canvas.getContext('webgl', { preserveDrawingBuffer: true, antialias: false, alpha: false });
+    if (!gl) return null;
+    const buf = gl.createBuffer();
+    gl.bindBuffer(gl.ARRAY_BUFFER, buf);
+    gl.bufferData(gl.ARRAY_BUFFER, QUAD, gl.STATIC_DRAW);
+    const black = gl.createTexture();   // feedback in a thumbnail starts from black
+    gl.bindTexture(gl.TEXTURE_2D, black);
+    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, 1, 1, 0, gl.RGBA, gl.UNSIGNED_BYTE, new Uint8Array([0, 0, 0, 255]));
+    const cache = new Map();
+    function render(key, compiled, graph, time, audio) {
+      let e = cache.get(key);
+      if (!e) {
+        const prog = makeProgram(gl, compiled.frag);
+        const loc = {};
+        ['u_res', 'u_time', 'u_audio', 'u_prev'].concat(compiled.uniforms.map(u => u.name)).forEach(n => { loc[n] = gl.getUniformLocation(prog, n); });
+        e = { prog, loc, compiled };
+        cache.set(key, e);
+      }
+      gl.viewport(0, 0, w, h);
+      gl.useProgram(e.prog);
+      const a = gl.getAttribLocation(e.prog, 'a');
+      gl.bindBuffer(gl.ARRAY_BUFFER, buf);
+      gl.enableVertexAttribArray(a);
+      gl.vertexAttribPointer(a, 2, gl.FLOAT, false, 0, 0);
+      gl.activeTexture(gl.TEXTURE0); gl.bindTexture(gl.TEXTURE_2D, black);
+      gl.uniform1i(e.loc.u_prev, 0);
+      gl.uniform2f(e.loc.u_res, w, h);
+      gl.uniform1f(e.loc.u_time, time);
+      gl.uniform4f(e.loc.u_audio, audio[0], audio[1], audio[2], audio[3]);
+      const vals = uniformValues(graph, e.compiled);
+      for (const u of e.compiled.uniforms) {
+        const v = vals[u.name];
+        if (v === undefined) continue;
+        if (u.type === 'color') gl.uniform3f(e.loc[u.name], v[0], v[1], v[2]); else gl.uniform1f(e.loc[u.name], v);
+      }
+      gl.drawArrays(gl.TRIANGLES, 0, 6);
+    }
+    function clear() { cache.forEach(e => gl.deleteProgram(e.prog)); cache.clear(); }
+    return { canvas, render, clear };
+  }
+
+  /* ── Live stage: two patches, cross-faded ──────────────────────
+     composite: true -> both layers are drawn into one visible 2D canvas (recordable);
+     false -> two stacked WebGL canvases faded with CSS (cheaper, for the projector). */
+  function createStage(container, opts = {}) {
+    const composite = !!opts.composite;
+    const mkLayer = () => {
+      const c = document.createElement('canvas');
+      if (!composite) { c.className = 'stage-layer'; container.append(c); }
+      return { c, r: createRenderer(c), graph: null, key: '', comp: null };
+    };
+    const layers = [mkLayer(), mkLayer()];
+    let out = null, octx = null;
+    if (composite) { out = document.createElement('canvas'); out.className = 'stage-out'; container.append(out); octx = out.getContext('2d'); }
+    let front = 0, fade = null;
+    function load(layer, graph) {
+      const k = structureKey(graph);
+      if (k !== layer.key) { const comp = compile(graph); layer.r.setGraph(comp); layer.comp = comp; layer.key = k; }
+      applyValues(layer.r, graph, layer.comp);
+      layer.graph = graph;
+    }
+    function paint() {
+      if (composite) return;
+      const f = layers[front], b = layers[1 - front];
+      f.c.style.zIndex = 1; b.c.style.zIndex = 2;
+      f.c.style.opacity = 1;
+      b.c.style.opacity = fade ? fade.k : 0;
+    }
+    return {
+      resize(w, h) {
+        layers.forEach(l => l.r.resize(w, h));
+        if (out) { out.width = Math.round(w); out.height = Math.round(h); }
+      },
+      get canvas() { return out || layers[front].c; },
+      get graph() { return layers[front].graph; },
+      // replace what is live right now (no fade): used by "direct" mode
+      direct(graph) { load(fade ? layers[1 - front] : layers[front], graph); },   // during a fade, edit the incoming patch
+      // bring a new patch on air, cross-fading over `seconds`
+      go(graph, seconds) {
+        const back = layers[1 - front];
+        load(back, graph);
+        if (!seconds || !layers[front].graph) { front = 1 - front; fade = null; paint(); return; }
+        fade = { start: performance.now(), dur: seconds * 1000, k: 0 };
+      },
+      render(time, audio) {
+        const f = layers[front], b = layers[1 - front];
+        if (fade) {
+          fade.k = Math.min(1, (performance.now() - fade.start) / fade.dur);
+          if (f.graph) f.r.render(time, audio, postValues(f.graph, audio));
+          if (b.graph) b.r.render(time, audio, postValues(b.graph, audio));
+          if (composite) {
+            octx.globalAlpha = 1; octx.drawImage(f.c, 0, 0, out.width, out.height);
+            octx.globalAlpha = fade.k; octx.drawImage(b.c, 0, 0, out.width, out.height);
+            octx.globalAlpha = 1;
+          }
+          paint();
+          if (fade.k >= 1) { front = 1 - front; fade = null; paint(); }
+          return;
+        }
+        if (f.graph) {
+          f.r.render(time, audio, postValues(f.graph, audio));
+          if (composite) octx.drawImage(f.c, 0, 0, out.width, out.height);
+        }
+        paint();
+      },
+      get fading() { return !!fade; },
+    };
+  }
+
+  window.PudrusNodes = { NODES, CATEGORIES, compile, createRenderer, createThumbs, createStage, structureKey, uniformValues, defaultsFor, dependsOn, uniformName, postValues, applyValues };
 })();

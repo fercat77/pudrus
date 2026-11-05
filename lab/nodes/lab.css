@@ -147,3 +147,42 @@ button { cursor: pointer; }
 @media (max-width: 700px) {
   .lab-mobile-note { display: block; position: fixed; left: 10px; right: 10px; bottom: 10px; z-index: 70; padding: 10px; border-radius: 8px; background: var(--panel); border: 1px solid var(--line); color: var(--dim); }
 }
+
+/* ── Preview / on air ── */
+.lab-go.is-pending { border-color: #ff2a4d; color: #fff; background: #4a1220; animation: lab-pulse 1.2s ease-in-out infinite; }
+@keyframes lab-pulse { 50% { background: #7a1830; } }
+#fadeSel { padding: 0 6px; }
+#fadeSel option { background: var(--panel); }
+.lab-tag { position: absolute; left: 6px; top: 6px; z-index: 2; padding: 2px 6px; border-radius: 4px; font-size: 10px; letter-spacing: 1px; background: rgba(0,0,0,0.6); color: var(--dim); pointer-events: none; }
+.lab-live {
+  position: absolute; right: 12px; top: 294px; z-index: 5; width: 320px; height: 180px;
+  background: #000; border: 2px solid #ff2a4d; border-radius: 8px; overflow: hidden;
+}
+.lab-live .lab-tag { color: #ff6680; }
+.lab-live canvas { display: block; width: 100%; height: 100%; }
+.lab-live.is-flash { animation: lab-flash .5s ease-out; }
+@keyframes lab-flash { from { box-shadow: 0 0 0 6px rgba(255,42,77,0.7); } to { box-shadow: 0 0 0 0 rgba(255,42,77,0); } }
+.lab-work.is-direct .lab-live { display: none; }
+.lab-work.is-direct .lab-preview { border: 2px solid #ff2a4d; }
+.lab-work.is-direct .lab-preview .lab-tag { color: #ff6680; }
+.lab-work.is-direct .lab-preview .lab-tag::after { content: ' · DIRECTO'; }
+.lab-work.backdrop .lab-preview .lab-tag { display: none; }
+.lab-preview:fullscreen .lab-tag { display: none; }
+
+/* ── Scenes ── */
+.lab-scenes { position: absolute; left: 12px; bottom: 12px; z-index: 5; display: flex; gap: 6px; }
+.scene {
+  position: relative; width: 88px; height: 50px; border-radius: 6px; cursor: pointer;
+  background: #000 center / cover no-repeat; border: 1px solid var(--line);
+}
+.scene.is-empty { background: rgba(21,21,29,0.85); border-style: dashed; }
+.scene:hover { border-color: #666; }
+.scene.is-live { border: 2px solid #ff2a4d; }
+.scene-n { position: absolute; left: 4px; top: 3px; padding: 0 4px; border-radius: 3px; background: rgba(0,0,0,0.65); font-size: 10px; color: #fff; }
+.scene-go { position: absolute; right: 3px; bottom: 3px; width: 22px; height: 18px; border-radius: 4px; border: 0; background: rgba(0,0,0,0.7); color: #fff; font-size: 10px; opacity: 0; }
+.scene:hover .scene-go, .scene.is-live .scene-go { opacity: 1; }
+.scene-go:hover { background: #ff2a4d; }
+
+/* ── Node thumbnails ── */
+.nd-thumb { display: block; width: calc(100% - 12px); aspect-ratio: 16 / 9; height: auto; margin: 4px 6px 6px; border-radius: 4px; background: #000; }
+@media (max-width: 700px) { .lab-live, .lab-scenes { display: none; } }

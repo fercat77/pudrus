@@ -14,7 +14,12 @@
   const selected = new Set();
   let compiled = null;
   let playing = true, time = 0;
-  const els = new Map();     // node id -> { root, ins: {k: el}, outs: {k: el} }
+  const els = new Map();     // node id -> { root, ins: {k: el}, outs: {k: el}, thumb }
+
+  // Live settings (remembered): direct mode, fade time, node thumbnails
+  const LIVE_STORE = 'pudrus_nodes_live_v1';
+  const opts = Object.assign({ direct: false, fade: 1, thumbs: true }, (() => { try { return JSON.parse(localStorage.getItem(LIVE_STORE) || '{}'); } catch (e) { return {}; } })());
+  const saveOpts = () => { try { localStorage.setItem(LIVE_STORE, JSON.stringify(opts)); } catch (e) { /* ignore */ } };
 
   function load() {
     try { const g = JSON.parse(localStorage.getItem(STORE) || 'null'); return g && Array.isArray(g.nodes) ? g : null; } catch (e) { return null; }
@@ -73,8 +78,10 @@
     } catch (e) {
       console.error(e);
       toast('No se pudo compilar el shader:\n' + String(e.message || e).split('\n').slice(0, 4).join('\n'), true);
+      return;
     }
-    broadcast({ type: 'graph', graph });
+    if (opts.direct) sendDirect();
+    markPending();
   }
 
   /* ── Node DOM ──────────────────────────────────────────── */
@@ -130,7 +137,12 @@
     x.addEventListener('click', () => removeNodes([n.id]));
     head.append(x);
     const body = el('div', 'nd-body');
-    const rec = { root, ins: {}, outs: {} };
+    const rec = { root, ins: {}, outs: {}, thumb: null };
+    if (opts.thumbs && thumbs && !def.unique && (def.outputs || []).length) {
+      const c = el('canvas', 'nd-thumb'); c.width = THUMB_W; c.height = THUMB_H;
+      rec.thumb = { c, ctx: c.getContext('2d') };
+      body.append(c);
+    }
     // outputs first (Blender order)
     for (const [k, t, label] of def.outputs || []) {
       const row = el('div', 'nd-row out'); row.append(el('span', 'lbl', label));
@@ -148,7 +160,7 @@
     }
     for (const p of def.post || []) {
       const row = el('div', 'nd-row');
-      row.append(numWidget(p.label, (n.v && n.v[p.k] !== undefined) ? n.v[p.k] : p.v, p, v => { n.v = { ...(n.v || {}), [p.k]: v }; save(); remember(); }));
+      row.append(numWidget(p.label, (n.v && n.v[p.k] !== undefined) ? n.v[p.k] : p.v, p, v => { n.v = { ...(n.v || {}), [p.k]: v }; if (opts.direct) sendDirect(); markPending(); save(); remember(); }));
       body.append(row);
     }
     for (const inp of def.inputs || []) {
@@ -179,7 +191,8 @@
   function setValue(n, k, v) {
     n.v = { ...(n.v || {}), [k]: v };
     renderer.setValue(N.uniformName(n.id, k), v);
-    broadcast({ type: 'graph', graph });
+    if (opts.direct) sendDirect();
+    markPending();
     save(); remember();
   }
 
@@ -460,6 +473,13 @@
     else if (k === 'home' || k === '.') { e.preventDefault(); frameAll(); }
     else if (k === 'b') { e.preventDefault(); setBackdrop(!work.classList.contains('backdrop')); }
     else if (k === 'escape') closePops();
+    else if (k === 'enter' && !mod) { e.preventDefault(); goLive(); }
+    else if (k === 'p' && !mod) { e.preventDefault(); setThumbs(!opts.thumbs); }
+    else if (/^Digit[1-8]$/.test(e.code) && !mod) {
+      e.preventDefault();
+      const i = +e.code.slice(5) - 1;
+      if (e.shiftKey) storeScene(i); else fireScene(i);
+    }
   });
 
   /* ── Preview: panel sizes, backdrop, fullscreen ────────── */
@@ -474,8 +494,10 @@
     } else {
       const [w, h] = SIZES[size];
       preview.style.width = w + 'px'; preview.style.height = h + 'px';
-      renderer.resize(1280, 720);   // always 720p inside: good for recording, scaled down by CSS
+      renderer.resize(1280, 720);   // always 720p inside, scaled down by CSS
     }
+    const live = $('#live');
+    if (live) live.style.top = work.classList.contains('backdrop') ? '12px' : (12 + SIZES[size][1] + 12) + 'px';
   }
   function setBackdrop(on) {
     work.classList.toggle('backdrop', on);
@@ -558,15 +580,15 @@
 
   /* ── Photo / record ────────────────────────────────────── */
   $('#btnPhoto').addEventListener('click', () => {
-    view.toBlob(b => { const a = document.createElement('a'); a.download = `pudrus_nodes_${Date.now()}.png`; a.href = URL.createObjectURL(b); a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 5000); }, 'image/png');
+    stage.canvas.toBlob(b => { const a = document.createElement('a'); a.download = `pudrus_nodes_${Date.now()}.png`; a.href = URL.createObjectURL(b); a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 5000); }, 'image/png');
   });
   let rec = null;
   $('#btnRec').addEventListener('click', () => {
     const b = $('#btnRec');
     if (rec) { rec.stop(); rec = null; b.classList.remove('is-rec'); b.textContent = '● Grabar'; return; }
-    if (!view.captureStream || typeof MediaRecorder === 'undefined') { toast('Este navegador no puede grabar video', true); return; }
+    if (!stage.canvas.captureStream || typeof MediaRecorder === 'undefined') { toast('Este navegador no puede grabar video', true); return; }
     const mime = ['video/mp4;codecs=avc1', 'video/webm;codecs=vp9', 'video/webm'].find(m => MediaRecorder.isTypeSupported(m)) || '';
-    const stream = view.captureStream(60);
+    const stream = stage.canvas.captureStream(60);
     if (audio.stream && $('#recAudio').checked) audio.stream.getAudioTracks().forEach(t => stream.addTrack(t));
     const chunks = [];
     const r = new MediaRecorder(stream, mime ? { mimeType: mime, videoBitsPerSecond: 12e6 } : undefined);
@@ -583,12 +605,159 @@
   /* ── Output window (second screen / projector) ─────────── */
   const channel = 'BroadcastChannel' in window ? new BroadcastChannel('pudrus-nodes') : null;
   function broadcast(msg) { if (channel) channel.postMessage(msg); }
-  if (channel) channel.onmessage = e => { if (e.data && e.data.type === 'hello') { broadcast({ type: 'graph', graph }); broadcast({ type: 'play', playing }); } };
+  if (channel) channel.onmessage = e => { if (e.data && e.data.type === 'hello') { broadcast({ type: 'live', graph: liveGraph, fade: 0 }); broadcast({ type: 'play', playing }); } };
   $('#btnOut').addEventListener('click', () => {
     const w = window.open('output.html', 'pudrus-output', 'width=960,height=540');
     if (!w) toast('El navegador bloqueó la ventana: permití las ventanas emergentes', true);
     else toast('Arrastrá la ventana al proyector y hacé doble clic para pantalla completa');
   });
+
+  /* ── Live: preview (editor) / on air (program) ──────────── */
+  const liveBox = $('#live');
+  const stage = N.createStage(liveBox, { composite: true });
+  stage.resize(1280, 720);
+  let liveGraph = clone(graph);
+  const contentKey = g => JSON.stringify({ n: g.nodes.map(n => [n.id, n.type, n.v, n.p]), l: g.links });
+  let liveKey = contentKey(liveGraph);
+  try { stage.go(liveGraph, 0); } catch (e) { console.error(e); }
+
+  function markPending() {
+    const pending = !opts.direct && contentKey(graph) !== liveKey;
+    $('#btnGo').classList.toggle('is-pending', pending);
+  }
+  function sendDirect() {
+    liveGraph = graph; liveKey = contentKey(graph);
+    try { stage.direct(graph); } catch (e) { return; }
+    broadcast({ type: 'direct', graph });
+  }
+  // Put a patch on air (cross-fade); by default the one in the editor
+  function goLive(g, fade) {
+    g = g || graph;
+    const sec = fade === undefined ? opts.fade : fade;
+    const next = opts.direct && g === graph ? graph : clone(g);
+    try { stage.go(next, sec); } catch (e) { toast('Ese patch no compila; sigue al aire el anterior', true); return; }
+    liveGraph = next; liveKey = contentKey(next);
+    broadcast({ type: 'live', graph: next, fade: sec });
+    markPending();
+    liveBox.classList.remove('is-flash'); void liveBox.offsetWidth; liveBox.classList.add('is-flash');
+  }
+  $('#btnGo').addEventListener('click', () => goLive());
+
+  const fadeSel = $('#fadeSel');
+  fadeSel.value = String(opts.fade);
+  if (fadeSel.value !== String(opts.fade)) { opts.fade = 1; fadeSel.value = '1'; }
+  fadeSel.addEventListener('change', () => { opts.fade = +fadeSel.value; saveOpts(); fadeSel.blur(); });
+
+  function setDirect(on) {
+    opts.direct = on; saveOpts();
+    $('#btnDirect').classList.toggle('is-on', on);
+    work.classList.toggle('is-direct', on);
+    if (on) { goLive(graph, 0); sendDirect(); }
+    else { liveGraph = clone(graph); stage.direct(liveGraph); liveKey = contentKey(liveGraph); }
+    markPending();
+    layoutPreview();
+  }
+  $('#btnDirect').addEventListener('click', () => { setDirect(!opts.direct); toast(opts.direct ? 'Directo: todo lo que tocás sale al aire' : 'Preview: preparás acá y mandás con «Al aire» (Enter)'); });
+
+  /* ── Scenes: 8 slots, keys 1–8 put them on air ──────────── */
+  const SCENES = 'pudrus_nodes_scenes_v1';
+  let scenes = (() => { try { const a = JSON.parse(localStorage.getItem(SCENES) || '[]'); return Array.isArray(a) ? a : []; } catch (e) { return []; } })();
+  scenes.length = 8;
+  const saveScenes = () => { try { localStorage.setItem(SCENES, JSON.stringify(scenes)); } catch (e) { toast('No hay espacio para guardar la escena', true); } };
+  const sceneBar = $('#scenes');
+  let liveScene = -1, pendingShot = -1;
+  const shotCanvas = document.createElement('canvas'); shotCanvas.width = 160; shotCanvas.height = 90;
+
+  function paintScenes() {
+    sceneBar.textContent = '';
+    for (let i = 0; i < 8; i++) {
+      const sc = scenes[i];
+      const b = el('div', 'scene' + (sc ? '' : ' is-empty') + (i === liveScene ? ' is-live' : ''));
+      b.dataset.i = i;
+      b.title = sc ? `Escena ${i + 1}: clic = abrir en el editor · ${i + 1} = al aire · clic derecho = opciones` : `Vacía: clic o Shift+${i + 1} guarda el patch del editor`;
+      if (sc && sc.thumb) b.style.backgroundImage = `url(${sc.thumb})`;
+      b.append(el('span', 'scene-n', String(i + 1)));
+      if (sc) {
+        const go = el('button', 'scene-go', '⏵'); go.title = 'Al aire';
+        go.addEventListener('click', ev => { ev.stopPropagation(); fireScene(i); });
+        b.append(go);
+      }
+      b.addEventListener('click', () => { if (scenes[i]) openScene(i); else storeScene(i); });
+      b.addEventListener('contextmenu', ev => { ev.preventDefault(); ev.stopPropagation(); scenePopAt = i; openPop(scenePop, ev.clientX, ev.clientY - 120); $('#scDel').hidden = $('#scGo').hidden = !scenes[i]; });
+      sceneBar.append(b);
+    }
+  }
+  function storeScene(i) {
+    scenes[i] = { graph: clone(graph), thumb: (scenes[i] && scenes[i].thumb) || '' };
+    pendingShot = i;   // the thumbnail is grabbed from the preview on the next frame
+    saveScenes(); paintScenes();
+    toast(`Escena ${i + 1} guardada`);
+  }
+  function openScene(i) {
+    graph = clone(scenes[i].graph); selected.clear();
+    rebuild(); recompile(); save(); remember(); frameAll();
+    toast(`Escena ${i + 1} en el editor` + (opts.direct ? '' : ' · Enter para mandarla al aire'));
+  }
+  function fireScene(i) {
+    const sc = scenes[i];
+    if (!sc) { toast(`La escena ${i + 1} está vacía (Shift+${i + 1} para guardar)`); return; }
+    if (opts.direct) { graph = clone(sc.graph); selected.clear(); rebuild(); recompile(); save(); remember(); }
+    goLive(opts.direct ? graph : sc.graph);
+    liveScene = i; paintScenes();
+  }
+  const scenePop = $('#scenePop');
+  let scenePopAt = 0;
+  $('#scSave').addEventListener('click', () => { closePops(); storeScene(scenePopAt); });
+  $('#scGo').addEventListener('click', () => { closePops(); fireScene(scenePopAt); });
+  $('#scDel').addEventListener('click', () => { closePops(); scenes[scenePopAt] = null; if (liveScene === scenePopAt) liveScene = -1; saveScenes(); paintScenes(); });
+  function grabShot() {
+    if (pendingShot < 0) return;
+    const i = pendingShot; pendingShot = -1;
+    if (!scenes[i]) return;
+    try {
+      const c = shotCanvas.getContext('2d');
+      c.drawImage(view, 0, 0, 160, 90);
+      scenes[i].thumb = shotCanvas.toDataURL('image/jpeg', 0.7);
+      saveScenes(); paintScenes();
+    } catch (e) { /* no thumbnail */ }
+  }
+
+  /* ── Node thumbnails (like Blender's node previews) ─────── */
+  const THUMB_W = 160, THUMB_H = 90;
+  const thumbs = N.createThumbs(THUMB_W, THUMB_H);
+  const thumbCompiled = new Map();
+  let thumbKey = '', thumbLast = 0;
+  function setThumbs(on) {
+    opts.thumbs = on; saveOpts();
+    $('#btnThumbs').classList.toggle('is-on', on);
+    rebuild();
+  }
+  $('#btnThumbs').addEventListener('click', () => setThumbs(!opts.thumbs));
+  function drawThumbs(now, a) {
+    if (!opts.thumbs || !thumbs || now - thumbLast < 80) return;
+    thumbLast = now;
+    const key = N.structureKey(graph);
+    if (key !== thumbKey) { thumbCompiled.clear(); thumbs.clear(); thumbKey = key; }
+    const wr = work.getBoundingClientRect();
+    els.forEach((r, id) => {
+      if (!r.thumb) return;
+      const br = r.thumb.c.getBoundingClientRect();
+      if (br.right < wr.left || br.left > wr.right || br.bottom < wr.top || br.top > wr.bottom) return;   // off screen
+      const n = graph.nodes.find(m => m.id === id);
+      if (!n) return;
+      let comp = thumbCompiled.get(id);
+      if (comp === undefined) {
+        const out = (N.NODES[n.type].outputs || [])[0];
+        try { comp = N.compile(graph, { id, out: out[0] }); } catch (e) { comp = null; }
+        thumbCompiled.set(id, comp);
+      }
+      if (!comp) return;
+      try {
+        thumbs.render(key + '|' + id, comp, graph, time, a);
+        r.thumb.ctx.drawImage(thumbs.canvas, 0, 0);
+      } catch (e) { thumbCompiled.set(id, null); }
+    });
+  }
 
   /* ── Main loop ─────────────────────────────────────────── */
   let last = performance.now(), frameN = 0;
@@ -598,11 +767,18 @@
     if (playing) time += dt;
     const a = audio.read();
     renderer.render(time, a, N.postValues(graph, a));
+    grabShot();
+    stage.render(time, a);   // on air (also what Foto/Grabar capture)
+    drawThumbs(now, a);
     if (audio.on && (frameN++ & 1) === 0) meters.forEach((m, i) => m.style.setProperty('--v', a[i]));
     broadcast({ type: 'frame', t: time, audio: a });
   }
 
   /* ── Start ─────────────────────────────────────────────── */
+  $('#btnDirect').classList.toggle('is-on', opts.direct);
+  $('#btnThumbs').classList.toggle('is-on', opts.thumbs);
+  work.classList.toggle('is-direct', opts.direct);
+  paintScenes();
   rebuild();
   recompile();
   applyCam();
@@ -611,5 +787,5 @@
   requestAnimationFrame(loop);
   // fonts change node sizes -> redraw links once they are in
   if (document.fonts) document.fonts.ready.then(() => drawLinks());
-  window.__nodesEditor = { get graph() { return graph; }, get compiled() { return compiled; }, addNode, connect, removeNodes, undo, redo };
+  window.__nodesEditor = { get graph() { return graph; }, get compiled() { return compiled; }, get liveGraph() { return liveGraph; }, stage, addNode, connect, removeNodes, undo, redo, goLive, setDirect, storeScene, fireScene, openScene, setThumbs, get scenes() { return scenes; } };
 })();
