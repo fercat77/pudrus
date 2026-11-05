@@ -6,7 +6,7 @@
  * - "Share to PUDRUS" (Android, installed app): receives the shared file at
  *   POST /share/, keeps it in a cache and opens the /share/ chooser.
  */
-const VERSION = 'pudrus-v1';
+const VERSION = 'pudrus-v2';
 const SHARE_CACHE = 'pudrus-share';
 const CORE = [
   '/', '/index.html', '/gallery/', '/share/',
@@ -53,7 +53,10 @@ async function openCache() {
 async function networkFirst(req) {
   const cache = await openCache();
   try {
-    const res = await fetch(req);
+    // same-origin files are revalidated with the server (cheap 304s), so a page never
+    // mixes a new HTML with an old script still sitting in the browser's HTTP cache
+    const sameOrigin = new URL(req.url).origin === location.origin;
+    const res = await fetch(sameOrigin && req.mode !== 'navigate' ? new Request(req, { cache: 'no-cache' }) : req);
     if (cache && res && res.ok && (res.type === 'basic' || res.type === 'cors')) cache.put(req, res.clone()).catch(() => {});
     return res;
   } catch (err) {

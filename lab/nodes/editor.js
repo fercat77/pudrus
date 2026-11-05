@@ -1024,11 +1024,13 @@
   }
   $('#btnRemote').addEventListener('click', e => {
     e.stopPropagation();
-    const r = e.currentTarget.getBoundingClientRect();
-    $('#rmUrl').href = $('#rmUrl').textContent = remoteUrl();
-    paintControls();
-    openPop($('#remotePop'), r.left - 160, r.bottom + 4);
-    showQR(); startRemote();
+    try {
+      const r = e.currentTarget.getBoundingClientRect();
+      $('#rmUrl').href = $('#rmUrl').textContent = remoteUrl();
+      paintControls();
+      openPop($('#remotePop'), r.left - 160, r.bottom + 4);
+      showQR(); startRemote();
+    } catch (err) { console.error(err); toast('No se pudo abrir el control: ' + (err.message || err), true); }
   });
   $('#rmCopy').addEventListener('click', () => { navigator.clipboard && navigator.clipboard.writeText(remoteUrl()).then(() => toast('Enlace copiado'), () => {}); });
 
