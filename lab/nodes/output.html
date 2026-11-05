@@ -82,7 +82,8 @@
     try {
       if (m.type === 'live') { stage.go(m.graph, m.fade || 0); $('hint').textContent = 'Doble clic: pantalla completa · M: ajustar (esquinas y máscaras)'; }
       else if (m.type === 'direct') stage.direct(m.graph);
-      else if (m.type === 'frame') { time = m.t; audio = m.audio; }
+      else if (m.type === 'frame') { time = m.t; audio = m.audio; if (typeof m.beat === 'number') N.clock.beat = m.beat; }
+      else if (m.type === 'master') { stage.setBlack(!!m.black, m.fade || 0); stage.setStrobe(!!m.strobe); }
       else if (m.type === 'play') playing = m.playing;
     } catch (err) { /* keep the last good shader */ }
   };

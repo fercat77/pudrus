@@ -31,6 +31,10 @@
     <option value="0">Corte</option><option value="0.5">0,5 s</option><option value="1">1 s</option><option value="2">2 s</option><option value="4">4 s</option>
   </select>
   <button class="lab-btn" id="btnDirect" title="Directo: lo que editás sale al aire al instante">Directo</button>
+  <button class="lab-btn" id="btnBlack" title="Fundido a negro (N) · clic derecho: aprender MIDI">■ Negro</button>
+  <button class="lab-btn" id="btnStrobe" title="Strobe mientras lo mantenés apretado (S)">✦ Strobe</button>
+  <button class="lab-btn" id="btnTap" title="Tap tempo: tocá al ritmo (T)">Tap <b id="bpm">120</b></button>
+  <button class="lab-btn" id="btnRemote" title="Usar el celular como controlador">📱 Control</button>
   <span class="lab-sep"></span>
   <button class="lab-btn" id="btnAudio" title="Audio reactivo">🎤 Audio <span class="lab-meter" id="meter"><i></i><i></i><i></i><i></i></span></button>
   <span class="lab-sep"></span>
@@ -59,6 +63,9 @@
   <div id="world"><svg id="links"></svg></div>
 </div>
 <div class="lab-pop" id="valuePop" hidden>
+  <button class="item" id="vpCtl">🎛 Al control (celular / MIDI)</button>
+  <button class="item" id="vpMidi">🎹 Aprender MIDI</button>
+  <button class="item" id="vpMidiForget">Olvidar MIDI</button>
   <button class="item" id="vpLfo">∿ Animar con LFO</button>
   <label>Conectar al audio</label>
   <button class="item" data-band="level">Volumen</button>
@@ -69,6 +76,7 @@
 <div class="lab-pop" id="scenePop" hidden>
   <button class="item" id="scSave">Guardar el editor aquí</button>
   <button class="item" id="scGo">Al aire</button>
+  <button class="item" id="scMidi">🎹 Aprender MIDI</button>
   <button class="item" id="scDel">Borrar escena</button>
 </div>
 
@@ -96,7 +104,22 @@
   <p><b>Preview / al aire:</b> editás en PREVIEW sin que se vea; <kbd>Enter</kbd> o «⏵ Al aire» lo manda con el fundido elegido. «Directo» saltea la preview. Foto, Grabar y la ventana de salida usan lo que está EN VIVO.</p>
   <p><b>Escenas:</b> <kbd>Shift</kbd>+<kbd>1</kbd>…<kbd>8</kbd> guarda el editor · <kbd>1</kbd>…<kbd>8</kbd> la manda al aire · clic la abre en el editor.</p>
   <p><kbd>P</kbd> miniaturas en los nodos (lo que sale de cada uno).</p>
+  <p><kbd>N</kbd> negro · <kbd>S</kbd> (mantener) strobe · <kbd>T</kbd> tap tempo: el LFO en «Ritmo» y la salida «Pulso» de Tiempo siguen el BPM.</p>
+  <p><b>Control:</b> clic derecho en un valor → «Al control» lo suma al celular (📱 Control) · «Aprender MIDI» y movés una perilla. Clic derecho en Al aire, Negro, Strobe, Tap o una escena también aprende MIDI.</p>
   <p><b>En vivo:</b> «⧉ Salida» abre una ventana para el proyector (doble clic = pantalla completa; <kbd>M</kbd> en esa ventana: ajustar esquinas y máscaras para el mapping) que sigue todo lo que cambies acá.</p>
+</div>
+<div class="lab-pop lab-remote" id="remotePop" hidden>
+  <div class="rm-top">
+    <div id="rmQR" class="rm-qr"></div>
+    <div>
+      <p><b>Celular como controlador</b></p>
+      <p class="dim">Escaneá el código (mismo wifi = menos demora). Hace falta internet sólo para conectar.</p>
+      <p id="rmStatus" class="rm-status">…</p>
+      <p><a id="rmUrl" target="_blank" rel="noopener"></a> <button class="lab-mini" id="rmCopy">Copiar</button></p>
+    </div>
+  </div>
+  <label>Controles (también para MIDI)</label>
+  <div id="ctlList"></div>
 </div>
 <div class="lab-toast" id="toast" role="status"></div>
 <div class="lab-mobile-note">Pensado para compu o tablet: en el celular conviene usarlo sólo para mirar.</div>

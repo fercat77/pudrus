@@ -67,8 +67,8 @@ vec3 cosPal(float t, vec3 a, vec3 b, vec3 c, vec3 d){ return a + b * cos(6.28318
     /* Entrada */
     time: { title: 'Tiempo', cat: 'Entrada',
       inputs: [F('speed', 'Velocidad', 1, 0, 5)],
-      outputs: [['t', 'float', 'Tiempo'], ['wave', 'float', 'Onda'], ['ramp', 'float', 'Rampa']],
-      glsl: (I, O) => `float ${O.t} = u_time * ${I.speed}; float ${O.wave} = sin(${O.t}) * 0.5 + 0.5; float ${O.ramp} = fract(${O.t});` },
+      outputs: [['t', 'float', 'Tiempo'], ['wave', 'float', 'Onda'], ['ramp', 'float', 'Rampa'], ['pulse', 'float', 'Pulso (BPM)']],
+      glsl: (I, O) => `float ${O.t} = u_time * ${I.speed}; float ${O.wave} = sin(${O.t}) * 0.5 + 0.5; float ${O.ramp} = fract(${O.t}); float ${O.pulse} = pow(1.0 - fract(u_beat), 3.0);` },
     coords: { title: 'Coordenadas', cat: 'Entrada',
       inputs: [],
       outputs: [['uv', 'vec2', 'Coordenadas'], ['x', 'float', 'X'], ['y', 'float', 'Y'], ['dist', 'float', 'Distancia'], ['angle', 'float', 'Ángulo']],
@@ -83,10 +83,12 @@ vec3 cosPal(float t, vec3 a, vec3 b, vec3 c, vec3 d){ return a + b * cos(6.28318
       glsl: (I, O) => `vec3 ${O.c} = ${I.c};` },
     lfo: { title: 'LFO', cat: 'Entrada',
       inputs: [F('speed', 'Velocidad', 1, 0, 10), F('min', 'Mín', 0, -5, 5), F('max', 'Máx', 1, -5, 5)],
-      params: [{ k: 'shape', label: 'Forma', v: 'sine', options: [['sine', 'Seno'], ['tri', 'Triángulo'], ['saw', 'Sierra'], ['square', 'Cuadrada'], ['random', 'Aleatoria']] }],
+      params: [{ k: 'shape', label: 'Forma', v: 'sine', options: [['sine', 'Seno'], ['tri', 'Triángulo'], ['saw', 'Sierra'], ['square', 'Cuadrada'], ['random', 'Aleatoria']] },
+               { k: 'sync', label: 'Ritmo', v: 'free', options: [['free', 'libre (Velocidad)'], ['1', '1 tiempo'], ['2', '2 tiempos'], ['4', '1 compás'], ['8', '2 compases'], ['16', '4 compases']] }],
       outputs: [['v', 'float', 'Valor']],
       glsl: (I, O, P) => {
-        const ph = `(u_time * ${I.speed})`;
+        // "Ritmo" follows the tap tempo (u_beat counts beats); "libre" uses Velocidad in cycles per second
+        const ph = !P.sync || P.sync === 'free' ? `(u_time * ${I.speed})` : `(u_beat / ${P.sync}.0)`;
         const shape = { sine: `sin(${ph} * 6.28318) * 0.5 + 0.5`, tri: `abs(fract(${ph}) * 2.0 - 1.0)`, saw: `fract(${ph})`,
                         square: `step(0.5, fract(${ph}))`, random: `hash21(vec2(floor(${ph}), 7.0))` }[P.shape];
         return `float ${O.v} = mix(${I.min}, ${I.max}, ${shape});`;
@@ -359,6 +361,7 @@ precision mediump float;
 varying vec2 v_uv;
 uniform vec2 u_res;
 uniform float u_time;
+uniform float u_beat;
 uniform vec4 u_audio;
 uniform sampler2D u_prev;
 ${decl}
@@ -395,6 +398,8 @@ void main(){
   gl_FragColor = vec4(clamp(c, 0.0, 1.0), 1.0);
 }`;
 
+  // shared clock: beats from the tap tempo (set by the editor / output window every frame)
+  const clock = { beat: 0 };
   const hexToRgb = h => [1, 3, 5].map(i => parseInt(h.slice(i, i + 2), 16) / 255);
 
   function makeProgram(gl, fragSrc) {
@@ -457,7 +462,7 @@ void main(){
       prog = pr;
       uniforms = compiled.uniforms;
       loc = {};
-      ['u_res', 'u_time', 'u_audio', 'u_prev'].concat(uniforms.map(u => u.name)).forEach(n => { loc[n] = gl.getUniformLocation(prog, n); });
+      ['u_res', 'u_time', 'u_beat', 'u_audio', 'u_prev'].concat(uniforms.map(u => u.name)).forEach(n => { loc[n] = gl.getUniformLocation(prog, n); });
     }
     function setValue(name, v) { values[name] = typeof v === 'string' ? hexToRgb(v) : v; }
 
@@ -479,6 +484,7 @@ void main(){
       gl.uniform1i(loc.u_prev, 0);
       gl.uniform2f(loc.u_res, w, h);
       gl.uniform1f(loc.u_time, time);
+      gl.uniform1f(loc.u_beat, clock.beat);
       gl.uniform4f(loc.u_audio, audio[0], audio[1], audio[2], audio[3]);
       for (const u of uniforms) {
         const v = values[u.name];
@@ -560,7 +566,7 @@ void main(){
       if (!e) {
         const prog = makeProgram(gl, compiled.frag);
         const loc = {};
-        ['u_res', 'u_time', 'u_audio', 'u_prev'].concat(compiled.uniforms.map(u => u.name)).forEach(n => { loc[n] = gl.getUniformLocation(prog, n); });
+        ['u_res', 'u_time', 'u_beat', 'u_audio', 'u_prev'].concat(compiled.uniforms.map(u => u.name)).forEach(n => { loc[n] = gl.getUniformLocation(prog, n); });
         e = { prog, loc, compiled };
         cache.set(key, e);
       }
@@ -574,6 +580,7 @@ void main(){
       gl.uniform1i(e.loc.u_prev, 0);
       gl.uniform2f(e.loc.u_res, w, h);
       gl.uniform1f(e.loc.u_time, time);
+      gl.uniform1f(e.loc.u_beat, clock.beat);
       gl.uniform4f(e.loc.u_audio, audio[0], audio[1], audio[2], audio[3]);
       const vals = uniformValues(graph, e.compiled);
       for (const u of e.compiled.uniforms) {
@@ -601,6 +608,26 @@ void main(){
     let out = null, octx = null;
     if (composite) { out = document.createElement('canvas'); out.className = 'stage-out'; container.append(out); octx = out.getContext('2d'); }
     let front = 0, fade = null;
+    // master: fade to black and strobe, applied over everything that is on air
+    const master = { black: 0, target: 0, speed: 2, strobe: false, last: performance.now() };
+    let veil = null;
+    if (!composite) { veil = document.createElement('div'); veil.style.cssText = 'position:absolute;inset:0;z-index:3;pointer-events:none;opacity:0;background:#000'; container.append(veil); }
+    function drawMaster() {
+      const now = performance.now(), dt = Math.min(0.1, (now - master.last) / 1000); master.last = now;
+      if (master.black !== master.target) {
+        const d = master.speed * dt;
+        master.black = master.target > master.black ? Math.min(master.target, master.black + d) : Math.max(master.target, master.black - d);
+      }
+      const flash = master.strobe && Math.floor(now / 45) % 2 === 0;
+      if (composite) {
+        if (master.black > 0) { octx.globalAlpha = master.black; octx.fillStyle = '#000'; octx.fillRect(0, 0, out.width, out.height); }
+        if (flash) { octx.globalAlpha = 1; octx.fillStyle = '#fff'; octx.fillRect(0, 0, out.width, out.height); }
+        octx.globalAlpha = 1;
+      } else {
+        veil.style.background = flash ? '#fff' : '#000';
+        veil.style.opacity = flash ? 1 : master.black;
+      }
+    }
     function load(layer, graph) {
       const k = structureKey(graph);
       if (k !== layer.key) { const comp = compile(graph); layer.r.setGraph(comp); layer.comp = comp; layer.key = k; }
@@ -643,17 +670,23 @@ void main(){
           }
           paint();
           if (fade.k >= 1) { front = 1 - front; fade = null; paint(); }
-          return;
+        } else {
+          if (f.graph) {
+            f.r.render(time, audio, postValues(f.graph, audio));
+            if (composite) octx.drawImage(f.c, 0, 0, out.width, out.height);
+          }
+          paint();
         }
-        if (f.graph) {
-          f.r.render(time, audio, postValues(f.graph, audio));
-          if (composite) octx.drawImage(f.c, 0, 0, out.width, out.height);
-        }
-        paint();
+        drawMaster();
       },
       get fading() { return !!fade; },
+      // fade to / from black over `seconds` (0 = cut)
+      setBlack(on, seconds) { master.target = on ? 1 : 0; master.speed = seconds > 0 ? 1 / seconds : 1e9; },
+      get black() { return master.target === 1; },
+      setStrobe(on) { master.strobe = !!on; },
+      get strobe() { return master.strobe; },
     };
   }
 
-  window.PudrusNodes = { NODES, CATEGORIES, compile, createRenderer, createThumbs, createStage, structureKey, uniformValues, defaultsFor, dependsOn, uniformName, postValues, applyValues };
+  window.PudrusNodes = { clock, NODES, CATEGORIES, compile, createRenderer, createThumbs, createStage, structureKey, uniformValues, defaultsFor, dependsOn, uniformName, postValues, applyValues };
 })();
