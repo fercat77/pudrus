@@ -190,11 +190,11 @@
       if (inp.t === 'float' && !isLinked(n.id, inp.k)) {
         const w = numWidget(inp.label, val, inp, v => setValue(n, inp.k, v));
         rec.nums[inp.k] = w;
-        if (ctlList(graph).some(c => c.id === n.id && c.k === inp.k)) w.classList.add('is-ctl');
+        if (ctlList(graph).some(c => hasCtl(c, n.id, inp.k))) w.classList.add('is-ctl');
         w.addEventListener('contextmenu', e => {
           e.preventDefault(); e.stopPropagation();
           valueTarget = { id: n.id, k: inp.k };
-          const has = ctlList(graph).some(c => c.id === n.id && c.k === inp.k);
+          const has = ctlList(graph).some(c => hasCtl(c, n.id, inp.k));
           $('#vpCtl').textContent = has ? '🎛 Quitar del control' : '🎛 Al control (celular / MIDI)';
           $('#vpMidiForget').hidden = !Object.values(midiMap).some(t => t.kind === 'value' && t.id === n.id && t.k === inp.k);
           openPop($('#valuePop'), e.clientX, e.clientY);
@@ -608,9 +608,10 @@
     else if (k === 't' && !mod) { e.preventDefault(); if (!e.repeat) tap(); }
     else if (/^Digit[1-8]$/.test(e.code) && !mod) {
       e.preventDefault();
-      const i = +e.code.slice(5) - 1;
+      const i = scenePage * 8 + (+e.code.slice(5) - 1);
       if (e.shiftKey) storeScene(i); else fireScene(i);
     }
+    else if (k === 'r' && !mod) { e.preventDefault(); if (e.shiftKey) varyPatch(); else randomPatch(); }
   });
 
   document.addEventListener('keyup', e => { if (e.key.toLowerCase() === 's') setStrobe(false); });
@@ -813,7 +814,8 @@
   /* ── Scenes: 8 slots, keys 1–8 put them on air ──────────── */
   const SCENES = 'pudrus_nodes_scenes_v1';
   let scenes = (() => { try { const a = JSON.parse(localStorage.getItem(SCENES) || '[]'); return Array.isArray(a) ? a : []; } catch (e) { return []; } })();
-  scenes.length = 8;
+  scenes.length = 16;
+  let scenePage = 0;
   const saveScenes = () => { try { localStorage.setItem(SCENES, JSON.stringify(scenes)); } catch (e) { toast('No hay espacio para guardar la escena', true); } };
   const sceneBar = $('#scenes');
   let liveScene = -1, pendingShot = -1;
@@ -821,11 +823,16 @@
 
   function paintScenes() {
     sceneBar.textContent = '';
-    for (let i = 0; i < 8; i++) {
+    const pg = el('button', 'scene-page', scenePage ? '9–16' : '1–8');
+    pg.title = 'Cambiar de página de escenas (las teclas 1–8 usan la página visible)';
+    pg.addEventListener('click', () => { scenePage = 1 - scenePage; paintScenes(); });
+    sceneBar.append(pg);
+    for (let i = scenePage * 8; i < scenePage * 8 + 8; i++) {
       const sc = scenes[i];
       const b = el('div', 'scene' + (sc ? '' : ' is-empty') + (i === liveScene ? ' is-live' : ''));
       b.dataset.i = i;
-      b.title = sc ? `Escena ${i + 1}: clic = abrir en el editor · ${i + 1} = al aire · clic derecho = opciones` : `Vacía: clic o Shift+${i + 1} guarda el patch del editor`;
+      const key = i % 8 + 1;
+      b.title = sc ? `Escena ${i + 1}: clic = abrir en el editor · ${key} = al aire · clic derecho = opciones` : `Vacía: clic o Shift+${key} guarda el patch del editor`;
       if (sc && sc.thumb) b.style.backgroundImage = `url(${sc.thumb})`;
       b.append(el('span', 'scene-n', String(i + 1)));
       if (sc) {
@@ -852,10 +859,18 @@
   }
   function fireScene(i) {
     const sc = scenes[i];
-    if (!sc) { toast(`La escena ${i + 1} está vacía (Shift+${i + 1} para guardar)`); return; }
+    if (!sc) { toast(`La escena ${i + 1} está vacía (Shift+${i % 8 + 1} para guardar)`); return; }
+    if (Math.floor(i / 8) !== scenePage) scenePage = Math.floor(i / 8);
     if (opts.direct) { graph = clone(sc.graph); selected.clear(); rebuild(); recompile(); save(); remember(); }
     goLive(opts.direct ? graph : sc.graph);
     liveScene = i; paintScenes();
+  }
+  // next / previous filled scene (phone, MIDI)
+  function stepScene(d) {
+    for (let n = 1; n <= 16; n++) {
+      const i = ((liveScene < 0 ? (d > 0 ? -1 : 0) : liveScene) + d * n + 32) % 16;
+      if (scenes[i]) { fireScene(i); return; }
+    }
   }
   const scenePop = $('#scenePop');
   let scenePopAt = 0;
@@ -968,12 +983,43 @@
     const inp = (N.NODES[n.type].inputs || []).find(i => i.k === k && i.t === 'float');
     return inp ? { n, inp } : null;
   }
-  const usable = (g, c) => !!findInput(g, c.id, c.k, c.t) && !linkedIn(g, c.id, c.k);
+  const second = c => ({ id: c.id2, k: c.k2, t: c.t2 });
+  const free = (g, id, k, t) => !!findInput(g, id, k, t) && !linkedIn(g, id, k);
+  const usable = (g, c) => free(g, c.id, c.k, c.t) && (c.kind !== 'xy' || free(g, c.id2, c.k2, c.t2));
   const liveControls = () => ctlList(liveGraph).filter(c => usable(liveGraph, c));
   function targetLabel(id, k, type, g) {
     const f = (g && findInput(g, id, k, type)) || findInput(graph, id, k, type) || findInput(liveGraph, id, k, type);
     return f ? `${N.NODES[f.n.type].title} · ${f.inp.label}` : '(nodo borrado)';
   }
+  const ctlLabel = (c, g) => c.name || (c.kind === 'xy' ? `${targetLabel(c.id, c.k, c.t, g)} × ${targetLabel(c.id2, c.k2, c.t2, g)}` : targetLabel(c.id, c.k, c.t, g));
+  // the range a control moves in (its own lo/hi, or the full slider range)
+  function ctlRange(c, y) {
+    const f = findInput(liveGraph, y ? c.id2 : c.id, y ? c.k2 : c.k, y ? c.t2 : c.t) || findInput(graph, y ? c.id2 : c.id, y ? c.k2 : c.k, y ? c.t2 : c.t);
+    if (!f) return null;
+    const lo = y ? c.lo2 : c.lo, hi = y ? c.hi2 : c.hi;
+    return { f, lo: Number.isFinite(lo) ? lo : f.inp.min, hi: Number.isFinite(hi) ? hi : f.inp.max };
+  }
+  const curVal = f => (f.n.v && f.n.v[f.inp.k] !== undefined ? f.n.v[f.inp.k] : f.inp.v);
+  function ctlNorm(c, y) {
+    const r = ctlRange(c, y);
+    return r ? Math.min(1, Math.max(0, (curVal(r.f) - r.lo) / ((r.hi - r.lo) || 1))) : 0;
+  }
+  function ctlSet(c, norm, y) {
+    const r = ctlRange(c, y);
+    if (!r) return;
+    setAbs(y ? c.id2 : c.id, y ? c.k2 : c.k, y ? c.t2 : c.t, r.lo + Math.min(1, Math.max(0, +norm || 0)) * (r.hi - r.lo));
+  }
+  // momentary buttons: jump to a value while pressed, back on release
+  const pressed = new Map();
+  const ctlKey = c => `${c.id}.${c.k}`;
+  function ctlPress(c, on) {
+    const r = ctlRange(c);
+    if (!r) return;
+    const key = ctlKey(c);
+    if (on && !pressed.has(key)) { pressed.set(key, curVal(r.f)); setAbs(c.id, c.k, c.t, Number.isFinite(c.to) ? c.to : r.hi); }
+    else if (!on && pressed.has(key)) { setAbs(c.id, c.k, c.t, pressed.get(key)); pressed.delete(key); }
+  }
+  const ctlValue = c => c.kind === 'xy' ? [ctlNorm(c), ctlNorm(c, true)] : c.kind === 'button' ? (pressed.has(ctlKey(c)) ? 1 : 0) : ctlNorm(c);
   function normOf(id, k, type) {
     const f = findInput(liveGraph, id, k, type) || findInput(graph, id, k, type);
     if (!f) return 0;
@@ -991,18 +1037,26 @@
     try { localStorage.removeItem(CTL_STORE); } catch (e) { /* ignore */ }
     save();
   })();
+  // the patch on air is the one being edited (same nodes) -> keep its controls in sync
+  const sameNodes = () => liveGraph !== graph && JSON.stringify(liveGraph.nodes.map(n => [n.id, n.type])) === JSON.stringify(graph.nodes.map(n => [n.id, n.type]));
+  function ctlChanged() {
+    if (sameNodes()) liveGraph.ctl = clone(ctlList(graph));
+    save(); remember(); pushState();
+  }
+  const hasCtl = (c, id, k) => (c.id === id && c.k === k) || (c.kind === 'xy' && c.id2 === id && c.k2 === k);
   function toggleControl(id, k) {
     const n = graph.nodes.find(m => m.id === id);
     if (!n) return;
     const list = ctlList(graph).slice();
-    const i = list.findIndex(c => c.id === id && c.k === k);
+    const i = list.findIndex(c => hasCtl(c, id, k));
     if (i >= 0) list.splice(i, 1);
     else if (list.length >= 8) { toast('Este patch ya tiene 8 controles: quitá alguno primero', true); return; }
     else list.push({ id, k, t: n.type });
     graph.ctl = list;
     // same node on air -> it shows up (or goes away) on the phone right now
-    if (liveGraph !== graph) {
-      const lc = ctlList(liveGraph).filter(c => !(c.id === id && c.k === k));
+    if (sameNodes()) liveGraph.ctl = clone(list);
+    else if (liveGraph !== graph) {
+      const lc = ctlList(liveGraph).filter(c => !hasCtl(c, id, k));
       if (i < 0 && findInput(liveGraph, id, k, n.type) && lc.length < 8) lc.push({ id, k, t: n.type });
       liveGraph.ctl = lc;
     }
@@ -1012,21 +1066,26 @@
   // Move a value from outside (phone fader, MIDI knob): 0–1 across the slider range.
   // Changes the editor AND what is on air, so it works live without pressing "Al aire".
   let liveDirty = false;
-  function applyControl(id, k, norm, type) {
-    norm = Math.min(1, Math.max(0, +norm || 0));
+  function setAbs(id, k, type, v) {
     for (const g of liveGraph === graph ? [graph] : [graph, liveGraph]) {
       const f = findInput(g, id, k, type);
       if (!f) continue;
-      let v = f.inp.min + norm * (f.inp.max - f.inp.min);
-      if (f.inp.step) v = Math.round(v / f.inp.step) * f.inp.step;
-      f.n.v = { ...(f.n.v || {}), [k]: v };
+      let x = v;   // a control's own range may go beyond the slider
+      if (f.inp.step) x = Math.round(x / f.inp.step) * f.inp.step;
+      f.n.v = { ...(f.n.v || {}), [k]: x };
       if (g === graph) {
-        renderer.setValue(N.uniformName(id, k), v);
-        const r = els.get(id); if (r && r.nums[k]) r.nums[k].setDisplay(v);
+        renderer.setValue(N.uniformName(id, k), x);
+        const r = els.get(id); if (r && r.nums[k]) r.nums[k].setDisplay(x);
         save();
       }
     }
     liveDirty = true;
+  }
+  function applyControl(id, k, norm, type) {
+    const c = liveControls().find(x => x.id === id && x.k === k && (x.kind || 'fader') === 'fader');
+    if (c) { ctlSet(c, norm); return; }
+    const f = findInput(liveGraph, id, k, type) || findInput(graph, id, k, type);
+    if (f) setAbs(id, k, type, f.inp.min + Math.min(1, Math.max(0, +norm || 0)) * (f.inp.max - f.inp.min));
   }
   function flushLive() {
     if (!liveDirty) return;
@@ -1041,13 +1100,50 @@
     list.textContent = '';
     const ctl = ctlList(graph);
     if (!ctl.length) { list.append(el('p', 'dim', 'Este patch todavía no tiene controles: clic derecho sobre un valor → «Al control». Cada patch y cada escena guarda los suyos.')); return; }
+    const numIn = (val, ph, on) => {
+      const x = el('input', 'ctl-num'); x.type = 'number'; x.step = 'any'; x.placeholder = ph;
+      if (Number.isFinite(val)) x.value = String(Math.round(val * 1000) / 1000);
+      x.addEventListener('change', () => { const v = parseFloat(x.value); on(Number.isFinite(v) ? v : undefined); ctlChanged(); });
+      return x;
+    };
     ctl.forEach((c, i) => {
       const row = el('div', 'ctl-row');
       const off = !usable(liveGraph, c);
-      row.append(el('b', '', String(i + 1)), el('span', '', targetLabel(c.id, c.k, c.t, graph) + (off ? ' · (no está al aire)' : '')));
       if (off) row.classList.add('is-off');
-      const x = el('button', '', '×'); x.title = 'Quitar';
-      x.addEventListener('click', () => toggleControl(c.id, c.k));
+      row.append(el('b', '', String(i + 1)));
+      const name = el('input', 'ctl-name'); name.value = c.name || ''; name.placeholder = ctlLabel({ ...c, name: '' }, graph) + (off ? ' (no está al aire)' : '');
+      name.title = name.placeholder;
+      name.addEventListener('change', () => { c.name = name.value.trim().slice(0, 40) || undefined; ctlChanged(); });
+      row.append(name);
+      const kind = c.kind || 'fader';
+      if (kind === 'xy') {
+        const sp = el('button', 'lab-mini', 'Separar'); sp.title = 'Volver a dos faders';
+        sp.addEventListener('click', () => {
+          ctl.splice(i, 1, { id: c.id, k: c.k, t: c.t, lo: c.lo, hi: c.hi }, { id: c.id2, k: c.k2, t: c.t2, lo: c.lo2, hi: c.hi2 });
+          graph.ctl = ctl; ctlChanged(); paintControls();
+        });
+        row.append(el('span', 'ctl-kind', 'pad XY'), sp);
+      } else {
+        const sel = el('select', 'ctl-kind');
+        [['fader', 'fader'], ['button', 'botón']].forEach(([v, l]) => { const o = el('option', '', l); o.value = v; sel.append(o); });
+        sel.value = kind;
+        sel.addEventListener('change', () => { c.kind = sel.value === 'fader' ? undefined : sel.value; ctlChanged(); paintControls(); });
+        row.append(sel);
+        const r = ctlRange(c);
+        if (kind === 'button') row.append(numIn(c.to, r ? 'al apretar: ' + r.hi : 'valor', v => { c.to = v; }));
+        else row.append(numIn(c.lo, r ? 'mín ' + r.f.inp.min : 'mín', v => { c.lo = v; }), numIn(c.hi, r ? 'máx ' + r.f.inp.max : 'máx', v => { c.hi = v; }));
+        const nx = ctl[i + 1];
+        if (kind === 'fader' && nx && (nx.kind || 'fader') === 'fader') {
+          const j = el('button', 'lab-mini', '⇄ XY'); j.title = 'Unir con el siguiente en un pad XY (X = este, Y = el siguiente)';
+          j.addEventListener('click', () => {
+            ctl.splice(i, 2, { kind: 'xy', id: c.id, k: c.k, t: c.t, lo: c.lo, hi: c.hi, id2: nx.id, k2: nx.k, t2: nx.t, lo2: nx.lo, hi2: nx.hi });
+            graph.ctl = ctl; ctlChanged(); paintControls();
+          });
+          row.append(j);
+        }
+      }
+      const x = el('button', 'ctl-x', '×'); x.title = 'Quitar';
+      x.addEventListener('click', () => { ctl.splice(i, 1); graph.ctl = ctl; ctlChanged(); rebuild(); paintControls(); });
       row.append(x); list.append(row);
     });
   }
@@ -1131,8 +1227,8 @@
     });
     peer.on('connection', conn => {
       conn.on('open', () => { conns.add(conn); remoteStatus(`${conns.size} celular(es) conectado(s)`); conn.send(fullState()); toast('📱 Celular conectado'); });
-      conn.on('data', remoteMsg);
-      const gone = () => { if (conns.delete(conn)) { remoteStatus(conns.size ? `${conns.size} celular(es) conectado(s)` : 'Celular desconectado · esperando…'); } };
+      conn.on('data', m => remoteMsg(m, conn));
+      const gone = () => { if (conn.mcall) { try { conn.mcall.close(); } catch (e) { /* closed */ } conn.mcall = null; } if (conns.delete(conn)) { remoteStatus(conns.size ? `${conns.size} celular(es) conectado(s)` : 'Celular desconectado · esperando…'); } };
       conn.on('close', gone); conn.on('error', gone);
     });
   }
@@ -1161,8 +1257,8 @@
   function fullState() {
     return {
       t: 'state',
-      controls: liveControls().map(c => ({ label: targetLabel(c.id, c.k, c.t, liveGraph), v: normOf(c.id, c.k, c.t) })),
-      scenes: Array.from({ length: 8 }, (_, i) => { const sc = scenes[i]; return { filled: !!sc, thumb: sc ? sc.thumb || '' : '', live: i === liveScene }; }),
+      controls: liveControls().map(c => ({ kind: c.kind || 'fader', label: ctlLabel(c, liveGraph), v: ctlValue(c) })),
+      scenes: Array.from({ length: 16 }, (_, i) => { const sc = scenes[i]; return { filled: !!sc, thumb: sc ? sc.thumb || '' : '', live: i === liveScene }; }),
       black: stage.black, bpm: Math.round(bpm), fade: opts.fade, direct: opts.direct,
     };
   }
@@ -1176,25 +1272,55 @@
   function pushValues(now) {
     if (!conns.size || now - valsAt < 200) return;
     valsAt = now;
-    const v = liveControls().map(c => Math.round(normOf(c.id, c.k, c.t) * 1000) / 1000);
-    const key = v.join(',');
+    const r3 = x => Math.round(x * 1000) / 1000;
+    const v = liveControls().map(c => { const x = ctlValue(c); return Array.isArray(x) ? x.map(r3) : r3(x); });
+    const key = JSON.stringify(v);
     if (key === lastVals) return;
     lastVals = key;
     conns.forEach(c => { try { c.send({ t: 'vals', v }); } catch (e) { /* closed */ } });
   }
   // Messages from the phone (data only, validated)
-  function remoteMsg(m) {
+  function remoteMsg(m, conn) {
     if (!m || typeof m !== 'object') return;
     const i = Number.isInteger(m.i) ? m.i : -1;
-    const lc = liveControls();
-    if (m.t === 'ctl' && lc[i] && typeof m.v === 'number') applyControl(lc[i].id, lc[i].k, m.v, lc[i].t);
-    else if (m.t === 'scene' && i >= 0 && i < 8) fireScene(i);
+    const lc = liveControls(), c = lc[i];
+    const num = x => typeof x === 'number' && Number.isFinite(x);
+    if (m.t === 'ctl' && c && num(m.v)) ctlSet(c, m.v);
+    else if (m.t === 'xy' && c && c.kind === 'xy' && num(m.x) && num(m.y)) { ctlSet(c, m.x); ctlSet(c, m.y, true); }
+    else if (m.t === 'btn' && c && c.kind === 'button') ctlPress(c, !!m.on);
+    else if (m.t === 'scene' && i >= 0 && i < 16) fireScene(i);
+    else if (m.t === 'step' && (m.d === 1 || m.d === -1)) stepScene(m.d);
+    else if (m.t === 'store' && i >= 0 && i < 16) storeScene(i);
     else if (m.t === 'go') goLive();
     else if (m.t === 'black') setBlack(!stage.black);
     else if (m.t === 'strobe') setStrobe(!!m.on);
     else if (m.t === 'tap') tap();
+    else if (m.t === 'random') { randomPatch(); goLive(); }
+    else if (m.t === 'vary') { varyPatch(); goLive(); }
+    else if (m.t === 'video' && conn) sendVideo(conn, !!m.on);
     else if (m.t === 'fade' && [0, 0.5, 1, 2, 4].includes(m.v)) { opts.fade = m.v; fadeSel.value = String(m.v); saveOpts(); pushState(); }
   }
+  // a small live video of what is on air, for the phone
+  function sendVideo(conn, on) {
+    if (conn.mcall) { try { conn.mcall.close(); } catch (e) { /* closed */ } conn.mcall = null; }
+    if (!on || !peer || !stage.canvas.captureStream) return;
+    try { conn.mcall = peer.call(conn.peer, stage.canvas.captureStream(24)); } catch (e) { conn.mcall = null; }
+  }
+
+  /* ── Random patches ─────────────────────────────────────── */
+  function randomPatch() {
+    graph = window.PudrusGenerate.generate({ audio: audio.on, bpm: !!opts.bpm });
+    selected.clear(); rebuild(); recompile(); save(); remember(); frameAll();
+    toast('🎲 Patch aleatorio' + (opts.direct ? '' : ' · Enter lo manda al aire') + ' · R otro · Shift+R variar');
+  }
+  function varyPatch() {
+    window.PudrusGenerate.vary(graph);
+    rebuild(); recompile(); save(); remember();
+    toast('✨ Valores variados');
+  }
+  const rb = $('#btnRandom');
+  rb.addEventListener('click', e => { if (e.shiftKey) varyPatch(); else randomPatch(); });
+  rb.addEventListener('contextmenu', e => { e.preventDefault(); varyPatch(); });
 
   /* ── Main loop ─────────────────────────────────────────── */
   let last = performance.now(), frameN = 0;
@@ -1231,5 +1357,5 @@
   requestAnimationFrame(loop);
   // fonts change node sizes -> redraw links once they are in
   if (document.fonts) document.fonts.ready.then(() => drawLinks());
-  window.__nodesEditor = { get graph() { return graph; }, get compiled() { return compiled; }, get liveGraph() { return liveGraph; }, stage, addNode, connect, removeNodes, undo, redo, goLive, modulate, set valueTarget(v) { valueTarget = v; }, setDirect, storeScene, fireScene, openScene, setThumbs, get scenes() { return scenes; }, get controls() { return ctlList(graph); }, liveControls, toggleControl, applyControl, onMidi, midiLearn, setLearning(t) { learning = t; }, get midiMap() { return midiMap; }, remoteMsg, fullState, tap, get bpm() { return bpm; }, setBlack, setStrobe };
+  window.__nodesEditor = { get graph() { return graph; }, get compiled() { return compiled; }, get liveGraph() { return liveGraph; }, stage, addNode, connect, removeNodes, undo, redo, goLive, modulate, set valueTarget(v) { valueTarget = v; }, setDirect, storeScene, fireScene, openScene, setThumbs, get scenes() { return scenes; }, get controls() { return ctlList(graph); }, liveControls, ctlValue, randomPatch, varyPatch, stepScene, paintControls, toggleControl, applyControl, onMidi, midiLearn, setLearning(t) { learning = t; }, get midiMap() { return midiMap; }, remoteMsg, fullState, tap, get bpm() { return bpm; }, setBlack, setStrobe };
 })();

@@ -195,7 +195,7 @@ button { cursor: pointer; }
 
 /* ── Live controls / phone remote ── */
 .num.is-ctl { box-shadow: inset 3px 0 0 #ff3fa4; }
-.lab-remote { width: 440px; }
+.lab-remote { width: 560px; max-width: calc(100vw - 16px); }
 .lab-remote p { margin: 2px 0 6px; line-height: 1.5; }
 .lab-remote .dim, .lab-pop .dim { color: var(--dim); }
 .lab-remote a { color: var(--accent); word-break: break-all; font-size: 11px; }
@@ -217,3 +217,12 @@ button { cursor: pointer; }
 .nd-file { width: 100%; margin: 0; height: 24px; border-radius: 4px; border: 1px dashed #555; background: #11111a; text-align: left; padding: 0 8px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .nd-file:hover { border-color: var(--accent); color: var(--accent); }
 .ctl-row.is-off span { color: var(--dim); }
+.ctl-row { gap: 6px; }
+.ctl-name { flex: 1; min-width: 0; height: 24px; padding: 0 6px; border-radius: 4px; border: 1px solid var(--line); background: var(--panel2); }
+.ctl-kind { height: 24px; border-radius: 4px; border: 1px solid var(--line); background: var(--panel2); color: var(--dim); padding: 0 4px; }
+span.ctl-kind { display: inline-flex; align-items: center; color: #ff3fa4; }
+.ctl-num { width: 64px; height: 24px; padding: 0 4px; border-radius: 4px; border: 1px solid var(--line); background: var(--panel2); }
+.ctl-row button.lab-mini { color: var(--text); font-size: 11px; }
+.ctl-row .ctl-x { background: none; border: 0; color: var(--dim); font-size: 16px; }
+.scene-page { width: 42px; height: 50px; border-radius: 6px; border: 1px solid var(--line); background: rgba(21,21,29,0.9); color: var(--dim); font-size: 10px; }
+.scene-page:hover { color: var(--accent); border-color: var(--accent); }
