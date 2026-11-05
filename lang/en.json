@@ -93,7 +93,10 @@
       "name": "Camera FX",
       "desc": "Live camera effects: glitch, VHS, dither, halftone, ASCII, neon and more. Photos and video."
     },
-    "new": "New"
+    "new": "New",
+    "kindTool": "TOOL",
+    "kindGenerator": "GENERATOR",
+    "kindLive": "LIVE"
   },
   "pixel": {
     "name": "⟆ Pixel Sorter",
@@ -211,10 +214,10 @@
       "sites": "Sites",
       "turbulence": "Turbulence",
       "scale": "Scale",
-      "a": "Param A",
-      "b": "Param B",
-      "c": "Param C",
-      "d": "Param D",
+      "a": "Shape A",
+      "b": "Shape B",
+      "c": "Shape C",
+      "d": "Shape D",
       "iterations": "Iterations",
       "octaves": "Octaves",
       "persistence": "Persistence",
@@ -226,7 +229,7 @@
     },
     "desc": "Generative patterns: noise, flow fields, Voronoi and attractors. Animated.",
     "noise": "Noise",
-    "flow": "Flow Field",
+    "flow": "Flow field",
     "attractor": "Attractor",
     "palEmber": "Ember",
     "palMono": "Mono",
@@ -347,7 +350,7 @@
     "setStandard": "Standard"
   },
   "halftone": {
-    "mode": "Halftone Mode",
+    "mode": "Mode",
     "shape": "Shape",
     "invert": "Invert",
     "name": "◉ Halftone",
@@ -376,7 +379,7 @@
     "p1": "PUDRUS.XYZ is a creative suite that runs locally in your browser: your images never leave your device.",
     "p2": "Built with vanilla JavaScript. No frameworks, no accounts.",
     "start": "Start Creating",
-    "p3": "This project was created by Fercat, a musician, visual artist and digital creator.",
+    "p3": "This project was created by Fercat, musician, visual artist and digital creator.",
     "portfolio": "Check out my work",
     "f1Title": "100% private",
     "f1Text": "Your images are processed on your device and never leave it.",

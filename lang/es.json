@@ -46,8 +46,8 @@
     "item14": "Integración de IA en procesos creativos"
   },
   "tools": {
-    "sectionTag": "◈ 01 — Tools",
-    "title": "Visual Processing Suite",
+    "sectionTag": "◈ 01 — Herramientas",
+    "title": "Suite de procesamiento visual",
     "desc": "Cada herramienta corre en tu navegador. Sin subir archivos, sin instalar nada.",
     "pixel": {
       "name": "Pixel Sorter",
@@ -62,7 +62,7 @@
       "desc": "Separación RGB, desgarro, bloques corruptos y scanlines. Con presets y azar en un toque."
     },
     "constellation": {
-      "name": "Constellation",
+      "name": "Constelación",
       "desc": "Estrellas detectadas en los puntos brillantes u oscuros de tu foto, unidas en constelaciones reales."
     },
     "ascii": {
@@ -74,7 +74,7 @@
       "desc": "Tramas de puntos de imprenta: una tinta, CMYK o RGB, con ángulos de trama reales."
     },
     "triangulation": {
-      "name": "Triangulation",
+      "name": "Triangulación",
       "desc": "Reconstrucción low-poly que sigue los bordes de tu imagen."
     },
     "crt": {
@@ -93,7 +93,10 @@
       "name": "Cámara FX",
       "desc": "Efectos en vivo para la cámara: glitch, VHS, dither, halftone, ASCII, neón y más. Fotos y video."
     },
-    "new": "Nuevo"
+    "new": "Nuevo",
+    "kindTool": "HERRAMIENTA",
+    "kindGenerator": "GENERADOR",
+    "kindLive": "EN VIVO"
   },
   "pixel": {
     "name": "⟆ Pixel Sorter",
@@ -121,7 +124,7 @@
     "size": "Tamaño",
     "glow": "Brillo",
     "color": "Color",
-    "name": "✧ Constellation",
+    "name": "✧ Constelación",
     "desc": "Estrellas detectadas en los puntos brillantes u oscuros de tu imagen.",
     "dim": "Oscurecer imagen",
     "labels": "Coordenadas",
@@ -211,10 +214,10 @@
       "sites": "Sitios",
       "turbulence": "Turbulencia",
       "scale": "Escala",
-      "a": "Param A",
-      "b": "Param B",
-      "c": "Param C",
-      "d": "Param D",
+      "a": "Forma A",
+      "b": "Forma B",
+      "c": "Forma C",
+      "d": "Forma D",
       "iterations": "Iteraciones",
       "octaves": "Octavas",
       "persistence": "Persistencia",
@@ -226,7 +229,7 @@
     },
     "desc": "Patrones generativos: ruido, campos de flujo, Voronoi y atractores. Animados.",
     "noise": "Ruido",
-    "flow": "Flow Field",
+    "flow": "Campo de flujo",
     "attractor": "Atractor",
     "palEmber": "Brasa",
     "palMono": "Mono",
@@ -326,7 +329,7 @@
     "contrast": "Contraste",
     "brightness": "Brillo",
     "colorOriginal": "Colores Originales",
-    "colorCyan": "Cyan",
+    "colorCyan": "Cian",
     "colorGreen": "Terminal Verde",
     "charset": "Caracteres",
     "color": "Color",
@@ -347,7 +350,7 @@
     "setStandard": "Estándar"
   },
   "halftone": {
-    "mode": "Modo Halftone",
+    "mode": "Modo",
     "shape": "Forma",
     "invert": "Invertir",
     "name": "◉ Halftone",
@@ -371,12 +374,12 @@
     "shapeSquare": "Cuadrado"
   },
   "about": {
-    "sectionTag": "◈ 02 — About",
+    "sectionTag": "◈ 02 — Acerca de",
     "title": "Cómo funciona",
     "p1": "PUDRUS.XYZ es una suite creativa que corre localmente en tu navegador: tus imágenes nunca salen de tu dispositivo.",
     "p2": "Hecho con JavaScript puro. Sin frameworks ni cuentas.",
     "start": "Empezar a Crear",
-    "p3": "Este proyecto fue creado por Fercat, un musico, artista visual y creador digital.",
+    "p3": "Este proyecto fue creado por Fercat, músico, artista visual y creador digital.",
     "portfolio": "Mira mi trabajo",
     "f1Title": "100% privado",
     "f1Text": "Tus imágenes se procesan en tu dispositivo y nunca salen de él.",
@@ -388,7 +391,7 @@
   "footer": {
     "copyright": "© 2026 PUDRUS.XYZ",
     "donate": "Apoya este proyecto",
-    "note": "Jump into a digital disaster"
+    "note": "Sumergite en un desastre digital"
   },
   "shell": {
     "back": "← Herramientas",
