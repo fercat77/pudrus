@@ -162,6 +162,14 @@
         row.append(ta); body.append(row);
         continue;
       }
+      if (p.kind === 'video') {
+        const b = el('button', 'nd-file', n.p && n.p.name ? '🎞 ' + n.p.name : '🎞 Elegir video…');
+        b.title = 'MP4 o WebM (también podés soltar el archivo sobre el área de nodos). Se repite en loop, sin sonido.';
+        b.addEventListener('pointerdown', e => e.stopPropagation());
+        b.addEventListener('click', () => pickVideo(n));
+        row.append(b); body.append(row);
+        continue;
+      }
       if (p.kind === 'image') {
         const b = el('button', 'nd-file', n.p && n.p.name ? '🖼 ' + n.p.name : '🖼 Elegir imagen…');
         b.title = 'PNG con transparencia, JPG o WebP (también podés soltar el archivo sobre el área de nodos)';
@@ -479,6 +487,7 @@
       if (n.type === 'image' && id && !assets[id]) { try { const b = await N.assets.get(id); const d = b && await blobToDataURL(b); if (d) assets[id] = d; } catch (e) { /* missing */ } }
     }
     const blob = new Blob([JSON.stringify({ pudrusNodes: 1, graph, assets }, null, 1)], { type: 'application/json' });
+    if (graph.nodes.some(n => n.type === 'video' && n.p && n.p.vid)) toast('Ojo: los videos no viajan dentro del archivo (quedan sólo en este navegador)');
     const a = document.createElement('a'); a.download = `patch_${Date.now()}.pudrus.json`; a.href = URL.createObjectURL(blob); a.click();
     setTimeout(() => URL.revokeObjectURL(a.href), 5000);
   });
@@ -573,17 +582,32 @@
       toast('Imagen cargada: ' + file.name);
     } catch (e) { toast('No se pudo leer esa imagen', true); }
   }
+  const videoPick = el('input'); videoPick.type = 'file'; videoPick.accept = 'video/mp4,video/webm,video/quicktime,video/*'; videoPick.hidden = true;
+  document.body.append(videoPick);
+  function pickVideo(n) { pickFor = n; videoPick.click(); }
+  videoPick.addEventListener('change', () => { const f = videoPick.files[0]; videoPick.value = ''; if (f && pickFor) setVideo(pickFor, f); });
+  async function setVideo(n, file) {
+    if (file.size > 400e6) { toast('Ese video es muy pesado (máx. 400 MB)', true); return; }
+    try {
+      const id = 'vid-' + Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
+      await N.assets.put(id, file);
+      n.p = { ...(n.p || {}), vid: id, name: file.name.slice(0, 28) };
+      rebuild(); recompile(); save(); remember();
+      toast('Video cargado: ' + file.name);
+    } catch (e) { toast('No se pudo guardar ese video', true); }
+  }
   // drop image files on the workspace -> new Image node there
   work.addEventListener('dragover', e => { if ([...e.dataTransfer.items].some(i => i.kind === 'file')) { e.preventDefault(); e.dataTransfer.dropEffect = 'copy'; } });
   work.addEventListener('drop', e => {
-    const f = [...e.dataTransfer.files].find(x => /^image\//.test(x.type));
+    const f = [...e.dataTransfer.files].find(x => /^(image|video)\//.test(x.type));
     if (!f) return;
     e.preventDefault();
     const [wx, wy] = toWorld(e.clientX, e.clientY);
+    const kind = /^video\//.test(f.type) ? 'video' : 'image';
     selected.clear();
-    addNode('image', wx, wy);
+    addNode(kind, wx, wy);
     const n = graph.nodes[graph.nodes.length - 1];
-    if (n && n.type === 'image') setImage(n, f);
+    if (n && n.type === kind) (kind === 'video' ? setVideo : setImage)(n, f);
   });
 
   /* ── Keyboard ──────────────────────────────────────────── */
@@ -611,6 +635,7 @@
       const i = scenePage * 8 + (+e.code.slice(5) - 1);
       if (e.shiftKey) storeScene(i); else fireScene(i);
     }
+    else if (k === 'o' && !mod) { e.preventDefault(); setOverlayOn(!ov.on); }
     else if (k === 'r' && !mod) { e.preventDefault(); if (e.shiftKey) varyPatch(); else randomPatch(); }
   });
 
@@ -756,7 +781,7 @@
   /* ── Output window (second screen / projector) ─────────── */
   const channel = 'BroadcastChannel' in window ? new BroadcastChannel('pudrus-nodes') : null;
   function broadcast(msg) { if (channel) channel.postMessage(msg); }
-  if (channel) channel.onmessage = e => { if (e.data && e.data.type === 'hello') { broadcast({ type: 'live', graph: liveGraph, fade: 0 }); broadcast({ type: 'play', playing }); broadcastMaster(0); } };
+  if (channel) channel.onmessage = e => { if (e.data && e.data.type === 'hello') { broadcast({ type: 'live', graph: liveGraph, fade: 0 }); broadcast({ type: 'play', playing }); broadcastMaster(0); broadcast({ type: 'overlay', ov }); } };
   $('#btnOut').addEventListener('click', () => {
     const w = window.open('output.html', 'pudrus-output', 'width=960,height=540');
     if (!w) toast('El navegador bloqueó la ventana: permití las ventanas emergentes', true);
@@ -928,6 +953,8 @@
   }
 
   /* ── Master: black, strobe, tap tempo ───────────────────── */
+  const pvOv = el('canvas', 'pv-ov');   // overlay layer over the preview when working in Directo
+  preview.append(pvOv);
   const pvVeil = el('div', 'pv-veil');
   preview.append(pvVeil);
   function broadcastMaster(fade) { broadcast({ type: 'master', black: stage.black, strobe: stage.strobe, fade }); }
@@ -1260,6 +1287,7 @@
       controls: liveControls().map(c => ({ kind: c.kind || 'fader', label: ctlLabel(c, liveGraph), v: ctlValue(c) })),
       scenes: Array.from({ length: 16 }, (_, i) => { const sc = scenes[i]; return { filled: !!sc, thumb: sc ? sc.thumb || '' : '', live: i === liveScene }; }),
       black: stage.black, bpm: Math.round(bpm), fade: opts.fade, direct: opts.direct,
+      overlay: ov.items.length ? ov.on : null,
     };
   }
   let pushTimer = 0;
@@ -1296,6 +1324,7 @@
     else if (m.t === 'strobe') setStrobe(!!m.on);
     else if (m.t === 'tap') tap();
     else if (m.t === 'random') { randomPatch(); goLive(); }
+    else if (m.t === 'overlay') setOverlayOn(!ov.on);
     else if (m.t === 'vary') { varyPatch(); goLive(); }
     else if (m.t === 'video' && conn) sendVideo(conn, !!m.on);
     else if (m.t === 'fade' && [0, 0.5, 1, 2, 4].includes(m.v)) { opts.fade = m.v; fadeSel.value = String(m.v); saveOpts(); pushState(); }
@@ -1322,6 +1351,93 @@
   rb.addEventListener('click', e => { if (e.shiftKey) varyPatch(); else randomPatch(); });
   rb.addEventListener('contextmenu', e => { e.preventDefault(); varyPatch(); });
 
+  /* ── Overlay layer: logos / texts on top of every patch and scene ── */
+  const OV_STORE = 'pudrus_nodes_overlay_v1';
+  let ov = readJSON(OV_STORE, null);
+  if (!ov || !Array.isArray(ov.items)) ov = { on: true, items: [] };
+  const saveOv = () => { try { localStorage.setItem(OV_STORE, JSON.stringify(ov)); } catch (e) { /* ignore */ } };
+  let ovTimer = 0;
+  function ovChanged(now) {
+    stage.setOverlay(ov);
+    $('#btnOverlay').classList.toggle('is-on', ov.on && ov.items.some(i => i.on));
+    clearTimeout(ovTimer);
+    const send = () => { broadcast({ type: 'overlay', ov }); saveOv(); pushState(); };
+    if (now) send(); else ovTimer = setTimeout(send, 30);
+  }
+  function setOverlayOn(on) { ov.on = on; ovChanged(true); paintOverlayPanel(); toast(on ? 'Capa superior visible' : 'Capa superior oculta'); }
+  const OV_FX = [['none', 'sin efecto'], ['beat', 'late con el pulso'], ['bass', 'late con los graves'], ['spin', 'gira'], ['float', 'flota'], ['breathe', 'respira'], ['blink', 'parpadea al pulso'], ['glitch', 'glitch']];
+  const OV_BLEND = [['source-over', 'normal'], ['lighter', 'sumar'], ['screen', 'pantalla'], ['multiply', 'multiplicar'], ['difference', 'diferencia']];
+  const OV_FONTS = [['sans', 'sans negrita'], ['display', 'display'], ['serif', 'serif'], ['mono', 'mono'], ['hand', 'manuscrita']];
+  const ovPick = el('input'); ovPick.type = 'file'; ovPick.accept = 'image/png,image/jpeg,image/webp,image/gif,image/svg+xml'; ovPick.hidden = true;
+  document.body.append(ovPick);
+  ovPick.addEventListener('change', async () => {
+    const f = ovPick.files[0]; ovPick.value = '';
+    if (!f) return;
+    try {
+      const id = await storeImage(f);
+      ov.items.push({ on: true, kind: 'image', img: id, name: f.name.slice(0, 28), x: 0.88, y: 0.86, size: 0.16, rot: 0, opacity: 1, blend: 'source-over', fx: 'none', amount: 0.5 });
+      ov.on = true; ovChanged(true); paintOverlayPanel();
+    } catch (e) { toast('No se pudo leer esa imagen', true); }
+  });
+  function paintOverlayPanel() {
+    const list = $('#ovList'); if (!list) return;
+    $('#ovOn').checked = ov.on;
+    list.textContent = '';
+    if (!ov.items.length) list.append(el('p', 'dim', 'Agregá un logo (PNG con transparencia) o un texto: queda arriba de todo aunque cambies de patch o de escena.'));
+    ov.items.forEach((it, i) => {
+      const box = el('div', 'ov-item' + (it.on ? '' : ' is-off'));
+      const head = el('div', 'ov-head');
+      const chk = el('input'); chk.type = 'checkbox'; chk.checked = !!it.on; chk.title = 'Mostrar';
+      chk.addEventListener('change', () => { it.on = chk.checked; box.classList.toggle('is-off', !it.on); ovChanged(); });
+      head.append(chk);
+      if (it.kind === 'text') {
+        const t = el('input', 'ov-text'); t.value = it.text || ''; t.placeholder = 'Texto';
+        t.addEventListener('input', () => { it.text = t.value; ovChanged(); });
+        const c = el('input'); c.type = 'color'; c.value = it.color || '#ffffff';
+        c.addEventListener('input', () => { it.color = c.value; ovChanged(); });
+        const fo = el('select'); OV_FONTS.forEach(([v, l]) => { const o = el('option', '', l); o.value = v; fo.append(o); }); fo.value = it.font || 'sans';
+        fo.addEventListener('change', () => { it.font = fo.value; ovChanged(); });
+        head.append(t, c, fo);
+      } else head.append(el('span', 'ov-name', '🖼 ' + (it.name || 'imagen')));
+      const del = el('button', 'ctl-x', '×'); del.title = 'Quitar';
+      del.addEventListener('click', () => { ov.items.splice(i, 1); ovChanged(); paintOverlayPanel(); });
+      head.append(del);
+      box.append(head);
+      const grid = el('div', 'ov-grid');
+      const slider = (label, key, min, max, step, def) => {
+        const w = el('label', 'ov-sl'); w.append(el('span', '', label));
+        const r = el('input'); r.type = 'range'; r.min = min; r.max = max; r.step = step; r.value = Number.isFinite(it[key]) ? it[key] : def;
+        r.addEventListener('input', () => { it[key] = +r.value; ovChanged(); });
+        w.append(r); grid.append(w);
+      };
+      slider('X', 'x', 0, 1, 0.005, 0.5); slider('Y', 'y', 0, 1, 0.005, 0.5);
+      slider('Tamaño', 'size', 0.02, 1, 0.005, 0.15); slider('Giro °', 'rot', -180, 180, 1, 0);
+      slider('Opacidad', 'opacity', 0, 1, 0.01, 1); slider('Intensidad', 'amount', 0, 1, 0.01, 0.5);
+      const sel = (label, key, opts, def) => {
+        const w = el('label', 'ov-sl'); w.append(el('span', '', label));
+        const x = el('select'); opts.forEach(([v, l]) => { const o = el('option', '', l); o.value = v; x.append(o); }); x.value = it[key] || def;
+        x.addEventListener('change', () => { it[key] = x.value; ovChanged(); });
+        w.append(x); grid.append(w);
+      };
+      sel('Efecto', 'fx', OV_FX, 'none'); sel('Fusión', 'blend', OV_BLEND, 'source-over');
+      box.append(grid);
+      list.append(box);
+    });
+  }
+  $('#ovOn').addEventListener('change', e => setOverlayOn(e.target.checked));
+  $('#ovAddImg').addEventListener('click', () => ovPick.click());
+  $('#ovAddText').addEventListener('click', () => {
+    ov.items.push({ on: true, kind: 'text', text: 'PUDRUS', font: 'display', color: '#ffffff', x: 0.5, y: 0.88, size: 0.09, rot: 0, opacity: 0.9, blend: 'source-over', fx: 'none', amount: 0.5 });
+    ov.on = true; ovChanged(true); paintOverlayPanel();
+  });
+  $('#btnOverlay').addEventListener('click', e => {
+    e.stopPropagation();
+    const r = e.currentTarget.getBoundingClientRect();
+    paintOverlayPanel();
+    openPop($('#overlayPop'), r.left - 200, r.bottom + 4);
+  });
+  ovChanged(true);
+
   /* ── Main loop ─────────────────────────────────────────── */
   let last = performance.now(), frameN = 0;
   function loop(now) {
@@ -1336,6 +1452,12 @@
     grabShot();
     stage.render(time, a);   // on air (also what Foto/Grabar capture)
     // in Directo the preview IS what is on air: show black / strobe on it too
+    if (opts.direct && ov.on && ov.items.length) {
+      const pw = Math.round(preview.clientWidth * Math.min(2, devicePixelRatio)), ph = Math.round(preview.clientHeight * Math.min(2, devicePixelRatio));
+      if (pvOv.width !== pw || pvOv.height !== ph) { pvOv.width = pw; pvOv.height = ph; }
+      const c = pvOv.getContext('2d'); c.clearRect(0, 0, pw, ph);
+      N.drawOverlay(c, pw, ph, ov, time, a); pvOv.style.display = 'block';
+    } else if (pvOv.style.display !== 'none') pvOv.style.display = 'none';
     const vl = stage.veil, show = opts.direct && (vl.black > 0 || vl.flash);
     pvVeil.style.display = show ? 'block' : 'none';
     if (show) { pvVeil.style.background = vl.flash ? '#fff' : '#000'; pvVeil.style.opacity = vl.flash ? 1 : vl.black; }
@@ -1357,5 +1479,5 @@
   requestAnimationFrame(loop);
   // fonts change node sizes -> redraw links once they are in
   if (document.fonts) document.fonts.ready.then(() => drawLinks());
-  window.__nodesEditor = { get graph() { return graph; }, get compiled() { return compiled; }, get liveGraph() { return liveGraph; }, stage, addNode, connect, removeNodes, undo, redo, goLive, modulate, set valueTarget(v) { valueTarget = v; }, setDirect, storeScene, fireScene, openScene, setThumbs, get scenes() { return scenes; }, get controls() { return ctlList(graph); }, liveControls, ctlValue, randomPatch, varyPatch, stepScene, paintControls, toggleControl, applyControl, onMidi, midiLearn, setLearning(t) { learning = t; }, get midiMap() { return midiMap; }, remoteMsg, fullState, tap, get bpm() { return bpm; }, setBlack, setStrobe };
+  window.__nodesEditor = { get graph() { return graph; }, get compiled() { return compiled; }, get liveGraph() { return liveGraph; }, stage, addNode, connect, removeNodes, undo, redo, goLive, modulate, set valueTarget(v) { valueTarget = v; }, setDirect, storeScene, fireScene, openScene, setThumbs, get scenes() { return scenes; }, get controls() { return ctlList(graph); }, get ov() { return ov; }, setOverlayOn, paintOverlayPanel, liveControls, ctlValue, randomPatch, varyPatch, stepScene, paintControls, toggleControl, applyControl, onMidi, midiLearn, setLearning(t) { learning = t; }, get midiMap() { return midiMap; }, remoteMsg, fullState, tap, get bpm() { return bpm; }, setBlack, setStrobe };
 })();

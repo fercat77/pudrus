@@ -7,19 +7,12 @@
   <title>Salida — PUDRUS Lab</title>
   <style>
     html, body { margin: 0; height: 100%; background: #000; overflow: hidden; font: 12px ui-monospace, Menlo, Consolas, monospace; color: #ddd; }
-    #stage { position: fixed; left: 0; top: 0; width: 100vw; height: 100vh; transform-origin: 0 0; }
-    #stage canvas { position: absolute; inset: 0; display: block; width: 100%; height: 100%; }
-    #grid { position: absolute; inset: 0; z-index: 5; display: none; pointer-events: none;
-            border: 2px solid #fff; box-sizing: border-box;
-            background-image: linear-gradient(rgba(255,255,255,0.55) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.55) 1px, transparent 1px);
-            background-size: 10% 10%; background-position: -1px -1px; }
-    #grid::before, #grid::after { content: ''; position: absolute; left: 50%; top: 50%; width: 30%; aspect-ratio: 1; border: 2px solid #66ff33; border-radius: 50%; transform: translate(-50%, -50%); }
-    #grid::after { width: 2px; height: 100%; aspect-ratio: auto; border: 0; border-radius: 0; background: #66ff33; top: 0; transform: translateX(-50%); }
-    body.show-grid #grid { display: block; }
+    #src { position: fixed; left: 0; top: 0; width: 1px; height: 1px; overflow: hidden; opacity: 0; pointer-events: none; }
+    #surfaces { position: fixed; inset: 0; }
+    #surfaces canvas { position: absolute; left: 0; top: 0; transform-origin: 0 0; display: block; }
     #mask { position: fixed; inset: 0; width: 100vw; height: 100vh; z-index: 10; pointer-events: none; }
     #edit { position: fixed; inset: 0; z-index: 20; display: none; }
     body.editing #edit { display: block; }
-    body.editing.mode-corners #edit { cursor: default; }
     body.editing.mode-masks #edit { cursor: crosshair; }
     .h { position: absolute; width: 22px; height: 22px; margin: -11px 0 0 -11px; border-radius: 50%; border: 2px solid #66ff33; background: rgba(102,255,51,0.25); cursor: grab; box-sizing: border-box; touch-action: none; }
     .h.sel { background: #66ff33; }
@@ -29,14 +22,23 @@
     #outline polygon, #outline polyline { fill: rgba(255,63,164,0.12); stroke: #ff3fa4; stroke-width: 1.5; stroke-dasharray: 6 4; }
     #outline polygon.sel { fill: rgba(255,63,164,0.25); stroke-dasharray: none; }
     #outline polyline { fill: none; stroke-dasharray: none; }
-    #outline .frame { fill: none; stroke: #66ff33; stroke-width: 1.5; stroke-dasharray: none; }
+    #outline .frame { fill: rgba(102,255,51,0.06); stroke: #66ff33; stroke-width: 1.5; stroke-dasharray: 6 4; }
+    #outline .frame.sel { fill: none; stroke-dasharray: none; stroke-width: 2; }
+    #outline text { fill: #66ff33; font: 700 22px ui-monospace, monospace; }
     .panel { position: fixed; left: 50%; top: 14px; transform: translateX(-50%); z-index: 30; display: flex; flex-wrap: wrap; gap: 6px; align-items: center; justify-content: center;
              max-width: calc(100vw - 28px); padding: 8px; border-radius: 10px; background: rgba(15,15,22,0.92); border: 1px solid #333; }
     .panel button { height: 28px; padding: 0 10px; border-radius: 6px; border: 1px solid #333; background: #1d1d27; color: #ddd; font: inherit; cursor: pointer; }
     .panel button:hover { border-color: #666; }
     .panel button.on { border-color: #66ff33; color: #66ff33; }
     .panel .tip { width: 100%; text-align: center; color: #999; padding-top: 2px; }
+    .panel [hidden] { display: none; }
     .panel[hidden] { display: none; }
+    .surf-row { width: 100%; display: flex; gap: 10px; align-items: flex-start; justify-content: center; }
+    .surf-row[hidden] { display: none; }
+    #mini { width: 240px; height: 135px; border: 1px solid #333; border-radius: 6px; background: #000; cursor: move; touch-action: none; }
+    .surf-side { display: flex; flex-direction: column; gap: 6px; }
+    .surf-side .chips { display: flex; gap: 4px; flex-wrap: wrap; max-width: 260px; }
+    .surf-side small { color: #999; max-width: 260px; line-height: 1.4; }
     body.idle { cursor: none; }
     .hint { position: fixed; left: 50%; bottom: 20px; z-index: 40; transform: translateX(-50%); padding: 8px 14px; border-radius: 8px;
             background: rgba(0,0,0,0.7); color: #ccc; transition: opacity .4s; white-space: nowrap; }
@@ -44,14 +46,15 @@
   </style>
 </head>
 <body>
-<div id="stage"><div id="grid"></div></div>
+<div id="src"></div>
+<div id="surfaces"></div>
 <svg id="mask" xmlns="http://www.w3.org/2000/svg">
   <defs><mask id="mk" maskUnits="userSpaceOnUse" x="0" y="0" width="100%" height="100%"><rect id="mkBg" width="100%" height="100%" fill="black"/><g id="mkPolys"></g></mask></defs>
   <rect width="100%" height="100%" fill="black" mask="url(#mk)"/>
 </svg>
 <div id="edit"><svg id="outline" xmlns="http://www.w3.org/2000/svg"></svg></div>
 <div class="panel" id="panel" hidden>
-  <button id="mCorners" class="on">Esquinas</button>
+  <button id="mCorners" class="on">Superficies</button>
   <button id="mMasks">Máscaras</button>
   <button id="bGrid" title="Grilla de prueba (G)">Grilla</button>
   <span style="width:8px"></span>
@@ -59,57 +62,67 @@
   <button id="bDelMask" title="Borrar la máscara elegida (Supr)">Borrar máscara</button>
   <button id="bReset">Restablecer</button>
   <button id="bDone" class="on">Listo (M)</button>
+  <div class="surf-row" id="surfRow">
+    <canvas id="mini" width="480" height="270" title="Qué parte de la imagen muestra la superficie elegida: arrastrá el recuadro para moverlo, la esquina de abajo a la derecha para cambiar su tamaño"></canvas>
+    <div class="surf-side">
+      <div class="chips" id="chips"></div>
+      <div class="chips">
+        <button id="sAdd">＋ Superficie</button>
+        <button id="sDel">Borrar</button>
+        <button id="sFull" title="La superficie muestra la imagen completa">Recorte: todo</button>
+      </div>
+      <small>Cada superficie muestra un recorte de la imagen (recuadro verde) en el lugar que marcan sus 4 esquinas. Clic dentro de una superficie para elegirla.</small>
+    </div>
+  </div>
   <div class="tip" id="tip"></div>
 </div>
-<div class="hint" id="hint">Doble clic: pantalla completa · M: ajustar (esquinas y máscaras) · esperando al editor…</div>
-<script src="nodes.js?v=9"></script>
+<div class="hint" id="hint">Doble clic: pantalla completa · M: ajustar (superficies y máscaras) · esperando al editor…</div>
+<script src="nodes.js?v=11"></script>
 <script>
 (function () {
-  // Shows what is ON AIR in the editor (not the preview), with the same cross-fades.
+  // Shows what is ON AIR in the editor (not the preview), with the same cross-fades and overlay.
   const N = window.PudrusNodes;
   const $ = s => document.getElementById(s);
-  const stageEl = $('stage');
-  const stage = N.createStage(stageEl);
+  // the stage composites everything (layers, overlay, black/strobe) into one canvas;
+  // each mapping surface then shows a piece of it, warped into place
+  const stage = N.createStage($('src'), { composite: true });
   let time = 0, audio = [0, 0, 0, 0], playing = true, lastMsg = 0;
   const ch = new BroadcastChannel('pudrus-nodes');
 
-  function size() { stage.resize(Math.min(3840, innerWidth * devicePixelRatio), Math.min(2160, innerHeight * devicePixelRatio)); }
+  function size() { stage.resize(Math.min(2560, innerWidth * devicePixelRatio), Math.min(1440, innerHeight * devicePixelRatio)); }
   size();
 
   ch.onmessage = e => {
     const m = e.data || {};
     lastMsg = performance.now();
     try {
-      if (m.type === 'live') { stage.go(m.graph, m.fade || 0); $('hint').textContent = 'Doble clic: pantalla completa · M: ajustar (esquinas y máscaras)'; }
+      if (m.type === 'live') { stage.go(m.graph, m.fade || 0); $('hint').textContent = 'Doble clic: pantalla completa · M: ajustar (superficies y máscaras)'; }
       else if (m.type === 'direct') stage.direct(m.graph);
       else if (m.type === 'frame') { time = m.t; audio = m.audio; if (typeof m.beat === 'number') N.clock.beat = m.beat; }
       else if (m.type === 'master') { stage.setBlack(!!m.black, m.fade || 0); stage.setStrobe(!!m.strobe); }
+      else if (m.type === 'overlay') stage.setOverlay(m.ov);
       else if (m.type === 'play') playing = m.playing;
     } catch (err) { /* keep the last good shader */ }
   };
   ch.postMessage({ type: 'hello' });
 
-  let last = performance.now();
-  function loop(now) {
-    requestAnimationFrame(loop);
-    // keep running smoothly between editor messages (e.g. when the editor tab is in the background)
-    if (playing && now - lastMsg > 100) time += Math.min(0.1, (now - last) / 1000);
-    last = now;
-    stage.render(time, audio);
-  }
-  requestAnimationFrame(loop);
-
-  /* ── Mapping: corner pin + masks (saved in this browser, in 0–1 screen units) ── */
+  /* ── Mapping data (this browser, 0–1 screen units) ── */
   const STORE = 'pudrus_nodes_map_v1';
-  const DEF_CORNERS = [[0, 0], [1, 0], [1, 1], [0, 1]];   // TL, TR, BR, BL
-  let map = { corners: DEF_CORNERS.map(p => p.slice()), masks: [], invert: false };
+  const FULL = [[0, 0], [1, 0], [1, 1], [0, 1]];   // TL, TR, BR, BL
+  const newSurface = (crop, corners) => ({ crop: crop || [0, 0, 1, 1], corners: corners || FULL.map(p => p.slice()) });
+  let map = { surfaces: [newSurface()], masks: [], invert: false };
   try {
     const m = JSON.parse(localStorage.getItem(STORE) || 'null');
-    if (m && Array.isArray(m.corners) && m.corners.length === 4) map = { corners: m.corners, masks: Array.isArray(m.masks) ? m.masks : [], invert: !!m.invert };
+    if (m) {
+      const okS = s => s && Array.isArray(s.corners) && s.corners.length === 4 && Array.isArray(s.crop) && s.crop.length === 4;
+      const surfaces = Array.isArray(m.surfaces) ? m.surfaces.filter(okS) : (Array.isArray(m.corners) && m.corners.length === 4 ? [newSurface(null, m.corners)] : []);
+      map = { surfaces: surfaces.length ? surfaces : [newSurface()], masks: Array.isArray(m.masks) ? m.masks : [], invert: !!m.invert };
+    }
   } catch (e) { /* defaults */ }
   const save = () => { try { localStorage.setItem(STORE, JSON.stringify(map)); } catch (e) { /* ignore */ } };
+  let sel = 0;
 
-  // Projective transform taking the unit-square corners of the screen to the 4 dragged points
+  // Projective transform taking 4 source points to 4 destination points
   function homography(src, dst) {
     const A = [], b = [];
     for (let i = 0; i < 4; i++) {
@@ -117,7 +130,6 @@
       A.push([x, y, 1, 0, 0, 0, -u * x, -u * y]); b.push(u);
       A.push([0, 0, 0, x, y, 1, -v * x, -v * y]); b.push(v);
     }
-    // Gaussian elimination with partial pivoting
     for (let c = 0; c < 8; c++) {
       let p = c;
       for (let r = c + 1; r < 8; r++) if (Math.abs(A[r][c]) > Math.abs(A[p][c])) p = r;
@@ -132,14 +144,60 @@
     }
     return b.map((v, i) => v / A[i][i]);
   }
-  function applyCorners() {
-    const W = innerWidth, H = innerHeight;
-    const isId = map.corners.every((p, i) => Math.abs(p[0] - DEF_CORNERS[i][0]) < 1e-4 && Math.abs(p[1] - DEF_CORNERS[i][1]) < 1e-4);
-    if (isId) { stageEl.style.transform = ''; return; }
-    const h = homography(DEF_CORNERS.map(([x, y]) => [x * W, y * H]), map.corners.map(([x, y]) => [x * W, y * H]));
-    if (!h) return;
-    stageEl.style.transform = `matrix3d(${h[0]},${h[3]},0,${h[6]},${h[1]},${h[4]},0,${h[7]},0,0,1,0,${h[2]},${h[5]},0,1)`;
+
+  /* ── Surfaces: one canvas each, filled with its crop and warped with CSS ── */
+  const host = $('surfaces');
+  const surfEls = [];
+  function layout() {
+    while (surfEls.length < map.surfaces.length) { const c = document.createElement('canvas'); host.append(c); surfEls.push({ c, ctx: c.getContext('2d') }); }
+    while (surfEls.length > map.surfaces.length) surfEls.pop().c.remove();
+    const W = innerWidth, H = innerHeight, dpr = Math.min(2, devicePixelRatio || 1);
+    map.surfaces.forEach((s, i) => {
+      const e = surfEls[i];
+      const cw = Math.max(4, s.crop[2] * W), chh = Math.max(4, s.crop[3] * H);
+      const pw = Math.round(Math.min(2560, cw * dpr)), ph = Math.round(Math.min(1440, chh * dpr));
+      if (e.c.width !== pw || e.c.height !== ph) { e.c.width = pw; e.c.height = ph; }
+      e.c.style.width = cw + 'px'; e.c.style.height = chh + 'px';
+      const h = homography([[0, 0], [cw, 0], [cw, chh], [0, chh]], s.corners.map(([x, y]) => [x * W, y * H]));
+      e.c.style.transform = h ? `matrix3d(${h[0]},${h[3]},0,${h[6]},${h[1]},${h[4]},0,${h[7]},0,0,1,0,${h[2]},${h[5]},0,1)` : '';
+      e.c.style.zIndex = i + 1;
+    });
   }
+  function drawGrid(ctx, w, h, n) {
+    ctx.save();
+    ctx.strokeStyle = 'rgba(255,255,255,0.6)'; ctx.lineWidth = Math.max(1, w / 900);
+    ctx.beginPath();
+    for (let i = 1; i < 10; i++) { ctx.moveTo(w * i / 10, 0); ctx.lineTo(w * i / 10, h); ctx.moveTo(0, h * i / 10); ctx.lineTo(w, h * i / 10); }
+    ctx.stroke();
+    ctx.strokeStyle = '#fff'; ctx.lineWidth = Math.max(2, w / 300); ctx.strokeRect(1, 1, w - 2, h - 2);
+    ctx.strokeStyle = '#66ff33';
+    ctx.beginPath(); ctx.arc(w / 2, h / 2, Math.min(w, h) * 0.3, 0, Math.PI * 2); ctx.moveTo(w / 2, 0); ctx.lineTo(w / 2, h); ctx.stroke();
+    ctx.fillStyle = '#66ff33'; ctx.font = `700 ${Math.round(Math.min(w, h) * 0.18)}px ui-monospace, monospace`;
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(String(n), w / 2, h / 2);
+    ctx.restore();
+  }
+  function paintSurfaces() {
+    const src = stage.canvas, SW = src.width, SH = src.height;
+    map.surfaces.forEach((s, i) => {
+      const e = surfEls[i]; if (!e) return;
+      const [x, y, w, h] = s.crop;
+      e.ctx.drawImage(src, x * SW, y * SH, Math.max(1, w * SW), Math.max(1, h * SH), 0, 0, e.c.width, e.c.height);
+      if (grid) drawGrid(e.ctx, e.c.width, e.c.height, i + 1);
+    });
+  }
+
+  let last = performance.now();
+  function loop(now) {
+    requestAnimationFrame(loop);
+    // keep running smoothly between editor messages (e.g. when the editor tab is in the background)
+    if (playing && now - lastMsg > 100) time += Math.min(0.1, (now - last) / 1000);
+    last = now;
+    stage.render(time, audio);
+    paintSurfaces();
+    if (editing && mode === 'corners') paintMini();
+  }
+
+  /* ── Masks (screen space, over every surface) ── */
   const pts = poly => poly.map(([x, y]) => `${(x * innerWidth).toFixed(1)},${(y * innerHeight).toFixed(1)}`).join(' ');
   function applyMasks() {
     // normal: black only inside the shapes · inverted: black everywhere except inside them
@@ -152,7 +210,7 @@
   let editing = false, mode = 'corners', grid = false;
   let selCorner = 0, selMask = -1, selPt = -1, drawing = null;
   const tips = {
-    corners: 'Arrastrá las 4 esquinas hasta que la imagen calce · flechas: mover la esquina elegida (Shift ×10) · G: grilla',
+    corners: 'Arrastrá las 4 esquinas de la superficie elegida · flechas: mover la esquina elegida (Shift ×10) · Tab: siguiente superficie · G: grilla',
     masks: 'Clic: agregar puntos · Enter o clic en el primer punto: cerrar · Esc: cancelar · arrastrá un punto para moverlo · clic derecho en un punto: quitarlo · Supr: borrar máscara',
   };
   function setMode(m) {
@@ -162,8 +220,9 @@
     $('mCorners').classList.toggle('on', m === 'corners');
     $('mMasks').classList.toggle('on', m === 'masks');
     $('bInvert').hidden = $('bDelMask').hidden = m !== 'masks';
+    $('surfRow').hidden = m !== 'corners';
     $('tip').textContent = tips[m];
-    draw();
+    paintChips(); draw();
   }
   function setEditing(on) {
     editing = on; drawing = null;
@@ -172,13 +231,13 @@
     if (on) { document.body.classList.remove('idle'); setMode(mode); }
     else { setGrid(false); save(); }
   }
-  function setGrid(on) { grid = on; document.body.classList.toggle('show-grid', on); $('bGrid').classList.toggle('on', on); }
+  function setGrid(on) { grid = on; $('bGrid').classList.toggle('on', on); }
 
   const toPx = ([x, y]) => [x * innerWidth, y * innerHeight];
   const toN = (cx, cy) => [Math.min(1.5, Math.max(-0.5, cx / innerWidth)), Math.min(1.5, Math.max(-0.5, cy / innerHeight))];
-  function handle(cls, p, sel, onDown) {
+  function handle(cls, p, isSel, onDown) {
     const d = document.createElement('div');
-    d.className = 'h ' + cls + (sel ? ' sel' : '');
+    d.className = 'h ' + cls + (isSel ? ' sel' : '');
     const [x, y] = toPx(p); d.style.left = x + 'px'; d.style.top = y + 'px';
     d.addEventListener('pointerdown', onDown);
     edit.append(d);
@@ -194,8 +253,13 @@
   }
   function drawOutline() {
     let s = '';
-    if (mode === 'corners') s += `<polygon class="frame" points="${pts(map.corners)}"/>`;
-    else {
+    if (mode === 'corners') {
+      map.surfaces.forEach((sf, i) => {
+        s += `<polygon class="frame${i === sel ? ' sel' : ''}" points="${pts(sf.corners)}"/>`;
+        const c = sf.corners.reduce((a, p) => [a[0] + p[0] / 4, a[1] + p[1] / 4], [0, 0]);
+        if (map.surfaces.length > 1) s += `<text x="${c[0] * innerWidth}" y="${c[1] * innerHeight}" text-anchor="middle">${i + 1}</text>`;
+      });
+    } else {
       map.masks.forEach((m, i) => { s += `<polygon class="${i === selMask ? 'sel' : ''}" points="${pts(m)}"/>`; });
       if (drawing && drawing.length) s += `<polyline points="${pts(drawing)}"/>`;
     }
@@ -205,7 +269,8 @@
     edit.querySelectorAll('.h').forEach(h => h.remove());
     if (!editing) return;
     if (mode === 'corners') {
-      map.corners.forEach((p, i) => handle('', p, i === selCorner, e => { selCorner = i; edit.querySelectorAll('.h').forEach((h, j) => h.classList.toggle('sel', j === i)); drag(e, p, applyCorners); }));
+      const sf = map.surfaces[sel];
+      if (sf) sf.corners.forEach((p, i) => handle('', p, i === selCorner, e => { selCorner = i; edit.querySelectorAll('.h').forEach((h, j) => h.classList.toggle('sel', j === i)); drag(e, p, layout); }));
     } else {
       map.masks.forEach((m, mi) => m.forEach((p, pi) => {
         const h = handle('pt', p, mi === selMask && pi === selPt, e => {
@@ -231,14 +296,89 @@
     if (drawing && drawing.length >= 3) { map.masks.push(drawing); selMask = map.masks.length - 1; selPt = -1; applyMasks(); save(); }
     drawing = null; draw();
   }
+  // point inside polygon (to pick a surface by clicking it)
+  function inside(pt, poly) {
+    let c = false;
+    for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) {
+      const [xi, yi] = poly[i], [xj, yj] = poly[j];
+      if (((yi > pt[1]) !== (yj > pt[1])) && pt[0] < (xj - xi) * (pt[1] - yi) / (yj - yi) + xi) c = !c;
+    }
+    return c;
+  }
   edit.addEventListener('pointerdown', e => {
     if (e.target !== edit && e.target !== outline && e.target.closest('svg') !== outline) return;
-    if (mode !== 'masks' || e.button !== 0) return;
+    if (e.button !== 0) return;
+    const p = toN(e.clientX, e.clientY);
+    if (mode === 'corners') {
+      for (let k = 1; k <= map.surfaces.length; k++) {
+        const i = (sel + k) % map.surfaces.length;   // cycles through overlapping surfaces
+        if (inside(p, map.surfaces[i].corners)) { selectSurface(i); return; }
+      }
+      return;
+    }
     if (!drawing) { drawing = []; selMask = -1; selPt = -1; }
-    drawing.push(toN(e.clientX, e.clientY));
+    drawing.push(p);
     draw();
   });
   edit.addEventListener('contextmenu', e => e.preventDefault());
+
+  /* ── Surface list, crop mini-map ── */
+  function selectSurface(i) { sel = Math.max(0, Math.min(map.surfaces.length - 1, i)); selCorner = 0; paintChips(); draw(); }
+  function paintChips() {
+    const box = $('chips'); box.textContent = '';
+    map.surfaces.forEach((_, i) => {
+      const b = document.createElement('button'); b.textContent = 'Superficie ' + (i + 1);
+      b.classList.toggle('on', i === sel);
+      b.addEventListener('click', () => selectSurface(i));
+      box.append(b);
+    });
+    $('sDel').disabled = map.surfaces.length < 2;
+  }
+  $('sAdd').addEventListener('click', () => {
+    const k = map.surfaces.length;
+    const o = 0.08 * (k % 5);
+    map.surfaces.push(newSurface([0, 0, 1, 1], [[0.3 + o, 0.3 + o], [0.7 + o, 0.3 + o], [0.7 + o, 0.7 + o], [0.3 + o, 0.7 + o]]));
+    layout(); save(); selectSurface(map.surfaces.length - 1);
+  });
+  $('sDel').addEventListener('click', () => {
+    if (map.surfaces.length < 2) return;
+    map.surfaces.splice(sel, 1); layout(); save(); selectSurface(sel - 1);
+  });
+  $('sFull').addEventListener('click', () => { const sf = map.surfaces[sel]; if (!sf) return; sf.crop = [0, 0, 1, 1]; layout(); save(); });
+
+  const mini = $('mini'), mctx = mini.getContext('2d');
+  function paintMini() {
+    const W = mini.width, H = mini.height;
+    mctx.drawImage(stage.canvas, 0, 0, W, H);
+    map.surfaces.forEach((sf, i) => {
+      const [x, y, w, h] = sf.crop;
+      mctx.lineWidth = i === sel ? 4 : 2;
+      mctx.strokeStyle = i === sel ? '#66ff33' : 'rgba(102,255,51,0.45)';
+      mctx.setLineDash(i === sel ? [] : [8, 6]);
+      mctx.strokeRect(x * W, y * H, w * W, h * H);
+      if (i === sel) { mctx.fillStyle = '#66ff33'; mctx.fillRect((x + w) * W - 14, (y + h) * H - 14, 14, 14); }
+      mctx.fillStyle = '#66ff33'; mctx.font = '700 22px ui-monospace, monospace'; mctx.fillText(String(i + 1), x * W + 8, y * H + 26);
+    });
+    mctx.setLineDash([]);
+  }
+  mini.addEventListener('pointerdown', e => {
+    const sf = map.surfaces[sel]; if (!sf) return;
+    const r = mini.getBoundingClientRect();
+    const at = ev => [(ev.clientX - r.left) / r.width, (ev.clientY - r.top) / r.height];
+    const p0 = at(e), c0 = sf.crop.slice();
+    const nearCorner = Math.abs(p0[0] - (c0[0] + c0[2])) < 0.06 && Math.abs(p0[1] - (c0[1] + c0[3])) < 0.08;
+    if (!nearCorner && !(p0[0] >= c0[0] && p0[0] <= c0[0] + c0[2] && p0[1] >= c0[1] && p0[1] <= c0[1] + c0[3])) return;
+    mini.setPointerCapture(e.pointerId);
+    const clamp = (v, a, b) => Math.min(b, Math.max(a, v));
+    const move = ev => {
+      const p = at(ev), dx = p[0] - p0[0], dy = p[1] - p0[1];
+      if (nearCorner) sf.crop = [c0[0], c0[1], clamp(c0[2] + dx, 0.03, 1 - c0[0]), clamp(c0[3] + dy, 0.03, 1 - c0[1])];
+      else sf.crop = [clamp(c0[0] + dx, 0, 1 - c0[2]), clamp(c0[1] + dy, 0, 1 - c0[3]), c0[2], c0[3]];
+      layout();
+    };
+    const up = () => { mini.removeEventListener('pointermove', move); mini.removeEventListener('pointerup', up); save(); };
+    mini.addEventListener('pointermove', move); mini.addEventListener('pointerup', up);
+  });
 
   $('mCorners').addEventListener('click', () => setMode('corners'));
   $('mMasks').addEventListener('click', () => setMode('masks'));
@@ -246,9 +386,11 @@
   $('bInvert').addEventListener('click', () => { map.invert = !map.invert; $('bInvert').classList.toggle('on', map.invert); applyMasks(); save(); });
   $('bDelMask').addEventListener('click', () => deleteMask());
   $('bReset').addEventListener('click', () => {
-    if (mode === 'corners') { if (!confirm('¿Volver las esquinas a su lugar?')) return; map.corners = DEF_CORNERS.map(p => p.slice()); applyCorners(); }
-    else { if (!confirm('¿Borrar todas las máscaras?')) return; map.masks = []; map.invert = false; $('bInvert').classList.remove('on'); selMask = -1; applyMasks(); }
-    save(); draw();
+    if (mode === 'corners') {
+      if (!confirm('¿Volver a una sola superficie a pantalla completa?')) return;
+      map.surfaces = [newSurface()]; sel = 0; layout();
+    } else { if (!confirm('¿Borrar todas las máscaras?')) return; map.masks = []; map.invert = false; $('bInvert').classList.remove('on'); selMask = -1; applyMasks(); }
+    save(); paintChips(); draw();
   });
   $('bDone').addEventListener('click', () => setEditing(false));
   function deleteMask() {
@@ -262,7 +404,7 @@
     if (k === 'f') { toggleFull(); return; }
     if (!editing) return;
     if (k === 'g') setGrid(!grid);
-    else if (k === 'tab') { e.preventDefault(); setMode(mode === 'corners' ? 'masks' : 'corners'); }
+    else if (k === 'tab') { e.preventDefault(); if (mode === 'corners' && map.surfaces.length > 1 && !e.shiftKey) selectSurface((sel + 1) % map.surfaces.length); else setMode(mode === 'corners' ? 'masks' : 'corners'); }
     else if (k === 'escape') { if (drawing) { drawing = null; draw(); } else setEditing(false); }
     else if (k === 'enter' && drawing) finishMask();
     else if ((k === 'delete' || k === 'backspace') && mode === 'masks') { e.preventDefault(); deleteMask(); }
@@ -271,7 +413,7 @@
       const step = (e.shiftKey ? 10 : 1);
       const dx = k === 'arrowleft' ? -step : k === 'arrowright' ? step : 0, dy = k === 'arrowup' ? -step : k === 'arrowdown' ? step : 0;
       let p = null, after = null;
-      if (mode === 'corners') { p = map.corners[selCorner]; after = applyCorners; }
+      if (mode === 'corners') { const sf = map.surfaces[sel]; p = sf && sf.corners[selCorner]; after = layout; }
       else if (selMask >= 0 && selPt >= 0) { p = map.masks[selMask][selPt]; after = applyMasks; }
       if (!p) return;
       p[0] += dx / innerWidth; p[1] += dy / innerHeight;
@@ -281,14 +423,15 @@
 
   function toggleFull() { document.fullscreenElement ? document.exitFullscreen() : document.documentElement.requestFullscreen().catch(() => {}); }
   addEventListener('dblclick', () => { if (!editing) toggleFull(); });
-  addEventListener('resize', () => { size(); applyCorners(); applyMasks(); draw(); });
+  addEventListener('resize', () => { size(); layout(); applyMasks(); draw(); });
   let idle;
   addEventListener('pointermove', () => { document.body.classList.remove('idle'); clearTimeout(idle); idle = setTimeout(() => { if (!editing) document.body.classList.add('idle'); }, 2000); });
   idle = setTimeout(() => document.body.classList.add('idle'), 4000);
 
   $('bInvert').classList.toggle('on', map.invert);
-  applyCorners(); applyMasks();
-  window.__nodesOutput = { get map() { return map; }, setEditing, setMode, applyCorners, homography };
+  layout(); applyMasks();
+  requestAnimationFrame(loop);
+  window.__nodesOutput = { get map() { return map; }, setEditing, setMode, selectSurface, layout, homography, stage };
 })();
 </script>
 </body>

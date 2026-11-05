@@ -44,7 +44,8 @@
     .hint { color: var(--dim); font-size: 11px; margin-top: 6px; }
     .row { display: grid; grid-template-columns: 2fr 1fr 1fr 1fr; gap: 8px; margin-top: 12px; }
     .row button { height: 60px; font-size: 15px; font-weight: 700; }
-    .row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 8px; }
+    .row2 { display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; gap: 8px; margin-top: 8px; }
+    #ovl.on { border-color: var(--accent); color: var(--accent); }
     .row2 button { height: 44px; }
     #go { background: #4a1220; border-color: var(--red); }
     #go:active { background: var(--red); }
@@ -118,6 +119,7 @@
     <div class="row2">
       <button id="random">🎲 Aleatorio</button>
       <button id="vary">✨ Variar</button>
+      <button id="ovl" hidden>▤ Capa</button>
     </div>
     <h2>Fundido</h2>
     <div class="fades" id="fades"></div>
@@ -207,6 +209,8 @@
     renderScenes();
     $('black').classList.toggle('on', !!state.black);
     $('bpm').textContent = state.bpm;
+    $('ovl').hidden = state.overlay === null || state.overlay === undefined;
+    $('ovl').classList.toggle('on', !!state.overlay);
     const fd = $('fades'); fd.textContent = '';
     FADES.forEach(([v, l]) => { const b = el('button', state.fade === v ? 'on' : '', l); b.addEventListener('click', () => send({ t: 'fade', v })); fd.append(b); });
     const box = $('ctls'); box.textContent = '';
@@ -282,6 +286,7 @@
   $('tap').addEventListener('pointerdown', () => { send({ t: 'tap' }); buzz(); });
   $('random').addEventListener('click', () => { send({ t: 'random' }); buzz(); toast('🎲 nuevo patch al aire'); });
   $('vary').addEventListener('click', () => { send({ t: 'vary' }); buzz(); });
+  $('ovl').addEventListener('click', () => { send({ t: 'overlay' }); buzz(); });
   $('prev').addEventListener('click', () => { send({ t: 'step', d: -1 }); buzz(); });
   $('next').addEventListener('click', () => { send({ t: 'step', d: 1 }); buzz(); });
   $('pg0').addEventListener('click', () => { page = 0; if (state) renderScenes(); });

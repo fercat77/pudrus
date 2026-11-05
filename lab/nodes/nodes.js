@@ -67,6 +67,7 @@ vec3 cosPal(float t, vec3 a, vec3 b, vec3 c, vec3 d){ return a + b * cos(6.28318
   const texGLSL = (I, O, P, id, tint) => {
     const q = `_q${id}`, t = `_t${id}`;
     return `vec2 ${q} = ${I.uv} / max(${I.size}, 1e-3); ${q}.x /= u_${id}_aspect; ${q} = ${q} * vec2(1.0, -1.0) + 0.5;` +
+      (P.mirror === 'yes' ? ` ${q}.x = 1.0 - ${q}.x;` : '') +
       (P.repeat === 'yes' ? ` ${q} = fract(${q});` : '') +
       ` vec4 ${t} = texture2D(u_${id}_tex, ${q}) * step(0.0, ${q}.x) * step(${q}.x, 1.0) * step(0.0, ${q}.y) * step(${q}.y, 1.0);` +
       ` vec3 ${O.c} = ${tint ? `${tint} * ` : ''}${t}.rgb; float ${O.a} = ${t}.a * ${I.opacity};`;
@@ -121,6 +122,20 @@ vec3 cosPal(float t, vec3 a, vec3 b, vec3 c, vec3 d){ return a + b * cos(6.28318
                { k: 'repeat', label: 'Repetir', v: 'no', options: [['no', 'no'], ['yes', 'sí (mosaico)']] }],
       outputs: [['c', 'color', 'Color'], ['a', 'float', 'Alfa']],
       glsl: (I, O, P, id) => texGLSL(I, O, P, id, I.color) },
+
+    camera: { title: 'Cámara', cat: 'Entrada', tex: true,
+      inputs: [UV, F('size', 'Tamaño', 1, 0.05, 3), F('opacity', 'Opacidad', 1, 0, 1)],
+      params: [{ k: 'mirror', label: 'Espejo', v: 'yes', options: [['yes', 'sí'], ['no', 'no']] },
+               { k: 'repeat', label: 'Repetir', v: 'no', options: [['no', 'no'], ['yes', 'sí (mosaico)']] }],
+      outputs: [['c', 'color', 'Color'], ['a', 'float', 'Alfa']],
+      glsl: (I, O, P, id) => texGLSL(I, O, P, id) },
+    video: { title: 'Video', cat: 'Entrada', tex: true,
+      inputs: [UV, F('size', 'Tamaño', 1, 0.05, 3), F('opacity', 'Opacidad', 1, 0, 1)],
+      params: [{ k: 'vid', label: 'Video', kind: 'video', v: '' },
+               { k: 'speed', label: 'Velocidad', v: '1', options: [['0.25', '×0,25'], ['0.5', '×0,5'], ['1', '×1'], ['2', '×2']] },
+               { k: 'repeat', label: 'Repetir', v: 'no', options: [['no', 'no'], ['yes', 'sí (mosaico)']] }],
+      outputs: [['c', 'color', 'Color'], ['a', 'float', 'Alfa']],
+      glsl: (I, O, P, id) => texGLSL(I, O, P, id) },
 
     /* Generar */
     noise: { title: 'Ruido', cat: 'Generar',
@@ -197,6 +212,10 @@ vec3 cosPal(float t, vec3 a, vec3 b, vec3 c, vec3 d){ return a + b * cos(6.28318
       inputs: [UV, F('amount', 'Cantidad', 0.2, 0, 2), F('scale', 'Escala', 3, 0.1, 20), F('speed', 'Velocidad', 0.3, 0, 3)],
       outputs: [['uv', 'vec2', 'Coordenadas']],
       glsl: (I, O) => `vec2 ${O.uv} = ${I.uv} + (vec2(vnoise(${I.uv} * ${I.scale} + u_time * ${I.speed}), vnoise(${I.uv} * ${I.scale} - u_time * ${I.speed} + 31.7)) - 0.5) * ${I.amount};` },
+    glitch: { title: 'Glitch', cat: 'Coordenadas',
+      inputs: [UV, F('amount', 'Cantidad', 0.3, 0, 1), F('rate', 'Cambios/seg', 8, 0.5, 30), F('bands', 'Franjas', 20, 2, 80, 1)],
+      outputs: [['uv', 'vec2', 'Coordenadas']],
+      glsl: (I, O, P, id) => `float _gt${id} = floor(u_time * ${I.rate}); float _gb${id} = floor((${I.uv}.y + 0.5) * ${I.bands}); float _gr${id} = hash21(vec2(_gb${id}, _gt${id})); vec2 ${O.uv} = ${I.uv} + vec2(step(1.0 - ${I.amount} * 0.7, _gr${id}) * (hash21(vec2(_gt${id}, _gb${id} + 1.7)) - 0.5) * ${I.amount}, 0.0);` },
     pixelate: { title: 'Pixelar', cat: 'Coordenadas',
       inputs: [UV, F('size', 'Tamaño', 0.02, 0.001, 0.3)],
       outputs: [['uv', 'vec2', 'Coordenadas']],
@@ -293,6 +312,10 @@ vec3 cosPal(float t, vec3 a, vec3 b, vec3 c, vec3 d){ return a + b * cos(6.28318
         { k: 'scan', label: 'Scanlines', v: 0, min: 0, max: 1 },
         { k: 'vignette', label: 'Viñeta', v: 0.3, min: 0, max: 1 },
         { k: 'grain', label: 'Grano', v: 0.05, min: 0, max: 1 },
+        { k: 'bloom', label: 'Brillo (bloom)', v: 0, min: 0, max: 1 },
+        { k: 'blur', label: 'Desenfoque', v: 0, min: 0, max: 1 },
+        { k: 'glitch', label: 'Glitch', v: 0, min: 0, max: 1 },
+        { k: 'flash', label: 'Flash al pulso', v: 0, min: 0, max: 1 },
       ],
       params: [{ k: 'react', label: 'Reacciona a', v: 'none', options: [['none', 'Nada'], ['level', 'Nivel de audio'], ['bass', 'Graves'], ['high', 'Agudos']] }],
       outputs: [],
@@ -419,12 +442,41 @@ varying vec2 v_uv;
 uniform sampler2D u_img;
 uniform vec2 u_res;
 uniform float u_time;
-uniform vec4 u_post;   // rgb split, scanlines, vignette, grain
+uniform vec4 u_post;    // rgb split, scanlines, vignette, grain
+uniform vec4 u_post2;   // bloom, blur, glitch, beat flash
+uniform float u_beat;
 float h(vec2 p){ p = fract(p * vec2(123.34, 456.21)); p += dot(p, p + 45.32); return fract(p.x * p.y); }
 void main(){
   vec2 uv = v_uv;
   float s = u_post.x * 0.012;
+  // glitch: some horizontal bands jump sideways, ~12 times per second
+  if (u_post2.z > 0.0) {
+    float tt = floor(u_time * 12.0), band = floor(uv.y * 24.0);
+    float on = step(1.0 - u_post2.z * 0.55, h(vec2(band, tt)));
+    uv.x = fract(uv.x + on * (h(vec2(tt, band + 3.1)) - 0.5) * 0.3 * u_post2.z);
+    s += on * u_post2.z * 0.03;
+  }
   vec3 c = vec3(texture2D(u_img, uv + vec2(s, 0.0)).r, texture2D(u_img, uv).g, texture2D(u_img, uv - vec2(s, 0.0)).b);
+  vec2 asp = vec2(u_res.y / u_res.x, 1.0);
+  // blur: 12 samples on a disc
+  if (u_post2.y > 0.0) {
+    vec3 acc = c;
+    for (int i = 0; i < 12; i++) {
+      float fi = float(i), r = sqrt((fi + 0.5) / 12.0) * u_post2.y * 0.025;
+      acc += texture2D(u_img, uv + vec2(cos(fi * 2.39996), sin(fi * 2.39996)) * r * asp).rgb;
+    }
+    c = acc / 13.0;
+  }
+  // bloom: the bright parts glow around
+  if (u_post2.x > 0.0) {
+    vec3 g = vec3(0.0);
+    for (int i = 0; i < 16; i++) {
+      float fi = float(i), r = sqrt((fi + 0.5) / 16.0) * 0.07;
+      g += max(texture2D(u_img, uv + vec2(cos(fi * 2.39996), sin(fi * 2.39996)) * r * asp).rgb - 0.5, 0.0);
+    }
+    c += g / 16.0 * u_post2.x * 3.5;
+  }
+  c += u_post2.w * pow(1.0 - fract(u_beat), 4.0) * 0.6;
   c *= 1.0 - u_post.y * 0.5 * (0.5 + 0.5 * cos(uv.y * u_res.y * 2.0944));
   vec2 cc = uv - 0.5;
   c *= 1.0 - u_post.z * smoothstep(0.15, 0.75, dot(cc, cc) * 2.0);
@@ -479,8 +531,8 @@ void main(){
     hand: '700 150px "Segoe Script", "Comic Sans MS", cursive',
   };
   const textCache = new Map();
-  function textPicture(text, font) {
-    const key = (font || 'sans') + '|' + (text || '');
+  function textPicture(text, font, color) {
+    const key = (font || 'sans') + '|' + (color || '#fff') + '|' + (text || '');
     let c = textCache.get(key);
     if (c) return c;
     c = document.createElement('canvas');
@@ -490,14 +542,58 @@ void main(){
     const lh = 170, pad = 20;
     const w = Math.max(1, ...lines.map(l => Math.ceil(ctx.measureText(l).width)));
     c.width = Math.min(4096, w + pad * 2); c.height = Math.min(4096, lines.length * lh + pad * 2);
-    ctx.font = f; ctx.fillStyle = '#fff'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.font = f; ctx.fillStyle = color || '#fff'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
     lines.forEach((l, i) => ctx.fillText(l, c.width / 2, pad + lh * (i + 0.5)));
     c.key = key;
     if (textCache.size > 60) textCache.clear();
     textCache.set(key, c);
     return c;
   }
+  const media = (() => {
+    let cam = null;
+    const vids = new Map();
+    const mkVideo = () => {
+      const v = document.createElement('video');
+      v.muted = true; v.playsInline = true; v.loop = true;
+      // attached (but invisible) so every browser keeps decoding frames
+      v.style.cssText = 'position:fixed;left:0;top:0;width:2px;height:2px;opacity:0;pointer-events:none';
+      (document.body || document.documentElement).append(v);
+      return v;
+    };
+    function camera() {
+      if (!cam) {
+        cam = { el: mkVideo(), ok: false, err: false };
+        if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+          navigator.mediaDevices.getUserMedia({ video: { width: { ideal: 1280 }, height: { ideal: 720 } }, audio: false })
+            .then(st => { cam.el.srcObject = st; cam.el.play().catch(() => {}); cam.ok = true; })
+            .catch(() => { cam.err = true; });
+        } else cam.err = true;
+      }
+      return cam;
+    }
+    function video(id) {
+      let v = vids.get(id);
+      if (!v) {
+        v = { el: mkVideo(), ok: false };
+        vids.set(id, v);
+        assets.get(id).then(b => {
+          if (!b) { setTimeout(() => { if (vids.get(id) === v) { v.el.remove(); vids.delete(id); } }, 1000); return; }
+          v.el.src = URL.createObjectURL(b); v.el.play().catch(() => {}); v.ok = true;
+        }).catch(() => {});
+      }
+      return v;
+    }
+    return { camera, video, get cameraState() { return cam ? (cam.ok ? 'ok' : cam.err ? 'error' : 'waiting') : 'off'; } };
+  })();
   function texSource(t) {
+    if (t.kind === 'camera' || t.kind === 'video') {
+      if (t.kind === 'video' && !t.p.vid) return null;
+      const m = t.kind === 'camera' ? media.camera() : media.video(t.p.vid);
+      const el = m.el;
+      if (t.kind === 'video') { const r = +t.p.speed || 1; if (el.playbackRate !== r) el.playbackRate = r; if (el.paused && m.ok) el.play().catch(() => {}); }
+      if (el.readyState < 2 || !el.videoWidth) return null;
+      return { src: el, key: t.kind + (t.p.vid || '') + ':' + el.currentTime, aspect: el.videoWidth / el.videoHeight };
+    }
     if (t.kind === 'image') {
       if (!t.p.img) return null;
       const e = assets.image(t.p.img);
@@ -572,7 +668,7 @@ void main(){
     const bindTextures = texBinder(gl);
     let textures = [];
     const post = program(POST);
-    const postU = ['u_img', 'u_res', 'u_time', 'u_post'].reduce((o, n) => (o[n] = gl.getUniformLocation(post, n), o), {});
+    const postU = ['u_img', 'u_res', 'u_time', 'u_post', 'u_post2', 'u_beat'].reduce((o, n) => (o[n] = gl.getUniformLocation(post, n), o), {});
 
     // Two render targets: this frame and the previous one (feedback)
     let targets = [], cur = 0, w = 0, h = 0;
@@ -649,6 +745,8 @@ void main(){
       gl.uniform2f(postU.u_res, w, h);
       gl.uniform1f(postU.u_time, time);
       gl.uniform4f(postU.u_post, postFx[0], postFx[1], postFx[2], postFx[3]);
+      gl.uniform4f(postU.u_post2, postFx[4] || 0, postFx[5] || 0, postFx[6] || 0, postFx[7] || 0);
+      gl.uniform1f(postU.u_beat, clock.beat);
       gl.drawArrays(gl.TRIANGLES, 0, 6);
       cur = 1 - cur;
     }
@@ -658,12 +756,13 @@ void main(){
   // Post-pass values for the Output node, optionally driven by the audio
   function postValues(graph, audio) {
     const out = graph.nodes.find(n => n.type === 'output');
-    if (!out) return [0, 0, 0, 0];
+    if (!out) return [0, 0, 0, 0, 0, 0, 0, 0];
     const v = { ...defaultsFor('output').v, ...(out.v || {}) };
     const react = (out.p && out.p.react) || 'none';
     const a = react === 'level' ? audio[0] : react === 'bass' ? audio[1] : react === 'high' ? audio[3] : 0;
     const boost = react === 'none' ? 1 : 0.4 + a * 2.2;
-    return [Math.min(1, v.rgb * boost), v.scan, v.vignette, Math.min(1, v.grain * boost)];
+    return [Math.min(1, v.rgb * boost), v.scan, v.vignette, Math.min(1, v.grain * boost),
+            Math.min(1, (v.bloom || 0) * boost), v.blur || 0, Math.min(1, (v.glitch || 0) * boost), v.flash || 0];
   }
 
   // Push every widget value of the graph into the renderer
@@ -743,6 +842,47 @@ void main(){
     return { canvas, render, clear };
   }
 
+  /* ── Overlay layer ───────────────────────────────────────
+     ov = { on, items: [{ on, kind: 'image'|'text', img, text, font, color, x, y, size, rot,
+            opacity, blend, fx, amount }] } — positions 0–1, size = height on screen */
+  function drawOverlay(ctx, W, H, ov, time, audio) {
+    if (!ov || !ov.on || !Array.isArray(ov.items)) return;
+    const beat = clock.beat;
+    for (const it of ov.items) {
+      if (!it || !it.on) continue;
+      let src;
+      if (it.kind === 'image') { const e = it.img ? assets.image(it.img) : null; if (!e || !e.img) continue; src = e.img; }
+      else src = textPicture(it.text || '', it.font, it.color);
+      const sw = src.naturalWidth || src.width, sh = src.naturalHeight || src.height;
+      if (!sw || !sh) continue;
+      const amt = Number.isFinite(it.amount) ? it.amount : 0.5;
+      let size = it.size || 0.15, op = Number.isFinite(it.opacity) ? it.opacity : 1, rot = (it.rot || 0) * Math.PI / 180, x = it.x ?? 0.5, y = it.y ?? 0.5;
+      const kick = Math.pow(1 - (beat % 1 + 1) % 1, 3);
+      if (it.fx === 'bass') size *= 1 + audio[1] * amt * 0.8;
+      else if (it.fx === 'beat') size *= 1 + kick * amt * 0.5;
+      else if (it.fx === 'spin') rot += time * amt * 2;
+      else if (it.fx === 'float') { x += Math.sin(time * 0.7) * 0.04 * amt; y += Math.cos(time * 0.93) * 0.04 * amt; rot += Math.sin(time * 0.5) * 0.15 * amt; }
+      else if (it.fx === 'blink') op *= Math.floor(beat * 2) % 2 ? 1 - amt : 1;
+      else if (it.fx === 'breathe') op *= 1 - amt * (0.5 + 0.5 * Math.sin(time * 1.6));
+      const h = size * H, w = h * sw / sh;
+      ctx.save();
+      ctx.globalAlpha = Math.max(0, Math.min(1, op));
+      ctx.globalCompositeOperation = it.blend || 'source-over';
+      ctx.translate(x * W, y * H); ctx.rotate(rot);
+      if (it.fx === 'glitch' && Math.random() < 0.15 + amt * 0.5) {
+        // a few slices jump sideways
+        let yy = 0;
+        while (yy < sh) {
+          const hh = Math.max(1, Math.round(sh * (0.05 + Math.random() * 0.2)));
+          const dx = Math.random() < amt ? (Math.random() - 0.5) * w * 0.25 * amt : 0;
+          ctx.drawImage(src, 0, yy, sw, Math.min(hh, sh - yy), -w / 2 + dx, -h / 2 + yy / sh * h, w, Math.min(hh, sh - yy) / sh * h);
+          yy += hh;
+        }
+      } else ctx.drawImage(src, -w / 2, -h / 2, w, h);
+      ctx.restore();
+    }
+  }
+
   /* ── Live stage: two patches, cross-faded ──────────────────────
      composite: true -> both layers are drawn into one visible 2D canvas (recordable);
      false -> two stacked WebGL canvases faded with CSS (cheaper, for the projector). */
@@ -759,8 +899,21 @@ void main(){
     let front = 0, fade = null;
     // master: fade to black and strobe, applied over everything that is on air
     const master = { black: 0, target: 0, speed: 2, strobe: false, last: performance.now() };
-    let veil = null;
-    if (!composite) { veil = document.createElement('div'); veil.style.cssText = 'position:absolute;inset:0;z-index:3;pointer-events:none;opacity:0;background:#000'; container.append(veil); }
+    let veil = null, ovCanvas = null, ovCtx = null, overlay = null, ovDrawn = false;
+    if (!composite) {
+      ovCanvas = document.createElement('canvas'); ovCanvas.className = 'stage-overlay';
+      ovCanvas.style.cssText = 'position:absolute;inset:0;width:100%;height:100%;z-index:3;pointer-events:none';
+      container.append(ovCanvas); ovCtx = ovCanvas.getContext('2d');
+      veil = document.createElement('div'); veil.style.cssText = 'position:absolute;inset:0;z-index:4;pointer-events:none;opacity:0;background:#000'; container.append(veil);
+    }
+    function paintOverlay(time, audio) {
+      if (composite) { drawOverlay(octx, out.width, out.height, overlay, time, audio); return; }
+      const show = overlay && overlay.on && overlay.items && overlay.items.some(i => i && i.on);
+      if (!show && !ovDrawn) return;
+      ovCtx.clearRect(0, 0, ovCanvas.width, ovCanvas.height);
+      ovDrawn = !!show;
+      if (show) drawOverlay(ovCtx, ovCanvas.width, ovCanvas.height, overlay, time, audio);
+    }
     function drawMaster() {
       const now = performance.now(), dt = Math.min(0.1, (now - master.last) / 1000); master.last = now;
       if (master.black !== master.target) {
@@ -795,7 +948,10 @@ void main(){
       resize(w, h) {
         layers.forEach(l => l.r.resize(w, h));
         if (out) { out.width = Math.round(w); out.height = Math.round(h); }
+        if (ovCanvas) { ovCanvas.width = Math.round(w); ovCanvas.height = Math.round(h); ovDrawn = true; }
       },
+      setOverlay(ov) { overlay = ov; },
+      get overlay() { return overlay; },
       get canvas() { return out || layers[front].c; },
       get graph() { return layers[front].graph; },
       // replace what is live right now (no fade): used by "direct" mode
@@ -827,6 +983,7 @@ void main(){
           }
           paint();
         }
+        paintOverlay(time, audio);
         drawMaster();
       },
       get fading() { return !!fade; },
@@ -840,5 +997,5 @@ void main(){
     };
   }
 
-  window.PudrusNodes = { clock, assets, NODES, CATEGORIES, compile, createRenderer, createThumbs, createStage, structureKey, uniformValues, defaultsFor, dependsOn, uniformName, postValues, applyValues };
+  window.PudrusNodes = { clock, assets, media, drawOverlay, textPicture, NODES, CATEGORIES, compile, createRenderer, createThumbs, createStage, structureKey, uniformValues, defaultsFor, dependsOn, uniformName, postValues, applyValues };
 })();

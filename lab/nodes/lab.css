@@ -226,3 +226,24 @@ span.ctl-kind { display: inline-flex; align-items: center; color: #ff3fa4; }
 .ctl-row .ctl-x { background: none; border: 0; color: var(--dim); font-size: 16px; }
 .scene-page { width: 42px; height: 50px; border-radius: 6px; border: 1px solid var(--line); background: rgba(21,21,29,0.9); color: var(--dim); font-size: 10px; }
 .scene-page:hover { color: var(--accent); border-color: var(--accent); }
+
+/* ── Overlay layer panel ── */
+.lab-overlay { width: 520px; max-width: calc(100vw - 16px); max-height: calc(100vh - 70px); overflow: auto; }
+.ov-top { display: flex; gap: 8px; align-items: center; margin-bottom: 8px; }
+.ov-show { flex: 1; display: flex !important; align-items: center; gap: 6px; margin: 0 !important; color: var(--text) !important; }
+.ov-item { border: 1px solid var(--line); border-radius: 6px; padding: 6px; margin-bottom: 6px; }
+.ov-item.is-off { opacity: 0.5; }
+.ov-head { display: flex; gap: 6px; align-items: center; margin-bottom: 4px; }
+.ov-head .ov-name { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ov-text { flex: 1; min-width: 0; height: 24px; padding: 0 6px; border-radius: 4px; border: 1px solid var(--line); background: var(--panel2); }
+.ov-head input[type=color] { width: 30px; height: 24px; border: 1px solid #111; border-radius: 4px; background: none; padding: 0; }
+.ov-head select, .ov-sl select { height: 24px; background: var(--panel2); border: 1px solid var(--line); border-radius: 4px; padding: 0 4px; }
+.ov-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 2px 12px; }
+.ov-sl { display: flex !important; align-items: center; gap: 6px; margin: 0 !important; }
+.ov-sl span { width: 72px; flex: none; color: var(--dim); font-size: 11px; }
+.ov-sl input[type=range], .ov-sl select { flex: 1; min-width: 0; }
+.pv-ov { position: absolute; inset: 0; width: 100%; height: 100%; z-index: 1; display: none; pointer-events: none; }
+.ov-head select { width: auto; flex: none; }
+.ov-text { min-width: 140px; }
+.lab-overlay input[type=range] { accent-color: var(--accent); }
+.ov-head .ctl-x { background: none; border: 0; color: var(--dim); font-size: 16px; cursor: pointer; }
