@@ -152,6 +152,23 @@
     }
     for (const p of def.params || []) {
       const row = el('div', 'nd-row');
+      if (p.kind === 'text') {
+        const ta = el('textarea', 'nd-text'); ta.rows = 2; ta.value = (n.p && n.p[p.k] !== undefined) ? n.p[p.k] : p.v;
+        ta.placeholder = p.label;
+        ta.addEventListener('pointerdown', e => e.stopPropagation());
+        let tt;
+        ta.addEventListener('input', () => { clearTimeout(tt); tt = setTimeout(() => { n.p = { ...(n.p || {}), [p.k]: ta.value }; recompile(); save(); remember(); }, 200); });
+        row.append(ta); body.append(row);
+        continue;
+      }
+      if (p.kind === 'image') {
+        const b = el('button', 'nd-file', n.p && n.p.name ? '🖼 ' + n.p.name : '🖼 Elegir imagen…');
+        b.title = 'PNG con transparencia, JPG o WebP (también podés soltar el archivo sobre el área de nodos)';
+        b.addEventListener('pointerdown', e => e.stopPropagation());
+        b.addEventListener('click', () => pickImage(n));
+        row.append(b); body.append(row);
+        continue;
+      }
       const sel = el('select');
       p.options.forEach(([v, l]) => { const o = el('option', '', p.label + ': ' + l); o.value = v; sel.append(o); });
       sel.value = (n.p && n.p[p.k]) || p.v;
@@ -452,8 +469,15 @@
     selected.clear(); rebuild(); recompile(); save(); remember(); frameAll();
   });
   // Save / open patch files
-  $('#btnSave').addEventListener('click', () => {
-    const blob = new Blob([JSON.stringify({ pudrusNodes: 1, graph }, null, 1)], { type: 'application/json' });
+  const blobToDataURL = b => new Promise(res => { const r = new FileReader(); r.onload = () => res(r.result); r.onerror = () => res(null); r.readAsDataURL(b); });
+  $('#btnSave').addEventListener('click', async () => {
+    // images used by the patch travel inside the file
+    const assets = {};
+    for (const n of graph.nodes) {
+      const id = n.p && n.p.img;
+      if (n.type === 'image' && id && !assets[id]) { try { const b = await N.assets.get(id); const d = b && await blobToDataURL(b); if (d) assets[id] = d; } catch (e) { /* missing */ } }
+    }
+    const blob = new Blob([JSON.stringify({ pudrusNodes: 1, graph, assets }, null, 1)], { type: 'application/json' });
     const a = document.createElement('a'); a.download = `patch_${Date.now()}.pudrus.json`; a.href = URL.createObjectURL(blob); a.click();
     setTimeout(() => URL.revokeObjectURL(a.href), 5000);
   });
@@ -464,6 +488,10 @@
       const data = JSON.parse(await f.text());
       const g = data.graph || data;
       if (!Array.isArray(g.nodes) || !Array.isArray(g.links) || g.nodes.some(n => !N.NODES[n.type])) throw new Error('formato');
+      for (const [id, d] of Object.entries(data.assets || {})) {
+        if (!/^img-[a-z0-9]+$/.test(id) || typeof d !== 'string' || !/^data:image\/(png|jpeg|webp|gif);base64,/.test(d)) continue;
+        await N.assets.put(id, await (await fetch(d)).blob());
+      }
       graph = g; selected.clear(); rebuild(); recompile(); save(); remember(); frameAll();
       toast('Patch cargado');
     } catch (err) { toast('Ese archivo no es un patch válido', true); }
@@ -509,6 +537,53 @@
   $('#vpMidi').addEventListener('click', () => { closePops(); if (valueTarget) midiLearn({ kind: 'value', id: valueTarget.id, k: valueTarget.k }); });
   $('#vpMidiForget').addEventListener('click', () => { closePops(); if (valueTarget) midiForget(t => t.kind === 'value' && t.id === valueTarget.id && t.k === valueTarget.k); });
   document.querySelectorAll('#valuePop [data-band]').forEach(b => b.addEventListener('click', () => modulate('audio', b.dataset.band)));
+
+  /* ── Images for the Image node ─────────────────────────── */
+  const filePick = el('input'); filePick.type = 'file'; filePick.accept = 'image/png,image/jpeg,image/webp,image/gif,image/svg+xml'; filePick.hidden = true;
+  document.body.append(filePick);
+  let pickFor = null;
+  function pickImage(n) { pickFor = n; filePick.click(); }
+  filePick.addEventListener('change', () => { const f = filePick.files[0]; filePick.value = ''; if (f && pickFor) setImage(pickFor, f); });
+  // keep at most 1024 px (plenty for a logo) and keep the transparency
+  function storeImage(file) {
+    return new Promise((res, rej) => {
+      const url = URL.createObjectURL(file), im = new Image();
+      im.onload = () => {
+        const k = Math.min(1, 1024 / Math.max(im.naturalWidth || 1024, im.naturalHeight || 1024));
+        const c = document.createElement('canvas');
+        c.width = Math.max(1, Math.round((im.naturalWidth || 1024) * k)); c.height = Math.max(1, Math.round((im.naturalHeight || 1024) * k));
+        c.getContext('2d').drawImage(im, 0, 0, c.width, c.height);
+        URL.revokeObjectURL(url);
+        c.toBlob(b => {
+          if (!b) { rej(new Error('imagen')); return; }
+          const id = 'img-' + Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
+          N.assets.put(id, b).then(() => res(id), rej);
+        }, 'image/png');
+      };
+      im.onerror = () => { URL.revokeObjectURL(url); rej(new Error('imagen')); };
+      im.src = url;
+    });
+  }
+  async function setImage(n, file) {
+    try {
+      const id = await storeImage(file);
+      n.p = { ...(n.p || {}), img: id, name: file.name.slice(0, 28) };
+      rebuild(); recompile(); save(); remember();
+      toast('Imagen cargada: ' + file.name);
+    } catch (e) { toast('No se pudo leer esa imagen', true); }
+  }
+  // drop image files on the workspace -> new Image node there
+  work.addEventListener('dragover', e => { if ([...e.dataTransfer.items].some(i => i.kind === 'file')) { e.preventDefault(); e.dataTransfer.dropEffect = 'copy'; } });
+  work.addEventListener('drop', e => {
+    const f = [...e.dataTransfer.files].find(x => /^image\//.test(x.type));
+    if (!f) return;
+    e.preventDefault();
+    const [wx, wy] = toWorld(e.clientX, e.clientY);
+    selected.clear();
+    addNode('image', wx, wy);
+    const n = graph.nodes[graph.nodes.length - 1];
+    if (n && n.type === 'image') setImage(n, f);
+  });
 
   /* ── Keyboard ──────────────────────────────────────────── */
   document.addEventListener('keydown', e => {

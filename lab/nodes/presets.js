@@ -60,6 +60,24 @@
         links: [link(1, 'bass', 2, 'a'), link(2, 'v', 3, 'size'), link(3, 'v', 4, 'v'), link(4, 'c', 5, 'c'), link(5, 'c', 6, 'c')],
       },
     },
+    {
+      name: 'Texto sobre túnel',
+      graph: {
+        nodes: [
+          node(1, 'kaleido', 40, 40, { segments: 8, rotate: 0 }),
+          node(2, 'polar', 300, 40),
+          node(3, 'stripes', 540, 20, { freq: 3, angle: 0, sharp: 0.7, speed: 0.6 }),
+          node(4, 'palette', 800, 40, { shift: 0, speed: 0.08 }, { pal: 'neon' }),
+          node(5, 'feedback', 1060, 20, { amount: 0.9, zoom: 1.045, rotate: 3, drift: 0 }, { blend: 'max' }),
+          node(6, 'warp', 300, 420, { amount: 0.05, scale: 3, speed: 0.6 }),
+          node(7, 'text', 560, 400, { color: '#ffffff', size: 0.22, opacity: 1 }, { text: 'PUDRUS', font: 'display', repeat: 'no' }),
+          node(8, 'over', 1320, 300, { base: '#000000', top: '#ffffff', a: 1, opacity: 1 }, { mode: 'normal' }),
+          node(9, 'output', 1580, 300, { rgb: 0.2, scan: 0, vignette: 0.45, grain: 0.05 }, { react: 'none' }),
+        ],
+        links: [link(1, 'uv', 2, 'uv'), link(2, 'uv', 3, 'uv'), link(3, 'v', 4, 'v'), link(4, 'c', 5, 'c'),
+                link(6, 'uv', 7, 'uv'), link(5, 'c', 8, 'base'), link(7, 'c', 8, 'top'), link(7, 'a', 8, 'a'), link(8, 'c', 9, 'c')],
+      },
+    },
   ];
 
   window.PudrusPresets = PRESETS;

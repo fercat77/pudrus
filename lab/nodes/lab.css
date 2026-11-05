@@ -211,3 +211,8 @@ button { cursor: pointer; }
 .ctl-row button:hover { color: #ff2a4d; }
 #bpm { font-weight: 600; color: var(--accent); min-width: 24px; }
 .pv-veil { position: absolute; inset: 0; z-index: 1; display: none; pointer-events: none; }
+
+/* ── Text / Image nodes ── */
+.nd-text { width: 100%; margin: 0; resize: vertical; min-height: 34px; background: #11111a; color: #fff; border: 1px solid #333; border-radius: 4px; padding: 4px 6px; font: inherit; }
+.nd-file { width: 100%; margin: 0; height: 24px; border-radius: 4px; border: 1px dashed #555; background: #11111a; text-align: left; padding: 0 8px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.nd-file:hover { border-color: var(--accent); color: var(--accent); }

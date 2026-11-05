@@ -63,6 +63,15 @@ vec3 cosPal(float t, vec3 a, vec3 b, vec3 c, vec3 d){ return a + b * cos(6.28318
   const UV = { k: 'uv', t: 'vec2', label: 'Coordenadas' };
   const COL = (k, label, v) => ({ k, t: 'color', label, v });
 
+  // sample a picture (logo / text) centred on the coordinates, `size` = its height on screen
+  const texGLSL = (I, O, P, id, tint) => {
+    const q = `_q${id}`, t = `_t${id}`;
+    return `vec2 ${q} = ${I.uv} / max(${I.size}, 1e-3); ${q}.x /= u_${id}_aspect; ${q} = ${q} * vec2(1.0, -1.0) + 0.5;` +
+      (P.repeat === 'yes' ? ` ${q} = fract(${q});` : '') +
+      ` vec4 ${t} = texture2D(u_${id}_tex, ${q}) * step(0.0, ${q}.x) * step(${q}.x, 1.0) * step(0.0, ${q}.y) * step(${q}.y, 1.0);` +
+      ` vec3 ${O.c} = ${tint ? `${tint} * ` : ''}${t}.rgb; float ${O.a} = ${t}.a * ${I.opacity};`;
+  };
+
   const NODES = {
     /* Entrada */
     time: { title: 'Tiempo', cat: 'Entrada',
@@ -98,6 +107,20 @@ vec3 cosPal(float t, vec3 a, vec3 b, vec3 c, vec3 d){ return a + b * cos(6.28318
       outputs: [['level', 'float', 'Nivel'], ['bass', 'float', 'Graves'], ['mid', 'float', 'Medios'], ['high', 'float', 'Agudos']],
       glsl: (I, O) => `vec4 _a${O.level} = clamp(u_audio * ${I.gain}, 0.0, 1.0); float ${O.level} = _a${O.level}.x; float ${O.bass} = _a${O.level}.y; float ${O.mid} = _a${O.level}.z; float ${O.high} = _a${O.level}.w;`,
       usesAudio: true },
+
+    image: { title: 'Imagen', cat: 'Entrada', tex: true,
+      inputs: [UV, F('size', 'Tamaño', 0.5, 0.02, 3), F('opacity', 'Opacidad', 1, 0, 1)],
+      params: [{ k: 'img', label: 'Imagen', kind: 'image', v: '' },
+               { k: 'repeat', label: 'Repetir', v: 'no', options: [['no', 'no'], ['yes', 'sí (mosaico)']] }],
+      outputs: [['c', 'color', 'Color'], ['a', 'float', 'Alfa']],
+      glsl: (I, O, P, id) => texGLSL(I, O, P, id) },
+    text: { title: 'Texto', cat: 'Entrada', tex: true,
+      inputs: [UV, COL('color', 'Color', '#ffffff'), F('size', 'Tamaño', 0.2, 0.02, 2), F('opacity', 'Opacidad', 1, 0, 1)],
+      params: [{ k: 'text', label: 'Texto', kind: 'text', v: 'PUDRUS' },
+               { k: 'font', label: 'Letra', v: 'sans', options: [['sans', 'sans negrita'], ['display', 'display'], ['serif', 'serif'], ['mono', 'mono'], ['hand', 'manuscrita']] },
+               { k: 'repeat', label: 'Repetir', v: 'no', options: [['no', 'no'], ['yes', 'sí (mosaico)']] }],
+      outputs: [['c', 'color', 'Color'], ['a', 'float', 'Alfa']],
+      glsl: (I, O, P, id) => texGLSL(I, O, P, id, I.color) },
 
     /* Generar */
     noise: { title: 'Ruido', cat: 'Generar',
@@ -211,6 +234,14 @@ vec3 cosPal(float t, vec3 a, vec3 b, vec3 c, vec3 d){ return a + b * cos(6.28318
         const m = { mix: `${I.b}`, add: `${I.a} + ${I.b}`, multiply: `${I.a} * ${I.b}`, screen: `1.0 - (1.0 - ${I.a}) * (1.0 - ${I.b})`, difference: `abs(${I.a} - ${I.b})` }[P.mode];
         return `vec3 ${O.c} = mix(${I.a}, ${m}, ${I.f});`;
       } },
+    over: { title: 'Superponer', cat: 'Color',
+      inputs: [COL('base', 'Fondo', '#000000'), COL('top', 'Encima', '#ffffff'), F('a', 'Alfa', 1, 0, 1), F('opacity', 'Opacidad', 1, 0, 1)],
+      params: [{ k: 'mode', label: 'Modo', v: 'normal', options: [['normal', 'normal'], ['add', 'sumar'], ['screen', 'pantalla'], ['multiply', 'multiplicar'], ['difference', 'diferencia']] }],
+      outputs: [['c', 'color', 'Color']],
+      glsl: (I, O, P) => {
+        const m = { normal: I.top, add: `${I.base} + ${I.top}`, screen: `1.0 - (1.0 - ${I.base}) * (1.0 - ${I.top})`, multiply: `${I.base} * ${I.top}`, difference: `abs(${I.base} - ${I.top})` }[P.mode];
+        return `vec3 ${O.c} = mix(${I.base}, ${m}, clamp(${I.a} * ${I.opacity}, 0.0, 1.0));`;
+      } },
     math: { title: 'Matemática', cat: 'Color',
       inputs: [F('a', 'A', 0.5, -10, 10), F('b', 'B', 0.5, -10, 10)],
       params: [{ k: 'op', label: 'Operación', v: 'mul', options: [['add', 'Sumar'], ['sub', 'Restar'], ['mul', 'Multiplicar'], ['div', 'Dividir'], ['pow', 'Potencia'], ['min', 'Mínimo'], ['max', 'Máximo'], ['sin', 'Seno (A)'], ['abs', 'Absoluto (A)'], ['fract', 'Fracción (A)'], ['step', 'Escalón (A < B)'], ['smooth', 'Suave (0..B)']] }],
@@ -292,6 +323,7 @@ vec3 cosPal(float t, vec3 a, vec3 b, vec3 c, vec3 d){ return a + b * cos(6.28318
     const byId = new Map(graph.nodes.map(n => [n.id, n]));
     const out = graph.nodes.find(n => n.type === 'output');
     const uniforms = [];      // { name, type: 'float' | 'color', node, key }
+    const textures = [];      // { node, kind, p, texName, aspName }  (Image / Text nodes)
     const lines = [];
     const done = new Set(), visiting = new Set();
     let usesAudio = false, usesFeedback = false;
@@ -324,6 +356,7 @@ vec3 cosPal(float t, vec3 a, vec3 b, vec3 c, vec3 d){ return a + b * cos(6.28318
       (def.outputs || []).forEach(o => { O[o[0]] = outVar(node.id, o[0]); });
       const P = { ...defaultsFor(node.type).p, ...(node.p || {}) };
       lines.push(`  // ${def.title} #${node.id}\n  ` + def.glsl(I, O, P, node.id));
+      if (def.tex) textures.push({ node: node.id, kind: node.type, p: P, texName: `u_${node.id}_tex`, aspName: `u_${node.id}_aspect` });
       if (def.usesAudio) usesAudio = true;
       if (def.usesFeedback) usesFeedback = true;
       visiting.delete(node.id);
@@ -352,7 +385,8 @@ vec3 cosPal(float t, vec3 a, vec3 b, vec3 c, vec3 d){ return a + b * cos(6.28318
         finalExpr = uniformName(out.id, 'c');
       }
     }
-    const decl = uniforms.map(u => `uniform ${GLSL_TYPE[u.type]} ${u.name};`).join('\n');
+    const decl = uniforms.map(u => `uniform ${GLSL_TYPE[u.type]} ${u.name};`)
+      .concat(textures.map(t => `uniform sampler2D ${t.texName};\nuniform float ${t.aspName};`)).join('\n');
     const frag = `#ifdef GL_FRAGMENT_PRECISION_HIGH
 precision highp float;
 #else
@@ -371,7 +405,7 @@ void main(){
 ${lines.join('\n')}
   gl_FragColor = vec4(clamp(${finalExpr}, 0.0, 1.0), 1.0);
 }`;
-    return { frag, uniforms, usesAudio, usesFeedback };
+    return { frag, uniforms, textures, usesAudio, usesFeedback };
   }
 
   /* ── Renderer ───────────────────────────────────────────── */
@@ -402,6 +436,115 @@ void main(){
   const clock = { beat: 0 };
   const hexToRgb = h => [1, 3, 5].map(i => parseInt(h.slice(i, i + 2), 16) / 255);
 
+  /* ── Pictures for Image / Text nodes ──────────────────────
+     Images live in IndexedDB (same origin: the output window finds them too). */
+  const assets = (() => {
+    const mem = new Map();
+    let dbp = null;
+    const db = () => dbp || (dbp = new Promise((res, rej) => {
+      const r = indexedDB.open('pudrus-lab', 1);
+      r.onupgradeneeded = () => r.result.createObjectStore('assets');
+      r.onsuccess = () => res(r.result); r.onerror = () => rej(r.error);
+    }));
+    const run = (mode, fn) => db().then(d => new Promise((res, rej) => {
+      const tx = d.transaction('assets', mode), q = fn(tx.objectStore('assets'));
+      tx.oncomplete = () => res(q && q.result); tx.onerror = () => rej(tx.error);
+    }));
+    function image(id) {
+      let e = mem.get(id);
+      if (!e) {
+        e = { img: null, v: 0 };
+        mem.set(id, e);
+        run('readonly', st => st.get(id)).then(b => {
+          if (!b) { setTimeout(() => { if (mem.get(id) === e) mem.delete(id); }, 1000); return; }   // not stored yet: retry
+          const im = new Image();
+          im.onload = () => { e.img = im; e.v++; };
+          im.src = URL.createObjectURL(b);
+        }).catch(() => setTimeout(() => mem.delete(id), 2000));
+      }
+      return e;
+    }
+    return {
+      image,
+      get: id => run('readonly', st => st.get(id)),
+      put: (id, blob) => run('readwrite', st => st.put(blob, id)).then(() => { mem.delete(id); }),
+    };
+  })();
+
+  const FONTS = {
+    sans: '800 150px "Helvetica Neue", Arial, sans-serif',
+    display: '900 150px Impact, "Arial Black", sans-serif',
+    serif: '700 150px Georgia, "Times New Roman", serif',
+    mono: '700 150px "IBM Plex Mono", Consolas, monospace',
+    hand: '700 150px "Segoe Script", "Comic Sans MS", cursive',
+  };
+  const textCache = new Map();
+  function textPicture(text, font) {
+    const key = (font || 'sans') + '|' + (text || '');
+    let c = textCache.get(key);
+    if (c) return c;
+    c = document.createElement('canvas');
+    const ctx = c.getContext('2d');
+    const f = FONTS[font] || FONTS.sans, lines = String(text || '').split('\n');
+    ctx.font = f;
+    const lh = 170, pad = 20;
+    const w = Math.max(1, ...lines.map(l => Math.ceil(ctx.measureText(l).width)));
+    c.width = Math.min(4096, w + pad * 2); c.height = Math.min(4096, lines.length * lh + pad * 2);
+    ctx.font = f; ctx.fillStyle = '#fff'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    lines.forEach((l, i) => ctx.fillText(l, c.width / 2, pad + lh * (i + 0.5)));
+    c.key = key;
+    if (textCache.size > 60) textCache.clear();
+    textCache.set(key, c);
+    return c;
+  }
+  function texSource(t) {
+    if (t.kind === 'image') {
+      if (!t.p.img) return null;
+      const e = assets.image(t.p.img);
+      return e.img ? { src: e.img, key: 'i' + t.p.img + ':' + e.v, aspect: e.img.naturalWidth / e.img.naturalHeight } : null;
+    }
+    const c = textPicture(t.p.text, t.p.font);
+    return { src: c, key: 't' + c.key, aspect: c.width / c.height };
+  }
+  // binds the pictures of a compiled graph to texture units 1, 2, … (unit 0 = feedback)
+  function texBinder(gl) {
+    const cache = new Map();
+    let empty = null;
+    return function bind(textures, loc) {
+      textures.forEach((t, i) => {
+        const s = texSource(t);
+        let tex;
+        if (!s) {
+          if (!empty) {
+            empty = gl.createTexture(); gl.bindTexture(gl.TEXTURE_2D, empty);
+            gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, 1, 1, 0, gl.RGBA, gl.UNSIGNED_BYTE, new Uint8Array([0, 0, 0, 0]));
+          }
+          tex = empty;
+        } else {
+          let e = cache.get(t.node);
+          if (!e) { e = { tex: gl.createTexture(), key: '' }; cache.set(t.node, e); }
+          gl.activeTexture(gl.TEXTURE1 + i);
+          gl.bindTexture(gl.TEXTURE_2D, e.tex);
+          if (e.key !== s.key) {
+            gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, false);
+            gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, s.src);
+            gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+            gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+            gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+            gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+            e.key = s.key;
+          }
+          tex = e.tex;
+        }
+        gl.activeTexture(gl.TEXTURE1 + i);
+        gl.bindTexture(gl.TEXTURE_2D, tex);
+        gl.uniform1i(loc[t.texName], 1 + i);
+        gl.uniform1f(loc[t.aspName], s ? s.aspect : 1);
+      });
+      gl.activeTexture(gl.TEXTURE0);
+    };
+  }
+
   function makeProgram(gl, fragSrc) {
     const mk = (type, src) => {
       const sh = gl.createShader(type);
@@ -426,6 +569,8 @@ void main(){
     gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, 1, -1, -1, 1, -1, 1, 1, -1, 1, 1]), gl.STATIC_DRAW);
 
     const program = fragSrc => makeProgram(gl, fragSrc);
+    const bindTextures = texBinder(gl);
+    let textures = [];
     const post = program(POST);
     const postU = ['u_img', 'u_res', 'u_time', 'u_post'].reduce((o, n) => (o[n] = gl.getUniformLocation(post, n), o), {});
 
@@ -461,8 +606,9 @@ void main(){
       if (prog) gl.deleteProgram(prog);
       prog = pr;
       uniforms = compiled.uniforms;
+      textures = compiled.textures || [];
       loc = {};
-      ['u_res', 'u_time', 'u_beat', 'u_audio', 'u_prev'].concat(uniforms.map(u => u.name)).forEach(n => { loc[n] = gl.getUniformLocation(prog, n); });
+      ['u_res', 'u_time', 'u_beat', 'u_audio', 'u_prev'].concat(uniforms.map(u => u.name), textures.flatMap(t => [t.texName, t.aspName])).forEach(n => { loc[n] = gl.getUniformLocation(prog, n); });
     }
     function setValue(name, v) { values[name] = typeof v === 'string' ? hexToRgb(v) : v; }
 
@@ -491,6 +637,7 @@ void main(){
         if (v === undefined) continue;
         if (u.type === 'color') gl.uniform3f(loc[u.name], v[0], v[1], v[2]); else gl.uniform1f(loc[u.name], v);
       }
+      if (textures.length) bindTextures(textures, loc);
       gl.drawArrays(gl.TRIANGLES, 0, 6);
       // post pass to the screen
       gl.bindFramebuffer(gl.FRAMEBUFFER, null);
@@ -561,12 +708,13 @@ void main(){
     gl.bindTexture(gl.TEXTURE_2D, black);
     gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, 1, 1, 0, gl.RGBA, gl.UNSIGNED_BYTE, new Uint8Array([0, 0, 0, 255]));
     const cache = new Map();
+    const bindTextures = texBinder(gl);
     function render(key, compiled, graph, time, audio) {
       let e = cache.get(key);
       if (!e) {
         const prog = makeProgram(gl, compiled.frag);
         const loc = {};
-        ['u_res', 'u_time', 'u_beat', 'u_audio', 'u_prev'].concat(compiled.uniforms.map(u => u.name)).forEach(n => { loc[n] = gl.getUniformLocation(prog, n); });
+        ['u_res', 'u_time', 'u_beat', 'u_audio', 'u_prev'].concat(compiled.uniforms.map(u => u.name), (compiled.textures || []).flatMap(t => [t.texName, t.aspName])).forEach(n => { loc[n] = gl.getUniformLocation(prog, n); });
         e = { prog, loc, compiled };
         cache.set(key, e);
       }
@@ -588,6 +736,7 @@ void main(){
         if (v === undefined) continue;
         if (u.type === 'color') gl.uniform3f(e.loc[u.name], v[0], v[1], v[2]); else gl.uniform1f(e.loc[u.name], v);
       }
+      if (e.compiled.textures && e.compiled.textures.length) bindTextures(e.compiled.textures, e.loc);
       gl.drawArrays(gl.TRIANGLES, 0, 6);
     }
     function clear() { cache.forEach(e => gl.deleteProgram(e.prog)); cache.clear(); }
@@ -691,5 +840,5 @@ void main(){
     };
   }
 
-  window.PudrusNodes = { clock, NODES, CATEGORIES, compile, createRenderer, createThumbs, createStage, structureKey, uniformValues, defaultsFor, dependsOn, uniformName, postValues, applyValues };
+  window.PudrusNodes = { clock, assets, NODES, CATEGORIES, compile, createRenderer, createThumbs, createStage, structureKey, uniformValues, defaultsFor, dependsOn, uniformName, postValues, applyValues };
 })();
