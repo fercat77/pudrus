@@ -10,7 +10,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600;700&display=swap">
-  <link rel="stylesheet" href="lab.css?v=12">
+  <link rel="stylesheet" href="lab.css?v=13">
 </head>
 <body>
 
@@ -45,7 +45,7 @@
   <button class="lab-btn" id="btnRec" title="Grabar video de lo que está al aire">● Grabar</button>
   <button class="lab-btn" id="btnOut" title="Abrir ventana de salida para el proyector">⧉ Salida</button>
   <button class="lab-btn" id="btnFull" title="Lo que está al aire en pantalla completa (F)">⛶</button>
-  <button class="lab-btn" id="btnHelp" title="Atajos">?</button>
+  <button class="lab-btn" id="btnHelp" title="Ayuda y atajos (?)">?</button>
 </header>
 
 <div class="lab-work" id="work">
@@ -104,22 +104,119 @@
   <button class="item" id="audioOff">Apagar audio</button>
 </div>
 <div class="lab-pop lab-help" id="help" hidden>
-  <p><kbd>Shift</kbd>+<kbd>A</kbd> o clic derecho: agregar nodo</p>
-  <p>Arrastrá desde un círculo de salida a uno de entrada para conectar. Arrastrá desde una entrada conectada para soltarla.</p>
-  <p>Valores: arrastrá a izquierda/derecha (con <kbd>Shift</kbd> más fino) o hacé clic para escribir. Clic derecho: animarlo con un LFO o conectarlo al audio.</p>
-  <p><kbd>X</kbd> borrar · <kbd>Ctrl</kbd>+<kbd>D</kbd> duplicar · <kbd>Ctrl</kbd>+<kbd>Z</kbd> deshacer</p>
-  <p>Rueda: zoom · arrastrar el fondo: mover · <kbd>.</kbd> encuadrar todo</p>
-  <p><kbd>Espacio</kbd> pausa · <kbd>F</kbd> pantalla completa · <kbd>B</kbd> vista de fondo</p>
-  <p>Con un nodo seleccionado, el nodo nuevo se conecta solo a su salida.</p>
-  <p><b>Preview / al aire:</b> editás en PREVIEW sin que se vea; <kbd>Enter</kbd> o «⏵ Al aire» lo manda con el fundido elegido. «Directo» saltea la preview. Foto, Grabar y la ventana de salida usan lo que está EN VIVO.</p>
-  <p><b>Escenas:</b> <kbd>Shift</kbd>+<kbd>1</kbd>…<kbd>8</kbd> guarda el editor · <kbd>1</kbd>…<kbd>8</kbd> la manda al aire · clic la abre en el editor.</p>
-  <p><kbd>P</kbd> miniaturas en los nodos (lo que sale de cada uno).</p>
-  <p><b>Capa superior</b> (▤ Capa, <kbd>O</kbd>): logos y textos que quedan arriba de todo aunque cambie el patch, con efectos (late, gira, flota, glitch…).</p>
-  <p><kbd>R</kbd> patch aleatorio · <kbd>Shift</kbd>+<kbd>R</kbd> variar sus valores. Escenas: 16 en dos páginas (botón 1–8 / 9–16).</p>
-  <p><b>Logo o texto:</b> nodo Imagen (o soltá un PNG sobre el área) o Texto → «Superponer» encima del visual (Color a Encima, Alfa a Alfa). Pasale Coordenadas por Warp, Caleidoscopio, Pixelar… para darle efectos.</p>
-  <p><kbd>N</kbd> negro · <kbd>S</kbd> (mantener) strobe · <kbd>T</kbd> tap tempo: el LFO en «Ritmo» y la salida «Pulso» de Tiempo siguen el BPM.</p>
-  <p><b>Control:</b> clic derecho en un valor → «Al control» lo suma al celular (📱 Control) · «Aprender MIDI» y movés una perilla. Clic derecho en Al aire, Negro, Strobe, Tap o una escena también aprende MIDI.</p>
-  <p><b>En vivo:</b> «⧉ Salida» abre una ventana para el proyector (doble clic = pantalla completa; <kbd>M</kbd> en esa ventana: ajustar esquinas y máscaras para el mapping) que sigue todo lo que cambies acá.</p>
+  <nav class="hp-tabs" id="helpTabs">
+    <button data-tab="start" class="is-on">Empezar</button>
+    <button data-tab="nodes">Nodos</button>
+    <button data-tab="live">En vivo</button>
+    <button data-tab="ctl">Celular y MIDI</button>
+    <button data-tab="logo">Logos y capa</button>
+    <button data-tab="out">Salida y mapping</button>
+    <button data-tab="keys">Atajos</button>
+  </nav>
+
+  <section data-sec="start">
+    <ol class="hp-steps">
+      <li><b>Arrancá con algo:</b> «Ejemplos ▾» o <kbd>R</kbd> (🎲 patch aleatorio). <kbd>Shift</kbd>+<kbd>R</kbd> varía los valores.</li>
+      <li><b>Todo es una cadena</b> de izquierda a derecha:
+        <div class="hp-flow"><span class="c-uv">Coordenadas</span>→<span class="c-gen">Generar</span>→<span class="c-col">Color</span>→<span class="c-fx">Efectos</span>→<span class="c-out">Salida</span></div></li>
+      <li><b>Conectar:</b> arrastrá desde un círculo de la derecha de un nodo (salida) a uno de la izquierda de otro (entrada). Arrastrá una entrada conectada para soltar el cable.
+        <div class="hp-socks"><i class="sock t-float"></i> número <i class="sock t-vec2"></i> coordenadas <i class="sock t-color"></i> color</div></li>
+      <li><b>Agregar nodos:</b> «＋ Nodo», <kbd>Shift</kbd>+<kbd>A</kbd> o clic derecho en el fondo. Con un nodo elegido, el nuevo se conecta solo a él.</li>
+      <li><b>Valores:</b> arrastrá a izquierda/derecha (<kbd>Shift</kbd> = fino) o hacé clic para escribir. Clic derecho: animarlo, mandarlo al celular o a MIDI.</li>
+      <li><b>Nada sale al aire hasta que apretás</b> <kbd>Enter</kbd> («⏵ Al aire»). Arriba ves la PREVIEW; abajo, con borde rojo, lo que está EN VIVO.</li>
+      <li><b>Guardá:</b> en escenas (<kbd>Shift</kbd>+<kbd>1</kbd>…<kbd>8</kbd>) o en un archivo con <kbd>Ctrl</kbd>+<kbd>S</kbd>.</li>
+    </ol>
+  </section>
+
+  <section data-sec="nodes" hidden>
+    <dl class="hp-dl">
+      <dt class="c-in">Entrada</dt><dd>Tiempo (con «Pulso» al BPM), LFO, Audio, Valor, Color, <b>Imagen</b>, <b>Texto</b>, <b>Cámara</b>, <b>Video</b> (soltá el archivo sobre el área).</dd>
+      <dt class="c-gen">Generar</dt><dd>Los dibujos base: Ruido, Celdas, Rayas, Ondas, Forma, Damero, Degradé.</dd>
+      <dt class="c-uv">Coordenadas</dt><dd>Deforman el espacio y van <b>antes</b> de lo que dibujan: Caleidoscopio, Polar, Distorsión, Remolino, Repetir, Espejo, Transformar, Pixelar, Glitch.</dd>
+      <dt class="c-col">Color</dt><dd>Paleta o Degradé de color (convierten un número en color), Mezclar, Superponer, Ajustar, Invertir, Posterizar, Umbral, Matemática, Rango.</dd>
+      <dt class="c-fx">Efectos</dt><dd>Feedback: estelas, túneles y rastros (Persistencia, Zoom, Rotar).</dd>
+      <dt class="c-out">Salida</dt><dd>El final de la cadena. Separación RGB, scanlines, viñeta, grano, <b>brillo (bloom)</b>, <b>desenfoque</b>, <b>glitch</b> y <b>flash al pulso</b>. «Reacciona a» hace que el audio empuje esos efectos.</dd>
+    </dl>
+    <p class="hp-tip"><b>Animar un valor:</b> clic derecho → «Animar con LFO» o «Conectar al audio» (crea los nodos solo). En el LFO, «Ritmo» lo sincroniza con el Tap tempo.</p>
+    <p class="hp-tip"><kbd>P</kbd> miniaturas: cada nodo muestra lo que sale de él.</p>
+  </section>
+
+  <section data-sec="live" hidden>
+    <dl class="hp-dl">
+      <dt>Al aire</dt><dd><kbd>Enter</kbd> o «⏵ Al aire» manda la PREVIEW al aire con el fundido elegido (Corte, 0,5 a 4 s). El botón titila cuando hay cambios sin mandar.</dd>
+      <dt>Directo</dt><dd>Saltea la preview: todo lo que tocás sale al aire al instante.</dd>
+      <dt>Escenas</dt><dd>16, en dos páginas (botón 1–8 / 9–16). <kbd>Shift</kbd>+<kbd>1</kbd>…<kbd>8</kbd> guarda · <kbd>1</kbd>…<kbd>8</kbd> al aire · clic: abrir en el editor · clic derecho: opciones. Cada escena guarda también sus controles.</dd>
+      <dt>Negro · Strobe</dt><dd><kbd>N</kbd> fundido a negro · <kbd>S</kbd> strobe mientras lo mantenés.</dd>
+      <dt>Tap tempo</dt><dd><kbd>T</kbd> al ritmo de la música: sincroniza el LFO («Ritmo»), «Pulso», el flash al pulso y los efectos de la capa.</dd>
+      <dt>Audio</dt><dd>«🎤 Audio»: elegí la entrada y la ganancia. Lo usan los nodos Audio y «Reacciona a».</dd>
+      <dt>Ver</dt><dd>S / M / L, ▣ fondo (<kbd>B</kbd>) y ⛶ pantalla completa (<kbd>F</kbd>) actúan sobre lo que está EN VIVO (en Directo, sobre la vista del editor).</dd>
+      <dt>Foto · Grabar</dt><dd>Siempre graban lo que está al aire, con capa, fundidos, negro y strobe.</dd>
+    </dl>
+  </section>
+
+  <section data-sec="ctl" hidden>
+    <dl class="hp-dl">
+      <dt>Controles</dt><dd>Clic derecho en un valor → «🎛 Al control». En «📱 Control» les ponés nombre y rango (mín/máx), los convertís en <b>botón</b> (salta a un valor mientras lo apretás) o unís dos en un <b>pad XY</b> (⇄ XY).</dd>
+      <dt>Celular</dt><dd>«📱 Control» → escaneá el QR (hace falta internet sólo para conectar). Tenés escenas (◀ ▶; mantener apretada = guardar), Al aire, Negro, Strobe, Tap, 🎲, ✨, ▤ Capa, fundido y tus controles. 👁 muestra lo que está al aire. 🔒 bloquea (mantener para desbloquear). Girado queda como consola.</dd>
+      <dt>Sin saltos</dt><dd>Si tocás un fader lejos de su valor, espera a que tu dedo pase por ahí (línea blanca) antes de moverlo.</dd>
+      <dt>MIDI</dt><dd>Clic derecho en un valor → «🎹 Aprender MIDI» y movés una perilla. También en Al aire, Negro, Strobe, Tap (clic derecho) y en las escenas.</dd>
+    </dl>
+  </section>
+
+  <section data-sec="logo" hidden>
+    <p class="hp-tip"><b>Dos formas de poner un logo o un texto:</b></p>
+    <dl class="hp-dl">
+      <dt>▤ Capa superior</dt><dd><b>Queda arriba de todo aunque cambies de patch o de escena.</b> «＋ Logo / imagen» o «＋ Texto», ubicalo con X / Y / Tamaño / Giro, elegí un efecto (late con el pulso o los graves, gira, flota, respira, parpadea, glitch) y una fusión. <kbd>O</kbd> la muestra u oculta. No usa nodos y no se ve en la PREVIEW, sólo EN VIVO.</dd>
+      <dt>Nodo Imagen / Texto</dt><dd><b>Es parte del patch</b> y acepta todos los efectos de nodos. Hay que conectarlo con un <b>Superponer</b>:
+        <pre class="hp-pre">tu visual ─ Color ─▶ Fondo  ┐
+Imagen ─── Color ─▶ Encima ├ Superponer ─▶ Salida
+       └── Alfa ──▶ Alfa   ┘</pre>
+        Para darle efectos, conectá a su «Coordenadas» un Caleidoscopio, Distorsión, Glitch, Transformar… Mirá el ejemplo «Texto sobre túnel».</dd>
+    </dl>
+  </section>
+
+  <section data-sec="out" hidden>
+    <dl class="hp-dl">
+      <dt>⧉ Salida</dt><dd>Abre una ventana para el proyector con lo que está al aire. Llevala a esa pantalla y hacé doble clic (o <kbd>F</kbd>) para pantalla completa.</dd>
+      <dt>Ajustar</dt><dd>En esa ventana, <kbd>M</kbd> abre el panel de mapping. Queda guardado en esa compu.</dd>
+      <dt>Superficies</dt><dd>Arrastrá las 4 esquinas para que la imagen calce. «＋ Superficie» suma otra; en el mini mapa elegís qué parte de la imagen muestra cada una (recuadro verde). Clic dentro de una superficie o <kbd>Tab</kbd> para elegirla.</dd>
+      <dt>Máscaras</dt><dd>Clic para poner puntos y <kbd>Enter</kbd> o clic en el primero para cerrar: tapa en negro. «Invertir» muestra sólo lo de adentro.</dd>
+      <dt>Ajuste fino</dt><dd><kbd>G</kbd> grilla numerada · las flechas mueven el punto elegido (<kbd>Shift</kbd> ×10).</dd>
+    </dl>
+  </section>
+
+  <section data-sec="keys" hidden>
+    <div class="hp-keys">
+      <h5>Editar</h5>
+      <p><kbd>Shift</kbd>+<kbd>A</kbd><span>agregar nodo</span></p>
+      <p><kbd>X</kbd> / <kbd>Supr</kbd><span>borrar</span></p>
+      <p><kbd>Ctrl</kbd>+<kbd>D</kbd><span>duplicar</span></p>
+      <p><kbd>Ctrl</kbd>+<kbd>Z</kbd> / <kbd>Y</kbd><span>deshacer / rehacer</span></p>
+      <p><kbd>Ctrl</kbd>+<kbd>S</kbd><span>guardar archivo</span></p>
+      <p><kbd>R</kbd> / <kbd>Shift</kbd>+<kbd>R</kbd><span>aleatorio / variar</span></p>
+      <p><kbd>P</kbd><span>miniaturas</span></p>
+      <p><kbd>.</kbd><span>encuadrar todo</span></p>
+      <h5>En vivo</h5>
+      <p><kbd>Enter</kbd><span>al aire</span></p>
+      <p><kbd>1</kbd>…<kbd>8</kbd><span>escena al aire</span></p>
+      <p><kbd>Shift</kbd>+<kbd>1</kbd>…<kbd>8</kbd><span>guardar escena</span></p>
+      <p><kbd>N</kbd><span>negro</span></p>
+      <p><kbd>S</kbd> mantener<span>strobe</span></p>
+      <p><kbd>T</kbd><span>tap tempo</span></p>
+      <p><kbd>O</kbd><span>capa superior</span></p>
+      <p><kbd>Espacio</kbd><span>pausa</span></p>
+      <h5>Ver</h5>
+      <p><kbd>F</kbd><span>pantalla completa</span></p>
+      <p><kbd>B</kbd><span>al aire de fondo</span></p>
+      <p>Rueda / arrastrar el fondo<span>zoom / mover</span></p>
+      <p><kbd>?</kbd> o <kbd>H</kbd><span>esta ayuda</span></p>
+      <h5>Ventana de salida</h5>
+      <p><kbd>M</kbd><span>ajustar mapping</span></p>
+      <p><kbd>G</kbd><span>grilla</span></p>
+      <p><kbd>Tab</kbd><span>siguiente superficie</span></p>
+      <p>Flechas<span>mover el punto</span></p>
+    </div>
+  </section>
 </div>
 <div class="lab-pop lab-remote" id="remotePop" hidden>
   <div class="rm-top">
@@ -137,9 +234,9 @@
 <div class="lab-toast" id="toast" role="status"></div>
 <div class="lab-mobile-note">Pensado para compu o tablet: en el celular conviene usarlo sólo para mirar.</div>
 
-<script src="nodes.js?v=12"></script>
-<script src="presets.js?v=12"></script>
-<script src="generate.js?v=12"></script>
-<script src="editor.js?v=12"></script>
+<script src="nodes.js?v=13"></script>
+<script src="presets.js?v=13"></script>
+<script src="generate.js?v=13"></script>
+<script src="editor.js?v=13"></script>
 </body>
 </html>

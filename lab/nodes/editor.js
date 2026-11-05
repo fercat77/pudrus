@@ -465,7 +465,25 @@
     exPop.append(b);
   });
   $('#btnExamples').addEventListener('click', e => { const r = e.currentTarget.getBoundingClientRect(); openPop(exPop, r.left, r.bottom + 4); e.stopPropagation(); });
-  $('#btnHelp').addEventListener('click', e => { const r = e.currentTarget.getBoundingClientRect(); openPop($('#help'), r.right - 330, r.bottom + 4); e.stopPropagation(); });
+  // help: tabs by topic, remembers the last one
+  const help = $('#help');
+  function helpTab(t) {
+    if (!help.querySelector(`[data-sec="${t}"]`)) t = 'start';
+    help.querySelectorAll('[data-tab]').forEach(b => b.classList.toggle('is-on', b.dataset.tab === t));
+    help.querySelectorAll('[data-sec]').forEach(sec => { sec.hidden = sec.dataset.sec !== t; });
+    help.scrollTop = 0;
+    try { localStorage.setItem('pudrus_nodes_help_tab', t); } catch (err) { /* ignore */ }
+  }
+  help.querySelectorAll('[data-tab]').forEach(b => b.addEventListener('click', () => helpTab(b.dataset.tab)));
+  function toggleHelp() {
+    if (!help.hidden) { closePops(); return; }
+    let t = 'start';
+    try { t = localStorage.getItem('pudrus_nodes_help_tab') || 'start'; } catch (err) { /* ignore */ }
+    helpTab(t);
+    const r = $('#btnHelp').getBoundingClientRect();
+    openPop(help, r.right - Math.min(640, innerWidth - 16), r.bottom + 4);
+  }
+  $('#btnHelp').addEventListener('click', e => { e.stopPropagation(); toggleHelp(); });
   document.addEventListener('pointerdown', e => { if (!e.target.closest('.lab-pop, .lab-btn')) closePops(); });
 
   $('#btnNew').addEventListener('click', () => {
@@ -637,6 +655,7 @@
       const i = scenePage * 8 + (+e.code.slice(5) - 1);
       if (e.shiftKey) storeScene(i); else fireScene(i);
     }
+    else if (e.key === '?' || (k === 'h' && !mod)) { e.preventDefault(); toggleHelp(); }
     else if (k === 'o' && !mod) { e.preventDefault(); setOverlayOn(!ov.on); }
     else if (k === 'r' && !mod) { e.preventDefault(); if (e.shiftKey) varyPatch(); else randomPatch(); }
   });
