@@ -509,6 +509,13 @@
     "videoError": "No se pudo reproducir ese video",
     "noMic": "Grabando sin sonido (sin permiso de micrófono)",
     "noWebgl": "Tu navegador no soporta WebGL, que esta herramienta necesita.",
-    "savedSecs": "Video guardado ({s} s)"
+    "savedSecs": "Video guardado ({s} s)",
+    "export": "Exportar",
+    "cancel": "Cancelar",
+    "exportCancelled": "Exportación cancelada",
+    "exportSaved": "Video exportado ({s} s)",
+    "exporting": "Exportando: el video se reproduce una vez de principio a fin",
+    "notReady": "El video todavía está cargando, probá de nuevo en un momento",
+    "videoAudio": "Mantener el sonido del video al exportar"
   }
 }

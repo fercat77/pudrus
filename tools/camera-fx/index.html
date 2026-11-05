@@ -40,6 +40,8 @@
     }
     .cam-flash { position: absolute; inset: 0; background: #fff; opacity: 0; pointer-events: none; transition: opacity .25s; }
     .cam-flash.on { opacity: .6; transition: none; }
+    .cam-src { position: fixed; left: 0; bottom: 0; width: 1px; height: 1px; overflow: hidden; opacity: 0; pointer-events: none; }
+    .cam-src video { width: 1px; height: 1px; }
     /* Phone: bigger viewfinder than the other tools (portrait camera video) */
     @media (max-width: 768px) {
       .ts { grid-template-rows: minmax(0, 62%) minmax(0, 1fr); }
@@ -270,6 +272,7 @@
     params: Object.fromEntries(LOOKS.map(L => [L.id, { ...defaults[L.id], ...(saved[L.id] || {}) }])),
     mirror: store.get('mirror', true),
     sound: store.get('sound', false),
+    videoAudio: store.get('videoAudio', true),
     quality: store.get('quality', 720),
     facing: 'user',
     source: null,        // HTMLVideoElement | HTMLImageElement
@@ -336,6 +339,7 @@
   const optionsPanel = el('div', { class: 'ts-panel', 'data-panel': 'options', hidden: true }, [
     toggle('mirror', 'camera.mirror', 'Mirror image'),
     toggle('sound', 'camera.sound', 'Record sound (microphone)'),
+    toggle('videoAudio', 'camera.videoAudio', "Keep the video's sound when exporting"),
     el('div', { class: 'ts-row' }, [el('label', { for: 'opt-quality', 'data-i18n': 'camera.quality', text: 'Quality' }), quality]),
     el('p', { class: 'ts-note', 'data-i18n': 'camera.recordNote', text: 'Videos are saved as MP4 on iPhone and WebM on most other browsers.' }),
   ]);
@@ -521,16 +525,32 @@
   }
 
   /* ── Sources ────────────────────────────────────────── */
+  // Keep the source <video> inside the document (invisible): some browsers, iOS Safari in
+  // particular, don't load or decode frames of a detached video element.
+  const holder = el('div', { class: 'cam-src', 'aria-hidden': 'true' });
+  document.body.append(holder);
+  function attach(v) {
+    holder.querySelectorAll('video').forEach(old => { if (old !== v) { old.pause(); old.removeAttribute('src'); old.srcObject = null; old.remove(); } });
+    if (v.parentNode !== holder) holder.append(v);
+  }
   function stopStream() {
     if (state.stream) state.stream.getTracks().forEach(tr => tr.stop());
     state.stream = null;
   }
   function goLive(kind, source) {
+    if (state.recorder) stopRecording(true);
     state.kind = kind; state.source = source;
     stage.classList.add('is-live');
     [recBtn, shotBtn].forEach(b => { b.disabled = false; });
     flipBtn.disabled = kind !== 'camera' && !navigator.mediaDevices;
     if (state.mirrorRow) state.mirrorRow.hidden = kind !== 'camera';
+    if (state.videoAudioRow) state.videoAudioRow.hidden = kind !== 'video';
+    idleRecLabel();
+  }
+  // With a video file the main action is "Export" (whole clip, start to end); otherwise "Record"
+  function idleRecLabel() {
+    if (state.kind === 'video') setLabel(recBtn, 'camera.export', 'Export', '⤓');
+    else setLabel(recBtn, 'camera.record', 'Record', '●');
   }
   async function startCamera() {
     if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
@@ -548,6 +568,7 @@
       const v = document.createElement('video');
       v.muted = true; v.playsInline = true; v.setAttribute('playsinline', ''); v.autoplay = true;
       v.srcObject = stream;
+      attach(v);
       // Don't wait for play(): on some phones it resolves late; the render loop waits for frames itself
       v.play().catch(() => {});
       goLive('camera', v);
@@ -566,13 +587,18 @@
     im.src = url;
   }
   function useFile(file) {
-    stopStream();
     const url = URL.createObjectURL(file);
-    if (file.type.startsWith('image/')) { useImage(url); return; }
+    if (file.type.startsWith('image/')) { stopStream(); useImage(url); return; }
+    useVideo(url);
+  }
+  function useVideo(url) {
+    stopStream();
     const v = document.createElement('video');
     v.muted = true; v.loop = true; v.playsInline = true; v.setAttribute('playsinline', '');
     v.onerror = () => status(t('camera.videoError', 'Could not play that video'));
+    v.preload = 'auto';
     v.src = url;
+    attach(v);
     v.play().catch(() => {});
     goLive('video', v);
     status('');
@@ -613,11 +639,17 @@
       .find(m => MediaRecorder.isTypeSupported && MediaRecorder.isTypeSupported(m)) || '';
   }
   let timerInt = null;
-  async function startRecording() {
+  /* opts (export of a video file):
+       audioTracks  extra audio to record (the file's own sound)
+       exporting    true: the button cancels, final message says "exported"
+       progress     () => 0..1, shown instead of the elapsed time (when the length is known)
+       onDone       cleanup after the recorder stops */
+  async function startRecording(opts = {}) {
     const mime = pickMime();
-    if (mime === null || !canvas.captureStream) { status(t('shell.videoUnsupported', 'Video export is not supported in this browser')); return; }
+    if (mime === null || !canvas.captureStream) { status(t('shell.videoUnsupported', 'Video export is not supported in this browser')); return false; }
     const out = canvas.captureStream(30);
-    if (state.sound) {
+    (opts.audioTracks || []).forEach(tr => out.addTrack(tr));
+    if (state.sound && !opts.exporting) {
       try {
         const mic = await navigator.mediaDevices.getUserMedia({ audio: true });
         mic.getAudioTracks().forEach(tr => out.addTrack(tr));
@@ -631,31 +663,117 @@
     rec.onstop = () => {
       if (state.mic) { state.mic.getTracks().forEach(tr => tr.stop()); state.mic = null; }
       out.getVideoTracks().forEach(tr => tr.stop());
+      if (opts.onDone) opts.onDone();
+      if (rec.cancelled) { status(t('camera.exportCancelled', 'Export cancelled')); return; }
       const type = rec.mimeType || mime || 'video/webm';
       const blob = new Blob(chunks, { type });
       const secs = Math.round((Date.now() - began) / 1000);
-      deliver(blob, `pudrus_camera_${Date.now()}.${type.includes('mp4') ? 'mp4' : 'webm'}`, t('camera.savedSecs', 'Video saved ({s} s)', { s: secs }));
+      const msg = opts.exporting ? t('camera.exportSaved', 'Video exported ({s} s)', { s: secs }) : t('camera.savedSecs', 'Video saved ({s} s)', { s: secs });
+      deliver(blob, `pudrus_camera_${Date.now()}.${type.includes('mp4') ? 'mp4' : 'webm'}`, msg);
     };
     // No timeslice: the browser writes one complete file on stop. Joining 1 s pieces
     // produced MP4s that some phones only play for the first few seconds.
     rec.start();
     state.recorder = rec;
+    state.exporting = !!opts.exporting;
     recBtn.classList.add('is-rec');
-    setLabel(recBtn, 'camera.stop', 'Stop', '■');
+    setLabel(recBtn, opts.exporting ? 'camera.cancel' : 'camera.stop', opts.exporting ? 'Cancel' : 'Stop', '■');
+    [srcBtn, flipBtn].forEach(b => { b.disabled = true; });
     timerEl.hidden = false;
-    const tick = () => { const s = Math.floor((Date.now() - began) / 1000); timerEl.textContent = '● ' + String(Math.floor(s / 60)).padStart(2, '0') + ':' + String(s % 60).padStart(2, '0'); };
-    tick(); timerInt = setInterval(tick, 500);
+    const tick = opts.progress
+      ? () => { timerEl.textContent = '⤓ ' + Math.min(100, Math.round(opts.progress() * 100)) + '%'; }
+      : () => { const s = Math.floor((Date.now() - began) / 1000); timerEl.textContent = (opts.exporting ? '⤓ ' : '● ') + String(Math.floor(s / 60)).padStart(2, '0') + ':' + String(s % 60).padStart(2, '0'); };
+    tick(); timerInt = setInterval(tick, 250);
+    return true;
   }
-  function stopRecording() {
+  function stopRecording(cancel) {
     if (!state.recorder) return;
-    state.recorder.stop();
+    if (cancel) state.recorder.cancelled = true;
+    if (state.recorder.state !== 'inactive') state.recorder.stop();
     state.recorder = null;
+    state.exporting = false;
     clearInterval(timerInt);
     timerEl.hidden = true;
     recBtn.classList.remove('is-rec');
-    setLabel(recBtn, 'camera.record', 'Record', '●');
+    srcBtn.disabled = false;
+    flipBtn.disabled = state.kind !== 'camera' && !navigator.mediaDevices;
+    idleRecLabel();
   }
-  recBtn.addEventListener('click', () => { if (!state.source) return; state.recorder ? stopRecording() : startRecording(); });
+
+  // Export a loaded video: play it once from the start with the effect and record it whole
+  function once(target, ev, ms) {
+    return new Promise(res => { const done = () => { target.removeEventListener(ev, done); res(); }; target.addEventListener(ev, done); setTimeout(done, ms); });
+  }
+  // Many WebM files (e.g. recorded by browsers) report duration = Infinity until read to the end:
+  // seeking far forward makes the browser work it out.
+  async function videoDuration(v) {
+    if (v.readyState < 1) await once(v, 'loadedmetadata', 6000);
+    if (v.duration === Infinity) {
+      v.currentTime = 1e101;
+      await once(v, 'durationchange', 4000);
+      v.currentTime = 0;
+      await once(v, 'seeked', 2000);
+    }
+    return isFinite(v.duration) && v.duration > 0 ? v.duration : 0;
+  }
+  async function exportVideo() {
+    const v = state.source;
+    if (!v) return;
+    if (v.readyState < 1) await once(v, 'loadedmetadata', 6000);
+    if (v.readyState < 1) { status(t('camera.notReady', 'The video is still loading, try again in a moment')); return; }
+    const duration = await videoDuration(v);
+    // The file's own sound goes into the recording only (not to the speakers)
+    let audioTracks = [];
+    if (state.videoAudio) {
+      try {
+        if (!v._pudrusAudio) {
+          const AC = window.AudioContext || window.webkitAudioContext;
+          const ctx = new AC();
+          const src = ctx.createMediaElementSource(v);
+          const dest = ctx.createMediaStreamDestination();
+          src.connect(dest);
+          v._pudrusAudio = { ctx, dest };
+        }
+        await v._pudrusAudio.ctx.resume();
+        v.muted = false;
+        audioTracks = v._pudrusAudio.dest.stream.getAudioTracks();
+      } catch (e) { audioTracks = []; v.muted = true; }
+    }
+    v.pause();
+    v.loop = false;
+    v.currentTime = 0;
+    await once(v, 'seeked', 1500);
+    let safety;
+    const restore = () => {
+      clearInterval(safety);
+      v.onended = null;
+      v.muted = true;
+      v.loop = true;
+      v.play().catch(() => {});
+    };
+    // progress in % when the length is known, elapsed seconds otherwise
+    const progress = duration ? () => v.currentTime / duration : null;
+    const ok = await startRecording({ audioTracks, progress, exporting: true, onDone: restore });
+    if (!ok) { restore(); return; }
+    status(t('camera.exporting', 'Exporting: the video plays once from start to end'));
+    v.onended = () => stopRecording();
+    // Watchdog instead of a fixed timeout (slow phones play slower than real time):
+    // finish when the video reaches its end, give up only if it stays stuck for 10 s.
+    let lastT = -1, stuckFor = 0;
+    safety = setInterval(() => {
+      if (!state.recorder) { clearInterval(safety); return; }
+      if (v.ended || (duration && v.currentTime >= duration - 0.05)) { stopRecording(); return; }
+      if (v.currentTime === lastT) { stuckFor += 1; if (stuckFor >= 10) stopRecording(); }
+      else { stuckFor = 0; lastT = v.currentTime; }
+    }, 1000);
+    v.play().catch(() => { stopRecording(true); status(t('camera.videoError', 'Could not play that video')); });
+  }
+
+  recBtn.addEventListener('click', () => {
+    if (!state.source) return;
+    if (state.recorder) { stopRecording(state.exporting); return; }   // during an export the button cancels
+    if (state.kind === 'video') exportVideo(); else startRecording();
+  });
   function setLabel(b, key, fb, icon) {
     b.querySelector('.ts-btn-icon').textContent = icon;
     const l = b.querySelector('.ts-btn-label');
@@ -674,7 +792,8 @@
     if (g && typeof g.formUrl === 'string' && /^https:\/\//.test(g.formUrl)) { galleryLink.href = g.formUrl; galleryLink.hidden = false; }
   }).catch(() => {});
   document.addEventListener('pudrus:i18n', () => {
-    if (state.recorder) setLabel(recBtn, 'camera.stop', 'Stop', '■');
+    if (state.recorder) setLabel(recBtn, state.exporting ? 'camera.cancel' : 'camera.stop', state.exporting ? 'Cancel' : 'Stop', '■');
+    else idleRecLabel();
   });
   document.addEventListener('visibilitychange', () => {
     if (document.hidden && state.recorder) stopRecording();   // phones kill the camera in background anyway
@@ -683,6 +802,8 @@
 
   [recBtn, shotBtn].forEach(b => { b.disabled = true; });
   state.mirrorRow = document.getElementById('opt-mirror') && document.getElementById('opt-mirror').closest('.ts-row');
+  state.videoAudioRow = document.getElementById('opt-videoAudio') && document.getElementById('opt-videoAudio').closest('.ts-row');
+  if (state.videoAudioRow) state.videoAudioRow.hidden = true;
   buildControls();
   if (!gl) {
     status(t('camera.noWebgl', 'Your browser does not support WebGL, which this tool needs.'));
@@ -695,6 +816,8 @@
   const lookParam = LOOKS.findIndex(L => L.id === q.get('look'));
   if (lookParam >= 0) setLook(lookParam);
   if (q.get('sample') === '1') useImage('../../assets/sample.jpg');
+  const vid = q.get('video');   // same-site path only, e.g. ?video=/media/clip.mp4
+  if (vid && /^\/[\w\/.-]+$/.test(vid)) useVideo(vid);
 })();
 </script>
 </body>

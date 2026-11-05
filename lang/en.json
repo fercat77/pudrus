@@ -509,6 +509,13 @@
     "videoError": "Could not play that video",
     "noMic": "Recording without sound (no microphone permission)",
     "noWebgl": "Your browser does not support WebGL, which this tool needs.",
-    "savedSecs": "Video saved ({s} s)"
+    "savedSecs": "Video saved ({s} s)",
+    "export": "Export",
+    "cancel": "Cancel",
+    "exportCancelled": "Export cancelled",
+    "exportSaved": "Video exported ({s} s)",
+    "exporting": "Exporting: the video plays once from start to end",
+    "notReady": "The video is still loading, try again in a moment",
+    "videoAudio": "Keep the video's sound when exporting"
   }
 }
