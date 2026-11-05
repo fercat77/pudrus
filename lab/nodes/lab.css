@@ -204,3 +204,4 @@ button { cursor: pointer; }
 .ctl-row button { background: none; border: 0; color: var(--dim); font-size: 16px; }
 .ctl-row button:hover { color: #ff2a4d; }
 #bpm { font-weight: 600; color: var(--accent); min-width: 24px; }
+.pv-veil { position: absolute; inset: 0; z-index: 1; display: none; pointer-events: none; }

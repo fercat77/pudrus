@@ -619,6 +619,7 @@ void main(){
         master.black = master.target > master.black ? Math.min(master.target, master.black + d) : Math.max(master.target, master.black - d);
       }
       const flash = master.strobe && Math.floor(now / 45) % 2 === 0;
+      master.flash = flash;
       if (composite) {
         if (master.black > 0) { octx.globalAlpha = master.black; octx.fillStyle = '#000'; octx.fillRect(0, 0, out.width, out.height); }
         if (flash) { octx.globalAlpha = 1; octx.fillStyle = '#fff'; octx.fillRect(0, 0, out.width, out.height); }
@@ -685,6 +686,8 @@ void main(){
       get black() { return master.target === 1; },
       setStrobe(on) { master.strobe = !!on; },
       get strobe() { return master.strobe; },
+      // current black amount and strobe flash, to mirror them on other monitors
+      get veil() { return { black: master.black, flash: !!master.flash }; },
     };
   }
 

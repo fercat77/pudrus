@@ -820,6 +820,8 @@
   }
 
   /* ── Master: black, strobe, tap tempo ───────────────────── */
+  const pvVeil = el('div', 'pv-veil');
+  preview.append(pvVeil);
   function broadcastMaster(fade) { broadcast({ type: 'master', black: stage.black, strobe: stage.strobe, fade }); }
   function setBlack(on) {
     stage.setBlack(on, opts.fade || 0);
@@ -1084,6 +1086,10 @@
     renderer.render(time, a, N.postValues(graph, a));
     grabShot();
     stage.render(time, a);   // on air (also what Foto/Grabar capture)
+    // in Directo the preview IS what is on air: show black / strobe on it too
+    const vl = stage.veil, show = opts.direct && (vl.black > 0 || vl.flash);
+    pvVeil.style.display = show ? 'block' : 'none';
+    if (show) { pvVeil.style.background = vl.flash ? '#fff' : '#000'; pvVeil.style.opacity = vl.flash ? 1 : vl.black; }
     drawThumbs(now, a);
     if (audio.on && (frameN++ & 1) === 0) meters.forEach((m, i) => m.style.setProperty('--v', a[i]));
     broadcast({ type: 'frame', t: time, audio: a, beat: N.clock.beat });
