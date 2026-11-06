@@ -472,3 +472,5 @@ span.ctl-kind { display: inline-flex; align-items: center; color: #ff3fa4; }
 .lib-col .dim { color: var(--dim); font-size: 11px; }
 .lib-lic.lic-free { color: #7fdc6a; } .lib-lic.lic-nc { color: #d9b24a; } .lib-lic.lic-unknown { color: #888; }
 .lib-grid { grid-auto-rows: max-content; } .lib-card { min-height: max-content; }
+.fx-hint { color: var(--dim); font-size: 11px; margin: 0 2px 8px; }
+.ov-head .ctl-x:disabled { opacity: 0.25; }

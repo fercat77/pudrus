@@ -73,7 +73,7 @@
     try {
       c = N.compile(g);
       thumbs = thumbs || N.createThumbs(240, 135);
-      thumbs.render('lib-' + entry.id + Date.now(), c, g, 2.0, [0, 0, 0, 0]);
+      thumbs.render('lib-' + entry.id + Date.now(), c, g, 2.0, [0, 0, 0, 0], isFilter(entry) ? testImage() : null);
       entry.thumb = thumbs.canvas.toDataURL('image/jpeg', 0.75);
       thumbs.clear();
       entry.level = entry.notes.length ? 'warn' : 'ok';
@@ -142,7 +142,7 @@
         head.push(`#define ${n} vec2(${n}_x, ${n}_y)`);
       } else if (/^(image|audio|audioFFT)$/.test(i.TYPE)) {
         head.push(`#define ${n} iChannel0`);
-        notes.push(i.TYPE === 'image' ? `filtro: necesita una imagen («${n}»); por ahora usa el feedback` : `usa audio de ISF («${n}»): no conectado`);
+        if (i.TYPE !== 'image') notes.push(`usa audio de ISF («${n}»): no conectado`);
       }
     }
     // images bundled with the ISF (IMPORTED) are not included
@@ -153,6 +153,7 @@
     passes.forEach(ps => { if (ps && ps.TARGET && /^\w+$/.test(ps.TARGET)) head.push(`#define ${ps.TARGET} iChannel0`); });
     let body = text.slice(hh.end);
     if (/^\s*varying\b/m.test(body)) notes.push('usa un vertex shader propio (.vs): no es compatible');
+    if ((h.INPUTS || []).filter(i => i.TYPE === 'image').length > 1) notes.push('usa varias imágenes: todas toman la misma entrada');
     body = body.replace(/\bgl_FragColor\b/g, 'isf_Out').replace(/\bgl_FragCoord\b/g, 'isf_FragCoord')
       .replace(/\b(vv_FragNormCoord|isf_FragNormCoord)\b/g, 'isf_FragNormCoord').replace(/\bvoid\s+main\s*\(\s*(void)?\s*\)/, 'void isf_main()');
     const code = `// ${file} · ISF de VIDVOX convertido para NODRUS
@@ -193,7 +194,7 @@ void mainImage(out vec4 fragColor, in vec2 fragCoord) {
     for (let k = 0; k < list.length; k++) {
       const [path, text] = list[k];
       const hh = isfHeader(text || '');
-      if (!hh || (!opts.all && isfKind(hh.h) !== 'generador')) { done.skipped++; continue; }
+      if (!hh || isfKind(hh.h) !== (opts.kind || 'generador')) { done.skipped++; continue; }
       let e; try { e = testAndThumb(isfToEntry(text, path)); } catch (er) { done.skipped++; continue; }
       const old = await run('readonly', st => st.get(e.id));
       if (old) { e.mine = old.mine || []; e.fav = old.fav; e.added = old.added; }
@@ -206,9 +207,9 @@ void mainImage(out vec4 fragColor, in vec2 fragCoord) {
     return done;
   }
   // the VIDVOX collection straight from GitHub (MIT): ~49 generators
-  async function importVidvox() {
+  async function importVidvox(kind = 'generador') {
     const status = $('#libColState');
-    const btn = $('#libColISF'); btn.disabled = true;
+    const btn = $(kind === 'filtro' ? '#libColISFfx' : '#libColISF'); btn.disabled = true;
     try {
       status.textContent = 'Buscando la colección en GitHub…';
       const tree = await (await fetch('https://api.github.com/repos/Vidvox/ISF-Files/git/trees/master?recursive=1')).json();
@@ -224,11 +225,27 @@ void mainImage(out vec4 fragColor, in vec2 fragCoord) {
         }
       };
       await Promise.all(Array.from({ length: 6 }, worker));
-      const r = await importISF(files, { progress: (k, n, name) => { status.textContent = `Probando ${k}/${n}: ${name}`; } });
-      status.textContent = `Listo: ${r.ok + r.warn + r.error} generadores (${r.ok} ✓, ${r.warn} ⚠, ${r.error} ✕). Los filtros llegan con «filtros de pantalla».`;
-      E().toast(`📚 Colección ISF: ${r.ok + r.warn} generadores listos para usar`);
+      const r = await importISF(files, { kind, progress: (k, n, name) => { status.textContent = `Probando ${k}/${n}: ${name}`; } });
+      const what = kind === 'filtro' ? 'filtros' : 'generadores';
+      status.textContent = `Listo: ${r.ok + r.warn + r.error} ${what} (${r.ok} ✓, ${r.warn} ⚠, ${r.error} ✕).` + (kind === 'filtro' ? ' Usalos con «＋ Pantalla».' : '');
+      E().toast(`📚 Colección ISF: ${r.ok + r.warn} ${what} listos para usar`);
     } catch (e) { status.textContent = 'No se pudo descargar: ' + String(e.message || e).slice(0, 100); }
     btn.disabled = false;
+  }
+
+  // filters are previewed over a colorful test picture
+  const isFilter = e => e.kind === 'filtro' || (e.tags || []).includes('filtro');
+  let testImg = null;
+  function testImage() {
+    if (testImg) return testImg;
+    const c = document.createElement('canvas'); c.width = 240; c.height = 135;
+    const g = c.getContext('2d');
+    const gr = g.createLinearGradient(0, 0, 240, 135); gr.addColorStop(0, '#2a0b5c'); gr.addColorStop(0.5, '#0b6c8a'); gr.addColorStop(1, '#f2a33a');
+    g.fillStyle = gr; g.fillRect(0, 0, 240, 135);
+    [['#ff3fa4', 70, 60, 34], ['#66ff33', 165, 75, 26], ['#ffffff', 120, 40, 12]].forEach(([col, x, y, r]) => { g.fillStyle = col; g.beginPath(); g.arc(x, y, r, 0, 7); g.fill(); });
+    g.fillStyle = '#fff'; g.font = 'bold 26px Arial'; g.textAlign = 'center'; g.fillText('NODRUS', 120, 118);
+    for (let i = 0; i < 240; i += 24) { g.fillStyle = 'rgba(0,0,0,0.25)'; g.fillRect(i, 0, 2, 135); }
+    return (testImg = c);
   }
 
   /* ── Use a shader ── */
@@ -287,7 +304,9 @@ void mainImage(out vec4 fragColor, in vec2 fragCoord) {
       info.append(tags);
       if (e.notes && e.notes.length) info.append(el('p', 'lib-note', e.notes.join(' · ')));
       const acts = el('div', 'lib-acts');
-      const use = el('button', 'lab-mini lib-use', 'Usar'); use.addEventListener('click', () => useEntry(e));
+      const use = isFilter(e) ? el('button', 'lab-mini lib-use', '＋ Pantalla') : el('button', 'lab-mini lib-use', 'Usar');
+      use.title = isFilter(e) ? 'Aplicar como filtro de pantalla (sobre todo lo que sale al aire)' : 'Usar en el nodo GLSL elegido o en un patch nuevo';
+      use.addEventListener('click', () => { if (isFilter(e)) { E().addScreenFilter(e); } else useEntry(e); });
       const tg = el('button', 'lab-mini', '#'); tg.title = 'Tus hashtags';
       tg.addEventListener('click', async () => { const v = prompt('Tus hashtags para este shader (separados por espacio o coma):', (e.mine || []).join(' ')); if (v === null) return; e.mine = cleanTags(v); await put(e); paint(); });
       acts.append(use, tg);
@@ -304,7 +323,11 @@ void mainImage(out vec4 fragColor, in vec2 fragCoord) {
       grid.append(card);
     }
   }
-  function open() { E().closePops(); pop.hidden = false; paint(); }
+  function open(o) {
+    E().closePops(); pop.hidden = false;
+    if (o && o.tag) { filter.tags.clear(); filter.tags.add(o.tag); }
+    paint();
+  }
   function close() { pop.hidden = true; }
 
   /* ── Bookmarklet: runs on shadertoy.com, copies the shader you are looking at ── */
@@ -339,7 +362,8 @@ void mainImage(out vec4 fragColor, in vec2 fragCoord) {
   $('#libOnlyOk').addEventListener('change', e => { filter.onlyOk = e.target.checked; paint(); });
   $('#libFav').addEventListener('change', e => { filter.fav = e.target.checked; paint(); });
   $('#libFree').addEventListener('change', e => { filter.free = e.target.checked; paint(); });
-  $('#libColISF').addEventListener('click', importVidvox);
+  $('#libColISF').addEventListener('click', () => importVidvox('generador'));
+  $('#libColISFfx').addEventListener('click', () => importVidvox('filtro'));
   $('#libClear').addEventListener('click', () => { filter.tags.clear(); filter.q = ''; $('#libSearch').value = ''; paint(); });
   $('#libPaste').addEventListener('click', pasteFromClipboard);
   $('#libNew').addEventListener('click', showManual);

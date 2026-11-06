@@ -1025,7 +1025,8 @@ void main(){
     gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, 1, 1, 0, gl.RGBA, gl.UNSIGNED_BYTE, new Uint8Array([0, 0, 0, 255]));
     const cache = new Map();
     const bindTextures = texBinder(gl);
-    function render(key, compiled, graph, time, audio) {
+    let inputTex = null;
+    function render(key, compiled, graph, time, audio, input) {
       let e = cache.get(key);
       if (!e) {
         const prog = makeProgram(gl, compiled.frag);
@@ -1040,7 +1041,17 @@ void main(){
       gl.bindBuffer(gl.ARRAY_BUFFER, buf);
       gl.enableVertexAttribArray(a);
       gl.vertexAttribPointer(a, 2, gl.FLOAT, false, 0, 0);
-      gl.activeTexture(gl.TEXTURE0); gl.bindTexture(gl.TEXTURE_2D, black);
+      gl.activeTexture(gl.TEXTURE0);
+      if (input) {   // a test image as the filter's input (iChannel0 / u_prev)
+        if (!inputTex) inputTex = gl.createTexture();
+        gl.bindTexture(gl.TEXTURE_2D, inputTex);
+        gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);
+        gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, input);
+        gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, false);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+      } else gl.bindTexture(gl.TEXTURE_2D, black);
       gl.uniform1i(e.loc.u_prev, 0);
       gl.uniform2f(e.loc.u_res, w, h);
       gl.uniform1f(e.loc.u_time, time);
@@ -1217,12 +1228,111 @@ void main(){
 
   /* ── Mixer: two decks like Resolume's A/B, crossfaded or blended ──
      Same API as a composite stage (go/direct/render/…) acting on the selected deck. */
+  /* ── Screen filters: a chain of image effects (ISF filters, GLSL) applied to the final picture ──
+     Each filter is a GLSL node whose iChannel0 / inputImage is the image coming in. */
+  const FX_BLIT = `#ifdef GL_FRAGMENT_PRECISION_HIGH
+precision highp float;
+#else
+precision mediump float;
+#endif
+varying vec2 v_uv; uniform sampler2D u_a; uniform sampler2D u_b; uniform float u_k;
+void main(){ gl_FragColor = vec4(mix(texture2D(u_a, v_uv).rgb, texture2D(u_b, v_uv).rgb, u_k), 1.0); }`;
+  const fxGraph = f => ({ nodes: [{ id: 1, type: 'glsl', v: f.v || {}, p: { code: f.code } }, { id: 2, type: 'output', v: {}, p: {} }], links: [{ a: 1, ao: 'c', b: 2, bi: 'c' }] });
+  function createFxChain() {
+    const canvas = document.createElement('canvas');
+    const gl = glContext(canvas, { preserveDrawingBuffer: false, antialias: false, alpha: false });
+    if (!gl) return null;
+    const buf = gl.createBuffer();
+    gl.bindBuffer(gl.ARRAY_BUFFER, buf); gl.bufferData(gl.ARRAY_BUFFER, QUAD, gl.STATIC_DRAW);
+    const blit = makeProgram(gl, FX_BLIT);
+    const bl = { a: gl.getUniformLocation(blit, 'u_a'), b: gl.getUniformLocation(blit, 'u_b'), k: gl.getUniformLocation(blit, 'u_k') };
+    const tex = () => {
+      const t = gl.createTexture(); gl.bindTexture(gl.TEXTURE_2D, t);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+      return t;
+    };
+    const src = tex();
+    let w = 0, h = 0, fbs = [];
+    function size(nw, nh) {
+      if (nw === w && nh === h) return;
+      w = nw; h = nh; canvas.width = w; canvas.height = h;
+      fbs.forEach(f => { gl.deleteTexture(f.t); gl.deleteFramebuffer(f.fb); });
+      fbs = [0, 1, 2].map(() => {
+        const t = tex(); gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, w, h, 0, gl.RGBA, gl.UNSIGNED_BYTE, null);
+        const fb = gl.createFramebuffer(); gl.bindFramebuffer(gl.FRAMEBUFFER, fb);
+        gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, t, 0);
+        return { t, fb };
+      });
+      gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+    }
+    const cache = new Map();   // code -> program (or the error)
+    function prog(f) {
+      let e = cache.get(f.code);
+      if (!e) {
+        try {
+          const c = compile(fxGraph(f)), pr = makeProgram(gl, c.frag), loc = {};
+          ['u_res', 'u_time', 'u_beat', 'u_audio', 'u_prev'].concat(c.uniforms.map(u => u.name)).forEach(n => { loc[n] = gl.getUniformLocation(pr, n); });
+          e = { pr, loc, c };
+        } catch (er) { e = { error: String(er.message || er) }; }
+        if (cache.size > 40) { cache.forEach(x => x.pr && gl.deleteProgram(x.pr)); cache.clear(); }
+        cache.set(f.code, e);
+      }
+      return e;
+    }
+    const quad = pr => { const a = gl.getAttribLocation(pr, 'a'); gl.bindBuffer(gl.ARRAY_BUFFER, buf); gl.enableVertexAttribArray(a); gl.vertexAttribPointer(a, 2, gl.FLOAT, false, 0, 0); };
+    // source: a canvas with the picture · list: [{ code, v, mix, on }] · returns this canvas, filtered
+    function run(source, list, time, audio) {
+      size(source.width, source.height);
+      gl.activeTexture(gl.TEXTURE0); gl.bindTexture(gl.TEXTURE_2D, src);
+      gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);
+      gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, source);
+      gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, false);
+      let cur = src, used = 0;
+      const pick = (...busy) => fbs.find(f => !busy.includes(f.t));
+      for (const f of list) {
+        const e = prog(f);
+        if (!e.pr) continue;
+        const out = pick(cur);
+        gl.bindFramebuffer(gl.FRAMEBUFFER, out.fb); gl.viewport(0, 0, w, h);
+        gl.useProgram(e.pr); quad(e.pr);
+        gl.activeTexture(gl.TEXTURE0); gl.bindTexture(gl.TEXTURE_2D, cur); gl.uniform1i(e.loc.u_prev, 0);
+        gl.uniform2f(e.loc.u_res, w, h); gl.uniform1f(e.loc.u_time, time); gl.uniform1f(e.loc.u_beat, clock.beat);
+        gl.uniform4f(e.loc.u_audio, audio[0], audio[1], audio[2], audio[3]);
+        const vals = uniformValues(fxGraph(f), e.c);
+        for (const u of e.c.uniforms) { const v = vals[u.name]; if (v === undefined) continue; if (u.type === 'color') gl.uniform3f(e.loc[u.name], v[0], v[1], v[2]); else gl.uniform1f(e.loc[u.name], v); }
+        gl.drawArrays(gl.TRIANGLES, 0, 6);
+        let res = out.t;
+        const k = Number.isFinite(f.mix) ? Math.max(0, Math.min(1, f.mix)) : 1;
+        if (k < 0.999) {   // blend the effect with what came in
+          const m = pick(cur, out.t);
+          gl.bindFramebuffer(gl.FRAMEBUFFER, m.fb); gl.useProgram(blit); quad(blit);
+          gl.activeTexture(gl.TEXTURE0); gl.bindTexture(gl.TEXTURE_2D, cur); gl.uniform1i(bl.a, 0);
+          gl.activeTexture(gl.TEXTURE1); gl.bindTexture(gl.TEXTURE_2D, out.t); gl.uniform1i(bl.b, 1);
+          gl.uniform1f(bl.k, k); gl.drawArrays(gl.TRIANGLES, 0, 6);
+          gl.activeTexture(gl.TEXTURE0);
+          res = m.t;
+        }
+        cur = res; used++;
+      }
+      if (!used) return null;
+      gl.bindFramebuffer(gl.FRAMEBUFFER, null); gl.viewport(0, 0, w, h);
+      gl.useProgram(blit); quad(blit);
+      gl.activeTexture(gl.TEXTURE0); gl.bindTexture(gl.TEXTURE_2D, cur); gl.uniform1i(bl.a, 0); gl.uniform1i(bl.b, 0); gl.uniform1f(bl.k, 0);
+      gl.drawArrays(gl.TRIANGLES, 0, 6);
+      return canvas;
+    }
+    const errorOf = f => (prog(f).error || '');
+    const destroy = () => { const x = gl.getExtension('WEBGL_lose_context'); if (x) x.loseContext(); };
+    return { run, errorOf, destroy, canvas };
+  }
+
   function createMixer(container) {
     const scratch = document.createElement('div');
     const decks = { A: createStage(scratch, { composite: true, bare: true }), B: createStage(scratch, { composite: true, bare: true }) };
     const out = document.createElement('canvas'); out.className = 'stage-out'; container.append(out);
     const ctx = out.getContext('2d');
-    let deck = 'A', x = 0, mode = 'mix', overlay = null;
+    let deck = 'A', x = 0, mode = 'mix', overlay = null, fx = null, fxChain = null;
     const master = { black: 0, target: 0, speed: 2, strobe: false, flash: false, last: performance.now() };
     const empty = { nodes: [], links: [] };
     decks.B.go(empty, 0);
@@ -1261,6 +1371,13 @@ void main(){
           ctx.drawImage(decks.B.canvas, 0, 0, out.width, out.height);
           ctx.globalCompositeOperation = 'source-over'; ctx.globalAlpha = 1;
         }
+        // screen filters on the mix, under the logo layer and black/strobe
+        const active = fx && fx.on && Array.isArray(fx.list) ? fx.list.filter(f => f && f.on && f.code) : [];
+        if (active.length) {
+          fxChain = fxChain || createFxChain();
+          const c = fxChain && fxChain.run(out, active, time, audio);
+          if (c) ctx.drawImage(c, 0, 0, out.width, out.height);
+        }
         drawOverlay(ctx, out.width, out.height, overlay, time, audio);
         drawMaster();
       },
@@ -1271,9 +1388,12 @@ void main(){
       setStrobe(on) { master.strobe = !!on; },
       get strobe() { return master.strobe; },
       get veil() { return { black: master.black, flash: master.flash }; },
-      destroy() { decks.A.destroy(); decks.B.destroy(); out.remove(); },
+      setFx(f) { fx = f; },
+      get fx() { return fx; },
+      fxError: f => (fxChain ? fxChain.errorOf(f) : ''),
+      destroy() { decks.A.destroy(); decks.B.destroy(); if (fxChain) fxChain.destroy(); out.remove(); },
     };
   }
 
-  window.PudrusNodes = { ES3, inputsOf, glslParams, clock, assets, media, drawOverlay, textPicture, createMixer, GLSL_TEMPLATES, NODES, CATEGORIES, compile, createRenderer, createThumbs, createStage, structureKey, uniformValues, defaultsFor, dependsOn, uniformName, postValues, applyValues };
+  window.PudrusNodes = { createFxChain, ES3, inputsOf, glslParams, clock, assets, media, drawOverlay, textPicture, createMixer, GLSL_TEMPLATES, NODES, CATEGORIES, compile, createRenderer, createThumbs, createStage, structureKey, uniformValues, defaultsFor, dependsOn, uniformName, postValues, applyValues };
 })();

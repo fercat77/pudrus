@@ -748,6 +748,7 @@
     }
     else if (e.key === '?' || (k === 'h' && !mod)) { e.preventDefault(); toggleHelp(); }
     else if (k === 'o' && !mod) { e.preventDefault(); setOverlayOn(!ov.on); }
+    else if (k === 'e' && !mod) { e.preventDefault(); setFxOn(!sfx.on); }
     else if (k === 'r' && !mod) { e.preventDefault(); if (e.shiftKey) varyPatch(); else randomPatch(); }
   });
 
@@ -962,7 +963,7 @@
   /* ── Output window (second screen / projector) ─────────── */
   const channel = 'BroadcastChannel' in window ? new BroadcastChannel('pudrus-nodes') : null;
   function broadcast(msg) { if (channel) channel.postMessage(msg); }
-  if (channel) channel.onmessage = e => { if (e.data && e.data.type === 'hello') { liveByDeck[deckSel] = liveGraph; ['A', 'B'].forEach(d => broadcast({ type: 'live', graph: liveByDeck[d], fade: 0, deck: d })); broadcastMix(); broadcast({ type: 'play', playing }); broadcastMaster(0); broadcast({ type: 'overlay', ov }); } };
+  if (channel) channel.onmessage = e => { if (e.data && e.data.type === 'hello') { liveByDeck[deckSel] = liveGraph; ['A', 'B'].forEach(d => broadcast({ type: 'live', graph: liveByDeck[d], fade: 0, deck: d })); broadcastMix(); broadcast({ type: 'play', playing }); broadcastMaster(0); broadcast({ type: 'overlay', ov }); broadcast({ type: 'screenfx', fx: sfx }); } };
   $('#btnOut').addEventListener('click', () => {
     const w = window.open('output.html', 'pudrus-output', 'width=960,height=540');
     if (!w) toast('El navegador bloqueó la ventana: permití las ventanas emergentes', true);
@@ -1689,6 +1690,73 @@
   });
   ovChanged(true);
 
+  /* ── Screen filters: effects on the final picture (global, like composition effects) ── */
+  const FX_STORE = 'pudrus_nodes_screenfx_v1';
+  let sfx = readJSON(FX_STORE, null);
+  if (!sfx || !Array.isArray(sfx.list)) sfx = { on: true, list: [] };
+  let fxTimer = 0;
+  function fxChanged(now) {
+    stage.setFx(sfx);
+    const any = sfx.on && sfx.list.some(f => f.on);
+    $('#btnFx').classList.toggle('is-on', any);
+    clearTimeout(fxTimer);
+    const send = () => { broadcast({ type: 'screenfx', fx: sfx }); try { localStorage.setItem(FX_STORE, JSON.stringify(sfx)); } catch (e) { /* full */ } };
+    if (now) send(); else fxTimer = setTimeout(send, 40);
+  }
+  function setFxOn(on) { sfx.on = on; fxChanged(true); paintFx(); toast(!sfx.list.length ? 'No hay filtros de pantalla: agregalos desde ✨ Filtros' : on ? 'Filtros de pantalla activos' : 'Filtros de pantalla apagados'); }
+  const fxInputs = f => N.inputsOf({ type: 'glsl', p: { code: f.code } }).filter(i => i.k.startsWith('g_'));
+  function addScreenFilter(entry) {
+    const f = { uid: Date.now().toString(36) + Math.random().toString(36).slice(2, 5), name: entry.name, lib: entry.id, author: entry.author || '', license: entry.license || '', code: entry.code, v: {}, mix: 1, on: true };
+    sfx.list.push(f); sfx.on = true; fxChanged(true); paintFx();
+    toast(`✨ «${entry.name}» sobre la pantalla · ajustalo en ✨ Filtros`);
+  }
+  function paintFx() {
+    const list = $('#fxList'); if (!list) return;
+    $('#fxOn').checked = sfx.on;
+    list.textContent = '';
+    if (!sfx.list.length) list.append(el('p', 'dim', 'Sin filtros. Agregá efectos desde la librería (los que tienen #filtro): glitch, VHS, blur, halftone, caleidoscopio… Se aplican sobre todo lo que sale al aire, menos el logo.'));
+    sfx.list.forEach((f, i) => {
+      const box = el('div', 'ov-item' + (f.on ? '' : ' is-off'));
+      const head = el('div', 'ov-head');
+      const chk = el('input'); chk.type = 'checkbox'; chk.checked = !!f.on; chk.title = 'Encendido';
+      chk.addEventListener('change', () => { f.on = chk.checked; box.classList.toggle('is-off', !f.on); fxChanged(); });
+      const nm = el('span', 'ov-name', '✨ ' + f.name); nm.title = (f.author ? 'de ' + f.author + ' · ' : '') + (f.license || '');
+      const up = el('button', 'ctl-x', '↑'); up.title = 'Antes en la cadena'; up.disabled = i === 0;
+      up.addEventListener('click', () => { sfx.list.splice(i - 1, 0, sfx.list.splice(i, 1)[0]); fxChanged(); paintFx(); });
+      const dn = el('button', 'ctl-x', '↓'); dn.title = 'Después en la cadena'; dn.disabled = i === sfx.list.length - 1;
+      dn.addEventListener('click', () => { sfx.list.splice(i + 1, 0, sfx.list.splice(i, 1)[0]); fxChanged(); paintFx(); });
+      const del = el('button', 'ctl-x', '×'); del.title = 'Quitar';
+      del.addEventListener('click', () => { sfx.list.splice(i, 1); fxChanged(); paintFx(); });
+      head.append(chk, nm, up, dn, del);
+      box.append(head);
+      const err = stage.fxError(f);
+      if (err) box.append(el('p', 'lib-note', 'No compila: ' + err.split('\n')[0].slice(0, 140)));
+      const grid = el('div', 'ov-grid');
+      const slider = (label, get, set, min, max) => {
+        const w = el('label', 'ov-sl'); w.append(el('span', '', label));
+        const r = el('input'); r.type = 'range'; r.min = min; r.max = max; r.step = (max - min) / 400 || 0.01; r.value = get();
+        r.addEventListener('input', () => { set(+r.value); fxChanged(); });
+        w.append(r); grid.append(w);
+      };
+      slider('Mezcla', () => (Number.isFinite(f.mix) ? f.mix : 1), v => { f.mix = v; }, 0, 1);
+      for (const inp of fxInputs(f)) {
+        const cur = () => (f.v[inp.k] !== undefined ? f.v[inp.k] : inp.v);
+        if (inp.t === 'color') {
+          const w = el('label', 'ov-sl'); w.append(el('span', '', inp.label));
+          const c = el('input'); c.type = 'color'; c.value = cur();
+          c.addEventListener('input', () => { f.v[inp.k] = c.value; fxChanged(); });
+          w.append(c); grid.append(w);
+        } else slider(inp.label, cur, v => { f.v[inp.k] = v; }, inp.min ?? 0, inp.max ?? 1);
+      }
+      box.append(grid);
+      list.append(box);
+    });
+  }
+  $('#fxOn').addEventListener('change', e => setFxOn(e.target.checked));
+  $('#fxAdd').addEventListener('click', () => { closePops(); if (window.NodrusLibrary) window.NodrusLibrary.open({ tag: 'filtro' }); });
+  $('#btnFx').addEventListener('click', e => { e.stopPropagation(); const r = e.currentTarget.getBoundingClientRect(); paintFx(); openPop($('#fxPop'), r.left - 200, r.bottom + 4); setTimeout(paintFx, 120); });
+  fxChanged(true);
+
   /* ── Export panel: format, size, guides, live recording and frame-by-frame render ── */
   const guideEls = [preview, $('#live')].map(box => { const g = el('div', 'safe-guide'); box.append(g); return g; });
   function paintGuides() {
@@ -1745,7 +1813,7 @@
     }
     if (!config) { toast(`Este equipo no puede codificar H.264 a ${W}×${H}: probá una resolución menor`, true); return; }
     liveByDeck[deckSel] = liveGraph;
-    const snap = { A: clone(liveByDeck.A), B: clone(liveByDeck.B), x: stage.x, mode: stage.mode, ov: clone(ov), t0: time, bpm, origin: beatOrigin };
+    const snap = { A: clone(liveByDeck.A), B: clone(liveByDeck.B), x: stage.x, mode: stage.mode, ov: clone(ov), fx: clone(sfx), t0: time, bpm, origin: beatOrigin };
     const beatAt = t => (t - snap.origin) * snap.bpm / 60;
     const target = new window.Mp4Muxer.ArrayBufferTarget();
     const muxer = new window.Mp4Muxer.Muxer({ target, video: { codec: 'avc', width: W, height: H, frameRate: fps }, fastStart: 'in-memory' });
@@ -1753,7 +1821,7 @@
     const enc = new VideoEncoder({ output: (chunk, meta) => muxer.addVideoChunk(chunk, meta), error: e => { encErr = e; } });
     enc.configure(config);
     const host = document.createElement('div');
-    const mk = () => { const m = N.createMixer(host); m.resize(W, H); m.x = snap.x; m.mode = snap.mode; m.setOverlay(snap.ov); m.go(snap.A, 0, 'A'); m.go(snap.B, 0, 'B'); return m; };
+    const mk = () => { const m = N.createMixer(host); m.resize(W, H); m.x = snap.x; m.mode = snap.mode; m.setOverlay(snap.ov); m.setFx(snap.fx); m.go(snap.A, 0, 'A'); m.go(snap.B, 0, 'B'); return m; };
     let m1 = null, m2 = null;
     const mixCanvas = document.createElement('canvas'); mixCanvas.width = W; mixCanvas.height = H;
     const mctx = mixCanvas.getContext('2d');
@@ -1959,7 +2027,7 @@
   requestAnimationFrame(loop);
   // fonts change node sizes -> redraw links once they are in
   if (document.fonts) document.fonts.ready.then(() => drawLinks());
-  window.__nodesEditor = { get graph() { return graph; }, get compiled() { return compiled; }, get liveGraph() { return liveGraph; }, stage, addNode, connect, removeNodes, undo, redo, goLive, modulate, set valueTarget(v) { valueTarget = v; }, setDirect, storeScene, fireScene, openScene, setThumbs, get scenes() { return scenes; }, get controls() { return ctlList(graph); },
+  window.__nodesEditor = { get graph() { return graph; }, get compiled() { return compiled; }, get liveGraph() { return liveGraph; }, stage, addNode, connect, removeNodes, undo, redo, goLive, modulate, set valueTarget(v) { valueTarget = v; }, setDirect, storeScene, fireScene, openScene, setThumbs, get scenes() { return scenes; }, get controls() { return ctlList(graph); }, addScreenFilter, get sfx() { return sfx; }, setFxOn, paintFx,
     loadGraph(g, msg) { graph = ensureControls(g); selected.clear(); rebuild(); recompile(); save(); remember(); frameAll(); if (msg) toast(msg); },
     selectedGlsl() { const ids = [...selected]; const n = ids.length === 1 && graph.nodes.find(m => m.id === ids[0]); return n && n.type === 'glsl' ? n : null; },
     setGlsl(n, code, src) { n.p = { ...(n.p || {}), code, src }; rebuild(); recompile(); save(); remember(); },
