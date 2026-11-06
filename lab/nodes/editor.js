@@ -741,14 +741,26 @@
 
   /* ── Preview: panel sizes, backdrop, fullscreen ────────── */
   const SIZES = { s: [320, 180], m: [480, 270], l: [720, 405] };
+  // Export format (aspect, resolution, fps…): the monitors take its shape, recordings and renders use its size
+  const FORMATS = { '16:9': [16, 9, 'Horizontal'], '9:16': [9, 16, 'Vertical'], '4:5': [4, 5, 'Retrato'], '1:1': [1, 1, 'Cuadrado'] };
+  const ex = opts.exp = Object.assign({ fmt: '16:9', res: 1080, fps: 60, q: 'alta', dur: 15, loop: true, guides: false }, opts.exp || {});
+  if (!FORMATS[ex.fmt]) ex.fmt = '16:9';
+  const AR = () => { const f = FORMATS[ex.fmt]; return f[0] / f[1]; };
+  const even = x => Math.max(2, Math.round(x / 2) * 2);
+  const sizeFor = short => (AR() >= 1 ? [even(short * AR()), short] : [short, even(short / AR())]);
+  const baseSize = () => sizeFor(720);          // what the monitors render while you work
+  const expSize = () => sizeFor(ex.res);        // what recordings, photos and renders use
+  const presetW = L => (AR() >= 1 ? L : Math.round(L * AR()));   // S/M/L = the long side of the monitor
+  let recSize = null;
   let size = opts.size && SIZES[opts.size] ? opts.size : 'm';
   // window layout chosen by each user: { pv: {x, y, w}, live: {x, y, w} } in px inside the workspace
   if (!opts.win || typeof opts.win !== 'object') opts.win = {};
   const winKey = el => (el === preview ? 'pv' : 'live');
   function placeWin(el, w, defTop) {
     const k = winKey(el), cfg = opts.win[k] || {}, r = work.getBoundingClientRect();
-    w = Math.min(Math.max(200, w), Math.max(200, r.width - 24));
-    const h = Math.round(w * 9 / 16);
+    w = Math.min(Math.max(120, w), Math.max(120, r.width - 24));
+    let h = Math.round(w / AR());
+    if (h > r.height - 24) { h = Math.max(120, r.height - 24); w = Math.round(h * AR()); }
     el.style.width = w + 'px'; el.style.height = h + 'px';
     if (Number.isFinite(cfg.x) && Number.isFinite(cfg.y)) {
       el.style.left = Math.min(Math.max(0, cfg.x), Math.max(0, r.width - w)) + 'px';
@@ -799,19 +811,20 @@
     if (fsEl === preview) renderer.resize(...screenSize());
     else if (opts.direct && back) renderer.resize(...workSize());
     else {
-      pvH = placeWin(preview, winW(preview, (opts.direct ? SIZES[size] : SIZES.s)[0]), 12);
-      renderer.resize(1280, 720);   // 720p inside, scaled down by CSS
+      pvH = placeWin(preview, winW(preview, presetW((opts.direct ? SIZES[size] : SIZES.s)[0])), 12);
+      renderer.resize(...baseSize());   // 720p-class inside, scaled down by CSS
     }
     if (opts.direct && back) { preview.style.left = preview.style.top = preview.style.right = ''; }
     // on-air monitor (keeps 720p while recording so the video size never changes)
     if (!opts.direct) {
-      if (fsEl === live && !rec) stage.resize(...screenSize());
-      else if (back && !rec) stage.resize(...workSize());
-      else stage.resize(1280, 720);
-      const pvBox = opts.win.pv && Number.isFinite(opts.win.pv.x) ? SIZES.s[1] : pvH;   // a moved preview leaves the default spot free
-      if (!back) placeWin(live, winW(live, SIZES[size][0]), 12 + pvBox + 12);
+      if (fsEl === live && !recSize) stage.resize(...screenSize());
+      else if (back && !recSize) stage.resize(...workSize());
+      else stage.resize(...(recSize || baseSize()));
+      const pvBox = opts.win.pv && Number.isFinite(opts.win.pv.x) ? Math.round(presetW(SIZES.s[0]) / AR()) : pvH;   // a moved preview leaves the default spot free
+      if (!back) placeWin(live, winW(live, presetW(SIZES[size][0])), 12 + pvBox + 12);
       else { live.style.width = live.style.height = live.style.top = live.style.left = live.style.right = ''; }
-    } else stage.resize(1280, 720);
+    } else stage.resize(...(recSize || baseSize()));
+    paintGuides();
   }
   function setBackdrop(on) {
     work.classList.toggle('backdrop', on);
@@ -898,27 +911,37 @@
   const meters = [...document.querySelectorAll('#meter i')];
 
   /* ── Photo / record ────────────────────────────────────── */
-  $('#btnPhoto').addEventListener('click', () => {
-    stage.canvas.toBlob(b => { const a = document.createElement('a'); a.download = `pudrus_nodes_${Date.now()}.png`; a.href = URL.createObjectURL(b); a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 5000); }, 'image/png');
-  });
+  const fileTag = () => `pudrus_${ex.fmt.replace(':', 'x')}_${expSize().join('x')}_${Date.now()}`;
+  function saveBlob(b, name, ms) { const a = document.createElement('a'); a.download = name; a.href = URL.createObjectURL(b); a.click(); setTimeout(() => URL.revokeObjectURL(a.href), ms || 10000); }
+  function takePhoto() {
+    // one frame at the full export size
+    const keep = recSize;
+    recSize = recSize || expSize(); stage.resize(...recSize);
+    stage.render(time, audio.bands);
+    stage.canvas.toBlob(b => { recSize = keep; layoutPreview(); if (b) { saveBlob(b, fileTag() + '.png', 5000); toast('Foto guardada · ' + expSize().join('×')); } }, 'image/png');
+  }
+  $('#btnPhoto').addEventListener('click', takePhoto);
+  // bitrate by size, fps and quality (H.264, roughly what social networks like)
+  const bitrateFor = ([w, h], fps) => Math.round(Math.min(80e6, Math.max(4e6, w * h * fps * ({ normal: 0.07, alta: 0.12, max: 0.2 }[ex.q] || 0.12))));
   let rec = null;
   $('#btnRec').addEventListener('click', () => {
     const b = $('#btnRec');
-    if (rec) { rec.stop(); rec = null; b.classList.remove('is-rec'); b.innerHTML = '●<span class="t"> Grabar</span>'; return; }
+    if (rec) { rec.stop(); rec = null; recSize = null; layoutPreview(); b.classList.remove('is-rec'); b.innerHTML = '●<span class="t"> Grabar</span>'; paintExport(); return; }
     if (!stage.canvas.captureStream || typeof MediaRecorder === 'undefined') { toast('Este navegador no puede grabar video', true); return; }
     const mime = ['video/mp4;codecs=avc1', 'video/webm;codecs=vp9', 'video/webm'].find(m => MediaRecorder.isTypeSupported(m)) || '';
-    const stream = stage.canvas.captureStream(60);
+    recSize = expSize(); stage.resize(...recSize);   // record at the export size and fps
+    const stream = stage.canvas.captureStream(ex.fps);
     if (audio.stream && $('#recAudio').checked) audio.stream.getAudioTracks().forEach(t => stream.addTrack(t));
     const chunks = [];
-    const r = new MediaRecorder(stream, mime ? { mimeType: mime, videoBitsPerSecond: 12e6 } : undefined);
+    const r = new MediaRecorder(stream, mime ? { mimeType: mime, videoBitsPerSecond: bitrateFor(recSize, ex.fps) } : undefined);
     r.ondataavailable = ev => { if (ev.data.size) chunks.push(ev.data); };
     r.onstop = () => {
       const type = r.mimeType || 'video/webm';
-      const a = document.createElement('a'); a.download = `pudrus_nodes_${Date.now()}.${type.includes('mp4') ? 'mp4' : 'webm'}`;
-      a.href = URL.createObjectURL(new Blob(chunks, { type })); a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 10000);
+      saveBlob(new Blob(chunks, { type }), `${fileTag()}.${type.includes('mp4') ? 'mp4' : 'webm'}`);
       toast('Video guardado');
     };
-    r.start(); rec = r; b.classList.add('is-rec'); b.innerHTML = '■<span class="t"> Detener</span>';
+    r.start(); rec = r; b.classList.add('is-rec'); b.innerHTML = '■<span class="t"> Detener</span>'; paintExport();
+    toast(`Grabando en vivo · ${recSize.join('×')} · ${ex.fps} fps`);
   });
 
   /* ── Output window (second screen / projector) ─────────── */
@@ -1633,6 +1656,121 @@
   });
   ovChanged(true);
 
+  /* ── Export panel: format, size, guides, live recording and frame-by-frame render ── */
+  const guideEls = [preview, $('#live')].map(box => { const g = el('div', 'safe-guide'); box.append(g); return g; });
+  function paintGuides() {
+    guideEls.forEach(g => { g.className = 'safe-guide' + (ex.guides ? ' on fmt-' + ex.fmt.replace(':', 'x') : ''); });
+  }
+  function setExp(k, v) {
+    ex[k] = v; saveOpts();
+    if (k === 'fmt' || k === 'res') { layoutPreview(); frameAll(); }
+    paintGuides(); paintExport();
+  }
+  function paintExport() {
+    const pop = $('#exportPop'); if (!pop) return;
+    pop.querySelectorAll('[data-exp]').forEach(b => b.classList.toggle('is-on', String(ex[b.dataset.exp]) === b.dataset.v));
+    $('#expSize').textContent = `${expSize().join(' × ')} · ${ex.fps} fps · ~${Math.round(bitrateFor(expSize(), ex.fps) / 1e6)} Mbps`;
+    $('#expGuides').checked = !!ex.guides; $('#expLoop').checked = !!ex.loop;
+    $('#expDur').value = ex.dur;
+    $('#expRec').textContent = rec ? '■ Detener grabación' : '● Grabar en vivo';
+    $('#expRec').classList.toggle('is-rec', !!rec);
+    $('#btnExport').classList.toggle('is-on', ex.fmt !== '16:9' || !!rendering);
+  }
+  $('#exportPop').querySelectorAll('[data-exp]').forEach(b => b.addEventListener('click', () => {
+    const k = b.dataset.exp, v = b.dataset.v;
+    setExp(k, k === 'fmt' || k === 'q' ? v : +v);
+  }));
+  $('#expGuides').addEventListener('change', e => setExp('guides', e.target.checked));
+  $('#expLoop').addEventListener('change', e => setExp('loop', e.target.checked));
+  $('#expDur').addEventListener('change', e => { const v = Math.min(300, Math.max(1, Math.round(+e.target.value || 15))); setExp('dur', v); });
+  $('#expRec').addEventListener('click', () => $('#btnRec').click());
+  $('#expPhoto').addEventListener('click', takePhoto);
+  $('#expRender').addEventListener('click', () => renderVideo());
+  $('#expCancel').addEventListener('click', () => { if (rendering) rendering.cancel = true; });
+  $('#btnExport').addEventListener('click', e => {
+    e.stopPropagation();
+    const r = e.currentTarget.getBoundingClientRect();
+    paintExport();
+    openPop($('#exportPop'), r.left - 220, r.bottom + 4);
+  });
+
+  // Frame-by-frame render to MP4 (WebCodecs): exact fps at any size, no dropped frames.
+  // "Loop perfecto": a second copy of the patch starts again from the beginning and the last
+  // second fades into it, so the end flows into the start when the video repeats.
+  let rendering = null;
+  const MP4MUX = 'https://cdn.jsdelivr.net/npm/mp4-muxer@5.1.3/build/mp4-muxer.min.js';
+  async function renderVideo() {
+    if (rendering) return;
+    if (!('VideoEncoder' in window) || !('VideoFrame' in window)) { toast('Este navegador no puede renderizar MP4: usá Chrome o Edge', true); return; }
+    try { if (!window.Mp4Muxer) await loadScript(MP4MUX); } catch (e) { toast('No se pudo cargar el armador de MP4 (¿hay internet?)', true); return; }
+    const [W, H] = expSize(), fps = ex.fps, D = ex.dur, F = ex.loop ? Math.min(1, D * 0.2) : 0;
+    const total = Math.round(D * fps), warm = Math.round(F * fps), bitrate = bitrateFor([W, H], fps);
+    let config = null;
+    for (const codec of ['avc1.640034', 'avc1.640033', 'avc1.64002A', 'avc1.4D0034', 'avc1.42E034', 'avc1.42001F']) {
+      const c = { codec, width: W, height: H, bitrate, framerate: fps, latencyMode: 'quality', avc: { format: 'avc' } };
+      try { if ((await VideoEncoder.isConfigSupported(c)).supported) { config = c; break; } } catch (e) { /* next */ }
+    }
+    if (!config) { toast(`Este equipo no puede codificar H.264 a ${W}×${H}: probá una resolución menor`, true); return; }
+    liveByDeck[deckSel] = liveGraph;
+    const snap = { A: clone(liveByDeck.A), B: clone(liveByDeck.B), x: stage.x, mode: stage.mode, ov: clone(ov), t0: time, bpm, origin: beatOrigin };
+    const beatAt = t => (t - snap.origin) * snap.bpm / 60;
+    const target = new window.Mp4Muxer.ArrayBufferTarget();
+    const muxer = new window.Mp4Muxer.Muxer({ target, video: { codec: 'avc', width: W, height: H, frameRate: fps }, fastStart: 'in-memory' });
+    let encErr = null;
+    const enc = new VideoEncoder({ output: (chunk, meta) => muxer.addVideoChunk(chunk, meta), error: e => { encErr = e; } });
+    enc.configure(config);
+    const host = document.createElement('div');
+    const mk = () => { const m = N.createMixer(host); m.resize(W, H); m.x = snap.x; m.mode = snap.mode; m.setOverlay(snap.ov); m.go(snap.A, 0, 'A'); m.go(snap.B, 0, 'B'); return m; };
+    let m1 = null, m2 = null;
+    const mixCanvas = document.createElement('canvas'); mixCanvas.width = W; mixCanvas.height = H;
+    const mctx = mixCanvas.getContext('2d');
+    const zero = [0, 0, 0, 0], tick = () => new Promise(r => setTimeout(r, 0));
+    rendering = { cancel: false };
+    const bar = $('#expBar'), lbl = $('#expProg');
+    $('#expRenderBox').classList.add('is-busy'); paintExport();
+    const started = performance.now();
+    const progress = k => {
+      bar.style.width = (k * 100).toFixed(1) + '%';
+      const el2 = (performance.now() - started) / 1000, left = k > 0.02 ? el2 / k - el2 : 0;
+      lbl.textContent = `Renderizando ${Math.round(k * 100)}%` + (left ? ` · faltan ~${Math.ceil(left)} s` : '');
+    };
+    try {
+      m1 = mk(); if (warm) m2 = mk();
+      // warm-up: the main copy plays the first second (its feedback builds up) without being recorded
+      for (let i = 0; i < warm; i++) { const t = snap.t0 + i / fps; N.clock.beat = beatAt(t); m1.render(t, zero); if (i % 8 === 0) await tick(); }
+      for (let i = 0; i < total; i++) {
+        if (rendering.cancel) throw new Error('cancel');
+        const t = snap.t0 + F + i / fps;
+        N.clock.beat = beatAt(t); m1.render(t, zero);
+        let src = m1.canvas;
+        const tail = i - (total - warm);
+        if (m2 && tail >= 0) {
+          const t2 = snap.t0 + tail / fps; N.clock.beat = beatAt(t2); m2.render(t2, zero);
+          mctx.globalAlpha = 1; mctx.drawImage(m1.canvas, 0, 0);
+          mctx.globalAlpha = (tail + 1) / warm; mctx.drawImage(m2.canvas, 0, 0); mctx.globalAlpha = 1;
+          src = mixCanvas;
+        }
+        const vf = new VideoFrame(src, { timestamp: Math.round(i * 1e6 / fps), duration: Math.round(1e6 / fps) });
+        enc.encode(vf, { keyFrame: i % (fps * 2) === 0 }); vf.close();
+        if (encErr) throw encErr;
+        while (enc.encodeQueueSize > 6) await new Promise(r => setTimeout(r, 4));
+        if (i % 2 === 0) { progress((i + 1) / total); await tick(); }
+      }
+      lbl.textContent = 'Terminando el archivo…';
+      await enc.flush(); muxer.finalize();
+      saveBlob(new Blob([target.buffer], { type: 'video/mp4' }), `${fileTag()}_${D}s${ex.loop ? '_loop' : ''}.mp4`, 30000);
+      toast(`Video listo · ${W}×${H} · ${D} s · ${fps} fps` + (ex.loop ? ' · loop perfecto' : ''));
+    } catch (e) {
+      if (e && e.message === 'cancel') toast('Render cancelado');
+      else { console.error(e); toast('No se pudo renderizar: ' + String((e && e.message) || e).slice(0, 120), true); }
+    } finally {
+      try { if (enc.state !== 'closed') enc.close(); } catch (e) { /* closed */ }
+      if (m1) m1.destroy(); if (m2) m2.destroy();
+      rendering = null; bar.style.width = '0%'; lbl.textContent = '';
+      $('#expRenderBox').classList.remove('is-busy'); paintExport();
+    }
+  }
+
   /* ── Main loop ─────────────────────────────────────────── */
   let last = performance.now(), frameN = 0;
   function loop(now) {
@@ -1663,7 +1801,7 @@
 
   /* ── Start ─────────────────────────────────────────────── */
   makeWindow(preview); makeWindow($('#live'));
-  paintMixer();
+  paintMixer(); paintGuides(); paintExport();
   $('#btnDirect').classList.toggle('is-on', opts.direct);
   $('#btnThumbs').classList.toggle('is-on', opts.thumbs);
   work.classList.toggle('is-direct', opts.direct);
@@ -1676,5 +1814,5 @@
   requestAnimationFrame(loop);
   // fonts change node sizes -> redraw links once they are in
   if (document.fonts) document.fonts.ready.then(() => drawLinks());
-  window.__nodesEditor = { get graph() { return graph; }, get compiled() { return compiled; }, get liveGraph() { return liveGraph; }, stage, addNode, connect, removeNodes, undo, redo, goLive, modulate, set valueTarget(v) { valueTarget = v; }, setDirect, storeScene, fireScene, openScene, setThumbs, get scenes() { return scenes; }, get controls() { return ctlList(graph); }, selectDeck, setXf, get deck() { return deckSel; }, openCode, applyCode, get opts() { return opts; }, layoutPreview, ensureControls, get ov() { return ov; }, setOverlayOn, paintOverlayPanel, liveControls, ctlValue, randomPatch, varyPatch, stepScene, paintControls, toggleControl, applyControl, onMidi, midiLearn, setLearning(t) { learning = t; }, get midiMap() { return midiMap; }, remoteMsg, fullState, tap, get bpm() { return bpm; }, setBlack, setStrobe };
+  window.__nodesEditor = { get graph() { return graph; }, get compiled() { return compiled; }, get liveGraph() { return liveGraph; }, stage, addNode, connect, removeNodes, undo, redo, goLive, modulate, set valueTarget(v) { valueTarget = v; }, setDirect, storeScene, fireScene, openScene, setThumbs, get scenes() { return scenes; }, get controls() { return ctlList(graph); }, renderVideo, setExp, get ex() { return ex; }, get rendering() { return rendering; }, expSize, takePhoto, selectDeck, setXf, get deck() { return deckSel; }, openCode, applyCode, get opts() { return opts; }, layoutPreview, ensureControls, get ov() { return ov; }, setOverlayOn, paintOverlayPanel, liveControls, ctlValue, randomPatch, varyPatch, stepScene, paintControls, toggleControl, applyControl, onMidi, midiLearn, setLearning(t) { learning = t; }, get midiMap() { return midiMap; }, remoteMsg, fullState, tap, get bpm() { return bpm; }, setBlack, setStrobe };
 })();

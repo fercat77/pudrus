@@ -1088,6 +1088,8 @@ void main(){
       },
       setOverlay(ov) { overlay = ov; },
       get overlay() { return overlay; },
+      // free the GPU contexts (temporary stages, e.g. the video renderer)
+      destroy() { layers.forEach(l => { const x = l.r.gl.getExtension('WEBGL_lose_context'); if (x) x.loseContext(); }); },
       get canvas() { return out || layers[front].c; },
       get graph() { return layers[front].graph; },
       // replace what is live right now (no fade): used by "direct" mode
@@ -1188,6 +1190,7 @@ void main(){
       setStrobe(on) { master.strobe = !!on; },
       get strobe() { return master.strobe; },
       get veil() { return { black: master.black, flash: master.flash }; },
+      destroy() { decks.A.destroy(); decks.B.destroy(); out.remove(); },
     };
   }
 
