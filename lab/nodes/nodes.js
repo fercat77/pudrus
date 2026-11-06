@@ -1121,6 +1121,21 @@ void main(){
   /* ── Overlay layer ───────────────────────────────────────
      ov = { on, items: [{ on, kind: 'image'|'text', img, text, font, color, x, y, size, rot,
             opacity, blend, fx, amount }] } — positions 0–1, size = height on screen */
+  // «invertir»: a colour-inverted copy of the picture (alpha kept), cached per source
+  const invCache = new WeakMap();
+  function invertedPicture(src, sw, sh) {
+    let e = invCache.get(src);
+    if (e && e.w === sw && e.h === sh && e.ver === src.__ver) return e.c;
+    const c = document.createElement('canvas'); c.width = sw; c.height = sh;
+    const x = c.getContext('2d'); x.drawImage(src, 0, 0, sw, sh);
+    try {
+      const d = x.getImageData(0, 0, sw, sh), a = d.data;
+      for (let i = 0; i < a.length; i += 4) { a[i] = 255 - a[i]; a[i + 1] = 255 - a[i + 1]; a[i + 2] = 255 - a[i + 2]; }
+      x.putImageData(d, 0, 0);
+    } catch (err) { x.globalCompositeOperation = 'difference'; x.fillStyle = '#fff'; x.fillRect(0, 0, sw, sh); x.globalCompositeOperation = 'destination-in'; x.drawImage(src, 0, 0, sw, sh); }
+    invCache.set(src, { c, w: sw, h: sh, ver: src.__ver });
+    return c;
+  }
   function drawOverlay(ctx, W, H, ov, time, audio) {
     if (!ov || !ov.on || !Array.isArray(ov.items)) return;
     const beat = clock.beat;
@@ -1143,7 +1158,8 @@ void main(){
       const h = size * H, w = h * sw / sh;
       ctx.save();
       ctx.globalAlpha = Math.max(0, Math.min(1, op));
-      ctx.globalCompositeOperation = it.blend || 'source-over';
+      if (it.blend === 'invert') { src = invertedPicture(src, sw, sh); ctx.globalCompositeOperation = 'source-over'; }
+      else ctx.globalCompositeOperation = it.blend || 'source-over';
       ctx.translate(x * W, y * H); ctx.rotate(rot);
       if (it.fx === 'glitch' && Math.random() < 0.15 + amt * 0.5) {
         // a few slices jump sideways

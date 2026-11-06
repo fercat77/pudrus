@@ -1624,7 +1624,7 @@
     toast(!ov.items.length ? 'La capa superior está vacía: agregá un logo o un texto en ▤ Capa' : on ? 'Capa superior visible' : 'Capa superior oculta');
   }
   const OV_FX = [['none', 'sin efecto'], ['beat', 'late con el pulso'], ['bass', 'late con los graves'], ['spin', 'gira'], ['float', 'flota'], ['breathe', 'respira'], ['blink', 'parpadea al pulso'], ['glitch', 'glitch']];
-  const OV_BLEND = [['source-over', 'normal'], ['lighter', 'sumar'], ['screen', 'pantalla'], ['multiply', 'multiplicar'], ['difference', 'diferencia']];
+  const OV_BLEND = [['source-over', 'normal'], ['lighter', 'sumar'], ['screen', 'pantalla'], ['multiply', 'multiplicar'], ['difference', 'diferencia'], ['invert', 'invertir']];
   const OV_FONTS = [['sans', 'sans negrita'], ['display', 'display'], ['serif', 'serif'], ['mono', 'mono'], ['hand', 'manuscrita']];
   const ovPick = el('input'); ovPick.type = 'file'; ovPick.accept = 'image/png,image/jpeg,image/webp,image/gif,image/svg+xml'; ovPick.hidden = true;
   document.body.append(ovPick);
