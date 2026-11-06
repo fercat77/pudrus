@@ -87,7 +87,7 @@
   <div class="tip" id="tip"></div>
 </div>
 <div class="hint" id="hint">Doble clic: pantalla completa · M: ajustar (superficies y máscaras) · esperando al editor…</div>
-<script src="nodes.js?v=15"></script>
+<script src="nodes.js?v=16"></script>
 <script>
 (function () {
   // Shows what is ON AIR in the editor (not the preview), with the same cross-fades and overlay.
@@ -95,7 +95,7 @@
   const $ = s => document.getElementById(s);
   // the stage composites everything (layers, overlay, black/strobe) into one canvas;
   // each mapping surface then shows a piece of it, warped into place
-  const stage = N.createStage($('src'), { composite: true });
+  const stage = N.createMixer($('src'));
   let time = 0, audio = [0, 0, 0, 0], playing = true, lastMsg = 0;
   const ch = new BroadcastChannel('pudrus-nodes');
 
@@ -106,8 +106,9 @@
     const m = e.data || {};
     lastMsg = performance.now();
     try {
-      if (m.type === 'live') { stage.go(m.graph, m.fade || 0); $('hint').textContent = 'Doble clic: pantalla completa · M: ajustar (superficies y máscaras)'; }
-      else if (m.type === 'direct') stage.direct(m.graph);
+      if (m.type === 'live') { stage.go(m.graph, m.fade || 0, m.deck); $('hint').textContent = 'Doble clic: pantalla completa · M: ajustar (superficies y máscaras)'; }
+      else if (m.type === 'direct') stage.direct(m.graph, m.deck);
+      else if (m.type === 'mix') { stage.x = m.x; stage.mode = m.mode; }
       else if (m.type === 'frame') { time = m.t; audio = m.audio; if (typeof m.beat === 'number') N.clock.beat = m.beat; }
       else if (m.type === 'master') { stage.setBlack(!!m.black, m.fade || 0); stage.setStrobe(!!m.strobe); }
       else if (m.type === 'overlay') stage.setOverlay(m.ov);

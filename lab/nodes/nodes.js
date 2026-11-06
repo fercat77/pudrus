@@ -73,6 +73,115 @@ vec3 cosPal(float t, vec3 a, vec3 b, vec3 c, vec3 d){ return a + b * cos(6.28318
       ` vec3 ${O.c} = ${tint ? `${tint} * ` : ''}${t}.rgb; float ${O.a} = ${t}.a * ${I.opacity};`;
   };
 
+  /* ── Code node (GLSL / Shadertoy) ─────────────────────────── */
+  const LIB_NAMES = ['hash21', 'hash22', 'vnoise', 'fbm', 'voronoi', 'rot', 'hsv2rgb', 'rgb2hsv', 'cosPal'];
+  // Shadertoy names, the 4 knobs and iChannel0 = this patch's feedback buffer
+  const TOY_HEAD = `#define iTime u_time
+#define iResolution vec3(u_res, 1.0)
+#define iMouse vec4(0.0)
+#define iFrame int(u_time * 60.0)
+#define iTimeDelta 0.0166
+#define iDate vec4(0.0)
+#define iChannel0 u_prev
+#define texture texture2D
+float knob1; float knob2; float knob3; float knob4;`;
+  const GLSL_TEMPLATES = {
+    effect: `// effect(...) devuelve un color para cada punto.
+// uv: coordenadas (centro = 0, alto = 1) · col: color de la entrada
+// k1..k4: perillas 0–1 (asignalas al celular o MIDI) · iTime: tiempo
+vec3 effect(vec2 uv, vec3 col, float k1, float k2, float k3, float k4) {
+  float r = length(uv), a = atan(uv.y, uv.x);
+  float w = sin(r * (8.0 + k1 * 40.0) - iTime * (1.0 + k2 * 4.0) + a * floor(1.0 + k3 * 8.0));
+  vec3 c = 0.5 + 0.5 * cos(6.2831 * (vec3(0.0, 0.33, 0.67) + r + k4 + iTime * 0.05));
+  return mix(col, c, smoothstep(-0.2, 0.2, w));
+}`,
+    toy: `// Pegá acá un shader de Shadertoy (con mainImage) tal cual.
+// iTime, iResolution, iMouse y iFrame funcionan; iChannel0 es el feedback de este patch.
+// knob1..knob4 son las perillas del nodo (0–1).
+void mainImage(out vec4 fragColor, in vec2 fragCoord) {
+  vec2 uv = fragCoord / iResolution.xy;
+  vec3 col = 0.5 + 0.5 * cos(iTime + uv.xyx * (1.0 + knob1 * 6.0) + vec3(0.0, 2.0, 4.0));
+  fragColor = vec4(col, 1.0);
+}`,
+    ray: `// Raymarching 3D a mano: una escena hecha con distancias (SDF).
+float sdScene(vec3 p, float k1) {
+  p.xz *= mat2(cos(iTime * 0.5), -sin(iTime * 0.5), sin(iTime * 0.5), cos(iTime * 0.5));
+  vec3 q = abs(p) - vec3(0.6);
+  float box = length(max(q, 0.0)) + min(max(q.x, max(q.y, q.z)), 0.0);
+  float ball = length(p) - (0.7 + k1 * 0.15);
+  return max(box, -ball);   // cubo con una esfera restada (queda el armazón)
+}
+vec3 effect(vec2 uv, vec3 col, float k1, float k2, float k3, float k4) {
+  vec3 ro = vec3(0.0, 0.0, 3.0), rd = normalize(vec3(uv, -1.5));
+  float t = 0.0;
+  for (int i = 0; i < 80; i++) { float h = sdScene(ro + rd * t, k1); if (h < 0.001 || t > 20.0) break; t += h; }
+  if (t > 20.0) return col;
+  vec3 p = ro + rd * t; vec2 e = vec2(0.001, 0.0);
+  vec3 n = normalize(vec3(sdScene(p + e.xyy, k1) - sdScene(p - e.xyy, k1), sdScene(p + e.yxy, k1) - sdScene(p - e.yxy, k1), sdScene(p + e.yyx, k1) - sdScene(p - e.yyx, k1)));
+  float dif = max(dot(n, normalize(vec3(0.6, 0.8, 0.5))), 0.0);
+  return (0.5 + 0.5 * n) * (0.2 + 0.8 * dif) * (0.6 + k2);
+}`,
+  };
+  function glslGlobals(code, id) {
+    let c = String(code || '');
+    // functions the user defines with the same name as ours get a private name
+    for (const nm of LIB_NAMES) if (new RegExp(`\\b(float|vec2|vec3|vec4|mat2|void)\\s+${nm}\\s*\\(`).test(c)) c = c.replace(new RegExp(`\\b${nm}\\b`, 'g'), `${nm}_n${id}`);
+    if (/\bmainImage\s*\(/.test(c)) return { mode: 'toy', src: c.replace(/\bmainImage\b/g, `n${id}_mainImage`) };
+    return { mode: 'effect', src: c.replace(/\beffect\b/g, `n${id}_effect`) };
+  }
+
+  /* ── 3D scene (raymarching) ───────────────────────────────── */
+  function scene3dGlobals(P, id) {
+    const shape = {
+      sphere: 'length(p) - size',
+      box: '(length(max(abs(p) - vec3(size * 0.8), 0.0)) + min(max(abs(p).x - size * 0.8, max(abs(p).y - size * 0.8, abs(p).z - size * 0.8)), 0.0)) - size * 0.05',
+      torus: 'length(vec2(length(p.xz) - size, p.y)) - size * 0.32',
+      octa: '(abs(p.x) + abs(p.y) + abs(p.z) - size * 1.3) * 0.57735',
+      blob: 'length(p) - size + 0.09 * size * sin(p.x * 7.0 / size + u_time * 2.0) * sin(p.y * 7.0 / size + u_time * 1.3) * sin(p.z * 7.0 / size)',
+      gem: 'max(length(p) - size, (abs(p.x) + abs(p.y) + abs(p.z) - size * 1.15) * 0.57735)',
+    }[P.shape] || 'length(p) - size';
+    const layout = {
+      single: '',
+      grid: 'p = mod(p + sp * 0.5, sp) - sp * 0.5;',
+      tunnel: 'p.z = mod(p.z + sp * 0.5, sp) - sp * 0.5; float aa = atan(p.y, p.x); float sec = 6.28318 / 8.0; aa = mod(aa + sec * 0.5, sec) - sec * 0.5; p.xy = vec2(cos(aa), sin(aa)) * length(p.xy); p.x -= sp * 0.8;',
+      column: 'p.xz = mod(p.xz + sp * 0.5, sp) - sp * 0.5; p.y = mod(p.y + sp * 0.5, sp) - sp * 0.5;',
+    }[P.layout] || '';
+    const steps = parseInt(P.quality, 10) || 72;
+    const cam = {
+      orbit: 'vec3 ro = vec3(sin(tt) * 4.5, 1.6 + sin(tt * 0.7) * 0.8, cos(tt) * 4.5); vec3 ta = vec3(0.0);',
+      fly: 'vec3 ro = vec3(sin(tt * 0.3) * 0.4, cos(tt * 0.23) * 0.3, tt * 3.0); vec3 ta = ro + vec3(sin(tt * 0.5) * 0.3, cos(tt * 0.4) * 0.2, 1.0);',
+      still: 'vec3 ro = vec3(0.0, 0.0, 4.5); vec3 ta = vec3(0.0);',
+    }[P.cam] || '';
+    return `float n${id}_sd(vec3 p, float size, float twist, float sp) {
+  ${layout}
+  float tw = p.y * twist; p.xz = mat2(cos(tw), -sin(tw), sin(tw), cos(tw)) * p.xz;
+  return ${shape};
+}
+vec3 n${id}_march(vec2 uv, float size, float twist, float speed, float sp, out vec3 nrm) {
+  float tt = u_time * speed;
+  ${cam}
+  vec3 f = normalize(ta - ro), r = normalize(cross(vec3(0.0, 1.0, 0.0), f)), u = cross(f, r);
+  vec3 rd = normalize(uv.x * r + uv.y * u + 1.6 * f);
+  float t = 0.0, hit = 0.0;
+  for (int i = 0; i < ${steps}; i++) {
+    float h = n${id}_sd(ro + rd * t, size, twist, sp);
+    if (h < 0.001 * (1.0 + t)) { hit = 1.0; break; }
+    t += h * 0.85;
+    if (t > 40.0) break;
+  }
+  nrm = vec3(0.0);
+  if (hit < 0.5) return vec3(0.0, 1.0, 0.0);
+  vec3 pos = ro + rd * t; vec2 e = vec2(0.0015, -0.0015);
+  nrm = normalize(e.xyy * n${id}_sd(pos + e.xyy, size, twist, sp) + e.yyx * n${id}_sd(pos + e.yyx, size, twist, sp) + e.yxy * n${id}_sd(pos + e.yxy, size, twist, sp) + e.xxx * n${id}_sd(pos + e.xxx, size, twist, sp));
+  vec3 l = normalize(vec3(0.6, 0.9, -0.4));
+  float dif = max(dot(nrm, l), 0.0);
+  float spe = pow(max(dot(reflect(rd, nrm), l), 0.0), 24.0);
+  float ao = clamp(n${id}_sd(pos + nrm * 0.2, size, twist, sp) / 0.2, 0.0, 1.0);
+  float fog = exp(-t * 0.07);
+  return vec3(clamp((0.12 + 0.8 * dif * (0.5 + 0.5 * ao) + spe * 0.6) * fog, 0.0, 1.0), clamp(t / 40.0, 0.0, 1.0), hit);
+}`;
+  }
+
   const NODES = {
     /* Entrada */
     time: { title: 'Tiempo', cat: 'Entrada',
@@ -136,6 +245,30 @@ vec3 cosPal(float t, vec3 a, vec3 b, vec3 c, vec3 d){ return a + b * cos(6.28318
                { k: 'repeat', label: 'Repetir', v: 'no', options: [['no', 'no'], ['yes', 'sí (mosaico)']] }],
       outputs: [['c', 'color', 'Color'], ['a', 'float', 'Alfa']],
       glsl: (I, O, P, id) => texGLSL(I, O, P, id) },
+
+    glsl: { title: 'GLSL', cat: 'Código',
+      inputs: [UV, COL('in', 'Color de entrada', '#000000'), F('k1', 'Perilla 1', 0.5, 0, 1), F('k2', 'Perilla 2', 0.5, 0, 1), F('k3', 'Perilla 3', 0.5, 0, 1), F('k4', 'Perilla 4', 0.5, 0, 1)],
+      params: [{ k: 'code', label: 'Código', kind: 'code', v: GLSL_TEMPLATES.effect }],
+      outputs: [['c', 'color', 'Color'], ['v', 'float', 'Brillo']],
+      usesFeedback: true,
+      globals: (P, id) => glslGlobals(P.code, id).src,
+      glsl: (I, O, P, id) => {
+        const g = glslGlobals(P.code, id);
+        const knobs = `knob1 = ${I.k1}; knob2 = ${I.k2}; knob3 = ${I.k3}; knob4 = ${I.k4};`;
+        const call = g.mode === 'toy'
+          ? `vec4 _o${id} = vec4(0.0); n${id}_mainImage(_o${id}, (${I.uv} / vec2(u_res.x / u_res.y, 1.0) + 0.5) * u_res); vec3 ${O.c} = _o${id}.rgb;`
+          : `vec3 ${O.c} = n${id}_effect(${I.uv}, ${I.in}, ${I.k1}, ${I.k2}, ${I.k3}, ${I.k4});`;
+        return `${knobs} ${call} float ${O.v} = dot(${O.c}, vec3(0.299, 0.587, 0.114));`;
+      } },
+    scene3d: { title: 'Escena 3D', cat: 'Código',
+      inputs: [UV, F('size', 'Tamaño', 0.8, 0.1, 2), F('twist', 'Torsión', 0, -3, 3), F('speed', 'Cámara (vel.)', 0.4, 0, 3), F('spacing', 'Separación', 3, 1.2, 8)],
+      params: [{ k: 'shape', label: 'Forma', v: 'torus', options: [['sphere', 'esfera'], ['box', 'cubo'], ['torus', 'toroide'], ['octa', 'octaedro'], ['gem', 'gema'], ['blob', 'gota viva']] },
+               { k: 'layout', label: 'Disposición', v: 'single', options: [['single', 'una'], ['grid', 'grilla infinita'], ['tunnel', 'túnel'], ['column', 'columnas']] },
+               { k: 'cam', label: 'Cámara', v: 'orbit', options: [['orbit', 'órbita'], ['fly', 'vuelo'], ['still', 'quieta']] },
+               { k: 'quality', label: 'Calidad', v: '72', options: [['40', 'baja (rápida)'], ['72', 'media'], ['120', 'alta']] }],
+      outputs: [['v', 'float', 'Luz'], ['depth', 'float', 'Profundidad'], ['c', 'color', 'Normales']],
+      globals: (P, id) => scene3dGlobals(P, id),
+      glsl: (I, O, P, id) => `vec3 _nr${id}; vec3 _m${id} = n${id}_march(${I.uv}, ${I.size}, ${I.twist}, ${I.speed}, ${I.spacing}, _nr${id}); float ${O.v} = _m${id}.x; float ${O.depth} = _m${id}.y; vec3 ${O.c} = (_nr${id} * 0.5 + 0.5) * _m${id}.x * _m${id}.z;` },
 
     /* Generar */
     noise: { title: 'Ruido', cat: 'Generar',
@@ -321,7 +454,7 @@ vec3 cosPal(float t, vec3 a, vec3 b, vec3 c, vec3 d){ return a + b * cos(6.28318
       outputs: [],
       glsl: () => '' },
   };
-  const CATEGORIES = ['Entrada', 'Generar', 'Coordenadas', 'Color', 'Efectos', 'Salida'];
+  const CATEGORIES = ['Entrada', 'Generar', 'Coordenadas', 'Color', 'Efectos', 'Código', 'Salida'];
 
   /* ── Graph helpers ──────────────────────────────────────── */
   function defaultsFor(type) {
@@ -347,6 +480,7 @@ vec3 cosPal(float t, vec3 a, vec3 b, vec3 c, vec3 d){ return a + b * cos(6.28318
     const out = graph.nodes.find(n => n.type === 'output');
     const uniforms = [];      // { name, type: 'float' | 'color', node, key }
     const textures = [];      // { node, kind, p, texName, aspName }  (Image / Text nodes)
+    const globals = [];       // functions written by Code / 3D nodes (outside main)
     const lines = [];
     const done = new Set(), visiting = new Set();
     let usesAudio = false, usesFeedback = false;
@@ -378,6 +512,7 @@ vec3 cosPal(float t, vec3 a, vec3 b, vec3 c, vec3 d){ return a + b * cos(6.28318
       const O = {};
       (def.outputs || []).forEach(o => { O[o[0]] = outVar(node.id, o[0]); });
       const P = { ...defaultsFor(node.type).p, ...(node.p || {}) };
+      if (def.globals) globals.push(`// ${def.title} #${node.id}\n` + def.globals(P, node.id));
       lines.push(`  // ${def.title} #${node.id}\n  ` + def.glsl(I, O, P, node.id));
       if (def.tex) textures.push({ node: node.id, kind: node.type, p: P, texName: `u_${node.id}_tex`, aspName: `u_${node.id}_aspect` });
       if (def.usesAudio) usesAudio = true;
@@ -423,6 +558,7 @@ uniform vec4 u_audio;
 uniform sampler2D u_prev;
 ${decl}
 ${LIB}
+${globals.length ? TOY_HEAD + '\n' + globals.join('\n') : ''}
 void main(){
   vec2 p = (v_uv - 0.5) * vec2(u_res.x / u_res.y, 1.0);
 ${lines.join('\n')}
@@ -887,7 +1023,7 @@ void main(){
      composite: true -> both layers are drawn into one visible 2D canvas (recordable);
      false -> two stacked WebGL canvases faded with CSS (cheaper, for the projector). */
   function createStage(container, opts = {}) {
-    const composite = !!opts.composite;
+    const composite = !!opts.composite, bare = !!opts.bare;
     const mkLayer = () => {
       const c = document.createElement('canvas');
       if (!composite) { c.className = 'stage-layer'; container.append(c); }
@@ -983,8 +1119,7 @@ void main(){
           }
           paint();
         }
-        paintOverlay(time, audio);
-        drawMaster();
+        if (!bare) { paintOverlay(time, audio); drawMaster(); }
       },
       get fading() { return !!fade; },
       // fade to / from black over `seconds` (0 = cut)
@@ -997,5 +1132,64 @@ void main(){
     };
   }
 
-  window.PudrusNodes = { clock, assets, media, drawOverlay, textPicture, NODES, CATEGORIES, compile, createRenderer, createThumbs, createStage, structureKey, uniformValues, defaultsFor, dependsOn, uniformName, postValues, applyValues };
+  /* ── Mixer: two decks like Resolume's A/B, crossfaded or blended ──
+     Same API as a composite stage (go/direct/render/…) acting on the selected deck. */
+  function createMixer(container) {
+    const scratch = document.createElement('div');
+    const decks = { A: createStage(scratch, { composite: true, bare: true }), B: createStage(scratch, { composite: true, bare: true }) };
+    const out = document.createElement('canvas'); out.className = 'stage-out'; container.append(out);
+    const ctx = out.getContext('2d');
+    let deck = 'A', x = 0, mode = 'mix', overlay = null;
+    const master = { black: 0, target: 0, speed: 2, strobe: false, flash: false, last: performance.now() };
+    const empty = { nodes: [], links: [] };
+    decks.B.go(empty, 0);
+    function drawMaster() {
+      const now = performance.now(), dt = Math.min(0.1, (now - master.last) / 1000); master.last = now;
+      if (master.black !== master.target) {
+        const d = master.speed * dt;
+        master.black = master.target > master.black ? Math.min(master.target, master.black + d) : Math.max(master.target, master.black - d);
+      }
+      master.flash = master.strobe && Math.floor(now / 45) % 2 === 0;
+      if (master.black > 0) { ctx.globalAlpha = master.black; ctx.fillStyle = '#000'; ctx.fillRect(0, 0, out.width, out.height); }
+      if (master.flash) { ctx.globalAlpha = 1; ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, out.width, out.height); }
+      ctx.globalAlpha = 1;
+    }
+    const D = d => decks[d === 'B' ? 'B' : d === 'A' ? 'A' : deck];
+    return {
+      resize(w, h) { decks.A.resize(w, h); decks.B.resize(w, h); out.width = Math.round(w); out.height = Math.round(h); },
+      get canvas() { return out; },
+      get graph() { return D().graph; },
+      graphOf(d) { return D(d).graph; },
+      get deck() { return deck; }, set deck(d) { deck = d === 'B' ? 'B' : 'A'; },
+      get x() { return x; }, set x(v) { x = Math.min(1, Math.max(0, +v || 0)); },
+      get mode() { return mode; }, set mode(m) { mode = ['mix', 'lighter', 'screen', 'multiply', 'difference'].includes(m) ? m : 'mix'; },
+      go(graph, seconds, d) { D(d).go(graph, seconds); },
+      direct(graph, d) { D(d).direct(graph); },
+      get fading() { return D().fading; },
+      render(time, audio) {
+        const needA = !(mode === 'mix' && x >= 1), needB = x > 0;
+        if (needA) decks.A.render(time, audio);
+        if (needB) decks.B.render(time, audio);
+        ctx.globalCompositeOperation = 'source-over'; ctx.globalAlpha = 1;
+        if (needA) ctx.drawImage(decks.A.canvas, 0, 0, out.width, out.height); else { ctx.fillStyle = '#000'; ctx.fillRect(0, 0, out.width, out.height); }
+        if (needB) {
+          ctx.globalAlpha = x;
+          if (mode !== 'mix') ctx.globalCompositeOperation = mode;
+          ctx.drawImage(decks.B.canvas, 0, 0, out.width, out.height);
+          ctx.globalCompositeOperation = 'source-over'; ctx.globalAlpha = 1;
+        }
+        drawOverlay(ctx, out.width, out.height, overlay, time, audio);
+        drawMaster();
+      },
+      setOverlay(ov) { overlay = ov; },
+      get overlay() { return overlay; },
+      setBlack(on, seconds) { master.target = on ? 1 : 0; master.speed = seconds > 0 ? 1 / seconds : 1e9; },
+      get black() { return master.target === 1; },
+      setStrobe(on) { master.strobe = !!on; },
+      get strobe() { return master.strobe; },
+      get veil() { return { black: master.black, flash: master.flash }; },
+    };
+  }
+
+  window.PudrusNodes = { clock, assets, media, drawOverlay, textPicture, createMixer, GLSL_TEMPLATES, NODES, CATEGORIES, compile, createRenderer, createThumbs, createStage, structureKey, uniformValues, defaultsFor, dependsOn, uniformName, postValues, applyValues };
 })();

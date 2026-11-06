@@ -5,7 +5,7 @@
   const work = $('#work'), world = $('#world'), svg = $('#links');
   const preview = $('#preview'), view = $('#view');
   const STORE = 'pudrus_nodes_graph_v1';
-  const CAT_COLOR = { Entrada: 'var(--c-in)', Generar: 'var(--c-gen)', Coordenadas: 'var(--c-uv)', Color: 'var(--c-col)', Efectos: 'var(--c-fx)', Salida: 'var(--c-out)' };
+  const CAT_COLOR = { Entrada: 'var(--c-in)', Generar: 'var(--c-gen)', Coordenadas: 'var(--c-uv)', Color: 'var(--c-col)', Efectos: 'var(--c-fx)', 'Código': 'var(--c-code)', Salida: 'var(--c-out)' };
   const clone = o => JSON.parse(JSON.stringify(o));
 
   /* ── State ─────────────────────────────────────────────── */
@@ -85,7 +85,7 @@
     } catch (e) {
       console.error(e);
       toast('No se pudo compilar el shader:\n' + String(e.message || e).split('\n').slice(0, 4).join('\n'), true);
-      return;
+      return String(e.message || e);
     }
     if (opts.direct) sendDirect();
     markPending();
@@ -167,6 +167,16 @@
         let tt;
         ta.addEventListener('input', () => { clearTimeout(tt); tt = setTimeout(() => { n.p = { ...(n.p || {}), [p.k]: ta.value }; recompile(); save(); remember(); }, 200); });
         row.append(ta); body.append(row);
+        continue;
+      }
+      if (p.kind === 'code') {
+        const code = (n.p && n.p.code !== undefined) ? n.p.code : p.v;
+        const toy = /\bmainImage\s*\(/.test(code);
+        const b = el('button', 'nd-file nd-code', '✎ Editar código · ' + (toy ? 'Shadertoy' : 'effect()'));
+        b.title = 'Escribí GLSL o pegá un shader de Shadertoy';
+        b.addEventListener('pointerdown', e => e.stopPropagation());
+        b.addEventListener('click', () => openCode(n));
+        row.append(b); body.append(row);
         continue;
       }
       if (p.kind === 'video') {
@@ -642,6 +652,58 @@
     if (n && n.type === kind) (kind === 'video' ? setVideo : setImage)(n, f);
   });
 
+  /* ── Code editor for the GLSL node ──────────────────────── */
+  const codePop = $('#codePop'), codeArea = $('#codeArea'), codeErr = $('#codeErr');
+  let codeNode = null;
+  function openCode(n) {
+    codeNode = n;
+    codeArea.value = (n.p && n.p.code !== undefined) ? n.p.code : N.NODES.glsl.params[0].v;
+    codeErr.textContent = ''; codeErr.classList.remove('is-err');
+    $('#codeTitle').textContent = 'GLSL · nodo #' + n.id;
+    closePops(); codePop.hidden = false;
+    setTimeout(() => codeArea.focus(), 0);
+  }
+  function applyCode() {
+    if (!codeNode || !graph.nodes.includes(codeNode)) { codePop.hidden = true; return; }
+    codeNode.p = { ...(codeNode.p || {}), code: codeArea.value };
+    const err = recompile();
+    if (err) {
+      // point at the line of *your* code, not of the whole shader
+      let msg = String(err);
+      try {
+        const fr = N.compile(graph).frag, mark = `// GLSL #${codeNode.id}\n`, at = fr.indexOf(mark);
+        if (at >= 0) {
+          const start = fr.slice(0, at).split('\n').length + 1;
+          msg = msg.replace(/ERROR:\s*\d+:(\d+):/g, (_, ln) => `línea ${Math.max(1, +ln - start + 1)}:`);
+        }
+      } catch (e) { /* keep raw */ }
+      codeErr.textContent = msg.split('\n').filter(Boolean).slice(0, 6).join('\n');
+      codeErr.classList.add('is-err');
+      return;
+    }
+    codeErr.textContent = 'Compilado ✓' + (opts.direct ? '' : ' · Enter fuera del editor lo manda al aire');
+    codeErr.classList.remove('is-err');
+    rebuild(); save(); remember();
+  }
+  $('#codeApply').addEventListener('click', applyCode);
+  $('#codeClose').addEventListener('click', () => { codePop.hidden = true; });
+  $('#codeTpl').addEventListener('change', e => {
+    const t = N.GLSL_TEMPLATES[e.target.value];
+    if (t && (codeArea.value.trim() === '' || confirm('¿Reemplazar el código por la plantilla?'))) codeArea.value = t;
+    e.target.value = '';
+  });
+  codeArea.addEventListener('keydown', e => {
+    e.stopPropagation();
+    if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) { e.preventDefault(); applyCode(); }
+    else if (e.key === 'Escape') { codePop.hidden = true; }
+    else if (e.key === 'Tab') {
+      e.preventDefault();
+      const a = codeArea.selectionStart, b = codeArea.selectionEnd;
+      codeArea.value = codeArea.value.slice(0, a) + '  ' + codeArea.value.slice(b);
+      codeArea.selectionStart = codeArea.selectionEnd = a + 2;
+    }
+  });
+
   /* ── Keyboard ──────────────────────────────────────────── */
   document.addEventListener('keydown', e => {
     // shortcuts are ignored only while typing (text fields, menus), not on sliders or checkboxes
@@ -728,6 +790,7 @@
     const live = $('#live'), main = mainView(), back = work.classList.contains('backdrop');
     const bar = document.querySelector('.lab-preview-bar');
     if (bar.parentNode !== main) main.append(bar);
+    const mixEl = $('#mixer'); if (mixEl && mixEl.parentNode !== main) main.append(mixEl);
     const fsEl = document.fullscreenElement;
     let pvH = SIZES.s[1];
     const workSize = () => { const r = work.getBoundingClientRect(), s = Math.min(1, 1920 / r.width), d = Math.min(devicePixelRatio, 1.5) * s; return [r.width * d, r.height * d]; };
@@ -861,7 +924,7 @@
   /* ── Output window (second screen / projector) ─────────── */
   const channel = 'BroadcastChannel' in window ? new BroadcastChannel('pudrus-nodes') : null;
   function broadcast(msg) { if (channel) channel.postMessage(msg); }
-  if (channel) channel.onmessage = e => { if (e.data && e.data.type === 'hello') { broadcast({ type: 'live', graph: liveGraph, fade: 0 }); broadcast({ type: 'play', playing }); broadcastMaster(0); broadcast({ type: 'overlay', ov }); } };
+  if (channel) channel.onmessage = e => { if (e.data && e.data.type === 'hello') { liveByDeck[deckSel] = liveGraph; ['A', 'B'].forEach(d => broadcast({ type: 'live', graph: liveByDeck[d], fade: 0, deck: d })); broadcastMix(); broadcast({ type: 'play', playing }); broadcastMaster(0); broadcast({ type: 'overlay', ov }); } };
   $('#btnOut').addEventListener('click', () => {
     const w = window.open('output.html', 'pudrus-output', 'width=960,height=540');
     if (!w) toast('El navegador bloqueó la ventana: permití las ventanas emergentes', true);
@@ -870,9 +933,11 @@
 
   /* ── Live: preview (editor) / on air (program) ──────────── */
   const liveBox = $('#live');
-  const stage = N.createStage(liveBox, { composite: true });
+  const stage = N.createMixer(liveBox);   // two decks (A / B) + crossfader, overlay, black/strobe
   stage.resize(1280, 720);
   let liveGraph = clone(graph);
+  const liveByDeck = { A: liveGraph, B: { nodes: [], links: [] } };
+  let deckSel = 'A';
   const contentKey = g => JSON.stringify({ n: g.nodes.map(n => [n.id, n.type, n.v, n.p]), l: g.links });
   let liveKey = contentKey(liveGraph);
   try { stage.go(liveGraph, 0); } catch (e) { console.error(e); }
@@ -882,9 +947,9 @@
     $('#btnGo').classList.toggle('is-pending', pending);
   }
   function sendDirect() {
-    liveGraph = graph; liveKey = contentKey(graph);
+    liveGraph = liveByDeck[deckSel] = graph; liveKey = contentKey(graph);
     try { stage.direct(graph); } catch (e) { return; }
-    broadcast({ type: 'direct', graph });
+    broadcast({ type: 'direct', graph, deck: deckSel });
   }
   // Put a patch on air (cross-fade); by default the one in the editor
   function goLive(g, fade) {
@@ -892,8 +957,8 @@
     const sec = fade === undefined ? opts.fade : fade;
     const next = ensureControls(opts.direct && g === graph ? graph : clone(g));
     try { stage.go(next, sec); } catch (e) { toast('Ese patch no compila; sigue al aire el anterior', true); return; }
-    liveGraph = next; liveKey = contentKey(next);
-    broadcast({ type: 'live', graph: next, fade: sec });
+    liveGraph = liveByDeck[deckSel] = next; liveKey = contentKey(next);
+    broadcast({ type: 'live', graph: next, fade: sec, deck: deckSel });
     markPending();
     pushState(); paintControls();
     liveBox.classList.remove('is-flash'); void liveBox.offsetWidth; liveBox.classList.add('is-flash');
@@ -910,11 +975,43 @@
     $('#btnDirect').classList.toggle('is-on', on);
     work.classList.toggle('is-direct', on);
     if (on) { goLive(graph, 0); sendDirect(); }
-    else { liveGraph = clone(graph); stage.direct(liveGraph); liveKey = contentKey(liveGraph); }
+    else { liveGraph = liveByDeck[deckSel] = clone(graph); stage.direct(liveGraph); liveKey = contentKey(liveGraph); }
     markPending();
     layoutPreview();
   }
   $('#btnDirect').addEventListener('click', () => { setDirect(!opts.direct); toast(opts.direct ? 'Directo: todo lo que tocás sale al aire' : 'Preview: preparás acá y mandás con «Al aire» (Enter)'); });
+
+  /* ── Decks A / B and crossfader (like Resolume) ─────────── */
+  function broadcastMix() { broadcast({ type: 'mix', x: stage.x, mode: stage.mode }); }
+  function paintMixer() {
+    document.querySelectorAll('#mixer [data-deck]').forEach(b => b.classList.toggle('is-on', b.dataset.deck === deckSel));
+    const xf = $('#xfader'); if (document.activeElement !== xf) xf.value = stage.x;
+    $('#xmode').value = stage.mode;
+    $('#btnGo').innerHTML = '⏵ Al aire' + (stage.x > 0 || deckSel === 'B' ? ` <b class="deck-l">${deckSel}</b>` : '');
+    const tag = $('#live .lab-tag'); if (tag) tag.textContent = '● EN VIVO' + (stage.x > 0 || deckSel === 'B' ? ` · editás ${deckSel}` : '');
+  }
+  function selectDeck(d) {
+    d = d === 'B' ? 'B' : 'A';
+    if (d === deckSel) return;
+    liveByDeck[deckSel] = liveGraph;
+    deckSel = d; stage.deck = d;
+    liveGraph = liveByDeck[d]; liveKey = contentKey(liveGraph);
+    markPending(); paintMixer(); paintControls(); pushState();
+    toast(`Capa ${d}: «Al aire», escenas y controles van a la capa ${d}`);
+  }
+  function setXf(v, quiet) {
+    stage.x = v; paintMixer();
+    broadcastMix();
+    if (!quiet) pushState();
+  }
+  document.querySelectorAll('#mixer [data-deck]').forEach(b => {
+    b.addEventListener('click', () => selectDeck(b.dataset.deck));
+    b.addEventListener('contextmenu', e => { e.preventDefault(); e.stopPropagation(); midiLearn({ kind: 'deck', d: b.dataset.deck }); });
+  });
+  $('#xfader').addEventListener('input', e => setXf(+e.target.value));
+  $('#xfader').addEventListener('contextmenu', e => { e.preventDefault(); e.stopPropagation(); midiLearn({ kind: 'xf' }); });
+  $('#xmode').addEventListener('change', e => { stage.mode = e.target.value; broadcastMix(); pushState(); e.target.blur(); });
+  ['pointerdown', 'wheel'].forEach(t => $('#mixer').addEventListener(t, e => e.stopPropagation()));
 
   /* ── Scenes: 8 slots, keys 1–8 put them on air ──────────── */
   const SCENES = 'pudrus_nodes_scenes_v1';
@@ -1199,7 +1296,7 @@
     if (!liveDirty) return;
     liveDirty = false;
     try { stage.direct(liveGraph); } catch (e) { return; }
-    broadcast({ type: 'direct', graph: liveGraph });
+    broadcast({ type: 'direct', graph: liveGraph, deck: deckSel });
     liveKey = contentKey(liveGraph);
     markPending();
   }
@@ -1267,7 +1364,7 @@
     hook(); midi.onstatechange = hook;
     return true;
   }
-  const describe = t => t.kind === 'value' ? targetLabel(t.id, t.k, t.t) : t.kind === 'scene' ? `Escena ${t.i + 1}` : { go: 'Al aire', black: 'Negro', strobe: 'Strobe', tap: 'Tap' }[t.kind];
+  const describe = t => t.kind === 'value' ? targetLabel(t.id, t.k, t.t) : t.kind === 'scene' ? `Escena ${t.i + 1}` : t.kind === 'deck' ? `Capa ${t.d}` : { go: 'Al aire', black: 'Negro', strobe: 'Strobe', tap: 'Tap', xf: 'Crossfader' }[t.kind];
   async function midiLearn(t) {
     if (!(await ensureMidi())) return;
     learning = t;
@@ -1299,12 +1396,14 @@
     const pressed = isCC ? v >= 0.5 && was < 0.5 : v > 0;
     const released = isCC ? v < 0.5 && was >= 0.5 : v === 0;
     if (t.kind === 'value') applyControl(t.id, t.k, v, t.t);
+    else if (t.kind === 'xf') setXf(v);
     else if (t.kind === 'strobe') { if (pressed) setStrobe(true); if (released) setStrobe(false); }
     else if (!pressed) return;
     else if (t.kind === 'scene') fireScene(t.i);
     else if (t.kind === 'go') goLive();
     else if (t.kind === 'black') setBlack(!stage.black);
     else if (t.kind === 'tap') tap();
+    else if (t.kind === 'deck') selectDeck(t.d);
   }
   // right-click on Al aire / Negro / Strobe / Tap: learn MIDI for that button
   [['#btnGo', 'go'], ['#btnBlack', 'black'], ['#btnStrobe', 'strobe'], ['#btnTap', 'tap']].forEach(([sel, kind]) => {
@@ -1375,6 +1474,7 @@
       scenes: Array.from({ length: 16 }, (_, i) => { const sc = scenes[i]; return { filled: !!sc, thumb: sc ? sc.thumb || '' : '', live: i === liveScene }; }),
       black: stage.black, bpm: Math.round(bpm), fade: opts.fade, direct: opts.direct,
       overlay: ov.items.length ? ov.on : null,
+      deck: deckSel, xf: Math.round(stage.x * 1000) / 1000, xmode: stage.mode,
     };
   }
   let pushTimer = 0;
@@ -1412,6 +1512,8 @@
     else if (m.t === 'tap') tap();
     else if (m.t === 'random') { randomPatch(); goLive(); }
     else if (m.t === 'overlay') setOverlayOn(!ov.on);
+    else if (m.t === 'xf' && num(m.v)) setXf(m.v, true);
+    else if (m.t === 'deck' && (m.d === 'A' || m.d === 'B')) selectDeck(m.d);
     else if (m.t === 'vary') { varyPatch(); goLive(); }
     else if (m.t === 'video' && conn) sendVideo(conn, !!m.on);
     else if (m.t === 'fade' && [0, 0.5, 1, 2, 4].includes(m.v)) { opts.fade = m.v; fadeSel.value = String(m.v); saveOpts(); pushState(); }
@@ -1561,6 +1663,7 @@
 
   /* ── Start ─────────────────────────────────────────────── */
   makeWindow(preview); makeWindow($('#live'));
+  paintMixer();
   $('#btnDirect').classList.toggle('is-on', opts.direct);
   $('#btnThumbs').classList.toggle('is-on', opts.thumbs);
   work.classList.toggle('is-direct', opts.direct);
@@ -1573,5 +1676,5 @@
   requestAnimationFrame(loop);
   // fonts change node sizes -> redraw links once they are in
   if (document.fonts) document.fonts.ready.then(() => drawLinks());
-  window.__nodesEditor = { get graph() { return graph; }, get compiled() { return compiled; }, get liveGraph() { return liveGraph; }, stage, addNode, connect, removeNodes, undo, redo, goLive, modulate, set valueTarget(v) { valueTarget = v; }, setDirect, storeScene, fireScene, openScene, setThumbs, get scenes() { return scenes; }, get controls() { return ctlList(graph); }, get opts() { return opts; }, layoutPreview, ensureControls, get ov() { return ov; }, setOverlayOn, paintOverlayPanel, liveControls, ctlValue, randomPatch, varyPatch, stepScene, paintControls, toggleControl, applyControl, onMidi, midiLearn, setLearning(t) { learning = t; }, get midiMap() { return midiMap; }, remoteMsg, fullState, tap, get bpm() { return bpm; }, setBlack, setStrobe };
+  window.__nodesEditor = { get graph() { return graph; }, get compiled() { return compiled; }, get liveGraph() { return liveGraph; }, stage, addNode, connect, removeNodes, undo, redo, goLive, modulate, set valueTarget(v) { valueTarget = v; }, setDirect, storeScene, fireScene, openScene, setThumbs, get scenes() { return scenes; }, get controls() { return ctlList(graph); }, selectDeck, setXf, get deck() { return deckSel; }, openCode, applyCode, get opts() { return opts; }, layoutPreview, ensureControls, get ov() { return ov; }, setOverlayOn, paintOverlayPanel, liveControls, ctlValue, randomPatch, varyPatch, stepScene, paintControls, toggleControl, applyControl, onMidi, midiLearn, setLearning(t) { learning = t; }, get midiMap() { return midiMap; }, remoteMsg, fullState, tap, get bpm() { return bpm; }, setBlack, setStrobe };
 })();
