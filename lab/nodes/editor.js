@@ -218,7 +218,7 @@
       row.append(numWidget(p.label, (n.v && n.v[p.k] !== undefined) ? n.v[p.k] : p.v, p, v => { n.v = { ...(n.v || {}), [p.k]: v }; if (opts.direct) sendDirect(); markPending(); save(); remember(); }));
       body.append(row);
     }
-    for (const inp of def.inputs || []) {
+    for (const inp of N.inputsOf(n)) {
       const row = el('div', 'nd-row in');
       const s = el('i', 'sock t-' + inp.t); s.dataset.in = inp.k; s.dataset.type = inp.t; row.append(s);
       rec.ins[inp.k] = s;
@@ -568,13 +568,13 @@
     closePops();
     const t = valueTarget && graph.nodes.find(m => m.id === valueTarget.id);
     if (!t) return;
-    const inp = N.NODES[t.type].inputs.find(i => i.k === valueTarget.k);
+    const inp = N.inputsOf(t).find(i => i.k === valueTarget.k);
     const cur = t.v && t.v[inp.k] !== undefined ? t.v[inp.k] : inp.v;
     const range = ((inp.max ?? 1) - (inp.min ?? 0)) || 1;
     const span = Math.min(range * 0.15, Math.max(Math.abs(cur) * 0.5, range * 0.05));   // a musical amount around the current value
     const lo = Math.max(inp.min ?? -Infinity, cur - span), hi = Math.min(inp.max ?? Infinity, cur + span);
     const round = x => Math.round(x * 1000) / 1000;
-    const y = t.y + 30 + N.NODES[t.type].inputs.indexOf(inp) * 18;
+    const y = t.y + 30 + N.inputsOf(t).indexOf(inp) * 18;
     let id = nextId();
     const added = [];
     if (kind === 'lfo') {
@@ -693,7 +693,8 @@
       codeErr.classList.add('is-err');
       return;
     }
-    codeErr.textContent = 'Compilado ✓' + (opts.direct ? '' : ' · Enter fuera del editor lo manda al aire');
+    const ps = N.glslParams(codeNode.p.code);
+    codeErr.textContent = 'Compilado ✓' + (ps.length ? ` · ${ps.length} control(es) en el nodo: ${ps.map(q => q.name).join(', ')}` : ' · sin valores para convertir en controles') + (opts.direct ? '' : ' · Enter (fuera del editor) lo manda al aire');
     codeErr.classList.remove('is-err');
     rebuild(); save(); remember();
   }
@@ -1221,7 +1222,7 @@
   function findInput(g, id, k, type) {
     const n = g && g.nodes.find(m => m.id === id);
     if (!n || (type && n.type !== type)) return null;
-    const inp = (N.NODES[n.type].inputs || []).find(i => i.k === k && i.t === 'float');
+    const inp = N.inputsOf(n).find(i => i.k === k && i.t === 'float');
     return inp ? { n, inp } : null;
   }
   const second = c => ({ id: c.id2, k: c.k2, t: c.t2 });

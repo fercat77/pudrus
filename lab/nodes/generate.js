@@ -153,7 +153,9 @@
      then second values, and a "long trail" hit button when there is room. Max 6. */
   function suggest(graph, max = 6) {
     const r3 = x => Math.round(x * 1000) / 1000;
-    const isFree = (n, k) => (def(n.type).inputs || []).some(i => i.k === k && i.t === 'float') && !graph.links.some(l => l.b === n.id && l.bi === k);
+    const ins = n => (N.inputsOf ? N.inputsOf(n) : def(n.type).inputs || []);
+    const isFree = (n, k) => ins(n).some(i => i.k === k && i.t === 'float') && !graph.links.some(l => l.b === n.id && l.bi === k);
+    const playable = n => (n.type === 'glsl' ? ins(n).filter(i => i.t === 'float' && i.k.startsWith('g_')).map(i => i.k) : PLAYABLE[n.type] || []);
     const range = (t, k) => { const r = (RANGES[t] || {})[k]; return r && r[0] !== r[1] ? { lo: r3(r[0]), hi: r3(r[1]) } : {}; };
     const out = [], used = new Set();
     const add = (n, k) => {
@@ -168,13 +170,13 @@
       used.add(fb.id + '.zoom'); used.add(fb.id + '.rotate');
       out.push({ kind: 'xy', name: 'Feedback: zoom × giro', id: fb.id, k: 'zoom', t: 'feedback', lo: a.lo, hi: a.hi, id2: fb.id, k2: 'rotate', t2: 'feedback', lo2: b.lo, hi2: b.hi });
     }
-    const ordered = IMPORTANCE.flatMap(t => graph.nodes.filter(n => n.type === t));
-    for (const n of ordered) for (const k of PLAYABLE[n.type] || []) if (add(n, k)) break;          // main value of each
+    const ordered = ['glsl', ...IMPORTANCE].flatMap(t => graph.nodes.filter(n => n.type === t));
+    for (const n of ordered) for (const k of playable(n)) if (add(n, k)) break;          // main value of each
     if (fb && out.length < max && isFree(fb, 'amount') && !used.has(fb.id + '.amount')) {
       used.add(fb.id + '.amount');
       out.push({ kind: 'button', name: 'Estela larga', id: fb.id, k: 'amount', t: 'feedback', to: 0.985 });
     }
-    for (const n of ordered) (PLAYABLE[n.type] || []).slice(1).forEach(k => add(n, k));            // then second values
+    for (const n of ordered) playable(n).slice(1).forEach(k => add(n, k));            // then second values
     return out;
   }
 

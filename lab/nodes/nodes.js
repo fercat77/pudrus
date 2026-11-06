@@ -122,12 +122,67 @@ vec3 effect(vec2 uv, vec3 col, float k1, float k2, float k3, float k4) {
   return (0.5 + 0.5 * n) * (0.2 + 0.8 * dif) * (0.6 + k2);
 }`,
   };
+  /* Values in pasted code that become inputs of the node (sliders + sockets), so the shader can be
+     played without touching the code:
+       #define SPEED 0.5          const float zoom = 2.0;          uniform float amount; // 0.3 [0, 2]
+       #define TINT vec3(1.0, 0.4, 0.2)      const vec3 tint = vec3(…);   (colors: components 0–1)
+     Whole numbers (#define STEPS 64, usually loop limits) and PI-like constants are left alone. */
+  const SKIP_PARAMS = /^(PI|TAU|TWO_?PI|PI_?2|HALF_?PI|E|EPS|EPSILON|SQRT2|PHI|INF|INFINITY)$/i;
+  const NUM = '[-+]?(?:\\d+\\.\\d*|\\.\\d+|\\d+)(?:[eE][-+]?\\d+)?';
+  const paramCache = new Map();
+  function glslParams(code) {
+    const c = String(code || '');
+    if (paramCache.has(c)) return paramCache.get(c);
+    const out = [], seen = new Set();
+    const add = q => { if (seen.has(q.name) || SKIP_PARAMS.test(q.name) || out.length >= 16) return; seen.add(q.name); out.push(q); };
+    const range = (v, note) => {
+      const m = note && new RegExp(`\\[\\s*(${NUM})\\s*,\\s*(${NUM})\\s*\\]`).exec(note);
+      if (m) return [+m[1], +m[2]];
+      if (v === 0) return [-1, 1];
+      if (v > 0) return [0, v <= 1 ? 1 : Math.round(v * 3 * 1000) / 1000];
+      return [Math.min(-1, v * 3), Math.max(1, -v * 3)];
+    };
+    const color = txt => {
+      const n = (txt.match(new RegExp(NUM, 'g')) || []).map(Number);
+      const v = n.length === 1 ? [n[0], n[0], n[0]] : n;
+      if (v.length !== 3 || v.some(x => !(x >= 0 && x <= 1))) return null;
+      return '#' + v.map(x => Math.round(x * 255).toString(16).padStart(2, '0')).join('');
+    };
+    const isFloat = t => /[.eE]/.test(t);
+    let m;
+    const reDef = new RegExp(`^[ \\t]*#define[ \\t]+(\\w+)[ \\t]+\\(?[ \\t]*(${NUM})[ \\t]*\\)?[ \\t]*(//[^\\n]*)?$`, 'gm');
+    while ((m = reDef.exec(c))) if (isFloat(m[2])) add({ name: m[1], t: 'float', v: +m[2], range: range(+m[2], m[3]), decl: m[0] });
+    const reDefV = /^[ \t]*#define[ \t]+(\w+)[ \t]+vec3[ \t]*\(([^()\n]*)\)[ \t]*(\/\/[^\n]*)?$/gm;
+    while ((m = reDefV.exec(c))) { const col = color(m[2]); if (col) add({ name: m[1], t: 'color', v: col, decl: m[0] }); }
+    const reConst = new RegExp(`\\bconst[ \\t]+float[ \\t]+(\\w+)[ \\t]*=[ \\t]*(${NUM})[ \\t]*;([ \\t]*//[^\\n]*)?`, 'g');
+    while ((m = reConst.exec(c))) add({ name: m[1], t: 'float', v: +m[2], range: range(+m[2], m[3]), decl: m[0] });
+    const reConstV = /\bconst[ \t]+vec3[ \t]+(\w+)[ \t]*=[ \t]*vec3[ \t]*\(([^()\n]*)\)[ \t]*;/g;
+    while ((m = reConstV.exec(c))) { const col = color(m[2]); if (col) add({ name: m[1], t: 'color', v: col, decl: m[0] }); }
+    const reUni = new RegExp(`\\buniform[ \\t]+float[ \\t]+(\\w+)[ \\t]*;([ \\t]*//[^\\n]*)?`, 'g');
+    while ((m = reUni.exec(c))) {
+      const first = m[2] && new RegExp(`^[ \\t]*//[ \\t]*(${NUM})`).exec(m[2]);
+      const v = first ? +first[1] : 0.5;
+      add({ name: m[1], t: 'float', v, range: range(v, m[2] || ''), decl: m[0] });
+    }
+    if (paramCache.size > 50) paramCache.clear();
+    paramCache.set(c, out);
+    return out;
+  }
+  const glslInputs = code => glslParams(code).map(q => (q.t === 'color' ? COL('g_' + q.name, q.name, q.v) : F('g_' + q.name, q.name, q.v, q.range[0], q.range[1])));
   function glslGlobals(code, id) {
     let c = String(code || '');
+    const params = glslParams(c);
+    // each detected value becomes a global set from the node's input (a slider value or a cable)
+    for (const q of params) {
+      c = c.replace(q.decl, '');
+      c = c.replace(new RegExp(`(^|[^.\\w])${q.name}\\b`, 'g'), `$1g${id}_${q.name}`);
+    }
+    const head = params.map(q => `${q.t === 'color' ? 'vec3' : 'float'} g${id}_${q.name};`).join('\n');
     // functions the user defines with the same name as ours get a private name
     for (const nm of LIB_NAMES) if (new RegExp(`\\b(float|vec2|vec3|vec4|mat2|void)\\s+${nm}\\s*\\(`).test(c)) c = c.replace(new RegExp(`\\b${nm}\\b`, 'g'), `${nm}_n${id}`);
-    if (/\bmainImage\s*\(/.test(c)) return { mode: 'toy', src: c.replace(/\bmainImage\b/g, `n${id}_mainImage`) };
-    return { mode: 'effect', src: c.replace(/\beffect\b/g, `n${id}_effect`) };
+    c = (head ? head + '\n' : '') + c;
+    if (/\bmainImage\s*\(/.test(c)) return { mode: 'toy', params, src: c.replace(/\bmainImage\b/g, `n${id}_mainImage`) };
+    return { mode: 'effect', params, src: c.replace(/\beffect\b/g, `n${id}_effect`) };
   }
 
   /* ── 3D scene (raymarching) ───────────────────────────────── */
@@ -251,10 +306,11 @@ vec3 n${id}_march(vec2 uv, float size, float twist, float speed, float sp, out v
       params: [{ k: 'code', label: 'Código', kind: 'code', v: GLSL_TEMPLATES.effect }],
       outputs: [['c', 'color', 'Color'], ['v', 'float', 'Brillo']],
       usesFeedback: true,
+      dynInputs: n => glslInputs(n.p && n.p.code !== undefined ? n.p.code : GLSL_TEMPLATES.effect),
       globals: (P, id) => glslGlobals(P.code, id).src,
       glsl: (I, O, P, id) => {
         const g = glslGlobals(P.code, id);
-        const knobs = `knob1 = ${I.k1}; knob2 = ${I.k2}; knob3 = ${I.k3}; knob4 = ${I.k4};`;
+        const knobs = `knob1 = ${I.k1}; knob2 = ${I.k2}; knob3 = ${I.k3}; knob4 = ${I.k4};` + g.params.map(q => ` g${id}_${q.name} = ${I['g_' + q.name]};`).join('');
         const call = g.mode === 'toy'
           ? `vec4 _o${id} = vec4(0.0); n${id}_mainImage(_o${id}, (${I.uv} / vec2(u_res.x / u_res.y, 1.0) + 0.5) * u_res); vec3 ${O.c} = _o${id}.rgb;`
           : `vec3 ${O.c} = n${id}_effect(${I.uv}, ${I.in}, ${I.k1}, ${I.k2}, ${I.k3}, ${I.k4});`;
@@ -454,6 +510,7 @@ vec3 n${id}_march(vec2 uv, float size, float twist, float speed, float sp, out v
       outputs: [],
       glsl: () => '' },
   };
+  const inputsOf = n => { const d = NODES[n.type]; return d && d.dynInputs ? [...(d.inputs || []), ...d.dynInputs(n)] : ((d && d.inputs) || []); };
   const CATEGORIES = ['Entrada', 'Generar', 'Coordenadas', 'Color', 'Efectos', 'Código', 'Salida'];
 
   /* ── Graph helpers ──────────────────────────────────────── */
@@ -493,7 +550,7 @@ vec3 n${id}_march(vec2 uv, float size, float twist, float speed, float sp, out v
       const def = NODES[node.type];
       if (!def) throw new Error('Nodo desconocido: ' + node.type);
       const I = {};
-      for (const inp of def.inputs || []) {
+      for (const inp of inputsOf(node)) {
         const link = graph.links.find(l => l.b === node.id && l.bi === inp.k);
         const src = link && byId.get(link.a);
         if (src) {
@@ -905,8 +962,8 @@ void main(){
   function applyValues(renderer, graph, compiled) {
     for (const u of compiled.uniforms) {
       const node = graph.nodes.find(n => n.id === u.node);
-      const def = NODES[node.type];
-      const inp = def.inputs.find(i => i.k === u.key);
+      const inp = node && inputsOf(node).find(i => i.k === u.key);
+      if (!inp) continue;
       const v = node.v && node.v[u.key] !== undefined ? node.v[u.key] : inp.v;
       renderer.setValue(u.name, v);
     }
@@ -923,7 +980,8 @@ void main(){
     for (const u of compiled.uniforms) {
       const node = graph.nodes.find(n => n.id === u.node);
       if (!node) continue;
-      const inp = NODES[node.type].inputs.find(i => i.k === u.key);
+      const inp = inputsOf(node).find(i => i.k === u.key);
+      if (!inp) continue;
       const v = node.v && node.v[u.key] !== undefined ? node.v[u.key] : inp.v;
       out[u.name] = typeof v === 'string' ? hexToRgb(v) : v;
     }
@@ -1194,5 +1252,5 @@ void main(){
     };
   }
 
-  window.PudrusNodes = { clock, assets, media, drawOverlay, textPicture, createMixer, GLSL_TEMPLATES, NODES, CATEGORIES, compile, createRenderer, createThumbs, createStage, structureKey, uniformValues, defaultsFor, dependsOn, uniformName, postValues, applyValues };
+  window.PudrusNodes = { inputsOf, glslParams, clock, assets, media, drawOverlay, textPicture, createMixer, GLSL_TEMPLATES, NODES, CATEGORIES, compile, createRenderer, createThumbs, createStage, structureKey, uniformValues, defaultsFor, dependsOn, uniformName, postValues, applyValues };
 })();
