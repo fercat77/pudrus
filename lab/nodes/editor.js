@@ -36,7 +36,7 @@
 
   // Live settings (remembered): direct mode, fade time, node thumbnails
   const LIVE_STORE = 'pudrus_nodes_live_v1';
-  const opts = Object.assign({ direct: false, fade: 1, thumbs: true }, (() => { try { return JSON.parse(localStorage.getItem(LIVE_STORE) || '{}'); } catch (e) { return {}; } })());
+  const opts = Object.assign({ direct: false, fade: 1, thumbs: true, labels: true }, (() => { try { return JSON.parse(localStorage.getItem(LIVE_STORE) || '{}'); } catch (e) { return {}; } })());
   const saveOpts = () => { try { localStorage.setItem(LIVE_STORE, JSON.stringify(opts)); } catch (e) { /* ignore */ } };
 
   function load() {
@@ -499,6 +499,7 @@
   patchPop.addEventListener('click', e => { if (e.target.closest('.item')) setTimeout(closePops, 0); });
   $('#pmRandom').addEventListener('click', () => randomPatch());
   $('#pmVary').addEventListener('click', () => varyPatch());
+  $('#pmLabels').addEventListener('click', () => setLabels(!opts.labels));
   // help: tabs by topic, remembers the last one
   const help = $('#help');
   function helpTab(t) {
@@ -1915,11 +1916,28 @@
   /* ── Start ─────────────────────────────────────────────── */
   // the top bar compacts itself step by step until it fits (any window width, any extra button)
   const barEl = document.querySelector('.lab-bar');
+  // With names on (default) the bar keeps every label and wraps to two rows if needed;
+  // with names off it compacts itself step by step until it fits in one row.
+  let barH = 44;
   function fitBar() {
     const steps = ['fit-1', 'fit-2', 'fit-3', 'fit-4'];
     barEl.classList.remove(...steps);
-    for (const c of steps) { if (barEl.scrollWidth <= barEl.clientWidth + 1) break; barEl.classList.add(c); }
+    barEl.classList.toggle('labels', !!opts.labels);
+    if (opts.labels) {
+      // try one row first (dropping only the logo subtitle and ⛶), wrap to two rows only if still needed
+      barEl.classList.add('measure');
+      if (barEl.scrollWidth > barEl.clientWidth + 1) barEl.classList.add('fit-2');
+      barEl.classList.remove('measure');
+    }
+    else for (const c of steps) { if (barEl.scrollWidth <= barEl.clientWidth + 1) break; barEl.classList.add(c); }
+    const h = Math.max(44, Math.ceil(barEl.getBoundingClientRect().height));
+    if (h !== barH) {   // the workspace starts under the bar
+      barH = h; document.documentElement.style.setProperty('--bar-h', h + 'px');
+      layoutPreview(); drawLinks();
+    }
+    const pl = $('#pmLabels'); if (pl) pl.firstChild.textContent = (opts.labels ? '✓ ' : '　') + 'Nombres en los botones';
   }
+  function setLabels(on) { opts.labels = on; saveOpts(); fitBar(); toast(on ? 'Nombres en los botones' : 'Botones compactos (sólo íconos donde no entra)'); }
   addEventListener('resize', fitBar);
   if (document.fonts) document.fonts.ready.then(fitBar);
   setTimeout(fitBar, 300);
