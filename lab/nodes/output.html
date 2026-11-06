@@ -87,7 +87,7 @@
   <div class="tip" id="tip"></div>
 </div>
 <div class="hint" id="hint">Doble clic: pantalla completa · M: ajustar (superficies y máscaras) · esperando al editor…</div>
-<script src="nodes.js?v=31"></script>
+<script src="nodes.js?v=32"></script>
 <script>
 (function () {
   // Shows what is ON AIR in the editor (not the preview), with the same cross-fades and overlay.
@@ -96,7 +96,7 @@
   // the stage composites everything (layers, overlay, black/strobe) into one canvas;
   // each mapping surface then shows a piece of it, warped into place
   const stage = N.createMixer($('src'));
-  let time = 0, audio = [0, 0, 0, 0], playing = true, lastMsg = 0;
+  let time = 0, audio = [0, 0, 0, 0], playing = true, lastMsg = 0, fpsCap = 0;
   const ch = new BroadcastChannel('pudrus-nodes');
 
   function size() { stage.resize(Math.min(2560, innerWidth * devicePixelRatio), Math.min(1440, innerHeight * devicePixelRatio)); }
@@ -110,6 +110,7 @@
       else if (m.type === 'direct') stage.direct(m.graph, m.deck);
       else if (m.type === 'mix') { stage.x = m.x; stage.mode = m.mode; }
       else if (m.type === 'frame') { time = m.t; audio = m.audio; if (typeof m.beat === 'number') N.clock.beat = m.beat; }
+      else if (m.type === 'fpscap') fpsCap = N.FPS_CAPS.includes(m.fps) ? m.fps : 0;
       else if (m.type === 'master') { stage.setBlack(!!m.black, m.fade || 0); stage.setStrobe(!!m.strobe); }
       else if (m.type === 'overlay') stage.setOverlay(m.ov);
       else if (m.type === 'screenfx') stage.setFx(m.fx);
@@ -208,8 +209,10 @@
     const c = stage.canvas;
     ch.postMessage({ type: 'ostat', id: oId, fps, w: c.width, h: c.height, sw: Math.round(screen.width * devicePixelRatio), sh: Math.round(screen.height * devicePixelRatio), full: !!document.fullscreenElement });
   }, 1000);
+  const limit = N.fpsLimiter();
   function loop(now) {
     requestAnimationFrame(loop);
+    if (!limit(now, fpsCap)) return;
     oFrames++;
     // keep running smoothly between editor messages (e.g. when the editor tab is in the background)
     if (playing && now - lastMsg > 100) time += Math.min(0.1, (now - last) / 1000);

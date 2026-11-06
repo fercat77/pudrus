@@ -502,6 +502,7 @@
   $('#pmVary').addEventListener('click', () => varyPatch());
   $('#pmLabels').addEventListener('click', () => setLabels(!opts.labels));
   $('#pmStatus').addEventListener('click', () => setStatusBar(!opts.status));
+  $('#pmFps').addEventListener('click', () => setFpsCap(nextCap()));
   // help: tabs by topic, remembers the last one
   const help = $('#help');
   function helpTab(t) {
@@ -965,7 +966,7 @@
   const channel = 'BroadcastChannel' in window ? new BroadcastChannel('pudrus-nodes') : null;
   function broadcast(msg) { if (channel) channel.postMessage(msg); }
   const outStats = new Map();   // output windows: id → { fps, w, h, at }
-  if (channel) channel.onmessage = e => { if (e.data && e.data.type === 'ostat') { outStats.set(e.data.id, { ...e.data, at: performance.now() }); return; } if (e.data && e.data.type === 'hello') { liveByDeck[deckSel] = liveGraph; ['A', 'B'].forEach(d => broadcast({ type: 'live', graph: liveByDeck[d], fade: 0, deck: d })); broadcastMix(); broadcast({ type: 'play', playing }); broadcastMaster(0); broadcast({ type: 'overlay', ov }); broadcast({ type: 'screenfx', fx: sfx }); broadcast({ type: 'transition', t: opts.trans || null }); } };
+  if (channel) channel.onmessage = e => { if (e.data && e.data.type === 'ostat') { outStats.set(e.data.id, { ...e.data, at: performance.now() }); return; } if (e.data && e.data.type === 'hello') { liveByDeck[deckSel] = liveGraph; ['A', 'B'].forEach(d => broadcast({ type: 'live', graph: liveByDeck[d], fade: 0, deck: d })); broadcastMix(); broadcast({ type: 'play', playing }); broadcastMaster(0); broadcast({ type: 'overlay', ov }); broadcast({ type: 'screenfx', fx: sfx }); broadcast({ type: 'transition', t: opts.trans || null }); broadcast({ type: 'fpscap', fps: opts.fpsCap || 0 }); } };
   $('#btnOut').addEventListener('click', () => {
     const w = window.open('output.html', 'pudrus-output', 'width=960,height=540');
     if (!w) toast('El navegador bloqueó la ventana: permití las ventanas emergentes', true);
@@ -1965,7 +1966,7 @@
   }
   async function spoutApply() {
     const [w, h] = $('#dkSpoutSize').value.split('x').map(Number);
-    const r = $('#dkSpoutOn').checked ? await DESK.spout.start({ name: $('#dkSpoutName').value.trim() || 'NODRUS', width: w, height: h, fps: 60 }) : await DESK.spout.stop();
+    const r = $('#dkSpoutOn').checked ? await DESK.spout.start({ name: $('#dkSpoutName').value.trim() || 'NODRUS', width: w, height: h, fps: opts.fpsCap || 60 }) : await DESK.spout.stop();
     if (r && r.ok === false) { toast('Spout: ' + r.error, true); $('#dkSpoutOn').checked = false; }
     else if ($('#dkSpoutOn').checked) toast(`Spout encendido: buscá «${$('#dkSpoutName').value.trim() || 'NODRUS'}» en Resolume o TouchDesigner`);
     paintDesk();
@@ -2025,7 +2026,8 @@
     st.fps = st.frames / span; st.ms = st.worst; st.frames = 0; st.worst = 0; st.t0 = now;
     if (!opts.status || !statusEl) return;
     const out = [];
-    out.push(item(`<b class="${fpsCls(st.fps)}">●</b> ${Math.round(st.fps)} fps`, `Editor: ${st.fps.toFixed(1)} cuadros por segundo · el cuadro más lento del último segundo tardó ${Math.round(st.ms)} ms`));
+    const cap = opts.fpsCap || 0, fc = cap ? (st.fps >= cap - 2 ? 'ok' : st.fps >= cap * 0.8 ? 'warn' : 'bad') : fpsCls(st.fps);
+    out.push(item(`<b class="${fc}">●</b> ${Math.round(st.fps)}${cap ? '/' + cap : ''} fps`, `Editor: ${st.fps.toFixed(1)} cuadros por segundo · límite: ${cap ? cap + ' fps' : 'automático (frecuencia de la pantalla)'} · el cuadro más lento del último segundo tardó ${Math.round(st.ms)} ms · clic: cambiar el límite (auto · 60 · 50 · 30 · 25 · 24)`, 'st-fps'));
     out.push(item(`${Math.round(st.ms)} ms`, 'El cuadro más lento del último segundo (16 ms = 60 fps; si sube mucho, se notan saltos)', st.ms > 50 ? 'bad' : st.ms > 25 ? 'warn' : ''));
     const lc = stage.canvas, vw = view.width, vh = view.height;
     out.push(item(`PRG ${lc.width}×${lc.height}`, 'Resolución a la que se dibuja EN VIVO (program) en esta ventana'));
@@ -2069,6 +2071,16 @@
   if (DESK && DESK.metrics) setInterval(async () => { if (opts.status) try { st.desk = await DESK.metrics(); } catch (e) { st.desk = null; } }, 2000);
   // the beat dot blinks with the tempo
   setInterval(() => { const d = statusEl && statusEl.querySelector('.st-beat'); if (d) d.classList.toggle('on', (N.clock.beat % 1) < 0.25); }, 50);
+  // fps cap: 0 = follow the screen (rAF); a fixed number is steadier when the machine can't hold the screen's rate
+  function setFpsCap(f) {
+    opts.fpsCap = N.FPS_CAPS.includes(f) ? f : 0; saveOpts();
+    broadcast({ type: 'fpscap', fps: opts.fpsCap });
+    paintFpsMenu(); paintStatus();
+    toast(opts.fpsCap ? `Límite: ${opts.fpsCap} fps (editor, salida y Spout)` : 'fps automático: sigue la frecuencia de la pantalla');
+  }
+  function paintFpsMenu() { const pi = $('#pmFps'); if (pi) pi.firstChild.textContent = '　Límite de fps: ' + (opts.fpsCap ? opts.fpsCap : 'auto'); }
+  const nextCap = () => { const c = N.FPS_CAPS, i = c.indexOf(opts.fpsCap || 0); return c[(i + 1) % c.length]; };
+  if (statusEl) statusEl.addEventListener('click', e => { if (e.target.closest('.st-fps')) setFpsCap(nextCap()); });
   function setStatusBar(on) {
     opts.status = on; saveOpts();
     document.body.classList.toggle('has-status', on);
@@ -2079,8 +2091,10 @@
 
   /* ── Main loop ─────────────────────────────────────────── */
   let last = performance.now(), frameN = 0;
+  const limit = N.fpsLimiter();
   function loop(now) {
     requestAnimationFrame(loop);
+    if (!limit(now, opts.fpsCap || 0)) return;
     st.frames++; st.worst = Math.max(st.worst, now - last);
     const dt = Math.min(0.1, (now - last) / 1000); last = now;
     if (playing) time += dt;
@@ -2143,6 +2157,7 @@
   makeWindow(preview); makeWindow($('#live'));
   document.body.classList.toggle('has-status', !!opts.status);
   { const pi = $('#pmStatus'); if (pi) pi.firstChild.textContent = (opts.status ? '✓ ' : '　') + 'Barra de estado'; }
+  paintFpsMenu();
   paintMixer(); paintGuides(); paintExport();
   $('#btnDirect').classList.toggle('is-on', opts.direct);
   $('#btnThumbs').classList.toggle('is-on', opts.thumbs);

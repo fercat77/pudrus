@@ -1136,6 +1136,19 @@ void main(){
     invCache.set(src, { c, w: sw, h: sh, ver: src.__ver });
     return c;
   }
+  /* fps limiter for requestAnimationFrame loops: fps 0 = as fast as the screen.
+     Keeps a steady phase (lastDraw += interval), so 30 on a 60 Hz screen is exactly every other frame. */
+  function fpsLimiter() {
+    let lastDraw = 0;
+    return (now, fps) => {
+      if (!fps) { lastDraw = now; return true; }
+      const iv = 1000 / fps, el = now - lastDraw;
+      if (el < iv - 2) return false;
+      lastDraw = el > iv * 2 ? now : lastDraw + iv;
+      return true;
+    };
+  }
+  const FPS_CAPS = [0, 60, 50, 30, 25, 24];
   function drawOverlay(ctx, W, H, ov, time, audio) {
     if (!ov || !ov.on || !Array.isArray(ov.items)) return;
     const beat = clock.beat;
@@ -1528,5 +1541,5 @@ void main(){ gl_FragColor = vec4(mix(texture2D(u_a, v_uv).rgb, texture2D(u_b, v_
     };
   }
 
-  window.PudrusNodes = { createTransition, createFxChain, ES3, inputsOf, glslParams, clock, assets, media, drawOverlay, textPicture, createMixer, GLSL_TEMPLATES, NODES, CATEGORIES, compile, createRenderer, createThumbs, createStage, structureKey, uniformValues, defaultsFor, dependsOn, uniformName, postValues, applyValues };
+  window.PudrusNodes = { fpsLimiter, FPS_CAPS, createTransition, createFxChain, ES3, inputsOf, glslParams, clock, assets, media, drawOverlay, textPicture, createMixer, GLSL_TEMPLATES, NODES, CATEGORIES, compile, createRenderer, createThumbs, createStage, structureKey, uniformValues, defaultsFor, dependsOn, uniformName, postValues, applyValues };
 })();
