@@ -86,6 +86,7 @@ vec3 cosPal(float t, vec3 a, vec3 b, vec3 c, vec3 d){ return a + b * cos(6.28318
 
   /* ── Code node (GLSL / Shadertoy) ─────────────────────────── */
   const LIB_NAMES = ['hash21', 'hash22', 'vnoise', 'fbm', 'voronoi', 'rot', 'hsv2rgb', 'rgb2hsv', 'cosPal'];
+  const REDEF_BUILTINS = ['round', 'roundEven', 'trunc', 'sign', 'inverse', 'transpose', 'determinant', 'isnan', 'isinf', 'sinh', 'cosh', 'tanh', 'asinh', 'acosh', 'atanh', 'outerProduct'];
   // Shadertoy names, the 4 knobs and iChannel0 = this patch's feedback buffer
   const TOY_HEAD = `#define iTime u_time
 #define iResolution vec3(u_res, 1.0)
@@ -189,8 +190,11 @@ vec3 effect(vec2 uv, vec3 col, float k1, float k2, float k3, float k4) {
       c = c.replace(new RegExp(`(^|[^.\\w])${q.name}\\b`, 'g'), `$1g${id}_${q.name}`);
     }
     const head = params.map(q => `${q.t === 'color' ? 'vec3' : 'float'} g${id}_${q.name};`).join('\n');
-    // functions the user defines with the same name as ours get a private name
-    for (const nm of LIB_NAMES) if (new RegExp(`\\b(float|vec2|vec3|vec4|mat2|void)\\s+${nm}\\s*\\(`).test(c)) c = c.replace(new RegExp(`\\b${nm}\\b`, 'g'), `${nm}_n${id}`);
+    // functions the user defines with the same name as ours, or as a GLSL built-in that older shaders
+    // wrote by hand (round, sign… — GLSL ES 3 forbids redefining them), get a private name
+    for (const nm of [...LIB_NAMES, ...REDEF_BUILTINS]) {
+      if (new RegExp(`\\b(float|int|bool|vec[234]|ivec[234]|mat[234]|void)\\s+${nm}\\s*\\(`).test(c)) c = c.replace(new RegExp(`\\b${nm}\\b`, 'g'), `${nm}_n${id}`);
+    }
     c = (head ? head + '\n' : '') + c;
     if (/\bmainImage\s*\(/.test(c)) return { mode: 'toy', params, src: c.replace(/\bmainImage\b/g, `n${id}_mainImage`) };
     return { mode: 'effect', params, src: c.replace(/\beffect\b/g, `n${id}_effect`) };

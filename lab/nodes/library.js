@@ -24,6 +24,23 @@
   const put = e => run('readwrite', st => st.put(e));
   const del = id => run('readwrite', st => st.delete(id));
 
+  /* ── Licenses: read what the author wrote in the code ──
+     free = allows commercial use (CC0, MIT, BSD, Apache, Unlicense, CC BY / BY-SA)
+     nc = non-commercial (CC BY-NC…, Shadertoy's default)   unknown = nothing clear (treat as restricted) */
+  function detectLicense(text, fallback) {
+    const t = String(text || '');
+    if (/\bCC[- ]?BY[- ]?NC|non[- ]?commercial|no comercial/i.test(t)) return { kind: 'nc', name: (t.match(/CC[- ]?BY[- ]?NC[- A-Z]*\s*\d?(\.\d)?/i) || ['CC BY-NC'])[0].trim() };
+    if (/\bCC0\b|creative commons zero|public domain|dominio p[uú]blico|\bunlicense\b/i.test(t)) return { kind: 'free', name: 'CC0 / dominio público' };
+    if (/\bMIT\b(\s+license)?/i.test(t) && /licen[cs]e|\(c\)|copyright/i.test(t)) return { kind: 'free', name: 'MIT' };
+    if (/\bBSD\b[- ]?(\d|license|licence)/i.test(t)) return { kind: 'free', name: 'BSD' };
+    if (/apache license/i.test(t)) return { kind: 'free', name: 'Apache 2.0' };
+    const by = t.match(/\bCC[- ]?BY(?:[- ]SA)?\s*\d(?:\.\d)?/i);
+    if (by) return { kind: 'free', name: by[0].toUpperCase().replace(/\s+/g, ' ') };
+    return fallback || { kind: 'unknown', name: 'sin licencia clara' };
+  }
+  const ST_DEFAULT = { kind: 'nc', name: 'CC BY-NC-SA 3.0 (Shadertoy por defecto)' };
+  const licOf = e => e.lic || detectLicense(e.code, e.source === 'shadertoy' ? ST_DEFAULT : e.source === 'isf' ? { kind: 'free', name: 'MIT' } : undefined);
+
   /* ── Import ── */
   const cleanTags = a => [...new Set((Array.isArray(a) ? a : String(a || '').split(/[,#\s]+/)).map(t => String(t).toLowerCase().replace(/[^\p{L}\p{N}_-]/gu, '').slice(0, 30)).filter(Boolean))].slice(0, 30);
   // what the bookmarklet copies (or a Shadertoy-API-like JSON) -> one library entry
@@ -44,6 +61,7 @@
       name: String(d.name || 'Sin nombre').slice(0, 80), author: String(d.author || '').slice(0, 60),
       url: d.url || (d.id ? `https://www.shadertoy.com/view/${d.id}` : ''), description: String(d.description || '').slice(0, 600),
       tags: cleanTags(d.tags), mine: cleanTags(d.mine), license: d.license || (d.id || /shadertoy\.com/.test(d.url || '') ? LICENSE_ST : ''),
+      lic: detectLicense((common ? common + '\n' : '') + image.code + '\n' + (d.description || ''), d.id || /shadertoy\.com/.test(d.url || '') ? ST_DEFAULT : undefined),
       code: (common ? common + '\n' : '') + image.code, notes, fav: false, added: Date.now(),
     };
   }
@@ -87,9 +105,135 @@
     return entry;
   }
 
+  /* ── ISF → NODRUS: the JSON header declares the controls (name, min, max, default) ── */
+  const slug = t => String(t).toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+  const lit = x => { const n = Number(x); if (!Number.isFinite(n)) return '0.0'; const t = String(n); return /[.e]/.test(t) ? t : t + '.0'; };
+  function isfHeader(text) {
+    const m = /\/\*\s*(\{[\s\S]*?\})\s*\*\//.exec(text);
+    if (!m) return null;
+    let h; try { h = JSON.parse(m[1]); } catch (e) { try { h = JSON.parse(m[1].replace(/,\s*([}\]])/g, '$1')); } catch (e2) { return null; } }
+    return { h, end: m.index + m[0].length };
+  }
+  function isfKind(h) {
+    const ins = h.INPUTS || [], imgs = ins.filter(i => i.TYPE === 'image').length, cats = h.CATEGORIES || [];
+    if (imgs >= 2 || cats.some(c => /^(Dissolve|Distortion|Wipe)$/.test(c))) return 'transicion';
+    return imgs ? 'filtro' : 'generador';
+  }
+  function isfToEntry(text, file) {
+    const hh = isfHeader(text); if (!hh) throw new Error('no tiene encabezado ISF');
+    const h = hh.h, notes = [], head = [];
+    for (const i of h.INPUTS || []) {
+      const n = i.NAME; if (!/^[A-Za-z_]\w*$/.test(n || '')) continue;
+      if (i.TYPE === 'float') head.push(`uniform float ${n}; // ${lit(i.DEFAULT ?? 0.5)} [${lit(i.MIN ?? 0)}, ${lit(i.MAX ?? 1)}]`);
+      else if (i.TYPE === 'bool' || i.TYPE === 'event') { head.push(`uniform float ${n}_on; // ${i.DEFAULT ? '1.0' : '0.0'} [0.0, 1.0]`); head.push(`#define ${n} (${n}_on > 0.5)`); }
+      else if (i.TYPE === 'long') {
+        const v = (i.VALUES && i.VALUES.length ? i.VALUES : [0, 1]).map(Number);
+        head.push(`uniform float ${n}_val; // ${lit(i.DEFAULT ?? v[0])} [${lit(Math.min(...v))}, ${lit(Math.max(...v))}]`);
+        head.push(`#define ${n} int(floor(${n}_val + 0.5))`);
+      } else if (i.TYPE === 'color') {
+        const d = Array.isArray(i.DEFAULT) ? i.DEFAULT : [1, 1, 1, 1];
+        head.push(`const vec3 ${n}_rgb = vec3(${lit(d[0])}, ${lit(d[1])}, ${lit(d[2])});`);
+        head.push(`#define ${n} vec4(${n}_rgb, ${lit(d[3] ?? 1)})`);
+      } else if (i.TYPE === 'point2D') {
+        const d = Array.isArray(i.DEFAULT) ? i.DEFAULT : [0.5, 0.5], mn = Array.isArray(i.MIN) ? i.MIN : [0, 0];
+        const mx = Array.isArray(i.MAX) ? i.MAX : [Math.max(1, d[0] * 3), Math.max(1, d[1] * 3)];
+        head.push(`uniform float ${n}_x; // ${lit(d[0])} [${lit(mn[0])}, ${lit(mx[0])}]`);
+        head.push(`uniform float ${n}_y; // ${lit(d[1])} [${lit(mn[1])}, ${lit(mx[1])}]`);
+        head.push(`#define ${n} vec2(${n}_x, ${n}_y)`);
+      } else if (/^(image|audio|audioFFT)$/.test(i.TYPE)) {
+        head.push(`#define ${n} iChannel0`);
+        notes.push(i.TYPE === 'image' ? `filtro: necesita una imagen («${n}»); por ahora usa el feedback` : `usa audio de ISF («${n}»): no conectado`);
+      }
+    }
+    // images bundled with the ISF (IMPORTED) are not included
+    const imported = Array.isArray(h.IMPORTED) ? h.IMPORTED.map(x => x && x.NAME) : Object.keys(h.IMPORTED || {});
+    imported.filter(n => /^[A-Za-z_]\w*$/.test(n || '')).forEach(n => { head.push(`#define ${n} iChannel0`); notes.push(`usa una imagen propia («${n}») que no viene incluida`); });
+    const passes = h.PASSES || [];
+    if (passes.length > 1) notes.push(`usa ${passes.length} pases: todavía no, se verá distinto`);
+    passes.forEach(ps => { if (ps && ps.TARGET && /^\w+$/.test(ps.TARGET)) head.push(`#define ${ps.TARGET} iChannel0`); });
+    let body = text.slice(hh.end);
+    if (/^\s*varying\b/m.test(body)) notes.push('usa un vertex shader propio (.vs): no es compatible');
+    body = body.replace(/\bgl_FragColor\b/g, 'isf_Out').replace(/\bgl_FragCoord\b/g, 'isf_FragCoord')
+      .replace(/\b(vv_FragNormCoord|isf_FragNormCoord)\b/g, 'isf_FragNormCoord').replace(/\bvoid\s+main\s*\(\s*(void)?\s*\)/, 'void isf_main()');
+    const code = `// ${file} · ISF de VIDVOX convertido para NODRUS
+#define TIME iTime
+#define TIMEDELTA iTimeDelta
+#define FRAMEINDEX iFrame
+#define DATE vec4(0.0)
+#define PASSINDEX 0
+#define RENDERSIZE iResolution.xy
+vec4 isf_FragCoord; vec2 isf_FragNormCoord; vec4 isf_Out;
+#define IMG_PIXEL(i, c) texture(i, (c) / RENDERSIZE)
+#define IMG_NORM_PIXEL(i, c) texture(i, c)
+#define IMG_THIS_PIXEL(i) texture(i, isf_FragNormCoord)
+#define IMG_THIS_NORM_PIXEL(i) texture(i, isf_FragNormCoord)
+#define IMG_SIZE(i) RENDERSIZE
+${head.join('\n')}
+${body}
+void mainImage(out vec4 fragColor, in vec2 fragCoord) {
+  isf_FragCoord = vec4(fragCoord, 0.0, 1.0); isf_FragNormCoord = fragCoord / RENDERSIZE; isf_Out = vec4(0.0);
+  isf_main(); fragColor = isf_Out;
+}`;
+    const kind = isfKind(h), name = file.replace(/^.*\//, '').replace(/\.fs$/i, '');
+    const credit = String(h.CREDIT || '').replace(/^\s*by\s+/i, '').trim();
+    const fromST = /shadertoy/i.test(text);
+    return {
+      id: 'isf-' + slug(name), source: 'isf', name, author: credit.slice(0, 80) || 'VIDVOX',
+      url: 'https://github.com/Vidvox/ISF-Files/blob/master/ISF/' + encodeURIComponent(file.replace(/^.*\//, '')),
+      description: String(h.DESCRIPTION || '').slice(0, 600),
+      tags: cleanTags(['isf', kind, ...(h.CATEGORIES || []).map(slug)]), mine: [],
+      lic: detectLicense(text, fromST ? { kind: 'unknown', name: 'basado en Shadertoy: revisá el original' } : { kind: 'free', name: 'MIT (colección VIDVOX ISF-Files)' }),
+      code, notes, fav: false, added: Date.now(), kind,
+    };
+  }
+  // import a set of ISF files ({ path: text }); only generators unless `all`
+  async function importISF(files, opts = {}) {
+    const done = { ok: 0, warn: 0, error: 0, skipped: 0 };
+    const list = Object.entries(files);
+    for (let k = 0; k < list.length; k++) {
+      const [path, text] = list[k];
+      const hh = isfHeader(text || '');
+      if (!hh || (!opts.all && isfKind(hh.h) !== 'generador')) { done.skipped++; continue; }
+      let e; try { e = testAndThumb(isfToEntry(text, path)); } catch (er) { done.skipped++; continue; }
+      const old = await run('readonly', st => st.get(e.id));
+      if (old) { e.mine = old.mine || []; e.fav = old.fav; e.added = old.added; }
+      await put(e);
+      done[e.level || 'ok']++;
+      if (opts.progress) opts.progress(k + 1, list.length, e.name);
+      if (k % 4 === 3) await new Promise(r => setTimeout(r, 0));
+    }
+    paint();
+    return done;
+  }
+  // the VIDVOX collection straight from GitHub (MIT): ~49 generators
+  async function importVidvox() {
+    const status = $('#libColState');
+    const btn = $('#libColISF'); btn.disabled = true;
+    try {
+      status.textContent = 'Buscando la colección en GitHub…';
+      const tree = await (await fetch('https://api.github.com/repos/Vidvox/ISF-Files/git/trees/master?recursive=1')).json();
+      const paths = (tree.tree || []).map(t => t.path).filter(p => /^ISF\/[^/]+\.fs$/i.test(p));
+      if (!paths.length) throw new Error(tree.message || 'no encontré archivos');
+      const files = {}; let got = 0;
+      const queue = paths.slice();
+      const worker = async () => {
+        while (queue.length) {
+          const p = queue.shift();
+          try { files[p] = await (await fetch('https://raw.githubusercontent.com/Vidvox/ISF-Files/master/' + p.split('/').map(encodeURIComponent).join('/'))).text(); } catch (e) { /* skip */ }
+          status.textContent = `Descargando ${++got} de ${paths.length}…`;
+        }
+      };
+      await Promise.all(Array.from({ length: 6 }, worker));
+      const r = await importISF(files, { progress: (k, n, name) => { status.textContent = `Probando ${k}/${n}: ${name}`; } });
+      status.textContent = `Listo: ${r.ok + r.warn + r.error} generadores (${r.ok} ✓, ${r.warn} ⚠, ${r.error} ✕). Los filtros llegan con «filtros de pantalla».`;
+      E().toast(`📚 Colección ISF: ${r.ok + r.warn} generadores listos para usar`);
+    } catch (e) { status.textContent = 'No se pudo descargar: ' + String(e.message || e).slice(0, 100); }
+    btn.disabled = false;
+  }
+
   /* ── Use a shader ── */
   function useEntry(e) {
-    const src = { name: e.name, author: e.author, url: e.url, license: e.license, lib: e.id };   // the credit travels with the patch
+    const src = { name: e.name, author: e.author, url: e.url, license: licOf(e).name, lib: e.id };   // the credit travels with the patch
     const target = E().selectedGlsl();
     if (target) { E().setGlsl(target, e.code, src); E().toast(`«${e.name}» en el nodo GLSL elegido`); }
     else {
@@ -101,7 +245,7 @@
 
   /* ── Panel ── */
   const pop = $('#libPop');
-  let filter = { q: '', tags: new Set(), onlyOk: false, fav: false };
+  let filter = { q: '', tags: new Set(), onlyOk: false, fav: false, free: false };
   async function paint() {
     if (pop.hidden) return;
     const list = await all();
@@ -116,7 +260,7 @@
     });
     if (!count.size) cloud.append(el('p', 'dim', 'Los hashtags aparecen al importar shaders.'));
     const q = filter.q.toLowerCase();
-    const shown = list.filter(e => (!filter.onlyOk || e.level !== 'error') && (!filter.fav || e.fav)
+    const shown = list.filter(e => (!filter.onlyOk || e.level !== 'error') && (!filter.fav || e.fav) && (!filter.free || licOf(e).kind === 'free')
       && [...filter.tags].every(t => e.tags.includes(t) || (e.mine || []).includes(t))
       && (!q || (e.name + ' ' + e.author + ' ' + e.tags.join(' ') + ' ' + (e.mine || []).join(' ')).toLowerCase().includes(q)));
     $('#libCount').textContent = `${shown.length} de ${list.length}`;
@@ -152,7 +296,10 @@
       x.addEventListener('click', async () => { if (!confirm(`¿Borrar «${e.name}» de la librería?`)) return; await del(e.id); paint(); });
       acts.append(x);
       info.append(acts);
-      if (e.license) info.append(el('p', 'lib-lic', '© ' + (e.author || '—') + ' · ' + e.license));
+      const L = licOf(e);
+      const lb = el('p', 'lib-lic lic-' + L.kind); lb.textContent = (L.kind === 'free' ? '🟢 ' : L.kind === 'nc' ? '🟡 ' : '⚪ ') + L.name + ' · © ' + (e.author || '—');
+      lb.title = L.kind === 'free' ? 'Licencia libre: se puede usar también en shows pagos, citando al autor' : L.kind === 'nc' ? 'No comercial: para usos pagos, pedile permiso al autor' : 'Sin licencia clara: tratalo como restringido';
+      info.append(lb);
       card.append(info);
       grid.append(card);
     }
@@ -191,6 +338,8 @@
   $('#libSearch').addEventListener('input', e => { filter.q = e.target.value; paint(); });
   $('#libOnlyOk').addEventListener('change', e => { filter.onlyOk = e.target.checked; paint(); });
   $('#libFav').addEventListener('change', e => { filter.fav = e.target.checked; paint(); });
+  $('#libFree').addEventListener('change', e => { filter.free = e.target.checked; paint(); });
+  $('#libColISF').addEventListener('click', importVidvox);
   $('#libClear').addEventListener('click', () => { filter.tags.clear(); filter.q = ''; $('#libSearch').value = ''; paint(); });
   $('#libPaste').addEventListener('click', pasteFromClipboard);
   $('#libNew').addEventListener('click', showManual);
@@ -225,5 +374,5 @@
   $('#libImportBtn').addEventListener('click', () => $('#libImportFile').click());
   addEventListener('keydown', e => { if (e.key === 'Escape' && !pop.hidden) close(); });
 
-  window.NodrusLibrary = { open, close, importText, importData, all, paint, BOOKMARKLET };
+  window.NodrusLibrary = { open, close, importText, importData, all, paint, BOOKMARKLET, detectLicense, isfToEntry, importISF, licOf };
 })();

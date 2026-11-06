@@ -467,3 +467,8 @@ span.ctl-kind { display: inline-flex; align-items: center; color: #ff3fa4; }
 .lib-acts a.lab-mini { display: inline-flex; align-items: center; text-decoration: none; color: var(--text); }
 .lib-use { border-color: var(--accent) !important; color: var(--accent); }
 .lib-lic { color: #666; font-size: 10px; }
+.lib-col { border-top: 1px solid var(--line); padding-top: 10px; }
+.lib-col p { margin: 4px 0; line-height: 1.5; }
+.lib-col .dim { color: var(--dim); font-size: 11px; }
+.lib-lic.lic-free { color: #7fdc6a; } .lib-lic.lic-nc { color: #d9b24a; } .lib-lic.lic-unknown { color: #888; }
+.lib-grid { grid-auto-rows: max-content; } .lib-card { min-height: max-content; }
