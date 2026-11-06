@@ -87,7 +87,7 @@
   <div class="tip" id="tip"></div>
 </div>
 <div class="hint" id="hint">Doble clic: pantalla completa · M: ajustar (superficies y máscaras) · esperando al editor…</div>
-<script src="nodes.js?v=18"></script>
+<script src="nodes.js?v=19"></script>
 <script>
 (function () {
   // Shows what is ON AIR in the editor (not the preview), with the same cross-fades and overlay.
@@ -122,15 +122,17 @@
   const FULL = [[0, 0], [1, 0], [1, 1], [0, 1]];   // TL, TR, BR, BL
   const newSurface = (crop, corners) => ({ crop: crop || [0, 0, 1, 1], corners: corners || FULL.map(p => p.slice()) });
   let map = { surfaces: [newSurface()], masks: [], invert: false };
+  const CLEAN = new URLSearchParams(location.search).has('clean');   // desktop app's Spout copy
+  if (CLEAN) { document.body.classList.add('idle'); document.getElementById('hint').hidden = true; }
   try {
-    const m = JSON.parse(localStorage.getItem(STORE) || 'null');
+    const m = CLEAN ? null : JSON.parse(localStorage.getItem(STORE) || 'null');
     if (m) {
       const okS = s => s && Array.isArray(s.corners) && s.corners.length === 4 && Array.isArray(s.crop) && s.crop.length === 4;
       const surfaces = Array.isArray(m.surfaces) ? m.surfaces.filter(okS) : (Array.isArray(m.corners) && m.corners.length === 4 ? [newSurface(null, m.corners)] : []);
       map = { surfaces: surfaces.length ? surfaces : [newSurface()], masks: Array.isArray(m.masks) ? m.masks : [], invert: !!m.invert };
     }
   } catch (e) { /* defaults */ }
-  const save = () => { try { localStorage.setItem(STORE, JSON.stringify(map)); } catch (e) { /* ignore */ } };
+  const save = () => { if (CLEAN) return; try { localStorage.setItem(STORE, JSON.stringify(map)); } catch (e) { /* ignore */ } };
   let sel = 0;
 
   // Projective transform taking 4 source points to 4 destination points
@@ -433,6 +435,7 @@
   }
 
   addEventListener('keydown', e => {
+    if (CLEAN) return;
     const k = e.key.toLowerCase();
     if (k === 'm') { setEditing(!editing); return; }
     if (k === 'f') { toggleFull(); return; }

@@ -1,0 +1,6 @@
+# NODRUS desktop app
+desktop/node_modules/
+desktop/dist/
+desktop/nodrus-test-result.json
+desktop/test-log.txt
+desktop/*.txt

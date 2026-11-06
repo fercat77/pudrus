@@ -148,17 +148,32 @@
 <script>
 (function () {
   const $ = id => document.getElementById(id);
+  const WS = new URLSearchParams(location.search).has('ws');   // NODRUS desktop app on the same wifi
   const room = decodeURIComponent(location.hash.slice(1));
-  if (!/^pudrus-[a-z0-9]{6,32}$/.test(room)) { $('nohash').hidden = false; $('status').textContent = ''; return; }
+  if (!WS && !/^pudrus-[a-z0-9]{6,32}$/.test(room)) { $('nohash').hidden = false; $('status').textContent = ''; return; }
 
   let peer = null, conn = null, state = null, retry = null, page = 0, videoOn = false;
   function status(txt, kind) { $('status').textContent = txt; $('dot').className = 'dot ' + (kind || ''); }
-  function send(m) { if (conn && conn.open && !locked) conn.send(m); }
+  let ws = null;
+  function send(m) {
+    if (locked) return;
+    if (WS) { if (ws && ws.readyState === 1) ws.send(JSON.stringify(m)); return; }
+    if (conn && conn.open) conn.send(m);
+  }
   let toastT;
   function toast(t) { const e = $('toast'); e.textContent = t; e.classList.add('on'); clearTimeout(toastT); toastT = setTimeout(() => e.classList.remove('on'), 1600); }
 
   /* ── connection ── */
+  function connectWS() {
+    clearTimeout(retry);
+    status('conectando…', 'wait');
+    try { ws = new WebSocket(`ws://${location.host}/ws`); } catch (e) { retry = setTimeout(connectWS, 2000); return; }
+    ws.onopen = () => status('conectado (wifi)', 'on');
+    ws.onmessage = e => { try { onData(JSON.parse(e.data)); } catch (er) { /* ignore */ } };
+    ws.onclose = () => { status('se cortó · reintentando', 'wait'); retry = setTimeout(connectWS, 1500); };
+  }
   function connect() {
+    if (WS) { connectWS(); return; }
     clearTimeout(retry);
     if (!window.Peer) { status('sin internet', ''); retry = setTimeout(() => location.reload(), 4000); return; }
     if (!peer || peer.destroyed) {
@@ -326,6 +341,7 @@
   st.addEventListener('contextmenu', e => e.preventDefault());
 
   // 👁 live video of what is on air
+  if (WS) $('eye').hidden = true;   // live video needs the internet relay (web version)
   $('eye').addEventListener('click', () => {
     videoOn = !videoOn;
     $('eye').classList.toggle('on', videoOn);

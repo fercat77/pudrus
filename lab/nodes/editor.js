@@ -1,6 +1,8 @@
 /* PUDRUS Lab · Nodos — editor (Blender-style). Personal tool: Spanish UI only. */
 (function () {
   const N = window.PudrusNodes, PRESETS = window.PudrusPresets;
+  const DESK = window.nodrusDesktop || null;   // running inside the NODRUS desktop app (Spout, OSC, wifi phone)
+  let deskInfo = null;
   const $ = s => document.querySelector(s);
   const work = $('#work'), world = $('#world'), svg = $('#links');
   const preview = $('#preview'), view = $('#view');
@@ -1033,6 +1035,7 @@
   }
   function setXf(v, quiet) {
     stage.x = v; paintMixer();
+    oscSend('/nodrus/xf', +stage.x.toFixed(3));
     broadcastMix();
     if (!quiet) pushState();
   }
@@ -1098,6 +1101,7 @@
     if (opts.direct) { graph = clone(sc.graph); selected.clear(); rebuild(); recompile(); save(); remember(); }
     goLive(opts.direct ? graph : sc.graph);
     liveScene = i; paintScenes();
+    oscSend('/nodrus/scene', i + 1);
   }
   // next / previous filled scene (phone, MIDI)
   function stepScene(d) {
@@ -1448,10 +1452,25 @@
   let peer = null, peerReady = false;
   const conns = new Set();
   if (!opts.room) { opts.room = 'pudrus-' + Array.from(crypto.getRandomValues(new Uint8Array(12)), b => (b % 36).toString(36)).join(''); saveOpts(); }
-  const remoteUrl = () => new URL('control/#' + opts.room, document.baseURI).href;
+  const remoteUrl = () => (DESK && deskInfo ? deskInfo.lanUrl + '/lab/nodes/control/?ws' : new URL('control/#' + opts.room, document.baseURI).href);
   function remoteStatus(txt) { $('#rmStatus').textContent = txt; $('#btnRemote').classList.toggle('is-on', conns.size > 0); }
   async function startRemote() {
     if (peer) return;
+    if (DESK) {
+      // phones connect to the app over the wifi: no internet needed
+      peer = { desktop: true }; peerReady = true;
+      const byId = new Map();
+      DESK.onRemote(m => {
+        if (m.type === 'open') {
+          const c = { id: m.id, desk: true, send: msg => DESK.sendRemote(m.id, msg) };
+          byId.set(m.id, c); conns.add(c); c.send(fullState());
+          remoteStatus(`${conns.size} celular(es) conectado(s) por wifi`); toast('📱 Celular conectado');
+        } else if (m.type === 'msg') { const c = byId.get(m.id); if (c) remoteMsg(m.msg, c); }
+        else if (m.type === 'close') { const c = byId.get(m.id); if (c) { conns.delete(c); byId.delete(m.id); } remoteStatus(conns.size ? `${conns.size} celular(es) conectado(s) por wifi` : 'Celular desconectado · esperando…'); }
+      });
+      remoteStatus('Listo: escaneá el código (mismo wifi que esta compu)');
+      return;
+    }
     try {
       if (!window.Peer) await loadScript('https://cdn.jsdelivr.net/npm/peerjs@1.5.4/dist/peerjs.min.js');
     } catch (e) { remoteStatus('No se pudo cargar la conexión (¿hay internet?)'); return; }
@@ -1475,7 +1494,7 @@
     const box = $('#rmQR');
     if (box.dataset.done) return;
     try {
-      if (!window.qrcode) await loadScript('https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.js');
+      if (!window.qrcode) await loadScript(DESK ? '/vendor/qrcode.js' : 'https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.js');
       const q = window.qrcode(0, 'M'); q.addData(remoteUrl()); q.make();
       box.innerHTML = q.createSvgTag({ cellSize: 4, margin: 2, scalable: true });
       box.dataset.done = '1';
@@ -1552,6 +1571,7 @@
   }
   // a small live video of what is on air, for the phone
   function sendVideo(conn, on) {
+    if (conn.desk) return;   // live video to the phone needs the web version's relay
     if (conn.mcall) { try { conn.mcall.close(); } catch (e) { /* closed */ } conn.mcall = null; }
     if (!on || !peer || !stage.canvas.captureStream) return;
     try { conn.mcall = peer.call(conn.peer, stage.canvas.captureStream(24)); } catch (e) { conn.mcall = null; }
@@ -1707,7 +1727,7 @@
   // "Loop perfecto": a second copy of the patch starts again from the beginning and the last
   // second fades into it, so the end flows into the start when the video repeats.
   let rendering = null;
-  const MP4MUX = 'https://cdn.jsdelivr.net/npm/mp4-muxer@5.1.3/build/mp4-muxer.min.js';
+  const MP4MUX = DESK ? '/vendor/mp4-muxer.js' : 'https://cdn.jsdelivr.net/npm/mp4-muxer@5.1.3/build/mp4-muxer.min.js';
   async function renderVideo() {
     if (rendering) return;
     if (!('VideoEncoder' in window) || !('VideoFrame' in window)) { toast('Este navegador no puede renderizar MP4: usá Chrome o Edge', true); return; }
@@ -1780,6 +1800,89 @@
     }
   }
 
+  /* ── Desktop app: Spout, OSC, output display ────────────── */
+  let deskOscOn = false, oscLastBeat = -1, oscAt = 0;
+  const oscSend = (addr, ...args) => { if (DESK && deskOscOn) DESK.osc.send(addr, args); };
+  // what NODRUS tells other programs (TouchDesigner, Resolume…): audio bands, beat, bpm, scene, crossfader
+  function oscTick(now) {
+    if (now - oscAt > 33) { oscAt = now; const a = audio.bands; oscSend('/nodrus/audio', +a[0].toFixed(3), +a[1].toFixed(3), +a[2].toFixed(3), +a[3].toFixed(3)); }
+    const b = Math.floor(N.clock.beat);
+    if (b !== oscLastBeat) { oscLastBeat = b; oscSend('/nodrus/beat', b); }
+  }
+  // what other programs can tell NODRUS
+  function oscIn({ addr, args }) {
+    const a0 = args[0], num = typeof a0 === 'number' ? a0 : parseFloat(a0);
+    const on = args.length ? (typeof a0 === 'string' ? !/^(0|off|false)$/i.test(a0) : num > 0.5) : null;
+    const m = /^\/nodrus\/(.+)$/.exec(addr || ''); if (!m) return;
+    const [cmd, sub] = m[1].split('/');
+    if (cmd === 'go') goLive();
+    else if (cmd === 'scene' && Number.isFinite(num)) fireScene(Math.round(num) - 1);
+    else if (cmd === 'next') stepScene(1);
+    else if (cmd === 'prev') stepScene(-1);
+    else if (cmd === 'black') setBlack(on === null ? !stage.black : on);
+    else if (cmd === 'strobe') setStrobe(on === null ? !stage.strobe : on);
+    else if (cmd === 'tap') tap();
+    else if (cmd === 'bpm' && num >= 40 && num <= 240) { bpm = num; opts.bpm = bpm; saveOpts(); $('#bpm').textContent = Math.round(bpm); pushState(); }
+    else if (cmd === 'xf' && Number.isFinite(num)) setXf(num);
+    else if (cmd === 'deck') selectDeck(/^(b|1)$/i.test(String(a0)) ? 'B' : 'A');
+    else if (cmd === 'fade' && [0, 0.5, 1, 2, 4].includes(num)) { opts.fade = num; fadeSel.value = String(num); saveOpts(); }
+    else if (cmd === 'random') { randomPatch(); goLive(); }
+    else if (cmd === 'vary') { varyPatch(); goLive(); }
+    else if (cmd === 'overlay') setOverlayOn(on === null ? !ov.on : on);
+    else if (cmd === 'ctl' && sub) {
+      const c = liveControls()[(+sub | 0) - 1]; if (!c) return;
+      if (c.kind === 'xy') { if (Number.isFinite(num)) ctlSet(c, num); if (args.length > 1) ctlSet(c, +args[1], true); }
+      else if (c.kind === 'button') ctlPress(c, !!on);
+      else if (Number.isFinite(num)) ctlSet(c, num);
+    }
+  }
+  async function paintDesk() {
+    if (!DESK) return;
+    deskInfo = await DESK.info();
+    const sp = deskInfo.spout, sc = sp.cfg || {};
+    $('#dkSpoutOn').checked = !!sp.on;
+    $('#dkSpoutName').value = sc.name || 'NODRUS';
+    $('#dkSpoutSize').value = `${sc.width || 1920}x${sc.height || 1080}`;
+    $('#dkSpoutState').textContent = sp.on ? `Enviando «${sp.name}» ${sp.width}×${sp.height}` + (sp.error ? ' · error: ' + sp.error : '') : sp.available === false ? 'No disponible: ' + sp.error : 'Apagado';
+    $('#dkOscOn').checked = !!deskInfo.osc.running;
+    $('#dkOscIn').value = deskInfo.osc.inPort; $('#dkOscHost').value = deskInfo.osc.outHost; $('#dkOscOut').value = deskInfo.osc.outPort;
+    const ds = $('#dkDisplay'); ds.textContent = '';
+    [{ id: 'auto', label: 'Automático (la otra pantalla)' }, ...deskInfo.displays].forEach(d => { const o = el('option', '', d.label); o.value = d.id; ds.append(o); });
+    ds.value = deskInfo.display;
+    $('#btnDesk').classList.toggle('is-on', !!sp.on || !!deskInfo.osc.running);
+  }
+  async function spoutApply() {
+    const [w, h] = $('#dkSpoutSize').value.split('x').map(Number);
+    const r = $('#dkSpoutOn').checked ? await DESK.spout.start({ name: $('#dkSpoutName').value.trim() || 'NODRUS', width: w, height: h, fps: 60 }) : await DESK.spout.stop();
+    if (r && r.ok === false) { toast('Spout: ' + r.error, true); $('#dkSpoutOn').checked = false; }
+    else if ($('#dkSpoutOn').checked) toast(`Spout encendido: buscá «${$('#dkSpoutName').value.trim() || 'NODRUS'}» en Resolume o TouchDesigner`);
+    paintDesk();
+  }
+  async function oscApply() {
+    if ($('#dkOscOn').checked) {
+      const r = await DESK.osc.start({ inPort: +$('#dkOscIn').value || 9000, outHost: $('#dkOscHost').value.trim() || '127.0.0.1', outPort: +$('#dkOscOut').value || 9001 });
+      if (!r.ok) { toast('OSC: ' + r.error, true); $('#dkOscOn').checked = false; deskOscOn = false; }
+      else { deskOscOn = true; toast(`OSC: escucha en ${r.inPort}, envía a ${r.outHost}:${r.outPort}`); }
+    } else { await DESK.osc.stop(); deskOscOn = false; }
+    paintDesk();
+  }
+  if (DESK) {
+    document.documentElement.classList.add('is-desktop');
+    $('#btnDesk').hidden = false;
+    DESK.osc.on(oscIn);
+    DESK.osc.onError(msg => toast('OSC: ' + msg, true));
+    $('#btnDesk').addEventListener('click', e => { e.stopPropagation(); const r = e.currentTarget.getBoundingClientRect(); paintDesk(); openPop($('#deskPop'), r.left - 260, r.bottom + 4); });
+    $('#dkSpoutOn').addEventListener('change', spoutApply);
+    $('#dkSpoutSize').addEventListener('change', () => { if ($('#dkSpoutOn').checked) spoutApply(); });
+    $('#dkSpoutName').addEventListener('change', () => { if ($('#dkSpoutOn').checked) spoutApply(); });
+    $('#dkOscOn').addEventListener('change', oscApply);
+    ['#dkOscIn', '#dkOscHost', '#dkOscOut'].forEach(sel => $(sel).addEventListener('change', () => { if ($('#dkOscOn').checked) oscApply(); }));
+    $('#dkDisplay').addEventListener('change', e => DESK.setDisplay(e.target.value));
+    $('#dkOut').addEventListener('click', () => $('#btnOut').click());
+    setInterval(async () => { if (!$('#deskPop').hidden) { const st = await DESK.spout.stats(); if (st.on) $('#dkSpoutState').textContent = `Enviando «${st.name}» ${st.width}×${st.height} · ${st.frames} cuadros` + (st.error ? ' · ' + st.error : ''); } }, 1000);
+    paintDesk().then(() => { deskOscOn = !!(deskInfo && deskInfo.osc.running); startRemote(); });   // phones can join right away
+  }
+
   /* ── Main loop ─────────────────────────────────────────── */
   let last = performance.now(), frameN = 0;
   function loop(now) {
@@ -1787,6 +1890,7 @@
     const dt = Math.min(0.1, (now - last) / 1000); last = now;
     if (playing) time += dt;
     N.clock.beat = beatNow();
+    if (deskOscOn) oscTick(now);
     flushLive();
     pushValues(now);
     const a = audio.read();
@@ -1824,5 +1928,5 @@
   requestAnimationFrame(loop);
   // fonts change node sizes -> redraw links once they are in
   if (document.fonts) document.fonts.ready.then(() => drawLinks());
-  window.__nodesEditor = { get graph() { return graph; }, get compiled() { return compiled; }, get liveGraph() { return liveGraph; }, stage, addNode, connect, removeNodes, undo, redo, goLive, modulate, set valueTarget(v) { valueTarget = v; }, setDirect, storeScene, fireScene, openScene, setThumbs, get scenes() { return scenes; }, get controls() { return ctlList(graph); }, renderVideo, setExp, get ex() { return ex; }, get rendering() { return rendering; }, expSize, takePhoto, selectDeck, setXf, get deck() { return deckSel; }, openCode, applyCode, get opts() { return opts; }, layoutPreview, ensureControls, get ov() { return ov; }, setOverlayOn, paintOverlayPanel, liveControls, ctlValue, randomPatch, varyPatch, stepScene, paintControls, toggleControl, applyControl, onMidi, midiLearn, setLearning(t) { learning = t; }, get midiMap() { return midiMap; }, remoteMsg, fullState, tap, get bpm() { return bpm; }, setBlack, setStrobe };
+  window.__nodesEditor = { get graph() { return graph; }, get compiled() { return compiled; }, get liveGraph() { return liveGraph; }, stage, addNode, connect, removeNodes, undo, redo, goLive, modulate, set valueTarget(v) { valueTarget = v; }, setDirect, storeScene, fireScene, openScene, setThumbs, get scenes() { return scenes; }, get controls() { return ctlList(graph); }, oscIn, get deskOscOn() { return deskOscOn; }, renderVideo, setExp, get ex() { return ex; }, get rendering() { return rendering; }, expSize, takePhoto, selectDeck, setXf, get deck() { return deckSel; }, openCode, applyCode, get opts() { return opts; }, layoutPreview, ensureControls, get ov() { return ov; }, setOverlayOn, paintOverlayPanel, liveControls, ctlValue, randomPatch, varyPatch, stepScene, paintControls, toggleControl, applyControl, onMidi, midiLearn, setLearning(t) { learning = t; }, get midiMap() { return midiMap; }, remoteMsg, fullState, tap, get bpm() { return bpm; }, setBlack, setStrobe };
 })();

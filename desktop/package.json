@@ -1,0 +1,72 @@
+{
+  "name": "nodrus-desktop",
+  "productName": "NODRUS",
+  "version": "0.1.0",
+  "description": "NODRUS — editor de visuales por nodos, versión de escritorio (Spout, OSC, celular por wifi)",
+  "author": "fercat77",
+  "license": "UNLICENSED",
+  "private": true,
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "test": "electron . --nodrus-test",
+    "dist": "electron-builder --win portable --x64"
+  },
+  "devDependencies": {
+    "electron": "^45.2.3",
+    "electron-builder": "^26.18.0"
+  },
+  "dependencies": {
+    "@napolab/texture-bridge-core": "^0.18.0",
+    "mp4-muxer": "^5.1.3",
+    "node-osc": "^11.7.1",
+    "qrcode-generator": "^1.4.4",
+    "ws": "^8.22.1"
+  },
+  "build": {
+    "appId": "xyz.pudrus.nodrus",
+    "productName": "NODRUS",
+    "copyright": "PUDRUS · fercat77",
+    "directories": {
+      "output": "dist",
+      "buildResources": "build"
+    },
+    "files": [
+      "main.js",
+      "preload.js",
+      "test.js",
+      "package.json",
+      "build/icon.png"
+    ],
+    "asarUnpack": [
+      "node_modules/@napolab/**"
+    ],
+    "extraResources": [
+      {
+        "from": "../lab/nodes",
+        "to": "web/lab/nodes",
+        "filter": [
+          "**/*"
+        ]
+      },
+      {
+        "from": "../favicon.svg",
+        "to": "web/favicon.svg"
+      }
+    ],
+    "win": {
+      "target": [
+        {
+          "target": "portable",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "icon": "build/icon.png"
+    },
+    "portable": {
+      "artifactName": "NODRUS-${version}-portable.exe"
+    }
+  }
+}

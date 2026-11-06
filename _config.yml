@@ -1,0 +1,4 @@
+# GitHub Pages (Jekyll): the desktop app source is not part of the website
+exclude:
+  - desktop
+  - node_modules
