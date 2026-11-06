@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no">
+  <meta name="robots" content="noindex, nofollow">
+  <meta name="theme-color" content="#0a0a10">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <title>NODRUS táctil — PUDRUS Lab</title>
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+  <link rel="stylesheet" href="movil.css?v=1">
+</head>
+<body>
+<header class="m-top">
+  <a class="m-logo" href="/">NODRUS<span> táctil</span></a>
+  <span class="m-sp"></span>
+  <button class="m-ic" id="btnTour" title="Recorrido">?</button>
+  <button class="m-ic" id="btnMenu" title="Más">⋯</button>
+</header>
+
+<div class="m-view" id="view">
+  <canvas id="c"></canvas>
+  <div class="m-gest" id="gest"></div>
+  <p class="m-hint" id="hint">arrastrá para mover · pellizcá para zoom · girá con dos dedos</p>
+  <button class="m-full" id="btnFull" title="Pantalla completa">⛶</button>
+</div>
+
+<main class="m-chain" id="chain"></main>
+
+<nav class="m-bar" id="bar">
+  <button id="btnRandom"><b>🎲</b><span>Aleatorio</span></button>
+  <button id="btnVary"><b>✨</b><span>Variar</span></button>
+  <button id="btnMic"><b>🎤</b><span>Audio</span></button>
+  <button id="btnTilt"><b>📱</b><span>Inclinar</span></button>
+  <button id="btnPhoto"><b>◉</b><span>Foto</span></button>
+  <button id="btnRec"><b>●</b><span>Grabar</span></button>
+</nav>
+
+<div class="m-scrim" id="scrim" hidden></div>
+<section class="m-sheet" id="sheet" hidden>
+  <div class="m-sheet-head"><b id="sheetTitle"></b><button class="m-ic" id="sheetClose">✕</button></div>
+  <div class="m-sheet-body" id="sheetBody"></div>
+</section>
+
+<div class="m-tour" id="tour" hidden>
+  <div class="m-tour-box" id="tourBox"></div>
+  <div class="m-tour-bubble" id="tourBubble">
+    <p id="tourText"></p>
+    <div class="m-tour-btns"><button id="tourSkip">Saltar</button><span id="tourStep"></span><button id="tourNext" class="m-pri">Siguiente</button></div>
+  </div>
+</div>
+<div class="m-toast" id="toast"></div>
+
+<script src="../nodes.js?v=18"></script>
+<script src="../generate.js?v=18"></script>
+<script src="movil.js?v=1"></script>
+</body>
+</html>

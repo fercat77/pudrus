@@ -17,6 +17,15 @@
     return g;
   }
   let graph = ensureControls(load() || clone(PRESETS[0].graph));
+  let fromPhone = false;
+  if (location.hash.startsWith('#patch=')) {
+    try {
+      const b64 = location.hash.slice(7).replace(/-/g, '+').replace(/_/g, '/');
+      const g = JSON.parse(decodeURIComponent(escape(atob(b64))));
+      if (Array.isArray(g.nodes) && Array.isArray(g.links) && g.nodes.every(n => N.NODES[n.type])) { graph = ensureControls(g); fromPhone = true; }
+    } catch (e) { /* not a valid sketch */ }
+    history.replaceState(null, '', location.pathname + location.search);
+  }
   let cam = { x: 30, y: 30, z: 0.85 };
   const selected = new Set();
   let compiled = null;
@@ -530,7 +539,7 @@
     }
     const blob = new Blob([JSON.stringify({ pudrusNodes: 1, graph, assets }, null, 1)], { type: 'application/json' });
     if (graph.nodes.some(n => n.type === 'video' && n.p && n.p.vid)) toast('Ojo: los videos no viajan dentro del archivo (quedan sólo en este navegador)');
-    const a = document.createElement('a'); a.download = `patch_${Date.now()}.pudrus.json`; a.href = URL.createObjectURL(blob); a.click();
+    const a = document.createElement('a'); a.download = `nodrus_patch_${Date.now()}.json`; a.href = URL.createObjectURL(blob); a.click();
     setTimeout(() => URL.revokeObjectURL(a.href), 5000);
   });
   $('#fileOpen').addEventListener('change', async e => {
@@ -911,7 +920,7 @@
   const meters = [...document.querySelectorAll('#meter i')];
 
   /* ── Photo / record ────────────────────────────────────── */
-  const fileTag = () => `pudrus_${ex.fmt.replace(':', 'x')}_${expSize().join('x')}_${Date.now()}`;
+  const fileTag = () => `nodrus_${ex.fmt.replace(':', 'x')}_${expSize().join('x')}_${Date.now()}`;
   function saveBlob(b, name, ms) { const a = document.createElement('a'); a.download = name; a.href = URL.createObjectURL(b); a.click(); setTimeout(() => URL.revokeObjectURL(a.href), ms || 10000); }
   function takePhoto() {
     // one frame at the full export size
@@ -1809,6 +1818,7 @@
   rebuild();
   recompile();
   applyCam();
+  if (fromPhone) setTimeout(() => toast('📱 Boceto del celular abierto: seguí armándolo acá'), 300);
   layoutPreview();
   requestAnimationFrame(() => { frameAll(); drawLinks(); });
   requestAnimationFrame(loop);

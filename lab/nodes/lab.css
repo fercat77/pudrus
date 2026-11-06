@@ -387,3 +387,4 @@ span.ctl-kind { display: inline-flex; align-items: center; color: #ff3fa4; }
 .safe-guide.fmt-9x16 { background: linear-gradient(rgba(255,42,77,0.16), rgba(255,42,77,0.16)) right 0 top 40% / 15% 38% no-repeat; }
 .safe-guide.fmt-4x5::before, .safe-guide.fmt-1x1::before, .safe-guide.fmt-16x9::before { inset: 5%; background: none; }
 .safe-guide.fmt-4x5::after, .safe-guide.fmt-1x1::after, .safe-guide.fmt-16x9::after { display: none; }
+.lab-mobile-note a { color: var(--accent); }

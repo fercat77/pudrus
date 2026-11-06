@@ -195,5 +195,5 @@
     return graph;
   }
 
-  window.PudrusGenerate = { generate, vary, suggest };
+  window.PudrusGenerate = { generate, vary, suggest, RANGES };
 })();
