@@ -963,7 +963,7 @@
   /* ── Output window (second screen / projector) ─────────── */
   const channel = 'BroadcastChannel' in window ? new BroadcastChannel('pudrus-nodes') : null;
   function broadcast(msg) { if (channel) channel.postMessage(msg); }
-  if (channel) channel.onmessage = e => { if (e.data && e.data.type === 'hello') { liveByDeck[deckSel] = liveGraph; ['A', 'B'].forEach(d => broadcast({ type: 'live', graph: liveByDeck[d], fade: 0, deck: d })); broadcastMix(); broadcast({ type: 'play', playing }); broadcastMaster(0); broadcast({ type: 'overlay', ov }); broadcast({ type: 'screenfx', fx: sfx }); } };
+  if (channel) channel.onmessage = e => { if (e.data && e.data.type === 'hello') { liveByDeck[deckSel] = liveGraph; ['A', 'B'].forEach(d => broadcast({ type: 'live', graph: liveByDeck[d], fade: 0, deck: d })); broadcastMix(); broadcast({ type: 'play', playing }); broadcastMaster(0); broadcast({ type: 'overlay', ov }); broadcast({ type: 'screenfx', fx: sfx }); broadcast({ type: 'transition', t: opts.trans || null }); } };
   $('#btnOut').addEventListener('click', () => {
     const w = window.open('output.html', 'pudrus-output', 'width=960,height=540');
     if (!w) toast('El navegador bloqueó la ventana: permití las ventanas emergentes', true);
@@ -1050,7 +1050,10 @@
   });
   $('#xfader').addEventListener('input', e => setXf(+e.target.value));
   $('#xfader').addEventListener('contextmenu', e => { e.preventDefault(); e.stopPropagation(); midiLearn({ kind: 'xf' }); });
-  $('#xmode').addEventListener('change', e => { stage.mode = e.target.value; broadcastMix(); pushState(); e.target.blur(); });
+  $('#xmode').addEventListener('change', e => {
+    stage.mode = e.target.value; broadcastMix(); pushState(); e.target.blur();
+    if (e.target.value === 'trans' && !opts.trans) toast('Elegí una transición en «⇄» (junto a Al aire) para usar este modo');
+  });
   ['pointerdown', 'wheel'].forEach(t => $('#mixer').addEventListener(t, e => e.stopPropagation()));
 
   /* ── Scenes: 8 slots, keys 1–8 put them on air ──────────── */
@@ -1757,6 +1760,40 @@
   $('#btnFx').addEventListener('click', e => { e.stopPropagation(); const r = e.currentTarget.getBoundingClientRect(); paintFx(); openPop($('#fxPop'), r.left - 200, r.bottom + 4); setTimeout(paintFx, 120); });
   fxChanged(true);
 
+  /* ── Transitions for «Al aire» and the crossfader ── */
+  function transLabel() { $('#btnTrans').innerHTML = '⇄<span class="t"> ' + (opts.trans ? opts.trans.name : 'Fundido') + '</span>'; $('#btnTrans').classList.toggle('is-on', !!opts.trans); }
+  function setTransition(entry) {
+    opts.trans = entry ? { lib: entry.id, name: entry.name, code: entry.code, v: {}, param: entry.transParam || 'g_progress', author: entry.author || '' } : null;
+    saveOpts(); stage.setTransition(opts.trans);
+    broadcast({ type: 'transition', t: opts.trans });
+    transLabel(); fitBar();
+    const err = opts.trans ? stage.transError(opts.trans) : '';
+    toast(err ? 'Esa transición no compila: ' + err.split('\n')[0].slice(0, 120) : opts.trans ? `⇄ Transición: «${opts.trans.name}» (Al aire y crossfader en modo transición)` : 'Fundido normal', !!err);
+  }
+  async function openTransPicker(btn) {
+    const pop = $('#transPop'), list = $('#transList');
+    list.textContent = '';
+    const none = el('button', 'item' + (opts.trans ? '' : ' is-cur'), 'Fundido normal');
+    none.addEventListener('click', () => { closePops(); setTransition(null); });
+    list.append(none);
+    let items = [];
+    try { items = (await window.NodrusLibrary.all()).filter(e => window.NodrusLibrary.isTrans(e) && e.transParam && e.level !== 'error'); } catch (e) { /* no library */ }
+    items.forEach(e => {
+      const b = el('button', 'item tr-item' + (opts.trans && opts.trans.lib === e.id ? ' is-cur' : ''));
+      const th = el('i', 'tr-th'); if (e.thumb) th.style.backgroundImage = `url(${e.thumb})`;
+      b.append(th, document.createTextNode(e.name));
+      b.addEventListener('click', () => { closePops(); setTransition(e); });
+      list.append(b);
+    });
+    if (!items.length) list.append(el('p', 'dim', 'No hay transiciones en la librería todavía.'));
+    const r = btn.getBoundingClientRect();
+    openPop(pop, r.left, r.bottom + 4);
+  }
+  $('#btnTrans').addEventListener('click', e => { e.stopPropagation(); openTransPicker(e.currentTarget); });
+  $('#transGet').addEventListener('click', () => { closePops(); window.NodrusLibrary.open({ tag: 'transicion' }); });
+  stage.setTransition(opts.trans || null);
+  transLabel();
+
   /* ── Export panel: format, size, guides, live recording and frame-by-frame render ── */
   const guideEls = [preview, $('#live')].map(box => { const g = el('div', 'safe-guide'); box.append(g); return g; });
   function paintGuides() {
@@ -1813,7 +1850,7 @@
     }
     if (!config) { toast(`Este equipo no puede codificar H.264 a ${W}×${H}: probá una resolución menor`, true); return; }
     liveByDeck[deckSel] = liveGraph;
-    const snap = { A: clone(liveByDeck.A), B: clone(liveByDeck.B), x: stage.x, mode: stage.mode, ov: clone(ov), fx: clone(sfx), t0: time, bpm, origin: beatOrigin };
+    const snap = { A: clone(liveByDeck.A), B: clone(liveByDeck.B), x: stage.x, mode: stage.mode, ov: clone(ov), fx: clone(sfx), tr: opts.trans ? clone(opts.trans) : null, t0: time, bpm, origin: beatOrigin };
     const beatAt = t => (t - snap.origin) * snap.bpm / 60;
     const target = new window.Mp4Muxer.ArrayBufferTarget();
     const muxer = new window.Mp4Muxer.Muxer({ target, video: { codec: 'avc', width: W, height: H, frameRate: fps }, fastStart: 'in-memory' });
@@ -1821,7 +1858,7 @@
     const enc = new VideoEncoder({ output: (chunk, meta) => muxer.addVideoChunk(chunk, meta), error: e => { encErr = e; } });
     enc.configure(config);
     const host = document.createElement('div');
-    const mk = () => { const m = N.createMixer(host); m.resize(W, H); m.x = snap.x; m.mode = snap.mode; m.setOverlay(snap.ov); m.setFx(snap.fx); m.go(snap.A, 0, 'A'); m.go(snap.B, 0, 'B'); return m; };
+    const mk = () => { const m = N.createMixer(host); m.resize(W, H); m.x = snap.x; m.mode = snap.mode; m.setOverlay(snap.ov); m.setFx(snap.fx); m.setTransition(snap.tr); m.go(snap.A, 0, 'A'); m.go(snap.B, 0, 'B'); return m; };
     let m1 = null, m2 = null;
     const mixCanvas = document.createElement('canvas'); mixCanvas.width = W; mixCanvas.height = H;
     const mctx = mixCanvas.getContext('2d');
@@ -2027,7 +2064,7 @@
   requestAnimationFrame(loop);
   // fonts change node sizes -> redraw links once they are in
   if (document.fonts) document.fonts.ready.then(() => drawLinks());
-  window.__nodesEditor = { get graph() { return graph; }, get compiled() { return compiled; }, get liveGraph() { return liveGraph; }, stage, addNode, connect, removeNodes, undo, redo, goLive, modulate, set valueTarget(v) { valueTarget = v; }, setDirect, storeScene, fireScene, openScene, setThumbs, get scenes() { return scenes; }, get controls() { return ctlList(graph); }, addScreenFilter, get sfx() { return sfx; }, setFxOn, paintFx,
+  window.__nodesEditor = { get graph() { return graph; }, get compiled() { return compiled; }, get liveGraph() { return liveGraph; }, stage, addNode, connect, removeNodes, undo, redo, goLive, modulate, set valueTarget(v) { valueTarget = v; }, setDirect, storeScene, fireScene, openScene, setThumbs, get scenes() { return scenes; }, get controls() { return ctlList(graph); }, setTransition, get transition() { return opts.trans; }, addScreenFilter, get sfx() { return sfx; }, setFxOn, paintFx,
     loadGraph(g, msg) { graph = ensureControls(g); selected.clear(); rebuild(); recompile(); save(); remember(); frameAll(); if (msg) toast(msg); },
     selectedGlsl() { const ids = [...selected]; const n = ids.length === 1 && graph.nodes.find(m => m.id === ids[0]); return n && n.type === 'glsl' ? n : null; },
     setGlsl(n, code, src) { n.p = { ...(n.p || {}), code, src }; rebuild(); recompile(); save(); remember(); },

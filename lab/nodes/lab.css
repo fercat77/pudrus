@@ -474,3 +474,8 @@ span.ctl-kind { display: inline-flex; align-items: center; color: #ff3fa4; }
 .lib-grid { grid-auto-rows: max-content; } .lib-card { min-height: max-content; }
 .fx-hint { color: var(--dim); font-size: 11px; margin: 0 2px 8px; }
 .ov-head .ctl-x:disabled { opacity: 0.25; }
+.tr-pop { width: 300px; max-height: 70vh; overflow: auto; }
+.tr-pop .item { display: flex !important; align-items: center; gap: 8px; }
+.tr-pop .item.is-cur { color: var(--accent); }
+.tr-th { flex: none; width: 48px; height: 27px; border-radius: 3px; background: #000 center / cover; border: 1px solid var(--line); }
+.tr-pop #transGet { margin-top: 6px; width: 100%; }

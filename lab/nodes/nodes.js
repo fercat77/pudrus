@@ -96,7 +96,9 @@ vec3 cosPal(float t, vec3 a, vec3 b, vec3 c, vec3 d){ return a + b * cos(6.28318
 #define iDate vec4(0.0)
 #define iChannel0 u_prev
 ${ES3 ? '' : '#define texture texture2D'}
-float knob1; float knob2; float knob3; float knob4;`;
+float knob1; float knob2; float knob3; float knob4;
+uniform sampler2D u_to;
+#define iChannel1 u_to`;
   const GLSL_TEMPLATES = {
     effect: `// effect(...) devuelve un color para cada punto.
 // uv: coordenadas (centro = 0, alto = 1) · col: color de la entrada
@@ -1025,13 +1027,22 @@ void main(){
     gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, 1, 1, 0, gl.RGBA, gl.UNSIGNED_BYTE, new Uint8Array([0, 0, 0, 255]));
     const cache = new Map();
     const bindTextures = texBinder(gl);
-    let inputTex = null;
-    function render(key, compiled, graph, time, audio, input) {
+    let inputTex = null, inputTex2 = null;
+    const upload = (t, img) => {
+      gl.bindTexture(gl.TEXTURE_2D, t);
+      gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);
+      gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, img);
+      gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, false);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+    };
+    function render(key, compiled, graph, time, audio, input, input2) {
       let e = cache.get(key);
       if (!e) {
         const prog = makeProgram(gl, compiled.frag);
         const loc = {};
-        ['u_res', 'u_time', 'u_beat', 'u_audio', 'u_prev'].concat(compiled.uniforms.map(u => u.name), (compiled.textures || []).flatMap(t => [t.texName, t.aspName])).forEach(n => { loc[n] = gl.getUniformLocation(prog, n); });
+        ['u_res', 'u_time', 'u_beat', 'u_audio', 'u_prev', 'u_to'].concat(compiled.uniforms.map(u => u.name), (compiled.textures || []).flatMap(t => [t.texName, t.aspName])).forEach(n => { loc[n] = gl.getUniformLocation(prog, n); });
         e = { prog, loc, compiled };
         cache.set(key, e);
       }
@@ -1053,6 +1064,7 @@ void main(){
         gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
       } else gl.bindTexture(gl.TEXTURE_2D, black);
       gl.uniform1i(e.loc.u_prev, 0);
+      if (input2) { gl.activeTexture(gl.TEXTURE7); inputTex2 = inputTex2 || gl.createTexture(); upload(inputTex2, input2); gl.uniform1i(e.loc.u_to, 7); gl.activeTexture(gl.TEXTURE0); }
       gl.uniform2f(e.loc.u_res, w, h);
       gl.uniform1f(e.loc.u_time, time);
       gl.uniform1f(e.loc.u_beat, clock.beat);
@@ -1124,7 +1136,7 @@ void main(){
     const layers = [mkLayer(), mkLayer()];
     let out = null, octx = null;
     if (composite) { out = document.createElement('canvas'); out.className = 'stage-out'; container.append(out); octx = out.getContext('2d'); }
-    let front = 0, fade = null;
+    let front = 0, fade = null, trans = null;
     // master: fade to black and strobe, applied over everything that is on air
     const master = { black: 0, target: 0, speed: 2, strobe: false, last: performance.now() };
     let veil = null, ovCanvas = null, ovCtx = null, overlay = null, ovDrawn = false;
@@ -1180,6 +1192,7 @@ void main(){
       },
       setOverlay(ov) { overlay = ov; },
       get overlay() { return overlay; },
+      setTransition(t) { trans = t && t.code ? t : null; },
       // free the GPU contexts (temporary stages, e.g. the video renderer)
       destroy() { layers.forEach(l => { const x = l.r.gl.getExtension('WEBGL_lose_context'); if (x) x.loseContext(); }); },
       get canvas() { return out || layers[front].c; },
@@ -1200,9 +1213,14 @@ void main(){
           if (f.graph) f.r.render(time, audio, postValues(f.graph, audio));
           if (b.graph) b.r.render(time, audio, postValues(b.graph, audio));
           if (composite) {
-            octx.globalAlpha = 1; octx.drawImage(f.c, 0, 0, out.width, out.height);
-            octx.globalAlpha = fade.k; octx.drawImage(b.c, 0, 0, out.width, out.height);
-            octx.globalAlpha = 1;
+            const tc = trans && f.graph && b.graph ? transEngine() : null;
+            const img = tc && tc.run(f.c, b.c, trans, fade.k, time, audio);
+            if (img) { octx.globalAlpha = 1; octx.drawImage(img, 0, 0, out.width, out.height); }
+            else {
+              octx.globalAlpha = 1; octx.drawImage(f.c, 0, 0, out.width, out.height);
+              octx.globalAlpha = fade.k; octx.drawImage(b.c, 0, 0, out.width, out.height);
+              octx.globalAlpha = 1;
+            }
           }
           paint();
           if (fade.k >= 1) { front = 1 - front; fade = null; paint(); }
@@ -1327,12 +1345,68 @@ void main(){ gl_FragColor = vec4(mix(texture2D(u_a, v_uv).rgb, texture2D(u_b, v_
     return { run, errorOf, destroy, canvas };
   }
 
+  /* ── Transitions: a shader that goes from one picture to another as `progress` goes 0 → 1
+     (ISF transitions: iChannel0 = from, iChannel1 = to). t = { code, v, param } */
+  function createTransition() {
+    const canvas = document.createElement('canvas');
+    const gl = glContext(canvas, { preserveDrawingBuffer: false, antialias: false, alpha: false });
+    if (!gl) return null;
+    const buf = gl.createBuffer();
+    gl.bindBuffer(gl.ARRAY_BUFFER, buf); gl.bufferData(gl.ARRAY_BUFFER, QUAD, gl.STATIC_DRAW);
+    const tex = () => {
+      const t = gl.createTexture(); gl.bindTexture(gl.TEXTURE_2D, t);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+      return t;
+    };
+    const ta = tex(), tb = tex();
+    const up = (t, img) => { gl.bindTexture(gl.TEXTURE_2D, t); gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true); gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, img); gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, false); };
+    const cache = new Map();
+    function prog(t) {
+      let e = cache.get(t.code);
+      if (!e) {
+        try {
+          const c = compile(fxGraph(t)), pr = makeProgram(gl, c.frag), loc = {};
+          ['u_res', 'u_time', 'u_beat', 'u_audio', 'u_prev', 'u_to'].concat(c.uniforms.map(u => u.name)).forEach(n => { loc[n] = gl.getUniformLocation(pr, n); });
+          e = { pr, loc, c };
+        } catch (er) { e = { error: String(er.message || er) }; }
+        if (cache.size > 30) { cache.forEach(x => x.pr && gl.deleteProgram(x.pr)); cache.clear(); }
+        cache.set(t.code, e);
+      }
+      return e;
+    }
+    // draws the transition between two canvases at progress k; returns this canvas (or null if it can't)
+    function run(from, to, t, k, time, audio) {
+      const e = prog(t);
+      if (!e.pr) return null;
+      const w = from.width, h = from.height;
+      if (canvas.width !== w || canvas.height !== h) { canvas.width = w; canvas.height = h; }
+      gl.activeTexture(gl.TEXTURE0); up(ta, from);
+      gl.activeTexture(gl.TEXTURE1); up(tb, to);
+      gl.bindFramebuffer(gl.FRAMEBUFFER, null); gl.viewport(0, 0, w, h);
+      gl.useProgram(e.pr);
+      const a = gl.getAttribLocation(e.pr, 'a'); gl.bindBuffer(gl.ARRAY_BUFFER, buf); gl.enableVertexAttribArray(a); gl.vertexAttribPointer(a, 2, gl.FLOAT, false, 0, 0);
+      gl.activeTexture(gl.TEXTURE0); gl.bindTexture(gl.TEXTURE_2D, ta); gl.uniform1i(e.loc.u_prev, 0);
+      gl.activeTexture(gl.TEXTURE1); gl.bindTexture(gl.TEXTURE_2D, tb); gl.uniform1i(e.loc.u_to, 1);
+      gl.activeTexture(gl.TEXTURE0);
+      gl.uniform2f(e.loc.u_res, w, h); gl.uniform1f(e.loc.u_time, time); gl.uniform1f(e.loc.u_beat, clock.beat);
+      gl.uniform4f(e.loc.u_audio, audio[0], audio[1], audio[2], audio[3]);
+      const vals = uniformValues(fxGraph({ code: t.code, v: { ...(t.v || {}), [t.param || 'g_progress']: k } }), e.c);
+      for (const u of e.c.uniforms) { const v = vals[u.name]; if (v === undefined) continue; if (u.type === 'color') gl.uniform3f(e.loc[u.name], v[0], v[1], v[2]); else gl.uniform1f(e.loc[u.name], v); }
+      gl.drawArrays(gl.TRIANGLES, 0, 6);
+      return canvas;
+    }
+    return { run, errorOf: t => prog(t).error || '', canvas };
+  }
+  let sharedTrans = null;
+  const transEngine = () => sharedTrans || (sharedTrans = createTransition());
+
   function createMixer(container) {
     const scratch = document.createElement('div');
     const decks = { A: createStage(scratch, { composite: true, bare: true }), B: createStage(scratch, { composite: true, bare: true }) };
     const out = document.createElement('canvas'); out.className = 'stage-out'; container.append(out);
     const ctx = out.getContext('2d');
-    let deck = 'A', x = 0, mode = 'mix', overlay = null, fx = null, fxChain = null;
+    let deck = 'A', x = 0, mode = 'mix', overlay = null, fx = null, fxChain = null, trans = null;
     const master = { black: 0, target: 0, speed: 2, strobe: false, flash: false, last: performance.now() };
     const empty = { nodes: [], links: [] };
     decks.B.go(empty, 0);
@@ -1355,19 +1429,23 @@ void main(){ gl_FragColor = vec4(mix(texture2D(u_a, v_uv).rgb, texture2D(u_b, v_
       graphOf(d) { return D(d).graph; },
       get deck() { return deck; }, set deck(d) { deck = d === 'B' ? 'B' : 'A'; },
       get x() { return x; }, set x(v) { x = Math.min(1, Math.max(0, +v || 0)); },
-      get mode() { return mode; }, set mode(m) { mode = ['mix', 'lighter', 'screen', 'multiply', 'difference'].includes(m) ? m : 'mix'; },
+      get mode() { return mode; }, set mode(m) { mode = ['mix', 'trans', 'lighter', 'screen', 'multiply', 'difference'].includes(m) ? m : 'mix'; },
       go(graph, seconds, d) { D(d).go(graph, seconds); },
       direct(graph, d) { D(d).direct(graph); },
       get fading() { return D().fading; },
       render(time, audio) {
-        const needA = !(mode === 'mix' && x >= 1), needB = x > 0;
+        const tmode = mode === 'trans' && trans;
+        const needA = !((mode === 'mix' || tmode) && x >= 1), needB = x > 0;
         if (needA) decks.A.render(time, audio);
         if (needB) decks.B.render(time, audio);
         ctx.globalCompositeOperation = 'source-over'; ctx.globalAlpha = 1;
-        if (needA) ctx.drawImage(decks.A.canvas, 0, 0, out.width, out.height); else { ctx.fillStyle = '#000'; ctx.fillRect(0, 0, out.width, out.height); }
-        if (needB) {
+        // crossfader through a transition (A → B)
+        const img = tmode && needA && needB ? transEngine() && transEngine().run(decks.A.canvas, decks.B.canvas, trans, x, time, audio) : null;
+        if (img) ctx.drawImage(img, 0, 0, out.width, out.height);
+        else if (needA) ctx.drawImage(decks.A.canvas, 0, 0, out.width, out.height); else { ctx.fillStyle = '#000'; ctx.fillRect(0, 0, out.width, out.height); }
+        if (needB && !img) {
           ctx.globalAlpha = x;
-          if (mode !== 'mix') ctx.globalCompositeOperation = mode;
+          if (mode !== 'mix' && mode !== 'trans') ctx.globalCompositeOperation = mode;
           ctx.drawImage(decks.B.canvas, 0, 0, out.width, out.height);
           ctx.globalCompositeOperation = 'source-over'; ctx.globalAlpha = 1;
         }
@@ -1389,11 +1467,14 @@ void main(){ gl_FragColor = vec4(mix(texture2D(u_a, v_uv).rgb, texture2D(u_b, v_
       get strobe() { return master.strobe; },
       get veil() { return { black: master.black, flash: master.flash }; },
       setFx(f) { fx = f; },
+      setTransition(t) { trans = t && t.code ? t : null; decks.A.setTransition(trans); decks.B.setTransition(trans); },
+      get transition() { return trans; },
+      transError: t => { const e = transEngine(); return e ? e.errorOf(t) : 'sin WebGL'; },
       get fx() { return fx; },
       fxError: f => (fxChain ? fxChain.errorOf(f) : ''),
       destroy() { decks.A.destroy(); decks.B.destroy(); if (fxChain) fxChain.destroy(); out.remove(); },
     };
   }
 
-  window.PudrusNodes = { createFxChain, ES3, inputsOf, glslParams, clock, assets, media, drawOverlay, textPicture, createMixer, GLSL_TEMPLATES, NODES, CATEGORIES, compile, createRenderer, createThumbs, createStage, structureKey, uniformValues, defaultsFor, dependsOn, uniformName, postValues, applyValues };
+  window.PudrusNodes = { createTransition, createFxChain, ES3, inputsOf, glslParams, clock, assets, media, drawOverlay, textPicture, createMixer, GLSL_TEMPLATES, NODES, CATEGORIES, compile, createRenderer, createThumbs, createStage, structureKey, uniformValues, defaultsFor, dependsOn, uniformName, postValues, applyValues };
 })();

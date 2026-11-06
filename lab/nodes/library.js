@@ -68,12 +68,12 @@
   // compile it inside NODRUS and render a thumbnail at t = 2 s
   let thumbs = null;
   function testAndThumb(entry) {
-    const g = { nodes: [{ id: 1, type: 'glsl', v: {}, p: { code: entry.code } }, { id: 2, type: 'output', v: {}, p: {} }], links: [{ a: 1, ao: 'c', b: 2, bi: 'c' }] };
+    const g = { nodes: [{ id: 1, type: 'glsl', v: isTrans(entry) ? { [entry.transParam || 'g_progress']: 0.5 } : {}, p: { code: entry.code } }, { id: 2, type: 'output', v: {}, p: {} }], links: [{ a: 1, ao: 'c', b: 2, bi: 'c' }] };
     let c = null;
     try {
       c = N.compile(g);
       thumbs = thumbs || N.createThumbs(240, 135);
-      thumbs.render('lib-' + entry.id + Date.now(), c, g, 2.0, [0, 0, 0, 0], isFilter(entry) ? testImage() : null);
+      thumbs.render('lib-' + entry.id + Date.now(), c, g, 2.0, [0, 0, 0, 0], isFilter(entry) || isTrans(entry) ? testImage() : null, isTrans(entry) ? testImage2() : null);
       entry.thumb = thumbs.canvas.toDataURL('image/jpeg', 0.75);
       thumbs.clear();
       entry.level = entry.notes.length ? 'warn' : 'ok';
@@ -122,9 +122,14 @@
   function isfToEntry(text, file) {
     const hh = isfHeader(text); if (!hh) throw new Error('no tiene encabezado ISF');
     const h = hh.h, notes = [], head = [];
+    let imgIdx = 0, transParam = '';
+    const trans = isfKind(h) === 'transicion';
     for (const i of h.INPUTS || []) {
       const n = i.NAME; if (!/^[A-Za-z_]\w*$/.test(n || '')) continue;
-      if (i.TYPE === 'float') head.push(`uniform float ${n}; // ${lit(i.DEFAULT ?? 0.5)} [${lit(i.MIN ?? 0)}, ${lit(i.MAX ?? 1)}]`);
+      if (i.TYPE === 'float') {
+        head.push(`uniform float ${n}; // ${lit(i.DEFAULT ?? 0.5)} [${lit(i.MIN ?? 0)}, ${lit(i.MAX ?? 1)}]`);
+        if (trans && /^progress$/i.test(n)) transParam = 'g_' + n;   // what goes 0 → 1 during the transition
+      }
       else if (i.TYPE === 'bool' || i.TYPE === 'event') { head.push(`uniform float ${n}_on; // ${i.DEFAULT ? '1.0' : '0.0'} [0.0, 1.0]`); head.push(`#define ${n} (${n}_on > 0.5)`); }
       else if (i.TYPE === 'long') {
         const v = (i.VALUES && i.VALUES.length ? i.VALUES : [0, 1]).map(Number);
@@ -141,7 +146,8 @@
         head.push(`uniform float ${n}_y; // ${lit(d[1])} [${lit(mn[1])}, ${lit(mx[1])}]`);
         head.push(`#define ${n} vec2(${n}_x, ${n}_y)`);
       } else if (/^(image|audio|audioFFT)$/.test(i.TYPE)) {
-        head.push(`#define ${n} iChannel0`);
+        // transitions: first picture = from (iChannel0), second = to (iChannel1)
+        head.push(`#define ${n} ${trans && i.TYPE === 'image' && imgIdx++ === 1 ? 'iChannel1' : 'iChannel0'}`);
         if (i.TYPE !== 'image') notes.push(`usa audio de ISF («${n}»): no conectado`);
       }
     }
@@ -153,9 +159,25 @@
     passes.forEach(ps => { if (ps && ps.TARGET && /^\w+$/.test(ps.TARGET)) head.push(`#define ${ps.TARGET} iChannel0`); });
     let body = text.slice(hh.end);
     if (/^\s*varying\b/m.test(body)) notes.push('usa un vertex shader propio (.vs): no es compatible');
-    if ((h.INPUTS || []).filter(i => i.TYPE === 'image').length > 1) notes.push('usa varias imágenes: todas toman la misma entrada');
+    if (!trans && (h.INPUTS || []).filter(i => i.TYPE === 'image').length > 1) notes.push('usa varias imágenes: todas toman la misma entrada');
+    if (trans && !transParam) notes.push('no tiene un control «progress»: no se puede usar como transición');
     body = body.replace(/\bgl_FragColor\b/g, 'isf_Out').replace(/\bgl_FragCoord\b/g, 'isf_FragCoord')
       .replace(/\b(vv_FragNormCoord|isf_FragNormCoord)\b/g, 'isf_FragNormCoord').replace(/\bvoid\s+main\s*\(\s*(void)?\s*\)/, 'void isf_main()');
+    // GLSL ES 3 only allows constant initializers on globals: move the others into isf_init()
+    const inits = [];
+    { let depth = 0;
+      body = body.split('\n').map(line => {
+        let out = line;
+        if (depth === 0) {
+          const m = line.match(/^(\s*)((?:highp|mediump|lowp)\s+)?(float|int|bool|[bi]?vec[234]|mat[234])\s+([A-Za-z_]\w*)\s*=\s*([^;]+);\s*(\/\/.*)?$/);
+          if (m && !/[{}]|(^|[^=!<>])=(?!=)/.test(m[5]) && /[A-Za-z_]/.test(m[5].replace(/\b(float|int|bool|[bi]?vec[234]|mat[234])\b/g, '').replace(/\b\d+\.?\d*(e[-+]?\d+)?\b/gi, ''))) {
+            out = `${m[1]}${m[2] || ''}${m[3]} ${m[4]};`; inits.push(`${m[4]} = ${m[5].trim()};`);
+          }
+        }
+        for (const ch of line.replace(/\/\/.*$/, '')) { if (ch === '{') depth++; else if (ch === '}') depth--; }
+        return out;
+      }).join('\n');
+    }
     const code = `// ${file} · ISF de VIDVOX convertido para NODRUS
 #define TIME iTime
 #define TIMEDELTA iTimeDelta
@@ -171,9 +193,10 @@ vec4 isf_FragCoord; vec2 isf_FragNormCoord; vec4 isf_Out;
 #define IMG_SIZE(i) RENDERSIZE
 ${head.join('\n')}
 ${body}
+void isf_init() { ${inits.join(' ')} }
 void mainImage(out vec4 fragColor, in vec2 fragCoord) {
   isf_FragCoord = vec4(fragCoord, 0.0, 1.0); isf_FragNormCoord = fragCoord / RENDERSIZE; isf_Out = vec4(0.0);
-  isf_main(); fragColor = isf_Out;
+  isf_init(); isf_main(); fragColor = isf_Out;
 }`;
     const kind = isfKind(h), name = file.replace(/^.*\//, '').replace(/\.fs$/i, '');
     const credit = String(h.CREDIT || '').replace(/^\s*by\s+/i, '').trim();
@@ -184,7 +207,7 @@ void mainImage(out vec4 fragColor, in vec2 fragCoord) {
       description: String(h.DESCRIPTION || '').slice(0, 600),
       tags: cleanTags(['isf', kind, ...(h.CATEGORIES || []).map(slug)]), mine: [],
       lic: detectLicense(text, fromST ? { kind: 'unknown', name: 'basado en Shadertoy: revisá el original' } : { kind: 'free', name: 'MIT (colección VIDVOX ISF-Files)' }),
-      code, notes, fav: false, added: Date.now(), kind,
+      code, notes, fav: false, added: Date.now(), kind, transParam,
     };
   }
   // import a set of ISF files ({ path: text }); only generators unless `all`
@@ -209,7 +232,7 @@ void mainImage(out vec4 fragColor, in vec2 fragCoord) {
   // the VIDVOX collection straight from GitHub (MIT): ~49 generators
   async function importVidvox(kind = 'generador') {
     const status = $('#libColState');
-    const btn = $(kind === 'filtro' ? '#libColISFfx' : '#libColISF'); btn.disabled = true;
+    const btn = $(kind === 'filtro' ? '#libColISFfx' : kind === 'transicion' ? '#libColISFtr' : '#libColISF'); btn.disabled = true;
     try {
       status.textContent = 'Buscando la colección en GitHub…';
       const tree = await (await fetch('https://api.github.com/repos/Vidvox/ISF-Files/git/trees/master?recursive=1')).json();
@@ -226,8 +249,8 @@ void mainImage(out vec4 fragColor, in vec2 fragCoord) {
       };
       await Promise.all(Array.from({ length: 6 }, worker));
       const r = await importISF(files, { kind, progress: (k, n, name) => { status.textContent = `Probando ${k}/${n}: ${name}`; } });
-      const what = kind === 'filtro' ? 'filtros' : 'generadores';
-      status.textContent = `Listo: ${r.ok + r.warn + r.error} ${what} (${r.ok} ✓, ${r.warn} ⚠, ${r.error} ✕).` + (kind === 'filtro' ? ' Usalos con «＋ Pantalla».' : '');
+      const what = kind === 'filtro' ? 'filtros' : kind === 'transicion' ? 'transiciones' : 'generadores';
+      status.textContent = `Listo: ${r.ok + r.warn + r.error} ${what} (${r.ok} ✓, ${r.warn} ⚠, ${r.error} ✕).` + (kind === 'filtro' ? ' Usalos con «＋ Pantalla».' : kind === 'transicion' ? ' Elegilas con «⇄ Transición».' : '');
       E().toast(`📚 Colección ISF: ${r.ok + r.warn} ${what} listos para usar`);
     } catch (e) { status.textContent = 'No se pudo descargar: ' + String(e.message || e).slice(0, 100); }
     btn.disabled = false;
@@ -235,6 +258,17 @@ void mainImage(out vec4 fragColor, in vec2 fragCoord) {
 
   // filters are previewed over a colorful test picture
   const isFilter = e => e.kind === 'filtro' || (e.tags || []).includes('filtro');
+  const isTrans = e => e.kind === 'transicion' || (e.tags || []).includes('transicion');
+  let testImg2 = null;
+  function testImage2() {   // the "to" picture of a transition preview
+    if (testImg2) return testImg2;
+    const c = document.createElement('canvas'); c.width = 240; c.height = 135;
+    const g = c.getContext('2d');
+    g.fillStyle = '#f4ead2'; g.fillRect(0, 0, 240, 135);
+    for (let y = 0; y < 135; y += 15) for (let x = (y / 15) % 2 ? 15 : 0; x < 240; x += 30) { g.fillStyle = '#1b1b2f'; g.fillRect(x, y, 15, 15); }
+    g.fillStyle = '#ff2a4d'; g.beginPath(); g.moveTo(120, 25); g.lineTo(165, 110); g.lineTo(75, 110); g.closePath(); g.fill();
+    return (testImg2 = c);
+  }
   let testImg = null;
   function testImage() {
     if (testImg) return testImg;
@@ -304,9 +338,11 @@ void mainImage(out vec4 fragColor, in vec2 fragCoord) {
       info.append(tags);
       if (e.notes && e.notes.length) info.append(el('p', 'lib-note', e.notes.join(' · ')));
       const acts = el('div', 'lib-acts');
-      const use = isFilter(e) ? el('button', 'lab-mini lib-use', '＋ Pantalla') : el('button', 'lab-mini lib-use', 'Usar');
-      use.title = isFilter(e) ? 'Aplicar como filtro de pantalla (sobre todo lo que sale al aire)' : 'Usar en el nodo GLSL elegido o en un patch nuevo';
-      use.addEventListener('click', () => { if (isFilter(e)) { E().addScreenFilter(e); } else useEntry(e); });
+      const kind = isTrans(e) ? 'trans' : isFilter(e) ? 'fx' : 'gen';
+      const use = el('button', 'lab-mini lib-use', { trans: '⇄ Transición', fx: '＋ Pantalla', gen: 'Usar' }[kind]);
+      use.title = { trans: 'Usar como transición para «Al aire» y el crossfader', fx: 'Aplicar como filtro de pantalla (sobre todo lo que sale al aire)', gen: 'Usar en el nodo GLSL elegido o en un patch nuevo' }[kind];
+      use.disabled = kind === 'trans' && !e.transParam;
+      use.addEventListener('click', () => { if (kind === 'trans') { E().setTransition(e); close(); } else if (kind === 'fx') E().addScreenFilter(e); else useEntry(e); });
       const tg = el('button', 'lab-mini', '#'); tg.title = 'Tus hashtags';
       tg.addEventListener('click', async () => { const v = prompt('Tus hashtags para este shader (separados por espacio o coma):', (e.mine || []).join(' ')); if (v === null) return; e.mine = cleanTags(v); await put(e); paint(); });
       acts.append(use, tg);
@@ -364,6 +400,7 @@ void mainImage(out vec4 fragColor, in vec2 fragCoord) {
   $('#libFree').addEventListener('change', e => { filter.free = e.target.checked; paint(); });
   $('#libColISF').addEventListener('click', () => importVidvox('generador'));
   $('#libColISFfx').addEventListener('click', () => importVidvox('filtro'));
+  $('#libColISFtr').addEventListener('click', () => importVidvox('transicion'));
   $('#libClear').addEventListener('click', () => { filter.tags.clear(); filter.q = ''; $('#libSearch').value = ''; paint(); });
   $('#libPaste').addEventListener('click', pasteFromClipboard);
   $('#libNew').addEventListener('click', showManual);
@@ -398,5 +435,5 @@ void mainImage(out vec4 fragColor, in vec2 fragCoord) {
   $('#libImportBtn').addEventListener('click', () => $('#libImportFile').click());
   addEventListener('keydown', e => { if (e.key === 'Escape' && !pop.hidden) close(); });
 
-  window.NodrusLibrary = { open, close, importText, importData, all, paint, BOOKMARKLET, detectLicense, isfToEntry, importISF, licOf };
+  window.NodrusLibrary = { isTrans, open, close, importText, importData, all, paint, BOOKMARKLET, detectLicense, isfToEntry, importISF, licOf };
 })();

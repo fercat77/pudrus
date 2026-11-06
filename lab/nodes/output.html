@@ -87,7 +87,7 @@
   <div class="tip" id="tip"></div>
 </div>
 <div class="hint" id="hint">Doble clic: pantalla completa · M: ajustar (superficies y máscaras) · esperando al editor…</div>
-<script src="nodes.js?v=26"></script>
+<script src="nodes.js?v=27"></script>
 <script>
 (function () {
   // Shows what is ON AIR in the editor (not the preview), with the same cross-fades and overlay.
@@ -113,6 +113,7 @@
       else if (m.type === 'master') { stage.setBlack(!!m.black, m.fade || 0); stage.setStrobe(!!m.strobe); }
       else if (m.type === 'overlay') stage.setOverlay(m.ov);
       else if (m.type === 'screenfx') stage.setFx(m.fx);
+      else if (m.type === 'transition') stage.setTransition(m.t);
       else if (m.type === 'play') playing = m.playing;
     } catch (err) { /* keep the last good shader */ }
   };
