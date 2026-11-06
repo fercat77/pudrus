@@ -1868,7 +1868,7 @@
   }
   if (DESK) {
     document.documentElement.classList.add('is-desktop');
-    $('#btnDesk').hidden = false;
+    $('#btnDesk').hidden = false; setTimeout(() => window.dispatchEvent(new Event('resize')), 0);
     DESK.osc.on(oscIn);
     DESK.osc.onError(msg => toast('OSC: ' + msg, true));
     $('#btnDesk').addEventListener('click', e => { e.stopPropagation(); const r = e.currentTarget.getBoundingClientRect(); paintDesk(); openPop($('#deskPop'), r.left - 260, r.bottom + 4); });
@@ -1913,6 +1913,16 @@
   }
 
   /* ── Start ─────────────────────────────────────────────── */
+  // the top bar compacts itself step by step until it fits (any window width, any extra button)
+  const barEl = document.querySelector('.lab-bar');
+  function fitBar() {
+    const steps = ['fit-1', 'fit-2', 'fit-3', 'fit-4'];
+    barEl.classList.remove(...steps);
+    for (const c of steps) { if (barEl.scrollWidth <= barEl.clientWidth + 1) break; barEl.classList.add(c); }
+  }
+  addEventListener('resize', fitBar);
+  if (document.fonts) document.fonts.ready.then(fitBar);
+  setTimeout(fitBar, 300);
   makeWindow(preview); makeWindow($('#live'));
   paintMixer(); paintGuides(); paintExport();
   $('#btnDirect').classList.toggle('is-on', opts.direct);
@@ -1928,5 +1938,5 @@
   requestAnimationFrame(loop);
   // fonts change node sizes -> redraw links once they are in
   if (document.fonts) document.fonts.ready.then(() => drawLinks());
-  window.__nodesEditor = { get graph() { return graph; }, get compiled() { return compiled; }, get liveGraph() { return liveGraph; }, stage, addNode, connect, removeNodes, undo, redo, goLive, modulate, set valueTarget(v) { valueTarget = v; }, setDirect, storeScene, fireScene, openScene, setThumbs, get scenes() { return scenes; }, get controls() { return ctlList(graph); }, oscIn, get deskOscOn() { return deskOscOn; }, renderVideo, setExp, get ex() { return ex; }, get rendering() { return rendering; }, expSize, takePhoto, selectDeck, setXf, get deck() { return deckSel; }, openCode, applyCode, get opts() { return opts; }, layoutPreview, ensureControls, get ov() { return ov; }, setOverlayOn, paintOverlayPanel, liveControls, ctlValue, randomPatch, varyPatch, stepScene, paintControls, toggleControl, applyControl, onMidi, midiLearn, setLearning(t) { learning = t; }, get midiMap() { return midiMap; }, remoteMsg, fullState, tap, get bpm() { return bpm; }, setBlack, setStrobe };
+  window.__nodesEditor = { get graph() { return graph; }, get compiled() { return compiled; }, get liveGraph() { return liveGraph; }, stage, addNode, connect, removeNodes, undo, redo, goLive, modulate, set valueTarget(v) { valueTarget = v; }, setDirect, storeScene, fireScene, openScene, setThumbs, get scenes() { return scenes; }, get controls() { return ctlList(graph); }, fitBar, oscIn, get deskOscOn() { return deskOscOn; }, renderVideo, setExp, get ex() { return ex; }, get rendering() { return rendering; }, expSize, takePhoto, selectDeck, setXf, get deck() { return deckSel; }, openCode, applyCode, get opts() { return opts; }, layoutPreview, ensureControls, get ov() { return ov; }, setOverlayOn, paintOverlayPanel, liveControls, ctlValue, randomPatch, varyPatch, stepScene, paintControls, toggleControl, applyControl, onMidi, midiLearn, setLearning(t) { learning = t; }, get midiMap() { return midiMap; }, remoteMsg, fullState, tap, get bpm() { return bpm; }, setBlack, setStrobe };
 })();

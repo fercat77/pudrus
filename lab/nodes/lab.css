@@ -402,3 +402,13 @@ span.ctl-kind { display: inline-flex; align-items: center; color: #ff3fa4; }
 .dk-osc { margin: 6px 2px; color: var(--dim); font-size: 11px; line-height: 1.6; }
 .dk-osc summary { cursor: pointer; color: var(--text); }
 .dk-osc b { color: var(--text); }
+
+/* top bar auto-fit (set by fitBar in editor.js) */
+.lab-bar.fit-1 .lab-btn .t { display: none; }
+.lab-bar.fit-2 .lab-logo span, .lab-bar.fit-2 .lab-full { display: none; }
+.lab-bar.fit-3 #btnThumbs { display: none; }
+.lab-bar.fit-3 .lab-btn { padding: 0 7px; }
+.lab-bar.fit-4 { gap: 3px; padding: 0 6px; }
+.lab-bar.fit-4 .lab-sep { display: none; }
+.lab-bar.fit-4 .lab-btn { padding: 0 6px; }
+.lab-bar.fit-4 .lab-meter { display: none; }
