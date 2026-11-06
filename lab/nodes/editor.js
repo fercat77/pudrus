@@ -2117,11 +2117,16 @@
     const steps = ['fit-1', 'fit-2', 'fit-3', 'fit-4'];
     barEl.classList.remove(...steps);
     barEl.classList.toggle('labels', !!opts.labels);
+    const lsteps = ['lf-1', 'lf-2', 'lf-3', 'lf-6'];
+    barEl.classList.remove(...lsteps);
+    barEl.querySelectorAll('.lab-btn.nl').forEach(b => b.classList.remove('nl'));
     if (opts.labels) {
-      // try one row first (dropping only the logo subtitle and ⛶), wrap to two rows only if still needed
-      barEl.classList.add('measure');
-      if (barEl.scrollWidth > barEl.clientWidth + 1) barEl.classList.add('fit-2');
-      barEl.classList.remove('measure');
+      // always one row: tighten step by step; then drop names one at a time, the most obvious icons first
+      const fits = () => barEl.scrollWidth <= barEl.clientWidth + 1;
+      const order = ['btnPlay', 'btnPhoto', 'btnRec', 'btnAudio', 'btnDesk', 'btnOut', 'btnLib', 'btnRemote', 'btnStrobe', 'btnBlack', 'btnOverlay', 'btnFx', 'btnExport', 'btnTrans', 'btnAdd'];
+      for (const c of lsteps.slice(0, 3)) { if (fits()) break; barEl.classList.add(c); }
+      for (const id of order) { if (fits()) break; const b = document.getElementById(id); if (b && !b.hidden) b.classList.add('nl'); }
+      if (!fits()) barEl.classList.add('lf-6');
     }
     else for (const c of steps) { if (barEl.scrollWidth <= barEl.clientWidth + 1) break; barEl.classList.add(c); }
     const h = Math.max(44, Math.ceil(barEl.getBoundingClientRect().height));

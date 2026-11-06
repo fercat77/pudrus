@@ -413,11 +413,22 @@ span.ctl-kind { display: inline-flex; align-items: center; color: #ff3fa4; }
 .lab-bar.fit-4 .lab-btn { padding: 0 6px; }
 .lab-bar.fit-4 .lab-meter { display: none; }
 
-/* names on the buttons (default): keep every label, wrap to a second row if needed */
-.lab-bar.labels { height: auto; min-height: 44px; flex-wrap: wrap; row-gap: 6px; padding-top: 7px; padding-bottom: 7px; overflow: visible; }
-.lab-bar.labels .lab-btn .t, .lab-bar.labels .lab-btn .t1 { display: inline !important; }
-.lab-bar.labels .lab-helpbtn { position: static; box-shadow: none; }
-.lab-bar.labels.measure { flex-wrap: nowrap; overflow: hidden; }
+/* names on the buttons (default): always ONE row; fitBar tightens it step by step (lf-1…lf-6)
+   and only drops the names of the most obvious icons when there is really no room */
+.lab-bar.labels .lab-btn .t, .lab-bar.labels .lab-btn .t1 { display: inline; }
+.lab-bar.labels.lf-1 .lab-logo span, .lab-bar.labels.lf-1 .lab-full { display: none; }
+.lab-bar.labels.lf-2 { gap: 4px; padding: 0 8px; }
+.lab-bar.labels.lf-2 .lab-btn { padding: 0 7px; gap: 4px; }
+.lab-bar.labels.lf-2 .lab-sep { margin: 0 1px; }
+.lab-bar.labels.lf-2 .lab-logo { letter-spacing: 1px; margin-right: 2px; }
+.lab-bar.labels.lf-3 { gap: 3px; padding: 0 6px; }
+.lab-bar.labels.lf-3 .lab-btn { padding: 0 5px; font-size: 11px; }
+.lab-bar.labels.lf-3 #btnThumbs, .lab-bar.labels.lf-3 .lab-meter, .lab-bar.labels.lf-3 .lab-sep { display: none; }
+.lab-bar.labels .lab-btn.nl .t { display: none; }   /* names dropped one by one (fitBar) */
+.lab-bar.labels.lf-6 .lab-btn .t { display: none; }
+.lab-btn[hidden] { display: none; }
+.lab-bar.labels.lf-6 .lab-logo { font-size: 0; margin-right: 0; }
+.lab-bar.labels.lf-6 .lab-logo::before { content: 'N'; font-size: 12px; }
 
 /* ── 📚 Library ── */
 .lab-libpop { position: fixed; inset: calc(var(--bar-h, 44px) + 10px) 14px 14px; z-index: 64; display: flex; flex-direction: column; border-radius: 12px; background: var(--panel); border: 1px solid var(--line); box-shadow: 0 18px 50px rgba(0,0,0,0.65); overflow: hidden; }
