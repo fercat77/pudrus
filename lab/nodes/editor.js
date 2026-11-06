@@ -151,7 +151,8 @@
     root.style.left = n.x + 'px'; root.style.top = n.y + 'px';
     const head = el('div', 'nd-head');
     head.style.setProperty('--cat', CAT_COLOR[def.cat] || '#444');
-    head.append(el('span', '', def.title));
+    head.append(el('span', '', n.type === 'glsl' && n.p && n.p.src && n.p.src.name ? `GLSL · ${n.p.src.name}` : def.title));
+    if (n.type === 'glsl' && n.p && n.p.src) head.title = `«${n.p.src.name}»${n.p.src.author ? ' de ' + n.p.src.author : ''}${n.p.src.license ? ' · ' + n.p.src.license : ''}`;
     const x = el('button', 'nd-x', '×'); x.title = 'Borrar (X)';
     x.addEventListener('pointerdown', e => e.stopPropagation());
     x.addEventListener('click', () => removeNodes([n.id]));
@@ -671,7 +672,8 @@
     codeNode = n;
     codeArea.value = (n.p && n.p.code !== undefined) ? n.p.code : N.NODES.glsl.params[0].v;
     codeErr.textContent = ''; codeErr.classList.remove('is-err');
-    $('#codeTitle').textContent = 'GLSL · nodo #' + n.id;
+    const src = n.p && n.p.src;
+    $('#codeTitle').textContent = 'GLSL · nodo #' + n.id + (src && src.name ? ` · «${src.name}»${src.author ? ' de ' + src.author : ''}` : '');
     closePops(); codePop.hidden = false;
     setTimeout(() => codeArea.focus(), 0);
   }
@@ -1957,5 +1959,9 @@
   requestAnimationFrame(loop);
   // fonts change node sizes -> redraw links once they are in
   if (document.fonts) document.fonts.ready.then(() => drawLinks());
-  window.__nodesEditor = { get graph() { return graph; }, get compiled() { return compiled; }, get liveGraph() { return liveGraph; }, stage, addNode, connect, removeNodes, undo, redo, goLive, modulate, set valueTarget(v) { valueTarget = v; }, setDirect, storeScene, fireScene, openScene, setThumbs, get scenes() { return scenes; }, get controls() { return ctlList(graph); }, fitBar, oscIn, get deskOscOn() { return deskOscOn; }, renderVideo, setExp, get ex() { return ex; }, get rendering() { return rendering; }, expSize, takePhoto, selectDeck, setXf, get deck() { return deckSel; }, openCode, applyCode, get opts() { return opts; }, layoutPreview, ensureControls, get ov() { return ov; }, setOverlayOn, paintOverlayPanel, liveControls, ctlValue, randomPatch, varyPatch, stepScene, paintControls, toggleControl, applyControl, onMidi, midiLearn, setLearning(t) { learning = t; }, get midiMap() { return midiMap; }, remoteMsg, fullState, tap, get bpm() { return bpm; }, setBlack, setStrobe };
+  window.__nodesEditor = { get graph() { return graph; }, get compiled() { return compiled; }, get liveGraph() { return liveGraph; }, stage, addNode, connect, removeNodes, undo, redo, goLive, modulate, set valueTarget(v) { valueTarget = v; }, setDirect, storeScene, fireScene, openScene, setThumbs, get scenes() { return scenes; }, get controls() { return ctlList(graph); },
+    loadGraph(g, msg) { graph = ensureControls(g); selected.clear(); rebuild(); recompile(); save(); remember(); frameAll(); if (msg) toast(msg); },
+    selectedGlsl() { const ids = [...selected]; const n = ids.length === 1 && graph.nodes.find(m => m.id === ids[0]); return n && n.type === 'glsl' ? n : null; },
+    setGlsl(n, code, src) { n.p = { ...(n.p || {}), code, src }; rebuild(); recompile(); save(); remember(); },
+    toast: (m, e) => toast(m, e), openPop: (p, x, y) => openPop(p, x, y), closePops: () => closePops(), fitBar, oscIn, get deskOscOn() { return deskOscOn; }, renderVideo, setExp, get ex() { return ex; }, get rendering() { return rendering; }, expSize, takePhoto, selectDeck, setXf, get deck() { return deckSel; }, openCode, applyCode, get opts() { return opts; }, layoutPreview, ensureControls, get ov() { return ov; }, setOverlayOn, paintOverlayPanel, liveControls, ctlValue, randomPatch, varyPatch, stepScene, paintControls, toggleControl, applyControl, onMidi, midiLearn, setLearning(t) { learning = t; }, get midiMap() { return midiMap; }, remoteMsg, fullState, tap, get bpm() { return bpm; }, setBlack, setStrobe };
 })();

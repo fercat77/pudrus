@@ -21,7 +21,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600;700&display=swap">
-  <link rel="stylesheet" href="lab.css?v=22">
+  <link rel="stylesheet" href="lab.css?v=23">
 </head>
 <body>
 
@@ -30,6 +30,7 @@
   <button class="lab-btn" id="btnAdd" title="Agregar nodo (Shift+A o clic derecho)">＋ <span class="t">Nodo</span></button>
   <button class="lab-btn" id="btnExamples" title="Patches de ejemplo">Ejemplos ▾</button>
   <button class="lab-btn" id="btnPatch" title="Nuevo, abrir y guardar patches">Patch ▾</button>
+  <button class="lab-btn" id="btnLib" title="Librería de shaders (Shadertoy y propios), ordenada por hashtags">📚<span class="t t1"> Librería</span></button>
   <button class="lab-btn" id="btnRandom" title="Patch aleatorio (R) · Shift+clic o clic derecho: variar los valores (Shift+R)">🎲</button>
   <input type="file" id="fileOpen" accept=".json,application/json" hidden>
   <span class="lab-sep"></span>
@@ -161,7 +162,7 @@
       <dt class="c-gen">Generar</dt><dd>Los dibujos base: Ruido, Celdas, Rayas, Ondas, Forma, Damero, Degradé.</dd>
       <dt class="c-uv">Coordenadas</dt><dd>Deforman el espacio y van <b>antes</b> de lo que dibujan: Caleidoscopio, Polar, Distorsión, Remolino, Repetir, Espejo, Transformar, Pixelar, Glitch.</dd>
       <dt class="c-col">Color</dt><dd>Paleta o Degradé de color (convierten un número en color), Mezclar, Superponer, Ajustar, Invertir, Posterizar, Umbral, Matemática, Rango.</dd>
-      <dt class="c-code">Código</dt><dd><b>GLSL</b>: escribí tu propio shader o pegá uno de Shadertoy (✎ Editar código, Ctrl+Enter aplica). <b>Escena 3D</b>: formas en 3D por raymarching (esfera, cubo, toroide…, una o repetidas en grilla, túnel o columnas, con cámara en órbita o vuelo); usá su salida «Luz» en una Paleta.</dd>
+      <dt class="c-code">Código</dt><dd><b>📚 Librería</b>: shaders de Shadertoy (botón «Enviar a NODRUS») o propios, con miniatura, autor, licencia y hashtags para filtrar; «Usar» los carga en el nodo GLSL elegido o en un patch nuevo. <b>GLSL</b>: escribí tu propio shader o pegá uno de Shadertoy (✎ Editar código, Ctrl+Enter aplica). <b>Escena 3D</b>: formas en 3D por raymarching (esfera, cubo, toroide…, una o repetidas en grilla, túnel o columnas, con cámara en órbita o vuelo); usá su salida «Luz» en una Paleta.</dd>
       <dt class="c-fx">Efectos</dt><dd>Feedback: estelas, túneles y rastros (Persistencia, Zoom, Rotar).</dd>
       <dt class="c-out">Salida</dt><dd>El final de la cadena. Separación RGB, scanlines, viñeta, grano, <b>brillo (bloom)</b>, <b>desenfoque</b>, <b>glitch</b> y <b>flash al pulso</b>. «Reacciona a» hace que el audio empuje esos efectos.</dd>
     </dl>
@@ -270,6 +271,7 @@ Imagen ─── Color ─▶ Encima ├ Superponer ─▶ Salida
       <option value="">Plantillas…</option><option value="effect">Efecto (effect)</option><option value="toy">Shadertoy (mainImage)</option><option value="ray">Raymarching 3D</option>
     </select>
     <span class="sp"></span>
+    <button class="lab-mini" id="codeToLib" title="Guardar este código en la librería">📚 Guardar</button>
     <button class="lab-mini" id="codeApply" title="Ctrl+Enter">Aplicar ⏎</button>
     <button class="lab-mini" id="codeClose" title="Esc">Cerrar</button>
   </div>
@@ -330,12 +332,48 @@ Imagen ─── Color ─▶ Encima ├ Superponer ─▶ Salida
   <button class="lab-mini" id="dkOut">⧉ Abrir salida</button>
   <p class="dim">El celular se conecta por el wifi de esta compu, sin internet (📱 Control).</p>
 </div>
+<div class="lab-libpop" id="libPop" hidden>
+  <div class="lib-head">
+    <b>📚 Librería</b>
+    <input id="libSearch" placeholder="Buscar por nombre, autor o hashtag…" autocomplete="off">
+    <label><input type="checkbox" id="libOnlyOk"> sólo los que funcionan</label>
+    <label><input type="checkbox" id="libFav"> ★ favoritos</label>
+    <span id="libCount" class="dim"></span>
+    <span class="sp"></span>
+    <button class="lab-mini lib-pri" id="libPaste" title="Pegá lo que copió el botón «Enviar a NODRUS» en Shadertoy">📋 Pegar de Shadertoy</button>
+    <button class="lab-mini" id="libNew">＋ Importar código</button>
+    <button class="lab-mini" id="libClose">Cerrar</button>
+  </div>
+  <div class="lib-manual" id="libManual" hidden>
+    <textarea id="libCode" placeholder="Pegá acá el código (con mainImage) o lo que copió el botón «Enviar a NODRUS»" spellcheck="false"></textarea>
+    <div class="lib-fields">
+      <input id="libName" placeholder="Nombre"><input id="libAuthor" placeholder="Autor"><input id="libUrl" placeholder="Enlace (shadertoy.com/view/…)">
+      <input id="libTagsIn" placeholder="Hashtags de Shadertoy"><input id="libMine" placeholder="Tus hashtags">
+      <button class="lab-mini lib-pri" id="libManualOk">Guardar en la librería</button><button class="lab-mini" id="libManualCancel">Cancelar</button>
+    </div>
+  </div>
+  <div class="lib-body">
+    <aside class="lib-side">
+      <div class="lib-side-h"><span>Hashtags</span><button class="lab-mini" id="libClear">limpiar</button></div>
+      <div id="libTags" class="lib-cloud"></div>
+      <div class="lib-bm">
+        <p><b>Botón para Shadertoy</b></p>
+        <a id="libBookmark" class="lib-bmbtn" href="#">⇩ Enviar a NODRUS</a>
+        <p class="dim">Arrastralo a la barra de marcadores. En un shader de shadertoy.com tocalo: copia código, nombre, autor y hashtags. Después acá: «📋 Pegar de Shadertoy».</p>
+        <p class="dim">Licencia: los shaders de Shadertoy suelen ser CC BY-NC-SA (citar al autor, no comercial). NODRUS guarda autor y enlace de cada uno.</p>
+      </div>
+      <div class="lib-io"><button class="lab-mini" id="libExport">⤓ Exportar librería</button><button class="lab-mini" id="libImportBtn">⤒ Importar archivo</button><input type="file" id="libImportFile" accept=".json,application/json" hidden></div>
+    </aside>
+    <div id="libGrid" class="lib-grid"></div>
+  </div>
+</div>
 <div class="lab-toast" id="toast" role="status"></div>
 <div class="lab-mobile-note">Pensado para compu o tablet. En el celular probá la <a href="movil/" onclick="try{localStorage.removeItem('nodrus_pc')}catch(e){}">versión táctil de NODRUS</a>.</div>
 
-<script src="nodes.js?v=22"></script>
-<script src="presets.js?v=22"></script>
-<script src="generate.js?v=22"></script>
-<script src="editor.js?v=22"></script>
+<script src="nodes.js?v=23"></script>
+<script src="presets.js?v=23"></script>
+<script src="generate.js?v=23"></script>
+<script src="library.js?v=23" defer></script>
+<script src="editor.js?v=23"></script>
 </body>
 </html>

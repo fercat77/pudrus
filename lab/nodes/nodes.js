@@ -73,6 +73,17 @@ vec3 cosPal(float t, vec3 a, vec3 b, vec3 c, vec3 d){ return a + b * cos(6.28318
       ` vec3 ${O.c} = ${tint ? `${tint} * ` : ''}${t}.rgb; float ${O.a} = ${t}.a * ${I.opacity};`;
   };
 
+  // WebGL 2 when available: shaders compile as GLSL ES 3.00 (while loops, uint, texelFetch, inverse()…)
+  const ES3 = (() => {
+    try {
+      const c = document.createElement('canvas'), gl = c.getContext('webgl2');
+      if (!gl) return false;
+      const x = gl.getExtension('WEBGL_lose_context'); if (x) x.loseContext();
+      return true;
+    } catch (e) { return false; }
+  })();
+  const glContext = (canvas, attrs) => (ES3 ? canvas.getContext('webgl2', attrs) : null) || canvas.getContext('webgl', attrs);
+
   /* ── Code node (GLSL / Shadertoy) ─────────────────────────── */
   const LIB_NAMES = ['hash21', 'hash22', 'vnoise', 'fbm', 'voronoi', 'rot', 'hsv2rgb', 'rgb2hsv', 'cosPal'];
   // Shadertoy names, the 4 knobs and iChannel0 = this patch's feedback buffer
@@ -83,7 +94,7 @@ vec3 cosPal(float t, vec3 a, vec3 b, vec3 c, vec3 d){ return a + b * cos(6.28318
 #define iTimeDelta 0.0166
 #define iDate vec4(0.0)
 #define iChannel0 u_prev
-#define texture texture2D
+${ES3 ? '' : '#define texture texture2D'}
 float knob1; float knob2; float knob3; float knob4;`;
   const GLSL_TEMPLATES = {
     effect: `// effect(...) devuelve un color para cada punto.
@@ -602,12 +613,18 @@ vec3 n${id}_march(vec2 uv, float size, float twist, float speed, float sp, out v
     }
     const decl = uniforms.map(u => `uniform ${GLSL_TYPE[u.type]} ${u.name};`)
       .concat(textures.map(t => `uniform sampler2D ${t.texName};\nuniform float ${t.aspName};`)).join('\n');
-    const frag = `#ifdef GL_FRAGMENT_PRECISION_HIGH
+    const head = ES3 ? `#version 300 es
+precision highp float;
+precision highp int;
+in vec2 v_uv;
+out vec4 nodrusFragColor;
+#define texture2D texture` : `#ifdef GL_FRAGMENT_PRECISION_HIGH
 precision highp float;
 #else
 precision mediump float;
 #endif
-varying vec2 v_uv;
+varying vec2 v_uv;`;
+    const frag = `${head}
 uniform vec2 u_res;
 uniform float u_time;
 uniform float u_beat;
@@ -619,13 +636,15 @@ ${globals.length ? TOY_HEAD + '\n' + globals.join('\n') : ''}
 void main(){
   vec2 p = (v_uv - 0.5) * vec2(u_res.x / u_res.y, 1.0);
 ${lines.join('\n')}
-  gl_FragColor = vec4(clamp(${finalExpr}, 0.0, 1.0), 1.0);
+  ${ES3 ? 'nodrusFragColor' : 'gl_FragColor'} = vec4(clamp(${finalExpr}, 0.0, 1.0), 1.0);
 }`;
     return { frag, uniforms, textures, usesAudio, usesFeedback };
   }
 
   /* ── Renderer ───────────────────────────────────────────── */
   const VERT = `attribute vec2 a; varying vec2 v_uv; void main(){ v_uv = a * 0.5 + 0.5; gl_Position = vec4(a, 0.0, 1.0); }`;
+  const VERT3 = `#version 300 es
+in vec2 a; out vec2 v_uv; void main(){ v_uv = a * 0.5 + 0.5; gl_Position = vec4(a, 0.0, 1.0); }`;
   const POST = `#ifdef GL_FRAGMENT_PRECISION_HIGH
 precision highp float;
 #else
@@ -842,7 +861,7 @@ void main(){
       return sh;
     };
     const pr = gl.createProgram();
-    gl.attachShader(pr, mk(gl.VERTEX_SHADER, VERT));
+    gl.attachShader(pr, mk(gl.VERTEX_SHADER, fragSrc.startsWith('#version 300 es') ? VERT3 : VERT));
     gl.attachShader(pr, mk(gl.FRAGMENT_SHADER, fragSrc));
     gl.linkProgram(pr);
     if (!gl.getProgramParameter(pr, gl.LINK_STATUS)) throw new Error(gl.getProgramInfoLog(pr));
@@ -851,7 +870,7 @@ void main(){
   const QUAD = new Float32Array([-1, -1, 1, -1, -1, 1, -1, 1, 1, -1, 1, 1]);
 
   function createRenderer(canvas) {
-    const gl = canvas.getContext('webgl', { preserveDrawingBuffer: true, antialias: false, alpha: false });
+    const gl = glContext(canvas, { preserveDrawingBuffer: true, antialias: false, alpha: false });
     if (!gl) throw new Error('Este navegador no soporta WebGL');
     const buf = gl.createBuffer();
     gl.bindBuffer(gl.ARRAY_BUFFER, buf);
@@ -992,7 +1011,7 @@ void main(){
   function createThumbs(w = 160, h = 90) {
     const canvas = document.createElement('canvas');
     canvas.width = w; canvas.height = h;
-    const gl = canvas.getContext('webgl', { preserveDrawingBuffer: true, antialias: false, alpha: false });
+    const gl = glContext(canvas, { preserveDrawingBuffer: true, antialias: false, alpha: false });
     if (!gl) return null;
     const buf = gl.createBuffer();
     gl.bindBuffer(gl.ARRAY_BUFFER, buf);
@@ -1252,5 +1271,5 @@ void main(){
     };
   }
 
-  window.PudrusNodes = { inputsOf, glslParams, clock, assets, media, drawOverlay, textPicture, createMixer, GLSL_TEMPLATES, NODES, CATEGORIES, compile, createRenderer, createThumbs, createStage, structureKey, uniformValues, defaultsFor, dependsOn, uniformName, postValues, applyValues };
+  window.PudrusNodes = { ES3, inputsOf, glslParams, clock, assets, media, drawOverlay, textPicture, createMixer, GLSL_TEMPLATES, NODES, CATEGORIES, compile, createRenderer, createThumbs, createStage, structureKey, uniformValues, defaultsFor, dependsOn, uniformName, postValues, applyValues };
 })();
