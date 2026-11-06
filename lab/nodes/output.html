@@ -32,6 +32,14 @@
     .panel button.on { border-color: #66ff33; color: #66ff33; }
     .panel .tip { width: 100%; text-align: center; color: #999; padding-top: 2px; }
     .panel [hidden] { display: none; }
+    .pgrip { width: 100%; display: flex; align-items: center; justify-content: center; height: 18px; margin: -4px 0 2px; color: #777; cursor: move; font-size: 11px; letter-spacing: 1px; touch-action: none; user-select: none; }
+    .pgrip:hover { color: #ccc; }
+    .panel .pmin { position: absolute; right: 6px; top: 4px; height: 22px; width: 26px; padding: 0; line-height: 1; }
+    .panel.mini { flex-wrap: nowrap; padding: 6px 40px 6px 10px; }
+    .panel.mini > :not(.pgrip):not(.pmin) { display: none !important; }
+    .panel.mini .pgrip { width: auto; margin: 0; height: 22px; }
+    .panel.gone { display: none; }
+    .panel.moved { transform: none; }
     .panel[hidden] { display: none; }
     .surf-row { width: 100%; display: flex; gap: 10px; align-items: flex-start; justify-content: center; }
     .surf-row[hidden] { display: none; }
@@ -54,6 +62,8 @@
 </svg>
 <div id="edit"><svg id="outline" xmlns="http://www.w3.org/2000/svg"></svg></div>
 <div class="panel" id="panel" hidden>
+  <div class="pgrip" id="pGrip" title="Arrastrá para mover el panel · doble clic: volver arriba">⠿ Ajustes</div>
+  <button id="pMin" class="pmin" title="Achicar el panel (H lo oculta del todo)">—</button>
   <button id="mCorners" class="on">Superficies</button>
   <button id="mMasks">Máscaras</button>
   <button id="bGrid" title="Grilla de prueba (G)">Grilla</button>
@@ -210,8 +220,8 @@
   let editing = false, mode = 'corners', grid = false;
   let selCorner = 0, selMask = -1, selPt = -1, drawing = null;
   const tips = {
-    corners: 'Arrastrá las 4 esquinas de la superficie elegida · flechas: mover la esquina elegida (Shift ×10) · Tab: siguiente superficie · G: grilla',
-    masks: 'Clic: agregar puntos · Enter o clic en el primer punto: cerrar · Esc: cancelar · arrastrá un punto para moverlo · clic derecho en un punto: quitarlo · Supr: borrar máscara',
+    corners: 'Arrastrá las 4 esquinas de la superficie elegida · flechas: mover la esquina elegida (Shift ×10) · Tab: siguiente superficie · G: grilla · H: ocultar este panel',
+    masks: 'Clic: agregar puntos · Enter o clic en el primer punto: cerrar · Esc: cancelar · arrastrá un punto (también después de cerrada) para moverlo · clic derecho en un punto: quitarlo · Supr: borrar máscara · H: ocultar este panel',
   };
   function setMode(m) {
     mode = m; drawing = null;
@@ -224,10 +234,31 @@
     $('tip').textContent = tips[m];
     paintChips(); draw();
   }
+  // the panel can be moved, collapsed (—) or hidden (H) so it never covers what you are adjusting
+  const panel = $('panel');
+  let pmini = false, pgone = false;
+  function setMini(on) { pmini = on; panel.classList.toggle('mini', on); $('pMin').textContent = on ? '▢' : '—'; $('pMin').title = on ? 'Abrir el panel' : 'Achicar el panel (H lo oculta del todo)'; }
+  $('pMin').addEventListener('click', () => setMini(!pmini));
+  $('pGrip').addEventListener('pointerdown', e => {
+    if (e.button !== 0) return;
+    e.preventDefault();
+    const g = e.currentTarget; g.setPointerCapture(e.pointerId);
+    const r = panel.getBoundingClientRect(), off = [e.clientX - r.left, e.clientY - r.top];
+    const move = ev => {
+      panel.classList.add('moved');
+      panel.style.left = Math.min(innerWidth - 60, Math.max(0, ev.clientX - off[0])) + 'px';
+      panel.style.top = Math.min(innerHeight - 30, Math.max(0, ev.clientY - off[1])) + 'px';
+    };
+    const up = () => { g.removeEventListener('pointermove', move); g.removeEventListener('pointerup', up); };
+    g.addEventListener('pointermove', move); g.addEventListener('pointerup', up);
+  });
+  $('pGrip').addEventListener('dblclick', () => { panel.classList.remove('moved'); panel.style.left = panel.style.top = ''; });
+  function setGone(on) { pgone = on; panel.classList.toggle('gone', on); }
   function setEditing(on) {
     editing = on; drawing = null;
     document.body.classList.toggle('editing', on);
     $('panel').hidden = !on;
+    if (on) setGone(false);
     if (on) { document.body.classList.remove('idle'); setMode(mode); }
     else { setGrid(false); save(); }
   }
@@ -248,7 +279,7 @@
     const t = e.currentTarget; t.setPointerCapture(e.pointerId);
     const off = [point[0] * innerWidth - e.clientX, point[1] * innerHeight - e.clientY];
     const move = ev => { const n = toN(ev.clientX + off[0], ev.clientY + off[1]); point[0] = n[0]; point[1] = n[1]; after(); t.style.left = point[0] * innerWidth + 'px'; t.style.top = point[1] * innerHeight + 'px'; drawOutline(); };
-    const up = () => { t.removeEventListener('pointermove', move); t.removeEventListener('pointerup', up); save(); };
+    const up = () => { t.removeEventListener('pointermove', move); t.removeEventListener('pointerup', up); save(); drawOutline(); };
     t.addEventListener('pointermove', move); t.addEventListener('pointerup', up);
   }
   function drawOutline() {
@@ -276,7 +307,9 @@
         const h = handle('pt', p, mi === selMask && pi === selPt, e => {
           if (e.button === 2) return;
           if (drawing) return;
-          selMask = mi; selPt = pi; draw(); drag(e, p, applyMasks);
+          selMask = mi; selPt = pi;
+          edit.querySelectorAll('.h.pt').forEach(x => x.classList.toggle('sel', x === e.currentTarget));
+          drag(e, p, applyMasks);
         });
         h.addEventListener('contextmenu', e => {
           e.preventDefault(); e.stopPropagation();
@@ -404,6 +437,7 @@
     if (k === 'f') { toggleFull(); return; }
     if (!editing) return;
     if (k === 'g') setGrid(!grid);
+    else if (k === 'h') setGone(!pgone);
     else if (k === 'tab') { e.preventDefault(); if (mode === 'corners' && map.surfaces.length > 1 && !e.shiftKey) selectSurface((sel + 1) % map.surfaces.length); else setMode(mode === 'corners' ? 'masks' : 'corners'); }
     else if (k === 'escape') { if (drawing) { drawing = null; draw(); } else setEditing(false); }
     else if (k === 'enter' && drawing) finishMask();
@@ -431,7 +465,7 @@
   $('bInvert').classList.toggle('on', map.invert);
   layout(); applyMasks();
   requestAnimationFrame(loop);
-  window.__nodesOutput = { get map() { return map; }, setEditing, setMode, selectSurface, layout, homography, stage };
+  window.__nodesOutput = { get map() { return map; }, setEditing, setMode, setMini, setGone, selectSurface, layout, homography, stage };
 })();
 </script>
 </body>
