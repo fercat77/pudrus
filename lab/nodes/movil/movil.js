@@ -145,14 +145,74 @@
 
   /* ── Cards ── */
   const chainEl = $('chain');
+  const COLL = 'nodrus_m_collapsed';
+  let collapsed = (() => { try { const a = JSON.parse(localStorage.getItem(COLL) || 'null'); return new Set(Array.isArray(a) ? a : ['tr']); } catch (e) { return new Set(['tr']); } })();
+  const collKey = n => (n === chain.tr ? 'tr' : String(n.id));
+  const saveColl = () => { try { localStorage.setItem(COLL, JSON.stringify([...collapsed])); } catch (e) { /* ignore */ } };
+  function summary(n) {
+    const def = N.NODES[n.type], parts = [];
+    for (const inp of [...(def.inputs || []), ...(def.post || [])]) {
+      if (inp.t === 'vec2' || inp.t === 'color' || (inp.t && linked(n, inp.k))) continue;
+      const v = n.v && n.v[inp.k] !== undefined ? n.v[inp.k] : inp.v;
+      parts.push(`${inp.label} ${inp.step >= 1 ? Math.round(v) : (+v).toFixed(2)}`);
+      if (parts.length === 2) break;
+    }
+    return parts.join(' · ');
+  }
+  // Touch sliders (same system as the site's tools): the native slider does not take touches,
+  // so a vertical swipe scrolls and a tap changes nothing; only a clearly horizontal drag on the
+  // row moves the value, relative to where it was. Double tap: back to the default value.
+  function touchSlider(row, input, get, set, def) {
+    let g = null, lastTap = 0;
+    row.addEventListener('pointerdown', e => {
+      if (e.pointerType !== 'touch') return;
+      g = { id: e.pointerId, x: e.clientX, y: e.clientY, v: get(), drag: false, t: performance.now() };
+    });
+    row.addEventListener('pointermove', e => {
+      if (!g || e.pointerId !== g.id) return;
+      const dx = e.clientX - g.x, dy = e.clientY - g.y;
+      if (!g.drag) {
+        if (Math.abs(dy) > 10 && Math.abs(dy) > Math.abs(dx)) { g = null; return; }   // a scroll
+        if (Math.abs(dx) < 8 || Math.abs(dx) < Math.abs(dy) * 1.5) return;             // not sure yet
+        g.drag = true; g.x = e.clientX;                                                 // no jump on grab
+        try { row.setPointerCapture(e.pointerId); } catch (er) { /* keep dragging */ }
+        row.classList.add('is-dragging');
+        if (navigator.vibrate) navigator.vibrate(4);
+        return;
+      }
+      const min = +input.min, max = +input.max, step = +input.step || 0;
+      const w = input.getBoundingClientRect().width || 1;
+      let v = g.v + (e.clientX - g.x) / w * (max - min);
+      v = Math.min(max, Math.max(min, step ? Math.round((v - min) / step) * step + min : v));
+      set(v);
+    });
+    const end = e => {
+      if (!g || (e && e.pointerId !== g.id)) return;
+      const tap = !g.drag && performance.now() - g.t < 250;
+      g = null; row.classList.remove('is-dragging');
+      if (tap) { const now = performance.now(); if (now - lastTap < 320) { set(def); lastTap = 0; if (navigator.vibrate) navigator.vibrate(10); } else lastTap = now; }
+    };
+    row.addEventListener('pointerup', end);
+    row.addEventListener('pointercancel', end);
+    row.addEventListener('dblclick', () => set(def));   // mouse
+  }
   const linked = (n, k) => graph.links.some(l => l.b === n.id && l.bi === k);
-  function card(n, slot, opts = {}) {
+  function card(n, slot, opts = {}) {   // eslint-disable-line complexity
     const def = N.NODES[n.type], cat = SLOTS[slot] ? SLOTS[slot].cat : 'var(--c-uv)';
     const c = el('section', 'm-card'); c.style.setProperty('--cat', cat); c.dataset.slot = slot;
     const head = el('div', 'm-card-head');
-    const t = el('button', 'm-card-title'); t.append(document.createTextNode(titleOf(n.type)));
-    if (opts.swap) { t.append(el('em', '', 'cambiar ▾')); t.addEventListener('click', () => openPicker(slot, n)); }
+    const ck = collKey(n), isColl = collapsed.has(ck);
+    if (isColl) c.classList.add('is-coll');
+    const t = el('button', 'm-card-title'); t.title = 'Tocá para contraer o expandir';
+    t.append(el('i', 'm-caret', '▾'), document.createTextNode(titleOf(n.type)));
+    const sum = el('em', 'm-sum', summary(n)); t.append(sum);
+    t.addEventListener('click', () => {
+      const now = !collapsed.has(ck);
+      if (now) collapsed.add(ck); else collapsed.delete(ck);
+      c.classList.toggle('is-coll', now); sum.textContent = summary(n); saveColl();
+    });
     head.append(t);
+    if (opts.swap) { const sw = el('button', 'm-ic', '⇄'); sw.title = 'Cambiar por otro nodo'; sw.addEventListener('click', () => openPicker(slot, n)); head.append(sw); }
     const info = el('button', 'm-ic', '?'); info.title = 'Qué hace'; info.addEventListener('click', () => openInfo(n.type));
     head.append(info);
     if (opts.reset) { const r = el('button', 'm-ic', '↺'); r.title = 'Volver al centro'; r.addEventListener('click', opts.reset); head.append(r); }
@@ -195,15 +255,17 @@
         row.append(ci); body.append(row); continue;
       }
       const min = inp.min ?? 0, max = inp.max ?? 1, step = inp.step || (max - min) / 400;
-      const lab = el('label'); const vb = el('b');
-      lab.append(document.createTextNode(inp.label), vb);
+      row.classList.add('m-sl');
+      const lab = el('span', 'm-sl-l', inp.label), vb = el('b', 'm-sl-v');
       const r = el('input'); r.type = 'range'; r.min = min; r.max = max; r.step = step; r.value = val;
       const fmt = x => (step >= 1 ? String(Math.round(x)) : Math.abs(x) >= 100 ? (+x).toFixed(0) : (+x).toFixed(2));
       const paint = x => { vb.textContent = fmt(x); r.style.setProperty('--p', ((x - min) / ((max - min) || 1) * 100) + '%'); };
       paint(val);
-      r.addEventListener('input', () => { const x = +r.value; paint(x); setVal(n, inp.k, x, true); });
+      const apply = x => { r.value = x; paint(x); setVal(n, inp.k, x, true); };
+      r.addEventListener('input', () => apply(+r.value));
+      touchSlider(row, r, () => +r.value, apply, inp.v);
       sliders.set(n.id + '.' + inp.k, { sync: x => { r.value = x; paint(x); } });
-      row.append(lab, r); body.append(row);
+      row.append(lab, r, vb); body.append(row);
     }
     if (body.children.length) c.append(body);
     return c;
@@ -474,6 +536,8 @@
     item('🗂 Bocetos', 'abrir uno guardado', openSketches);
     item('💻 Abrir en la compu', 'te pasa un enlace: el boceto se abre en el editor completo con los mismos nodos', openOnPC);
     item('⤓ Guardar archivo de patch', 'para «Patch ▾ → Abrir…» en la compu', saveFile);
+    item('▸ Contraer todas las tarjetas', 'para ver la cadena entera', () => { allNodes(chain).forEach(n => collapsed.add(collKey(n))); saveColl(); renderCards(); });
+    item('▾ Expandir todas', 'ver todos los valores', () => { collapsed.clear(); saveColl(); renderCards(); });
     item('🧭 Recorrido guiado', 'cómo funciona la cadena de nodos', () => startTour());
     item('↺ Empezar de nuevo', 'vuelve al ejemplo inicial', () => { chain = defaultChain(); structure(); });
     item('🖥 Editor completo', 'la versión de compu, con nodos y cables', () => { try { localStorage.setItem('nodrus_pc', '1'); } catch (e) { /* ignore */ } location.href = '../?pc'; });
@@ -483,7 +547,7 @@
   /* ── Guided tour ── */
   const TOUR = [
     { el: () => view, text: 'Este es tu visual, en vivo. <b>Arrastrá</b> para moverlo, <b>pellizcá</b> para acercar y <b>girá con dos dedos</b>. Doble toque: pantalla completa.' },
-    { el: () => chainEl.querySelector('[data-slot="gen"]'), text: '<b>Generar</b> es el dibujo base: nubes, rayas, celdas, formas 3D o tu cámara. Tocá su nombre para cambiarlo. En la compu es un nodo azul.' },
+    { el: () => chainEl.querySelector('[data-slot="gen"]'), text: '<b>Generar</b> es el dibujo base: nubes, rayas, celdas, formas 3D o tu cámara. <b>⇄</b> lo cambia por otro; tocando el nombre la tarjeta se contrae. Los valores se mueven arrastrando <b>de costado</b> (doble toque: valor original). En la compu es un nodo azul.' },
     { el: () => chainEl.querySelector('[data-slot="color"]'), text: '<b>Color</b> convierte ese dibujo (que es blanco y negro) en colores. Probá otras paletas o un degradé propio.' },
     { el: () => chainEl.querySelector('[data-slot="coords"]'), text: '<b>Coordenadas</b> deforman el espacio <b>antes</b> de dibujar: caleidoscopio, remolino, glitch… Son los nodos violetas de la compu.' },
     { el: () => chainEl.querySelector('[data-slot="fx"]') || chainEl.querySelector('[data-slot="out"]'), text: '<b>Feedback</b> mezcla cada cuadro con el anterior: estelas y túneles infinitos. Y la <b>Salida</b> suma brillo, glitch y viñeta.' },
