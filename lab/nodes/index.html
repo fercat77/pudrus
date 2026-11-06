@@ -10,7 +10,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600;700&display=swap">
-  <link rel="stylesheet" href="lab.css?v=14">
+  <link rel="stylesheet" href="lab.css?v=15">
 </head>
 <body>
 
@@ -153,6 +153,7 @@
       <dt>Negro · Strobe</dt><dd><kbd>N</kbd> fundido a negro · <kbd>S</kbd> strobe mientras lo mantenés.</dd>
       <dt>Tap tempo</dt><dd><kbd>T</kbd> al ritmo de la música: sincroniza el LFO («Ritmo»), «Pulso», el flash al pulso y los efectos de la capa.</dd>
       <dt>Audio</dt><dd>«🎤 Audio»: elegí la entrada y la ganancia. Lo usan los nodos Audio y «Reacciona a».</dd>
+      <dt>Ventanas</dt><dd>PREVIEW y EN VIVO se mueven arrastrando su barra de arriba y cambian de tamaño desde la esquina de abajo a la derecha. Doble clic en la barra: volver a su lugar. Queda guardado en este navegador.</dd>
       <dt>Ver</dt><dd>S / M / L, ▣ fondo (<kbd>B</kbd>) y ⛶ pantalla completa (<kbd>F</kbd>) actúan sobre lo que está EN VIVO (en Directo, sobre la vista del editor).</dd>
       <dt>Foto · Grabar</dt><dd>Siempre graban lo que está al aire, con capa, fundidos, negro y strobe.</dd>
     </dl>
@@ -160,7 +161,7 @@
 
   <section data-sec="ctl" hidden>
     <dl class="hp-dl">
-      <dt>Controles</dt><dd>Clic derecho en un valor → «🎛 Al control». En «📱 Control» les ponés nombre y rango (mín/máx), los convertís en <b>botón</b> (salta a un valor mientras lo apretás) o unís dos en un <b>pad XY</b> (⇄ XY).</dd>
+      <dt>Controles</dt><dd>Si un patch no tiene controles, se eligen solos (también al usar 🎲); «↻ Sugerir» los vuelve a elegir. Clic derecho en un valor → «🎛 Al control» para sumar los tuyos. En «📱 Control» les ponés nombre y rango (mín/máx), los convertís en <b>botón</b> (salta a un valor mientras lo apretás) o unís dos en un <b>pad XY</b> (⇄ XY).</dd>
       <dt>Celular</dt><dd>«📱 Control» → escaneá el QR (hace falta internet sólo para conectar). Tenés escenas (◀ ▶; mantener apretada = guardar), Al aire, Negro, Strobe, Tap, 🎲, ✨, ▤ Capa, fundido y tus controles. 👁 muestra lo que está al aire. 🔒 bloquea (mantener para desbloquear). Girado queda como consola.</dd>
       <dt>Sin saltos</dt><dd>Si tocás un fader lejos de su valor, espera a que tu dedo pase por ahí (línea blanca) antes de moverlo.</dd>
       <dt>MIDI</dt><dd>Clic derecho en un valor → «🎹 Aprender MIDI» y movés una perilla. También en Al aire, Negro, Strobe, Tap (clic derecho) y en las escenas.</dd>
@@ -232,15 +233,15 @@ Imagen ─── Color ─▶ Encima ├ Superponer ─▶ Salida
       <p><a id="rmUrl" target="_blank" rel="noopener"></a> <button class="lab-mini" id="rmCopy">Copiar</button></p>
     </div>
   </div>
-  <label>Controles (también para MIDI)</label>
+  <div class="ctl-head"><label>Controles de este patch (celular y MIDI)</label><button class="lab-mini" id="ctlSuggest" title="Elegir automáticamente los controles más útiles para este patch">↻ Sugerir</button></div>
   <div id="ctlList"></div>
 </div>
 <div class="lab-toast" id="toast" role="status"></div>
 <div class="lab-mobile-note">Pensado para compu o tablet: en el celular conviene usarlo sólo para mirar.</div>
 
-<script src="nodes.js?v=14"></script>
-<script src="presets.js?v=14"></script>
-<script src="generate.js?v=14"></script>
-<script src="editor.js?v=14"></script>
+<script src="nodes.js?v=15"></script>
+<script src="presets.js?v=15"></script>
+<script src="generate.js?v=15"></script>
+<script src="editor.js?v=15"></script>
 </body>
 </html>

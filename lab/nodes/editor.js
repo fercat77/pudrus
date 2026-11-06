@@ -9,7 +9,14 @@
   const clone = o => JSON.parse(JSON.stringify(o));
 
   /* ── State ─────────────────────────────────────────────── */
-  let graph = load() || clone(PRESETS[0].graph);
+  // a patch with no controls (and not emptied on purpose) gets the ones that make sense
+  function ensureControls(g) {
+    if (g && !g.ctlManual && !(Array.isArray(g.ctl) && g.ctl.length) && window.PudrusGenerate) {
+      try { g.ctl = window.PudrusGenerate.suggest(g); } catch (e) { /* keep none */ }
+    }
+    return g;
+  }
+  let graph = ensureControls(load() || clone(PRESETS[0].graph));
   let cam = { x: 30, y: 30, z: 0.85 };
   const selected = new Set();
   let compiled = null;
@@ -461,7 +468,7 @@
   const exPop = $('#examples');
   PRESETS.forEach((p, i) => {
     const b = el('button', 'item', p.name);
-    b.addEventListener('click', () => { closePops(); graph = clone(p.graph); selected.clear(); rebuild(); recompile(); save(); remember(); frameAll(); toast('Ejemplo: ' + p.name); });
+    b.addEventListener('click', () => { closePops(); graph = ensureControls(clone(p.graph)); selected.clear(); rebuild(); recompile(); save(); remember(); frameAll(); toast('Ejemplo: ' + p.name); });
     exPop.append(b);
   });
   $('#btnExamples').addEventListener('click', e => { const r = e.currentTarget.getBoundingClientRect(); openPop(exPop, r.left, r.bottom + 4); e.stopPropagation(); });
@@ -499,6 +506,7 @@
       { id: 2, type: 'palette', x: 320, y: 60, v: N.defaultsFor('palette').v, p: N.defaultsFor('palette').p },
       { id: 3, type: 'output', x: 580, y: 60, v: N.defaultsFor('output').v, p: N.defaultsFor('output').p },
     ], links: [{ a: 1, ao: 'v', b: 2, bi: 'v' }, { a: 2, ao: 'c', b: 3, bi: 'c' }] };
+    ensureControls(graph);
     selected.clear(); rebuild(); recompile(); save(); remember(); frameAll();
   });
   // Save / open patch files
@@ -526,7 +534,7 @@
         if (!/^img-[a-z0-9]+$/.test(id) || typeof d !== 'string' || !/^data:image\/(png|jpeg|webp|gif);base64,/.test(d)) continue;
         await N.assets.put(id, await (await fetch(d)).blob());
       }
-      graph = g; selected.clear(); rebuild(); recompile(); save(); remember(); frameAll();
+      graph = ensureControls(g); selected.clear(); rebuild(); recompile(); save(); remember(); frameAll();
       toast('Patch cargado');
     } catch (err) { toast('Ese archivo no es un patch válido', true); }
   });
@@ -672,6 +680,47 @@
   /* ── Preview: panel sizes, backdrop, fullscreen ────────── */
   const SIZES = { s: [320, 180], m: [480, 270], l: [720, 405] };
   let size = opts.size && SIZES[opts.size] ? opts.size : 'm';
+  // window layout chosen by each user: { pv: {x, y, w}, live: {x, y, w} } in px inside the workspace
+  if (!opts.win || typeof opts.win !== 'object') opts.win = {};
+  const winKey = el => (el === preview ? 'pv' : 'live');
+  function placeWin(el, w, defTop) {
+    const k = winKey(el), cfg = opts.win[k] || {}, r = work.getBoundingClientRect();
+    w = Math.min(Math.max(200, w), Math.max(200, r.width - 24));
+    const h = Math.round(w * 9 / 16);
+    el.style.width = w + 'px'; el.style.height = h + 'px';
+    if (Number.isFinite(cfg.x) && Number.isFinite(cfg.y)) {
+      el.style.left = Math.min(Math.max(0, cfg.x), Math.max(0, r.width - w)) + 'px';
+      el.style.top = Math.min(Math.max(0, cfg.y), Math.max(0, r.height - h)) + 'px';
+      el.style.right = 'auto';
+    } else { el.style.left = ''; el.style.right = ''; el.style.top = defTop + 'px'; }
+    return h;
+  }
+  const winW = (el, def) => { const c = opts.win[winKey(el)]; return c && Number.isFinite(c.w) ? c.w : def; };
+  function makeWindow(box) {
+    const grip = el('div', 'win-grip'); grip.title = 'Arrastrá para mover · doble clic: volver a su lugar';
+    const handle = el('div', 'win-size'); handle.title = 'Arrastrá para cambiar el tamaño';
+    box.append(grip, handle);
+    const can = () => !document.fullscreenElement && !(work.classList.contains('backdrop') && box === mainView());
+    const start = (e, mode) => {
+      if (e.button !== 0 || !can()) return;
+      e.preventDefault(); e.stopPropagation();
+      const t = e.currentTarget; t.setPointerCapture(e.pointerId);
+      const r = box.getBoundingClientRect(), wr = work.getBoundingClientRect();
+      const s0 = { x: e.clientX, y: e.clientY, l: r.left - wr.left, t: r.top - wr.top, w: r.width };
+      box.classList.add('is-moving');
+      const move = ev => {
+        const k = winKey(box), cfg = opts.win[k] = { ...(opts.win[k] || {}) };
+        if (mode === 'move') { cfg.x = Math.round(s0.l + ev.clientX - s0.x); cfg.y = Math.round(s0.t + ev.clientY - s0.y); cfg.w = cfg.w || Math.round(s0.w); }
+        else { cfg.w = Math.round(Math.max(200, s0.w + ev.clientX - s0.x)); if (!Number.isFinite(cfg.x)) { cfg.x = Math.round(s0.l); cfg.y = Math.round(s0.t); } }
+        layoutPreview();
+      };
+      const up = () => { t.removeEventListener('pointermove', move); t.removeEventListener('pointerup', up); box.classList.remove('is-moving'); saveOpts(); };
+      t.addEventListener('pointermove', move); t.addEventListener('pointerup', up);
+    };
+    grip.addEventListener('pointerdown', e => start(e, 'move'));
+    handle.addEventListener('pointerdown', e => start(e, 'size'));
+    grip.addEventListener('dblclick', () => { delete opts.win[winKey(box)]; saveOpts(); layoutPreview(); });
+  }
   // View controls (S/M/L, backdrop, fullscreen) act on what the audience sees:
   // the EN VIVO monitor, or the preview itself when working in Directo.
   const mainView = () => opts.direct ? preview : $('#live');
@@ -680,23 +729,25 @@
     const bar = document.querySelector('.lab-preview-bar');
     if (bar.parentNode !== main) main.append(bar);
     const fsEl = document.fullscreenElement;
+    let pvH = SIZES.s[1];
     const workSize = () => { const r = work.getBoundingClientRect(), s = Math.min(1, 1920 / r.width), d = Math.min(devicePixelRatio, 1.5) * s; return [r.width * d, r.height * d]; };
     const screenSize = () => [Math.min(2560, screen.width * devicePixelRatio), Math.min(1440, screen.height * devicePixelRatio)];
     // editor preview
     if (fsEl === preview) renderer.resize(...screenSize());
     else if (opts.direct && back) renderer.resize(...workSize());
     else {
-      const [w, h] = opts.direct ? SIZES[size] : SIZES.s;
-      preview.style.width = w + 'px'; preview.style.height = h + 'px';
+      pvH = placeWin(preview, winW(preview, (opts.direct ? SIZES[size] : SIZES.s)[0]), 12);
       renderer.resize(1280, 720);   // 720p inside, scaled down by CSS
     }
+    if (opts.direct && back) { preview.style.left = preview.style.top = preview.style.right = ''; }
     // on-air monitor (keeps 720p while recording so the video size never changes)
     if (!opts.direct) {
       if (fsEl === live && !rec) stage.resize(...screenSize());
       else if (back && !rec) stage.resize(...workSize());
       else stage.resize(1280, 720);
-      if (!back) { const [w, h] = SIZES[size]; live.style.width = w + 'px'; live.style.height = h + 'px'; live.style.top = (12 + SIZES.s[1] + 12) + 'px'; }
-      else { live.style.width = live.style.height = live.style.top = ''; }
+      const pvBox = opts.win.pv && Number.isFinite(opts.win.pv.x) ? SIZES.s[1] : pvH;   // a moved preview leaves the default spot free
+      if (!back) placeWin(live, winW(live, SIZES[size][0]), 12 + pvBox + 12);
+      else { live.style.width = live.style.height = live.style.top = live.style.left = live.style.right = ''; }
     } else stage.resize(1280, 720);
   }
   function setBackdrop(on) {
@@ -707,7 +758,9 @@
   document.querySelectorAll('[data-size]').forEach(b => {
     b.classList.toggle('is-on', b.dataset.size === size);
     b.addEventListener('click', () => {
-      size = opts.size = b.dataset.size; saveOpts(); setBackdrop(false);
+      size = opts.size = b.dataset.size;
+      const k = winKey(mainView()); if (opts.win[k]) delete opts.win[k].w;
+      saveOpts(); setBackdrop(false);
       document.querySelectorAll('[data-size]').forEach(x => x.classList.toggle('is-on', x === b));
     });
   });
@@ -837,7 +890,7 @@
   function goLive(g, fade) {
     g = g || graph;
     const sec = fade === undefined ? opts.fade : fade;
-    const next = opts.direct && g === graph ? graph : clone(g);
+    const next = ensureControls(opts.direct && g === graph ? graph : clone(g));
     try { stage.go(next, sec); } catch (e) { toast('Ese patch no compila; sigue al aire el anterior', true); return; }
     liveGraph = next; liveKey = contentKey(next);
     broadcast({ type: 'live', graph: next, fade: sec });
@@ -905,7 +958,7 @@
     toast(`Escena ${i + 1} guardada`);
   }
   function openScene(i) {
-    graph = clone(scenes[i].graph); selected.clear();
+    graph = ensureControls(clone(scenes[i].graph)); selected.clear();
     rebuild(); recompile(); save(); remember(); frameAll();
     toast(`Escena ${i + 1} en el editor` + (opts.direct ? '' : ' · Enter para mandarla al aire'));
   }
@@ -1094,7 +1147,8 @@
   // the patch on air is the one being edited (same nodes) -> keep its controls in sync
   const sameNodes = () => liveGraph !== graph && JSON.stringify(liveGraph.nodes.map(n => [n.id, n.type])) === JSON.stringify(graph.nodes.map(n => [n.id, n.type]));
   function ctlChanged() {
-    if (sameNodes()) liveGraph.ctl = clone(ctlList(graph));
+    graph.ctlManual = true;
+    if (sameNodes()) { liveGraph.ctl = clone(ctlList(graph)); liveGraph.ctlManual = true; }
     save(); remember(); pushState();
   }
   const hasCtl = (c, id, k) => (c.id === id && c.k === k) || (c.kind === 'xy' && c.id2 === id && c.k2 === k);
@@ -1106,7 +1160,7 @@
     if (i >= 0) list.splice(i, 1);
     else if (list.length >= 8) { toast('Este patch ya tiene 8 controles: quitá alguno primero', true); return; }
     else list.push({ id, k, t: n.type });
-    graph.ctl = list;
+    graph.ctl = list; graph.ctlManual = true;
     // same node on air -> it shows up (or goes away) on the phone right now
     if (sameNodes()) liveGraph.ctl = clone(list);
     else if (liveGraph !== graph) {
@@ -1306,6 +1360,12 @@
       showQR(); startRemote();
     } catch (err) { console.error(err); toast('No se pudo abrir el control: ' + (err.message || err), true); }
   });
+  $('#ctlSuggest').addEventListener('click', () => {
+    graph.ctl = window.PudrusGenerate.suggest(graph); graph.ctlManual = false;
+    if (sameNodes()) liveGraph.ctl = clone(graph.ctl);
+    save(); remember(); rebuild(); paintControls(); pushState();
+    toast('Controles sugeridos: podés cambiarles nombre, rango o tipo');
+  });
   $('#rmCopy').addEventListener('click', () => { navigator.clipboard && navigator.clipboard.writeText(remoteUrl()).then(() => toast('Enlace copiado'), () => {}); });
 
   function fullState() {
@@ -1500,6 +1560,7 @@
   }
 
   /* ── Start ─────────────────────────────────────────────── */
+  makeWindow(preview); makeWindow($('#live'));
   $('#btnDirect').classList.toggle('is-on', opts.direct);
   $('#btnThumbs').classList.toggle('is-on', opts.thumbs);
   work.classList.toggle('is-direct', opts.direct);
@@ -1512,5 +1573,5 @@
   requestAnimationFrame(loop);
   // fonts change node sizes -> redraw links once they are in
   if (document.fonts) document.fonts.ready.then(() => drawLinks());
-  window.__nodesEditor = { get graph() { return graph; }, get compiled() { return compiled; }, get liveGraph() { return liveGraph; }, stage, addNode, connect, removeNodes, undo, redo, goLive, modulate, set valueTarget(v) { valueTarget = v; }, setDirect, storeScene, fireScene, openScene, setThumbs, get scenes() { return scenes; }, get controls() { return ctlList(graph); }, get ov() { return ov; }, setOverlayOn, paintOverlayPanel, liveControls, ctlValue, randomPatch, varyPatch, stepScene, paintControls, toggleControl, applyControl, onMidi, midiLearn, setLearning(t) { learning = t; }, get midiMap() { return midiMap; }, remoteMsg, fullState, tap, get bpm() { return bpm; }, setBlack, setStrobe };
+  window.__nodesEditor = { get graph() { return graph; }, get compiled() { return compiled; }, get liveGraph() { return liveGraph; }, stage, addNode, connect, removeNodes, undo, redo, goLive, modulate, set valueTarget(v) { valueTarget = v; }, setDirect, storeScene, fireScene, openScene, setThumbs, get scenes() { return scenes; }, get controls() { return ctlList(graph); }, get opts() { return opts; }, layoutPreview, ensureControls, get ov() { return ov; }, setOverlayOn, paintOverlayPanel, liveControls, ctlValue, randomPatch, varyPatch, stepScene, paintControls, toggleControl, applyControl, onMidi, midiLearn, setLearning(t) { learning = t; }, get midiMap() { return midiMap; }, remoteMsg, fullState, tap, get bpm() { return bpm; }, setBlack, setStrobe };
 })();

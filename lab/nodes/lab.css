@@ -305,3 +305,18 @@ span.ctl-kind { display: inline-flex; align-items: center; color: #ff3fa4; }
   #btnThumbs { display: none; }           /* P key */
   .lab-btn { padding: 0 7px; }
 }
+
+/* ── Movable / resizable preview and on-air windows ── */
+.win-grip { position: absolute; left: 0; right: 0; top: 0; height: 28px; z-index: 2; cursor: move; }
+.lab-preview .lab-tag, .lab-live .lab-tag { z-index: 3; pointer-events: none; }
+.lab-preview .lab-preview-bar, .lab-live .lab-preview-bar { z-index: 4; }
+.win-size { position: absolute; right: 0; bottom: 0; width: 18px; height: 18px; z-index: 4; cursor: nwse-resize;
+            background: linear-gradient(135deg, transparent 50%, rgba(255,255,255,0.35) 50%, rgba(255,255,255,0.35) 60%, transparent 60%, transparent 70%, rgba(255,255,255,0.35) 70%, rgba(255,255,255,0.35) 80%, transparent 80%); opacity: 0; transition: opacity .15s; }
+.lab-preview:hover .win-size, .lab-live:hover .win-size, .is-moving .win-size { opacity: 1; }
+.lab-preview:hover .win-grip, .lab-live:hover .win-grip { background: linear-gradient(rgba(255,255,255,0.08), transparent); }
+.is-moving { box-shadow: 0 10px 30px rgba(0,0,0,0.6); }
+.lab-work.backdrop.is-direct .lab-preview .win-grip, .lab-work.backdrop.is-direct .lab-preview .win-size,
+.lab-work.backdrop:not(.is-direct) .lab-live .win-grip, .lab-work.backdrop:not(.is-direct) .lab-live .win-size,
+.lab-preview:fullscreen .win-grip, .lab-preview:fullscreen .win-size, .lab-live:fullscreen .win-grip, .lab-live:fullscreen .win-size { display: none; }
+.ctl-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: 6px; }
+.ctl-head label { margin: 0 !important; }

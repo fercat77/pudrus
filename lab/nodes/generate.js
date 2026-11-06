@@ -35,8 +35,19 @@
     noise: ['scale', 'speed'], voronoi: ['scale', 'speed'], stripes: ['freq', 'speed'], checker: ['scale'], waves: ['freq', 'speed'],
     shape: ['size', 'width'], gradient: ['angle'], transform: ['scale', 'spin'], kaleido: ['segments', 'rotate'], tile: ['count'],
     warp: ['amount'], pixelate: ['size'], swirl: ['amount'], palette: ['shift', 'speed'], adjust: ['hue', 'contrast'],
-    posterize: ['levels'], mix: ['f'], feedback: ['amount', 'zoom', 'rotate'],
+    posterize: ['levels'], mix: ['f'], feedback: ['amount', 'zoom', 'rotate'], glitch: ['amount'],
+    image: ['size', 'opacity'], text: ['size', 'opacity'], camera: ['size', 'opacity'], video: ['size', 'opacity'],
+    over: ['opacity'], threshold: ['edge'], lfo: ['speed'],
   };
+  // which nodes matter most when picking controls (the pattern first, then motion, then color)
+  const IMPORTANCE = ['noise', 'voronoi', 'stripes', 'waves', 'shape', 'checker', 'gradient', 'image', 'text', 'camera', 'video',
+    'kaleido', 'warp', 'swirl', 'glitch', 'transform', 'tile', 'pixelate', 'palette', 'mix', 'over', 'adjust', 'posterize', 'threshold', 'lfo', 'feedback'];
+  Object.assign(RANGES, {
+    glitch: { amount: [0, 0.8], rate: [2, 16] },
+    image: { size: [0.1, 1], opacity: [0, 1] }, text: { size: [0.05, 0.6], opacity: [0, 1] },
+    camera: { size: [0.5, 2], opacity: [0, 1] }, video: { size: [0.5, 2], opacity: [0, 1] },
+    over: { opacity: [0, 1] }, threshold: { edge: [0.2, 0.8] },
+  });
   const GENERATORS = ['noise', 'voronoi', 'stripes', 'waves', 'shape', 'checker', 'gradient'];
   const COORDS = ['kaleido', 'polar', 'warp', 'swirl', 'tile', 'mirror', 'transform', 'pixelate'];
 
@@ -133,15 +144,38 @@
       }
     } else out.p.react = 'none';
 
-    // live controls ready for the phone / MIDI: up to 4 interesting free values
-    const ctl = [];
-    const pool = nodes.flatMap(n => (PLAYABLE[n.type] || []).slice(0, 1).filter(k => free(n, k)).map(k => ({ id: n.id, k, t: n.type })));
-    pool.sort(() => rnd() - 0.5).slice(0, 4).forEach(c => {
-      const r = (RANGES[c.t] || {})[c.k];
-      if (r && r[0] !== r[1]) { c.lo = Math.round(r[0] * 1000) / 1000; c.hi = Math.round(r[1] * 1000) / 1000; }
-      ctl.push(c);
-    });
-    return { nodes, links, ctl };
+    // live controls ready for the phone / MIDI
+    return { nodes, links, ctl: suggest({ nodes, links }) };
+  }
+
+  /* Pick the controls worth playing live for any patch:
+     feedback zoom × turn as an XY pad, the main value of each important node (with good ranges),
+     then second values, and a "long trail" hit button when there is room. Max 6. */
+  function suggest(graph, max = 6) {
+    const r3 = x => Math.round(x * 1000) / 1000;
+    const isFree = (n, k) => (def(n.type).inputs || []).some(i => i.k === k && i.t === 'float') && !graph.links.some(l => l.b === n.id && l.bi === k);
+    const range = (t, k) => { const r = (RANGES[t] || {})[k]; return r && r[0] !== r[1] ? { lo: r3(r[0]), hi: r3(r[1]) } : {}; };
+    const out = [], used = new Set();
+    const add = (n, k) => {
+      const key = n.id + '.' + k;
+      if (out.length >= max || used.has(key) || !isFree(n, k)) return false;
+      used.add(key); out.push({ id: n.id, k, t: n.type, ...range(n.type, k) });
+      return true;
+    };
+    const fb = graph.nodes.find(n => n.type === 'feedback');
+    if (fb && isFree(fb, 'zoom') && isFree(fb, 'rotate')) {
+      const a = range('feedback', 'zoom'), b = range('feedback', 'rotate');
+      used.add(fb.id + '.zoom'); used.add(fb.id + '.rotate');
+      out.push({ kind: 'xy', name: 'Feedback: zoom × giro', id: fb.id, k: 'zoom', t: 'feedback', lo: a.lo, hi: a.hi, id2: fb.id, k2: 'rotate', t2: 'feedback', lo2: b.lo, hi2: b.hi });
+    }
+    const ordered = IMPORTANCE.flatMap(t => graph.nodes.filter(n => n.type === t));
+    for (const n of ordered) for (const k of PLAYABLE[n.type] || []) if (add(n, k)) break;          // main value of each
+    if (fb && out.length < max && isFree(fb, 'amount') && !used.has(fb.id + '.amount')) {
+      used.add(fb.id + '.amount');
+      out.push({ kind: 'button', name: 'Estela larga', id: fb.id, k: 'amount', t: 'feedback', to: 0.985 });
+    }
+    for (const n of ordered) (PLAYABLE[n.type] || []).slice(1).forEach(k => add(n, k));            // then second values
+    return out;
   }
 
   // nudge every free value a little (±15% of its good range)
@@ -161,5 +195,5 @@
     return graph;
   }
 
-  window.PudrusGenerate = { generate, vary };
+  window.PudrusGenerate = { generate, vary, suggest };
 })();
