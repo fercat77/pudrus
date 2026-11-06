@@ -36,7 +36,7 @@
 
   // Live settings (remembered): direct mode, fade time, node thumbnails
   const LIVE_STORE = 'pudrus_nodes_live_v1';
-  const opts = Object.assign({ direct: false, fade: 1, thumbs: true, labels: true }, (() => { try { return JSON.parse(localStorage.getItem(LIVE_STORE) || '{}'); } catch (e) { return {}; } })());
+  const opts = Object.assign({ direct: false, fade: 1, thumbs: true, labels: true, status: true }, (() => { try { return JSON.parse(localStorage.getItem(LIVE_STORE) || '{}'); } catch (e) { return {}; } })());
   const saveOpts = () => { try { localStorage.setItem(LIVE_STORE, JSON.stringify(opts)); } catch (e) { /* ignore */ } };
 
   function load() {
@@ -501,6 +501,7 @@
   $('#pmRandom').addEventListener('click', () => randomPatch());
   $('#pmVary').addEventListener('click', () => varyPatch());
   $('#pmLabels').addEventListener('click', () => setLabels(!opts.labels));
+  $('#pmStatus').addEventListener('click', () => setStatusBar(!opts.status));
   // help: tabs by topic, remembers the last one
   const help = $('#help');
   function helpTab(t) {
@@ -963,7 +964,8 @@
   /* ── Output window (second screen / projector) ─────────── */
   const channel = 'BroadcastChannel' in window ? new BroadcastChannel('pudrus-nodes') : null;
   function broadcast(msg) { if (channel) channel.postMessage(msg); }
-  if (channel) channel.onmessage = e => { if (e.data && e.data.type === 'hello') { liveByDeck[deckSel] = liveGraph; ['A', 'B'].forEach(d => broadcast({ type: 'live', graph: liveByDeck[d], fade: 0, deck: d })); broadcastMix(); broadcast({ type: 'play', playing }); broadcastMaster(0); broadcast({ type: 'overlay', ov }); broadcast({ type: 'screenfx', fx: sfx }); broadcast({ type: 'transition', t: opts.trans || null }); } };
+  const outStats = new Map();   // output windows: id → { fps, w, h, at }
+  if (channel) channel.onmessage = e => { if (e.data && e.data.type === 'ostat') { outStats.set(e.data.id, { ...e.data, at: performance.now() }); return; } if (e.data && e.data.type === 'hello') { liveByDeck[deckSel] = liveGraph; ['A', 'B'].forEach(d => broadcast({ type: 'live', graph: liveByDeck[d], fade: 0, deck: d })); broadcastMix(); broadcast({ type: 'play', playing }); broadcastMaster(0); broadcast({ type: 'overlay', ov }); broadcast({ type: 'screenfx', fx: sfx }); broadcast({ type: 'transition', t: opts.trans || null }); } };
   $('#btnOut').addEventListener('click', () => {
     const w = window.open('output.html', 'pudrus-output', 'width=960,height=540');
     if (!w) toast('El navegador bloqueó la ventana: permití las ventanas emergentes', true);
@@ -997,6 +999,7 @@
     const next = ensureControls(opts.direct && g === graph ? graph : clone(g));
     try { stage.go(next, sec); } catch (e) { toast('Ese patch no compila; sigue al aire el anterior', true); return; }
     liveGraph = liveByDeck[deckSel] = next; liveKey = contentKey(next);
+    liveAt[deckSel] = performance.now();
     broadcast({ type: 'live', graph: next, fade: sec, deck: deckSel });
     markPending();
     pushState(); paintControls();
@@ -1992,17 +1995,100 @@
     paintDesk().then(() => { deskOscOn = !!(deskInfo && deskInfo.osc.running); startRemote(); });   // phones can join right away
   }
 
+  /* ── Status bar (bottom): how the machine and the show are doing ── */
+  const liveAt = { A: performance.now(), B: 0 };
+  const st = { frames: 0, worst: 0, audio: [0, 0, 0, 0], t0: performance.now(), fps: 0, ms: 0, pressure: '', battery: null, desk: null };
+  const statusEl = $('#status');
+  const gpuName = (() => {
+    try {
+      const c = document.createElement('canvas'), gl = c.getContext('webgl');
+      const ext = gl && gl.getExtension('WEBGL_debug_renderer_info');
+      let r = ext ? gl.getParameter(ext.UNMASKED_RENDERER_WEBGL) : (gl ? gl.getParameter(gl.RENDERER) : '');
+      const lose = gl && gl.getExtension('WEBGL_lose_context'); if (lose) lose.loseContext();
+      const m = String(r).match(/ANGLE \([^,]+,\s*([^,]+?)\s*(\(0x|Direct3D|OpenGL|Vulkan|Metal|,|\)$)/);
+      r = (m ? m[1] : String(r)).replace(/\b(NVIDIA|AMD|Intel\(R\)|Apple)\s+/g, '').replace(/\s*\([^)]*$/, '').replace(/\s+/g, ' ').trim();
+      return r.slice(0, 32);
+    } catch (e) { return ''; }
+  })();
+  // CPU pressure (Chrome: also goes up when the machine is hot and throttling)
+  const PRESSURE = { nominal: ['normal', 'ok'], fair: ['media', 'ok'], serious: ['alta', 'warn'], critical: ['crítica', 'bad'] };
+  try {
+    if ('PressureObserver' in window) new PressureObserver(rs => { st.pressure = rs[rs.length - 1].state; }).observe('cpu', { sampleInterval: 2000 }).catch(() => {});
+  } catch (e) { /* not supported */ }
+  try { if (navigator.getBattery) navigator.getBattery().then(b => { st.battery = b; }).catch(() => {}); } catch (e) { /* no battery API */ }
+  const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+  const item = (txt, title, cls) => `<span class="st-i${cls ? ' ' + cls : ''}" title="${esc(title)}">${txt}</span>`;
+  const mmss = ms => { const s = Math.max(0, Math.floor(ms / 1000)); const h = Math.floor(s / 3600), m = Math.floor(s / 60) % 60; return (h ? h + ':' + String(m).padStart(2, '0') : m) + ':' + String(s % 60).padStart(2, '0'); };
+  const fpsCls = f => f >= 55 ? 'ok' : f >= 40 ? 'warn' : 'bad';
+  function paintStatus() {
+    const now = performance.now(), span = (now - st.t0) / 1000;
+    st.fps = st.frames / span; st.ms = st.worst; st.frames = 0; st.worst = 0; st.t0 = now;
+    if (!opts.status || !statusEl) return;
+    const out = [];
+    out.push(item(`<b class="${fpsCls(st.fps)}">●</b> ${Math.round(st.fps)} fps`, `Editor: ${st.fps.toFixed(1)} cuadros por segundo · el cuadro más lento del último segundo tardó ${Math.round(st.ms)} ms`));
+    out.push(item(`${Math.round(st.ms)} ms`, 'El cuadro más lento del último segundo (16 ms = 60 fps; si sube mucho, se notan saltos)', st.ms > 50 ? 'bad' : st.ms > 25 ? 'warn' : ''));
+    const lc = stage.canvas, vw = view.width, vh = view.height;
+    out.push(item(`PRG ${lc.width}×${lc.height}`, 'Resolución a la que se dibuja EN VIVO (program) en esta ventana'));
+    out.push(item(`PRV ${vw}×${vh}`, 'Resolución del PREVIO', 'lo'));
+    // output windows
+    const outs = [...outStats.values()].filter(o => now - o.at < 3000);
+    if (outs.length) outs.forEach((o, i) => out.push(item(`🖵${outs.length > 1 ? i + 1 : ''} <b class="${fpsCls(o.fps)}">●</b> ${Math.round(o.fps)} fps ${o.w}×${o.h}`, `Ventana de salida: ${o.fps.toFixed(1)} fps · dibuja a ${o.w}×${o.h} · pantalla ${o.sw}×${o.sh}${o.full ? ' · pantalla completa' : ''}`)));
+    else out.push(item('🖵 sin salida', 'No hay ninguna ventana de salida abierta (⧉ Salida)', 'dim'));
+    out.push('<span class="st-sep"></span>');
+    // the show
+    const dk = deckSel, x = stage.x;
+    const onAir = x <= 0 ? 'A' : x >= 1 ? 'B' : 'A+B';
+    out.push(item(`${opts.direct ? '<b class="warn">DIRECTO</b> ' : ''}al aire <b>${onAir}</b>${x > 0 && x < 1 ? ' ' + Math.round(x * 100) + '%' : ''}`, `Se ve: ${onAir} (crossfader ${Math.round(x * 100)}% · modo ${stage.mode}) · editás la capa ${dk}`));
+    const since = liveAt[onAir === 'B' ? 'B' : 'A'];
+    if (since) out.push(item(`⏱ ${mmss(now - since)}`, 'Tiempo desde el último «Al aire» de la capa que se ve'));
+    if (opts.trans && opts.trans.name) out.push(item(`⇄ ${esc(opts.trans.name)}`, 'Transición de los fundidos', 'lo'));
+    const nfx = sfx.on ? sfx.list.filter(f => f.on !== false).length : 0;
+    if (nfx) out.push(item(`✨ ${nfx}`, `${nfx} filtro(s) de pantalla activos`));
+    if (ov.on && ov.items.length) out.push(item('◧ capa', 'La capa de logo/texto está encendida'));
+    out.push(item(`<b class="st-beat">♩</b> ${bpm}`, 'Tempo (T = tap)'));
+    if (audio.on) { const lv = Math.max(...st.audio); out.push(item(`🎤 <i class="st-lv" style="--v:${Math.min(1, lv).toFixed(2)}"></i>`, 'Nivel del audio que entra')); }
+    if (conns.size) out.push(item(`📱 ${conns.size}`, `${conns.size} celular(es) conectado(s) como control`));
+    if (midi && midi.inputs.size) out.push(item(`🎹 ${midi.inputs.size}`, [...midi.inputs.values()].map(i => i.name).join(', ') || 'MIDI'));
+    if (DESK) {
+      if (st.desk && st.desk.spout) out.push(item('Spout ✓', 'Enviando a Spout'));
+      if (deskOscOn) out.push(item('OSC ✓', 'OSC activo'));
+    }
+    out.push('<span class="st-sep"></span>');
+    // the machine
+    if (st.desk && typeof st.desk.cpu === 'number') out.push(item(`CPU ${Math.round(st.desk.cpu)}%`, 'Uso de procesador de NODRUS (todos sus procesos)', st.desk.cpu > 80 ? 'bad' : st.desk.cpu > 55 ? 'warn' : ''));
+    if (st.pressure && PRESSURE[st.pressure]) { const [t, c] = PRESSURE[st.pressure]; out.push(item(`carga ${t}`, 'Presión del procesador según el sistema: sube cuando la máquina está exigida o caliente y empieza a bajar la velocidad', c === 'ok' ? '' : c)); }
+    const mem = st.desk && st.desk.mem ? st.desk.mem : (performance.memory ? performance.memory.usedJSHeapSize / 1048576 : 0);
+    if (mem) out.push(item(`${Math.round(mem)} MB`, st.desk && st.desk.mem ? 'Memoria que usa NODRUS' : 'Memoria de JavaScript de esta pestaña', 'lo'));
+    const b = st.battery;
+    if (b && !(b.charging && b.level >= 1)) out.push(item(`${b.charging ? '⚡' : '🔋'} ${Math.round(b.level * 100)}%`, b.charging ? 'Cargando' : 'Con batería: conectá el cargador para el show', !b.charging && b.level < 0.2 ? 'bad' : !b.charging && b.level < 0.4 ? 'warn' : ''));
+    if (gpuName) out.push(item(esc(gpuName), `Placa de video · ${N.ES3 ? 'WebGL 2' : 'WebGL 1'}`, 'lo dim'));
+    out.push(item(new Date().toLocaleTimeString('es', { hour: '2-digit', minute: '2-digit' }), 'Hora', 'st-clock'));
+    statusEl.innerHTML = out.join('');
+  }
+  setInterval(paintStatus, 1000);
+  if (DESK && DESK.metrics) setInterval(async () => { if (opts.status) try { st.desk = await DESK.metrics(); } catch (e) { st.desk = null; } }, 2000);
+  // the beat dot blinks with the tempo
+  setInterval(() => { const d = statusEl && statusEl.querySelector('.st-beat'); if (d) d.classList.toggle('on', (N.clock.beat % 1) < 0.25); }, 50);
+  function setStatusBar(on) {
+    opts.status = on; saveOpts();
+    document.body.classList.toggle('has-status', on);
+    const pi = $('#pmStatus'); if (pi) pi.firstChild.textContent = (on ? '✓ ' : '　') + 'Barra de estado';
+    layoutPreview(); drawLinks();
+    if (on) paintStatus();
+  }
+
   /* ── Main loop ─────────────────────────────────────────── */
   let last = performance.now(), frameN = 0;
   function loop(now) {
     requestAnimationFrame(loop);
+    st.frames++; st.worst = Math.max(st.worst, now - last);
     const dt = Math.min(0.1, (now - last) / 1000); last = now;
     if (playing) time += dt;
     N.clock.beat = beatNow();
     if (deskOscOn) oscTick(now);
     flushLive();
     pushValues(now);
-    const a = audio.read();
+    const a = audio.read(); st.audio = a;
     renderer.render(time, a, N.postValues(graph, a));
     grabShot();
     stage.render(time, a);   // on air (also what Foto/Grabar capture)
@@ -2050,6 +2136,8 @@
   if (document.fonts) document.fonts.ready.then(fitBar);
   setTimeout(fitBar, 300);
   makeWindow(preview); makeWindow($('#live'));
+  document.body.classList.toggle('has-status', !!opts.status);
+  { const pi = $('#pmStatus'); if (pi) pi.firstChild.textContent = (opts.status ? '✓ ' : '　') + 'Barra de estado'; }
   paintMixer(); paintGuides(); paintExport();
   $('#btnDirect').classList.toggle('is-on', opts.direct);
   $('#btnThumbs').classList.toggle('is-on', opts.thumbs);

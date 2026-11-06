@@ -19,4 +19,5 @@ contextBridge.exposeInMainWorld('nodrusDesktop', {
     onError: cb => { ipcRenderer.on('osc-error', (e, m) => cb(m)); },
   },
   setDisplay: id => ipcRenderer.invoke('set-display', id),
+  metrics: () => ipcRenderer.invoke('metrics'),
 });

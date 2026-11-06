@@ -181,6 +181,15 @@ ipcMain.handle('spout-stop', () => { stopSpout(); cfg.spout.on = false; saveCfg(
 ipcMain.handle('spout-stats', () => spoutStats());
 ipcMain.handle('osc-start', (e, o) => { const r = startOsc(o); if (r.ok) { cfg.osc = { ...cfg.osc, ...o, on: true }; saveCfg(); } return r; });
 ipcMain.handle('osc-stop', () => { stopOsc(); cfg.osc.on = false; saveCfg(); return { ok: true }; });
+// CPU (share of the whole machine) and memory of every NODRUS process, plus Spout state
+ipcMain.handle('metrics', () => {
+  const ms = app.getAppMetrics();
+  const cores = require('os').cpus().length || 1;
+  const cpu = ms.reduce((s, m) => s + (m.cpu ? m.cpu.percentCPUUsage : 0), 0) / cores;
+  const mem = ms.reduce((s, m) => s + (m.memory ? m.memory.workingSetSize : 0), 0) / 1024;
+  let spout = false; try { spout = !!spoutStats().on; } catch (e) { /* no spout */ }
+  return { cpu, mem, spout };
+});
 ipcMain.handle('set-display', (e, id) => { cfg.display = id || 'auto'; saveCfg(); return { ok: true }; });
 
 /* ── Start ── */

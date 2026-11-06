@@ -87,7 +87,7 @@
   <div class="tip" id="tip"></div>
 </div>
 <div class="hint" id="hint">Doble clic: pantalla completa · M: ajustar (superficies y máscaras) · esperando al editor…</div>
-<script src="nodes.js?v=27"></script>
+<script src="nodes.js?v=28"></script>
 <script>
 (function () {
   // Shows what is ON AIR in the editor (not the preview), with the same cross-fades and overlay.
@@ -201,9 +201,16 @@
     });
   }
 
-  let last = performance.now();
+  let last = performance.now(), oFrames = 0, oT0 = performance.now();
+  const oId = Math.random().toString(36).slice(2);
+  setInterval(() => {
+    const n = performance.now(), fps = oFrames / ((n - oT0) / 1000); oFrames = 0; oT0 = n;
+    const c = stage.canvas;
+    ch.postMessage({ type: 'ostat', id: oId, fps, w: c.width, h: c.height, sw: Math.round(screen.width * devicePixelRatio), sh: Math.round(screen.height * devicePixelRatio), full: !!document.fullscreenElement });
+  }, 1000);
   function loop(now) {
     requestAnimationFrame(loop);
+    oFrames++;
     // keep running smoothly between editor messages (e.g. when the editor tab is in the background)
     if (playing && now - lastMsg > 100) time += Math.min(0.1, (now - last) / 1000);
     last = now;
