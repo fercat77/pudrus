@@ -12,7 +12,7 @@
   /* ── What each slot can hold, and plain-words explanations (to learn the full editor) ── */
   const SLOTS = {
     coords: { label: 'Coordenadas', hint: 'deforman el espacio antes de dibujar', cat: 'var(--c-uv)', types: ['kaleido', 'polar', 'mirror', 'tile', 'warp', 'swirl', 'pixelate', 'glitch'] },
-    gen: { label: 'Generar', hint: 'el dibujo base', cat: 'var(--c-gen)', types: ['noise', 'voronoi', 'stripes', 'waves', 'shape', 'checker', 'gradient', 'scene3d', 'text', 'camera'] },
+    gen: { label: 'Generar', hint: 'el dibujo base', cat: 'var(--c-gen)', types: ['pattern', 'noise', 'voronoi', 'stripes', 'waves', 'shape', 'checker', 'gradient', 'scene3d', 'text', 'camera'] },
     color: { label: 'Color', hint: 'convierte el dibujo en colores', cat: 'var(--c-col)', types: ['palette', 'ramp', 'none'] },
     cfx: { label: 'Efectos de color', hint: 'retocan los colores', cat: 'var(--c-col)', types: ['adjust', 'posterize', 'invert'] },
     fx: { label: 'Efectos', hint: 'estelas y memoria', cat: 'var(--c-fx)', types: ['feedback'] },
@@ -34,6 +34,7 @@
     waves: 'Ondas en anillos, líneas o interferencia.',
     shape: 'Una forma geométrica: círculo, anillo, triángulo, cruz…',
     checker: 'Un damero de cuadros.',
+    pattern: 'Dibujos gráficos: líneas onduladas, zigzag, op-art, topográfico, laberinto, tejido, cubos, puntos… «Grosor» y «Forma» cambian el trazo.',
     gradient: 'Un degradé lineal o radial.',
     scene3d: 'Formas en 3D (raymarching): toroide, cubo, gota… sola, en grilla o en túnel, con la cámara en órbita o vuelo. Es pesada: usá calidad baja.',
     text: 'Un texto que podés deformar con todo lo demás.',
@@ -396,7 +397,7 @@
   }
   function randomChain() {
     const coords = SLOTS.coords.types.slice().sort(() => rnd() - 0.5).slice(0, Math.floor(rnd() * 3)).map(t => randomize(mk(t)));
-    const gen = randomize(mk(pick(['noise', 'voronoi', 'stripes', 'waves', 'shape', 'checker', 'gradient', rnd() < 0.15 ? 'scene3d' : 'noise'])));
+    const gen = randomize(mk(pick(['pattern', 'pattern', 'pattern', 'noise', 'voronoi', 'stripes', 'waves', 'shape', 'checker', 'gradient', rnd() < 0.15 ? 'scene3d' : 'noise'])));
     if (gen.type === 'scene3d') gen.p.quality = '40';
     const color = rnd() < 0.75 ? randomize(mk('palette')) : (() => { const r = mk('ramp'); const h = rnd(); r.v.a = `hsl(${h * 360},80%,6%)`; r.v.b = `hsl(${(h * 360 + 120) % 360},90%,60%)`; return r; })();
     if (color.type === 'ramp') { const toHex = s => { const c = document.createElement('canvas').getContext('2d'); c.fillStyle = s; return c.fillStyle; }; color.v.a = toHex(color.v.a); color.v.b = toHex(color.v.b); }

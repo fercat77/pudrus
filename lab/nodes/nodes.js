@@ -203,6 +203,34 @@ vec3 effect(vec2 uv, vec3 col, float k1, float k2, float k3, float k4) {
   }
 
   /* ── 3D scene (raymarching) ───────────────────────────────── */
+  /* «Patrón»: graphic, crisp line patterns (wavy lines, op-art, topographic, truchet, weave, cubes…).
+     Returns vec2(mask, variation 0–1 per band / cell). q = coordinates × density, aa = ~1.5 px. */
+  const PATTERN_KINDS = {
+    wavy: `float b = q.y + amt * 1.2 * sin(q.x * 0.7 + t); m = L(abs(fract(b) - 0.5), w * 0.5, aa * 1.6); cid = floor(b);`,
+    zigzag: `float b = q.y + amt * 1.6 * abs(fract(q.x * 0.5 + t * 0.15) - 0.5) * 2.0; m = L(abs(fract(b) - 0.5), w * 0.5, aa * 1.8); cid = floor(b);`,
+    op: `vec2 r = p * 2.0; float b = q.x + amt * sc * 0.12 * sin(r.y * 2.0 + t) * cos(r.x * 1.5 - t * 0.7); m = L(abs(fract(b) - 0.5), w * 0.5, aa * 2.5); cid = floor(b);`,
+    rings: `float b = length(q) + amt * 0.4 * sin(atan(q.y, q.x) * 5.0 + t * 0.5) - t; m = L(abs(fract(b) - 0.5), w * 0.5, aa * 1.3); cid = floor(b);`,
+    squares: `vec2 aq = abs(rot(t * 0.05 + amt * length(p)) * q); float b = max(aq.x, aq.y) * 2.0 - t; m = L(abs(fract(b) - 0.5), w * 0.5, aa * 2.0); cid = floor(b);`,
+    contour: `float h = fbm(p * (0.8 + amt * 1.2) + vec2(seed * 1.7, t * 0.12), 3.0) * sc * 0.7; m = L(abs(fract(h) - 0.5), w * 0.5, 0.07); cid = floor(h);`,
+    blobs: `float h = fbm(p * (0.9 + amt * 1.2) + vec2(seed * 1.3, -t * 0.08), 3.0) * (2.0 + sc * 0.45); m = L(abs(fract(h) - 0.5), w * 0.5, 0.035); cid = floor(h);`,
+    truchet: `vec2 c = floor(q); vec2 f = fract(q) - 0.5; float r = hash21(c + seed + floor(t * 0.5 + hash21(c + 3.1) * 4.0) * 0.37); if (r > 0.5) f.x = -f.x; float d = min(abs(length(f - 0.5) - 0.5), abs(length(f + 0.5) - 0.5)); m = L(d, w * 0.25, aa); cid = c.x + c.y * 57.0;`,
+    maze: `vec2 c = floor(q); vec2 f = fract(q); float r = hash21(c + seed + floor(t * 0.5 + hash21(c + 3.1) * 4.0) * 0.37); float d = (r > 0.5 ? abs(f.x - f.y) : abs(f.x + f.y - 1.0)) * 0.7071; m = L(d, w * 0.25, aa); cid = c.x + c.y * 57.0;`,
+    weave: `vec2 qq = q + vec2(t * 0.2, 0.0); vec2 c = floor(qq); vec2 f = fract(qq) - 0.5; float hw = w * 0.5; float n = 1.0 + floor(amt * 2.5); float sx = 0.65 + 0.35 * step(0.5, fract((f.x / max(w, 0.02) + 0.5) * n)); float sy = 0.65 + 0.35 * step(0.5, fract((f.y / max(w, 0.02) + 0.5) * n)); float inH = L(abs(f.y), hw, aa) * sy, inV = L(abs(f.x), hw, aa) * sx; float top = mod(c.x + c.y, 2.0); float a1 = top < 0.5 ? inH : inV; float a2 = top < 0.5 ? inV : inH; m = max(a1, a2 * (1.0 - step(0.01, a1)) * 0.6); cid = top + 2.0 * step(0.01, a2);`,
+    cubes: `vec2 qq = q + vec2(t * 0.25, 0.0); vec2 r = vec2(1.0, 1.7320508); vec2 h = r * 0.5; vec2 a = mod(qq, r) - h; vec2 b = mod(qq - h, r) - h; vec2 g = dot(a, a) < dot(b, b) ? a : b; float face = floor(mod(atan(g.y, g.x) - 1.5707963 + 12.566371, 6.2831853) / 2.0943951); m = face < 0.5 ? 1.0 : (face < 1.5 ? 0.2 + amt * 0.3 : 0.55); vec2 cc = floor(qq - g + 0.5); cid = cc.x + cc.y * 57.0;`,
+    dots: `vec2 qq = q; qq.x += mod(floor(qq.y), 2.0) * 0.5; vec2 c = floor(qq); vec2 f = fract(qq) - 0.5; float rr = w * 0.5 * (1.0 - amt * 0.5 + amt * 0.5 * sin(t * 2.0 + hash21(c + seed) * 6.283)); m = L(length(f), rr, aa); cid = c.x + c.y * 57.0;`,
+    grid: `vec2 qq = q + vec2(t * 0.2, t * 0.1); vec2 f = fract(qq); vec2 d = min(f, 1.0 - f); m = max(L(d.x, w * 0.2, aa), L(d.y, w * 0.2, aa)); vec2 c = floor(qq); cid = c.x + c.y * 57.0; m = max(m, step(1.0 - amt * 0.3, hash21(c + seed)) * 0.5);`,
+    cracks: `vec2 vv = voronoi(q * 0.5 + vec2(seed, t * 0.1)); m = L(vv.y - vv.x, w * 0.15, aa * 0.6); cid = floor(vv.x * 9.0 + seed);`,
+  };
+  function patternGlobals(P, id) {
+    const body = (PATTERN_KINDS[P.kind] || PATTERN_KINDS.wavy).replace(/\bL\(/g, `n${id}_L(`);
+    return `float n${id}_L(float d, float hw, float aa){ return 1.0 - smoothstep(hw - aa, hw + aa, d); }
+vec2 n${id}_pat(vec2 p, float sc, float w, float amt, float sp, float seed){
+  vec2 q = p * sc; float t = u_time * sp; float aa = sc * 1.5 / u_res.y; float m = 0.0; float cid = 0.0;
+  ${body}
+  return vec2(clamp(m, 0.0, 1.0), hash21(vec2(cid * 0.137 + 0.5, seed * 0.71 + 0.31)));
+}`;
+  }
+
   function scene3dGlobals(P, id) {
     const shape = {
       sphere: 'length(p) - size',
@@ -344,6 +372,12 @@ vec3 n${id}_march(vec2 uv, float size, float twist, float speed, float sp, out v
       glsl: (I, O, P, id) => `vec3 _nr${id}; vec3 _m${id} = n${id}_march(${I.uv}, ${I.size}, ${I.twist}, ${I.speed}, ${I.spacing}, _nr${id}); float ${O.v} = _m${id}.x; float ${O.depth} = _m${id}.y; vec3 ${O.c} = (_nr${id} * 0.5 + 0.5) * _m${id}.x * _m${id}.z;` },
 
     /* Generar */
+    pattern: { title: 'Patrón', cat: 'Generar',
+      inputs: [UV, F('scale', 'Densidad', 8, 1, 60), F('width', 'Grosor', 0.4, 0.02, 0.98), F('amount', 'Forma', 0.6, 0, 2), F('speed', 'Velocidad', 0.2, -3, 3), F('seed', 'Semilla', 0, 0, 100)],
+      params: [{ k: 'kind', label: 'Dibujo', v: 'wavy', options: [['wavy', 'Líneas onduladas'], ['zigzag', 'Zigzag'], ['op', 'Op-art'], ['rings', 'Círculos'], ['squares', 'Cuadrados'], ['contour', 'Topográfico'], ['blobs', 'Manchas líquidas'], ['truchet', 'Laberinto curvo'], ['maze', 'Diagonales'], ['weave', 'Tejido'], ['cubes', 'Cubos'], ['dots', 'Puntos'], ['grid', 'Cuadrícula'], ['cracks', 'Grietas']] }],
+      outputs: [['v', 'float', 'Máscara'], ['id', 'float', 'Variación']],
+      globals: (P, id) => patternGlobals(P, id),
+      glsl: (I, O, P, id) => `vec2 _p${id} = n${id}_pat(${I.uv}, ${I.scale}, ${I.width}, ${I.amount}, ${I.speed}, ${I.seed}); float ${O.v} = _p${id}.x; float ${O.id} = _p${id}.y;` },
     noise: { title: 'Ruido', cat: 'Generar',
       inputs: [UV, F('scale', 'Escala', 3, 0.1, 30), F('speed', 'Velocidad', 0.2, 0, 3), F('detail', 'Detalle', 4, 1, 8, 1)],
       outputs: [['v', 'float', 'Valor']],
@@ -434,7 +468,7 @@ vec3 n${id}_march(vec2 uv, float size, float twist, float speed, float sp, out v
     /* Color */
     palette: { title: 'Paleta', cat: 'Color',
       inputs: [F('v', 'Valor', 0.5, 0, 1), F('shift', 'Desplazar', 0, -2, 2), F('speed', 'Ciclar', 0, -2, 2)],
-      params: [{ k: 'pal', label: 'Paleta', v: 'neon', options: [['neon', 'Neón'], ['fire', 'Fuego'], ['ocean', 'Océano'], ['rainbow', 'Arcoíris'], ['vapor', 'Vapor'], ['mono', 'Mono']] }],
+      params: [{ k: 'pal', label: 'Paleta', v: 'neon', options: [['neon', 'Neón'], ['fire', 'Fuego'], ['ocean', 'Océano'], ['rainbow', 'Arcoíris'], ['vapor', 'Vapor'], ['mono', 'Mono'], ['pastel', 'Pastel'], ['retro', 'Retro']] }],
       outputs: [['c', 'color', 'Color']],
       glsl: (I, O, P) => {
         const pals = {
@@ -444,6 +478,8 @@ vec3 n${id}_march(vec2 uv, float size, float twist, float speed, float sp, out v
           rainbow: ['vec3(0.5)', 'vec3(0.5)', 'vec3(1.0)', 'vec3(0.0, 0.33, 0.67)'],
           vapor: ['vec3(0.5, 0.3, 0.6)', 'vec3(0.5, 0.3, 0.4)', 'vec3(1.0, 1.0, 1.0)', 'vec3(0.8, 0.9, 0.3)'],
           mono: ['vec3(0.5)', 'vec3(0.5)', 'vec3(0.5)', 'vec3(0.0)'],
+          pastel: ['vec3(0.72, 0.68, 0.7)', 'vec3(0.28, 0.3, 0.28)', 'vec3(1.0)', 'vec3(0.0, 0.33, 0.67)'],
+          retro: ['vec3(0.62, 0.5, 0.38)', 'vec3(0.38, 0.38, 0.32)', 'vec3(1.0, 1.0, 1.0)', 'vec3(0.0, 0.25, 0.45)'],
         }[P.pal];
         return `vec3 ${O.c} = clamp(cosPal(${I.v} + ${I.shift} + u_time * ${I.speed}, ${pals.join(', ')}), 0.0, 1.0);`;
       } },

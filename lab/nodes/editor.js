@@ -1592,7 +1592,7 @@
   function randomPatch() {
     graph = window.PudrusGenerate.generate({ audio: audio.on, bpm: !!opts.bpm });
     selected.clear(); rebuild(); recompile(); save(); remember(); frameAll();
-    toast('🎲 Patch aleatorio' + (opts.direct ? '' : ' · Enter lo manda al aire') + ' · R otro · Shift+R variar');
+    toast('🎲 ' + (graph.style ? 'Aleatorio · estilo ' + graph.style : 'Patch aleatorio') + (opts.direct ? '' : ' · Enter lo manda al aire') + ' · R otro · Shift+R variar');
   }
   function varyPatch() {
     window.PudrusGenerate.vary(graph);
