@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="robots" content="noindex, nofollow">
+  <meta name="theme-color" content="#050508">
+  <meta name="description" content="Juegos rápidos de ingenio, memoria, atención y creatividad.">
+  <title>Juegos — PUDRUS.XYZ</title>
+  <link rel="icon" type="image/svg+xml" href="../favicon.svg">
+  <link rel="manifest" href="/manifest.webmanifest">
+  <link rel="apple-touch-icon" href="/assets/icons/apple-touch-icon.png">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="PUDRUS">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600;700&display=swap">
+  <link rel="stylesheet" href="../css/style.css">
+  <link rel="stylesheet" href="juegos.css?v=1">
+</head>
+<body class="home juegos">
+
+<nav id="nav">
+  <a href="../index.html" class="nav-logo">PUDRUS<span>.xyz</span></a>
+  <ul class="nav-links" id="navLinks">
+    <li><a href="../index.html#tools" data-i18n="nav.tools">Tools</a></li>
+    <li><a href="../index.html#about" data-i18n="nav.about">About</a></li>
+    <li><a href="../index.html#work" data-i18n="nav.work">Work</a></li>
+  </ul>
+  <div class="nav-lang">
+    <select id="langSelect" aria-label="Language selector">
+      <option value="es">ES</option>
+      <option value="en">EN</option>
+    </select>
+  </div>
+  <button class="nav-toggle" type="button" aria-controls="navLinks" aria-expanded="false" data-i18n-title="nav.menu"><span></span></button>
+</nav>
+
+<main>
+  <!-- hub -->
+  <section class="screen jg-hub" id="hub">
+    <div class="jg-head">
+      <div>
+        <div class="section-tag">◈ Juegos · modo prueba</div>
+        <h1 class="section-title">Entrená la <span>cabeza</span></h1>
+        <p class="section-desc">Partidas de uno a tres minutos: lógica, memoria, atención y creatividad. Sin registro: tus récords quedan en este navegador.</p>
+      </div>
+      <div class="jg-streak" id="streak" title="Días seguidos jugando"></div>
+    </div>
+    <button class="jg-daily" id="daily"></button>
+    <div class="jg-grid" id="grid"></div>
+  </section>
+
+  <!-- a game -->
+  <section class="screen jg-play" id="play" hidden>
+    <div class="jg-bar">
+      <button class="jg-back" id="back" title="Volver a los juegos (Esc)">← Juegos</button>
+      <div class="jg-title"><b id="gTitle"></b><span id="gTag"></span></div>
+      <div class="jg-hud" id="hud"></div>
+      <button class="jg-help-btn" id="helpBtn" title="Cómo se juega">?</button>
+    </div>
+    <p class="jg-how" id="how"></p>
+    <div class="jg-stage" id="stage"></div>
+  </section>
+</main>
+
+<div class="jg-result" id="result" hidden>
+  <div class="jg-result-box">
+    <div class="section-tag" id="rTag">◈ Resultado</div>
+    <div class="jg-score glitch" id="rScore"></div>
+    <p class="jg-rlabel" id="rLabel"></p>
+    <p class="jg-best" id="rBest"></p>
+    <div class="jg-rextra" id="rExtra"></div>
+    <div class="jg-ractions">
+      <button class="btn btn-primary" id="rAgain">Otra vez</button>
+      <button class="btn" id="rShare" hidden>Copiar resultado</button>
+      <button class="btn" id="rHub">Volver</button>
+    </div>
+  </div>
+</div>
+
+<footer>
+  <span data-i18n="footer.copyright">© 2026 PUDRUS.XYZ</span>
+  <span class="footer-separator" aria-hidden="true">◈ ◈ ◈</span>
+  <a href="https://cafecito.app/pudrus" target="_blank" rel="noopener noreferrer" data-i18n="footer.donate">Support this project</a>
+  <span class="footer-separator" aria-hidden="true">◈ ◈ ◈</span>
+  <span data-i18n="footer.note">Jump into a digital disaster</span>
+</footer>
+
+<script src="../js/i18n.js"></script>
+<script src="../js/nav.js"></script>
+<script src="/js/pwa.js"></script>
+<script src="juegos.js?v=1"></script>
+</body>
+</html>
