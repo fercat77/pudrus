@@ -7,7 +7,7 @@
   const work = $('#work'), world = $('#world'), svg = $('#links');
   const preview = $('#preview'), view = $('#view');
   const STORE = 'pudrus_nodes_graph_v1';
-  const CAT_COLOR = { Entrada: 'var(--c-in)', Generar: 'var(--c-gen)', Coordenadas: 'var(--c-uv)', Color: 'var(--c-col)', Efectos: 'var(--c-fx)', 'Código': 'var(--c-code)', Salida: 'var(--c-out)' };
+  const CAT_COLOR = { Entrada: 'var(--c-in)', Generar: 'var(--c-gen)', Coordenadas: 'var(--c-uv)', Color: 'var(--c-col)', Efectos: 'var(--c-fx)', 'Código': 'var(--c-code)', Hydra: 'var(--c-hydra)', Salida: 'var(--c-out)' };
   const clone = o => JSON.parse(JSON.stringify(o));
 
   /* ── State ─────────────────────────────────────────────── */
@@ -227,7 +227,8 @@
       const s = el('i', 'sock t-' + inp.t); s.dataset.in = inp.k; s.dataset.type = inp.t; row.append(s);
       rec.ins[inp.k] = s;
       const val = n.v && n.v[inp.k] !== undefined ? n.v[inp.k] : inp.v;
-      if (inp.t === 'float' && !isLinked(n.id, inp.k)) {
+      if (inp.nw && !isLinked(n.id, inp.k)) row.append(el('span', 'lbl dim', inp.label));   // alpha of Hydra nodes: socket only
+      else if (inp.t === 'float' && !isLinked(n.id, inp.k)) {
         const w = numWidget(inp.label, val, inp, v => setValue(n, inp.k, v));
         rec.nums[inp.k] = w;
         if (ctlList(graph).some(c => hasCtl(c, n.id, inp.k))) w.classList.add('is-ctl');
@@ -668,6 +669,57 @@
     addNode(kind, wx, wy);
     const n = graph.nodes[graph.nodes.length - 1];
     if (n && n.type === kind) (kind === 'video' ? setVideo : setImage)(n, f);
+  });
+
+  /* ── Hydra: live coding that becomes nodes (hydra.js parses, never runs, the code) ── */
+  const hyPop = $('#hydraPop'), hyArea = $('#hydraArea'), hyMsg = $('#hydraMsg');
+  const HY_HELP = 'Escribí en el lenguaje de Hydra (hydra.ojack.xyz) · Ctrl+Enter: convertir a nodos · cada número queda en un slider · () => … y [a, b, c] se animan · a.fft[0] = graves · src(o0) = feedback';
+  if (window.PudrusHydra) Object.keys(window.PudrusHydra.EXAMPLES).forEach(k => { const o = el('option'); o.value = k; o.textContent = k; $('#hydraEx').append(o); });
+  $('#hydraLive').checked = opts.hydraLive !== false;
+  function openHydra() {
+    if (!window.PudrusHydra) { toast('No se cargó el traductor de Hydra', true); return; }
+    hyArea.value = graph.hydra || opts.hydraLast || window.PudrusHydra.EXAMPLES['Rayas que respiran'];
+    hyMsg.textContent = HY_HELP; hyMsg.classList.remove('is-err');
+    closePops(); hyPop.hidden = false;
+    setTimeout(() => hyArea.focus(), 0);
+  }
+  function runHydra() {
+    const code = hyArea.value;
+    let r;
+    try { r = window.PudrusHydra.translate(code); }
+    catch (e) { hyMsg.textContent = (e.line ? `línea ${e.line}: ` : '') + (e.message || e); hyMsg.classList.add('is-err'); return; }
+    const shape = g => JSON.stringify([g.nodes.map(n => n.type), g.links.map(l => [l.a, l.ao, l.b, l.bi])]);
+    const same = !!graph.hydra && shape(graph) === shape(r.graph);
+    graph = { nodes: r.graph.nodes, links: r.graph.links, hydra: code };
+    opts.hydraLast = code; saveOpts();
+    selected.clear(); rebuild();
+    const err = recompile();
+    if (err) { hyMsg.textContent = 'No compiló el shader: ' + String(err).split('\n')[0]; hyMsg.classList.add('is-err'); return; }
+    if (!same) frameAll();
+    save(); remember();
+    if ($('#hydraLive').checked) goLive();
+    hyMsg.classList.remove('is-err');
+    hyMsg.textContent = `✓ ${r.graph.nodes.length} nodos${same ? ' · mismos nodos, valores nuevos' : ''}${$('#hydraLive').checked ? ' · al aire' : ' · Enter (fuera del código) lo manda al aire'}` + (r.warnings.length ? '\n⚠ ' + r.warnings.join('\n⚠ ') : '');
+  }
+  $('#hydraRun').addEventListener('click', runHydra);
+  $('#hydraClose').addEventListener('click', () => { hyPop.hidden = true; });
+  $('#hydraLive').addEventListener('change', e => { opts.hydraLive = e.target.checked; saveOpts(); });
+  $('#hydraEx').addEventListener('change', e => {
+    const t = window.PudrusHydra.EXAMPLES[e.target.value];
+    if (t && (hyArea.value.trim() === '' || confirm('¿Reemplazar el código por el ejemplo?'))) { hyArea.value = t; runHydra(); }
+    e.target.value = '';
+  });
+  $('#pmHydra').addEventListener('click', openHydra);
+  hyArea.addEventListener('keydown', e => {
+    e.stopPropagation();
+    if (e.key === 'Enter' && (e.ctrlKey || e.metaKey || e.shiftKey)) { e.preventDefault(); runHydra(); }
+    else if (e.key === 'Escape') { hyPop.hidden = true; }
+    else if (e.key === 'Tab') {
+      e.preventDefault();
+      const a = hyArea.selectionStart, b = hyArea.selectionEnd;
+      hyArea.value = hyArea.value.slice(0, a) + '  ' + hyArea.value.slice(b);
+      hyArea.selectionStart = hyArea.selectionEnd = a + 2;
+    }
   });
 
   /* ── Code editor for the GLSL node ──────────────────────── */

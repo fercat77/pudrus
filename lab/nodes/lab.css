@@ -3,7 +3,7 @@
   --bg: #0a0a10; --panel: #15151d; --panel2: #1d1d27; --line: #2b2b38;
   --text: #d8dbe6; --dim: #8a8ea3; --accent: #66ff33;
   --t-float: #a1a1a1; --t-vec2: #6363c7; --t-color: #c7c729;
-  --c-in: #b33b3b; --c-gen: #3b6ab3; --c-uv: #6a3bb3; --c-col: #b3973b; --c-fx: #3b9a8a; --c-code: #c0457a; --c-out: #4a4a55;
+  --c-in: #b33b3b; --c-gen: #3b6ab3; --c-uv: #6a3bb3; --c-col: #b3973b; --c-fx: #3b9a8a; --c-code: #c0457a; --c-hydra: #d0603a; --c-out: #4a4a55;
   --font: 'IBM Plex Mono', ui-monospace, Menlo, Consolas, monospace;
 }
 * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -347,13 +347,13 @@ span.ctl-kind { display: inline-flex; align-items: center; color: #ff3fa4; }
 .code-head b { color: var(--c-code); filter: brightness(1.4); }
 .code-head .sp { flex: 1; }
 .code-head select { height: 24px; background: var(--panel2); border: 1px solid var(--line); border-radius: 4px; }
-#codeArea { flex: 1; resize: none; background: #0b0b11; color: #e6e6f0; border: 1px solid var(--line); border-radius: 6px; padding: 10px; font: 12.5px/1.55 var(--font); tab-size: 2; white-space: pre; overflow: auto; }
+#codeArea, #hydraArea { flex: 1; resize: none; background: #0b0b11; color: #e6e6f0; border: 1px solid var(--line); border-radius: 6px; padding: 10px; font: 12.5px/1.55 var(--font); tab-size: 2; white-space: pre; overflow: auto; }
 .code-err { min-height: 18px; max-height: 110px; overflow: auto; margin: 0; color: var(--accent); font: 11.5px/1.45 var(--font); white-space: pre-wrap; }
 .code-err.is-err { color: #ffb3c0; }
 .code-help { color: var(--dim); font-size: 11px; line-height: 1.5; }
 .code-help b { color: var(--text); font-weight: 600; }
 .nd-code { border-style: solid !important; border-color: var(--c-code) !important; }
-#codeArea { scrollbar-width: thin; scrollbar-color: #3a3a48 transparent; }
+#codeArea, #hydraArea { scrollbar-width: thin; scrollbar-color: #3a3a48 transparent; }
 
 /* ── Export panel ── */
 .lab-export { width: 480px; max-width: calc(100vw - 16px); max-height: calc(100vh - 64px); overflow: auto; }

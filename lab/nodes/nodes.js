@@ -564,6 +564,128 @@ vec3 n${id}_march(vec2 uv, float size, float twist, float speed, float sp, out v
       outputs: [],
       glsl: () => '' },
   };
+  /* ── Hydra-style nodes ──────────────────────────────────
+     One node per function of the Hydra live-coding language (hydra.ojack.xyz), written from its
+     documented behaviour so `osc(10).kaleid(4).modulate(noise(3)).out()` can become a patch
+     (see hydra.js). Hydra works in screen coordinates 0–1 (st), so the nodes convert from / to NODRUS
+     coordinates (p, centred, aspect corrected). Colours travel as Color + Alfa. */
+  const HYDRA_LIB = `
+vec2 h_st(vec2 p){ return p / vec2(u_res.x / u_res.y, 1.0) + 0.5; }
+vec2 h_p(vec2 st){ return (st - 0.5) * vec2(u_res.x / u_res.y, 1.0); }
+float h_luma(vec3 c){ return dot(c, vec3(0.299, 0.587, 0.114)); }
+float h_hash3(vec3 p){ return fract(sin(dot(p, vec3(127.1, 311.7, 74.7))) * 43758.5453); }
+float h_noise3(vec3 x){
+  vec3 i = floor(x), f = fract(x); f = f * f * (3.0 - 2.0 * f);
+  return mix(mix(mix(h_hash3(i), h_hash3(i + vec3(1.0, 0.0, 0.0)), f.x), mix(h_hash3(i + vec3(0.0, 1.0, 0.0)), h_hash3(i + vec3(1.0, 1.0, 0.0)), f.x), f.y),
+             mix(mix(h_hash3(i + vec3(0.0, 0.0, 1.0)), h_hash3(i + vec3(1.0, 0.0, 1.0)), f.x), mix(h_hash3(i + vec3(0.0, 1.0, 1.0)), h_hash3(i + vec3(1.0, 1.0, 1.0)), f.x), f.y), f.z) * 2.0 - 1.0;
+}
+mat2 h_rot(float a){ return mat2(cos(a), -sin(a), sin(a), cos(a)); }
+`;
+  const HO = [['c', 'color', 'Color'], ['a', 'float', 'Alfa']];
+  const HA = (k, label) => ({ k, t: 'float', label, v: 1, min: 0, max: 1, nw: true });
+  // body(I) uses st (0–1) and writes vec4 res / st / c (a + b for blends, m for modulators)
+  const hSrc = (title, ins, body, extra) => ({ title, cat: 'Hydra', lib: HYDRA_LIB, inputs: [UV, ...ins], outputs: HO, ...extra,
+    glsl: (I, O, P, id) => `vec4 _h${id} = vec4(0.0); { vec2 st = h_st(${I.uv}); vec4 res = vec4(0.0, 0.0, 0.0, 1.0); ${body(I)} _h${id} = res; } vec3 ${O.c} = _h${id}.rgb; float ${O.a} = _h${id}.a;` });
+  const hCoord = (title, ins, body) => ({ title, cat: 'Hydra', lib: HYDRA_LIB, inputs: [UV, ...ins], outputs: [['uv', 'vec2', 'Coordenadas']],
+    glsl: (I, O, P, id) => `vec2 _h${id} = h_st(${I.uv}); { vec2 st = _h${id}; ${body(I)} _h${id} = st; } vec2 ${O.uv} = h_p(_h${id});` });
+  const hColor = (title, ins, body) => ({ title, cat: 'Hydra', lib: HYDRA_LIB, inputs: [COL('c', 'Color', '#808080'), HA('a', 'Alfa'), ...ins], outputs: HO,
+    glsl: (I, O, P, id) => `vec4 _h${id} = vec4(${I.c}, ${I.a}); { vec4 c = _h${id}; ${body(I)} _h${id} = c; } vec3 ${O.c} = _h${id}.rgb; float ${O.a} = _h${id}.a;` });
+  const hBlend = (title, ins, body) => ({ title, cat: 'Hydra', lib: HYDRA_LIB, inputs: [COL('c', 'A', '#000000'), HA('a', 'Alfa A'), COL('c2', 'B', '#ffffff'), HA('a2', 'Alfa B'), ...ins], outputs: HO,
+    glsl: (I, O, P, id) => `vec4 _h${id} = vec4(${I.c}, ${I.a}); { vec4 c = _h${id}; vec4 b = vec4(${I.c2}, ${I.a2}); ${body(I)} _h${id} = c; } vec3 ${O.c} = _h${id}.rgb; float ${O.a} = _h${id}.a;` });
+  const hMod = (title, ins, body) => ({ title, cat: 'Hydra', lib: HYDRA_LIB, inputs: [UV, COL('m', 'Modulador', '#808080'), ...ins], outputs: [['uv', 'vec2', 'Coordenadas']],
+    glsl: (I, O, P, id) => `vec2 _h${id} = h_st(${I.uv}); { vec2 st = _h${id}; vec4 m = vec4(${I.m}, 1.0); ${body(I)} _h${id} = st; } vec2 ${O.uv} = h_p(_h${id});` });
+  const KAL = (n, rad) => `vec2 s = st - 0.5; float rr = length(s); float an = atan(s.y, s.x); float pi = 6.2831853 / max(${n}, 1e-3); an = mod(an, pi); an = abs(an - pi / 2.0); st = ${rad} * vec2(cos(an), sin(an));`;
+  const HYDRA_NODES = {
+    // sources
+    h_osc: hSrc('osc', [F('freq', 'Frecuencia', 60, 0, 200), F('sync', 'Velocidad', 0.1, -2, 2), F('offset', 'Desfase', 0, 0, 6.283)],
+      I => `float f = ${I.freq}; float fo = ${I.offset} / (abs(f) < 1e-4 ? 1e-4 : f); float t = u_time * ${I.sync}; res = vec4(sin((st.x - fo + t) * f) * 0.5 + 0.5, sin((st.x + t) * f) * 0.5 + 0.5, sin((st.x + fo + t) * f) * 0.5 + 0.5, 1.0);`),
+    h_noise: hSrc('noise', [F('scale', 'Escala', 10, 0, 100), F('offset', 'Velocidad', 0.1, -2, 2)],
+      I => `res = vec4(vec3(h_noise3(vec3(st * ${I.scale}, u_time * ${I.offset}))), 1.0);`),
+    h_voronoi: hSrc('voronoi', [F('scale', 'Escala', 5, 0, 100), F('speed', 'Velocidad', 0.3, -3, 3), F('blend', 'Mezcla', 0.3, 0, 1)],
+      I => `vec2 q = st * ${I.scale}; vec2 g = floor(q), fq = fract(q); float md = 10.0; vec2 mp = vec2(0.0);
+      for (int y = -1; y <= 1; y++) for (int x = -1; x <= 1; x++) { vec2 o = vec2(float(x), float(y)); vec2 pt = 0.5 + 0.5 * sin(u_time * ${I.speed} + 6.2831 * hash22(g + o)); float d = length(o + pt - fq); if (d < md) { md = d; mp = pt; } }
+      float v = md * (1.0 - ${I.blend} * md) + dot(mp, vec2(0.3, 0.6)) * ${I.blend}; res = vec4(vec3(v), 1.0);`),
+    h_shape: hSrc('shape', [F('sides', 'Lados', 3, 1, 30), F('radius', 'Radio', 0.3, 0, 2), F('smooth', 'Suavidad', 0.01, 0, 1)],
+      I => `vec2 q = st * 2.0 - 1.0; float an = atan(q.x, q.y) + 3.14159265; float sl = 6.2831853 / max(${I.sides}, 1e-3); float d = cos(floor(0.5 + an / sl) * sl - an) * length(q); float v = 1.0 - smoothstep(${I.radius}, ${I.radius} + ${I.smooth} + 1e-7, d); res = vec4(vec3(v), v);`),
+    h_gradient: hSrc('gradient', [F('speed', 'Velocidad', 0, -3, 3)], I => `res = vec4(st, sin(u_time * ${I.speed}), 1.0);`),
+    h_solid: hSrc('solid', [F('r', 'Rojo', 0, 0, 1), F('g', 'Verde', 0, 0, 1), F('b', 'Azul', 0, 0, 1), F('alpha', 'Alfa', 1, 0, 1)], I => `res = vec4(${I.r}, ${I.g}, ${I.b}, ${I.alpha});`),
+    h_src: hSrc('src (feedback)', [], () => `res = texture2D(u_prev, st);`, { usesFeedback: true }),
+    // coordinates
+    h_rotate: hCoord('rotate', [F('angle', 'Ángulo', 10, -10, 10), F('speed', 'Velocidad', 0, -3, 3)],
+      I => `st = h_rot(${I.angle} + ${I.speed} * u_time) * (st - 0.5) + 0.5;`),
+    h_scale: hCoord('scale', [F('amount', 'Cantidad', 1.5, 0, 10), F('xm', 'Mult. X', 1, 0, 10), F('ym', 'Mult. Y', 1, 0, 10), F('ox', 'Centro X', 0.5, 0, 1), F('oy', 'Centro Y', 0.5, 0, 1)],
+      I => `vec2 o = vec2(${I.ox}, ${I.oy}); st = (st - o) / vec2(${I.amount} * ${I.xm}, ${I.amount} * ${I.ym}) + o;`),
+    h_pixelate: hCoord('pixelate', [F('px', 'Píxeles X', 20, 1, 500), F('py', 'Píxeles Y', 20, 1, 500)],
+      I => `vec2 xy = vec2(${I.px}, ${I.py}); st = (floor(st * xy) + 0.5) / xy;`),
+    h_repeat: hCoord('repeat', [F('rx', 'Repetir X', 3, 1, 30), F('ry', 'Repetir Y', 3, 1, 30), F('ox', 'Desfase X', 0, 0, 1), F('oy', 'Desfase Y', 0, 0, 1)],
+      I => `vec2 s = st * vec2(${I.rx}, ${I.ry}); s.x += step(1.0, mod(s.y, 2.0)) * ${I.ox}; s.y += step(1.0, mod(s.x, 2.0)) * ${I.oy}; st = fract(s);`),
+    h_repeatX: hCoord('repeatX', [F('reps', 'Repeticiones', 3, 1, 30), F('offset', 'Desfase', 0, 0, 1)],
+      I => `vec2 s = st * vec2(${I.reps}, 1.0); s.y += step(1.0, mod(s.x, 2.0)) * ${I.offset}; st = fract(s);`),
+    h_repeatY: hCoord('repeatY', [F('reps', 'Repeticiones', 3, 1, 30), F('offset', 'Desfase', 0, 0, 1)],
+      I => `vec2 s = st * vec2(1.0, ${I.reps}); s.x += step(1.0, mod(s.y, 2.0)) * ${I.offset}; st = fract(s);`),
+    h_kaleid: hCoord('kaleid', [F('n', 'Lados', 4, 1, 30)], I => KAL(I.n, 'rr')),
+    h_scroll: hCoord('scroll', [F('sx', 'Mover X', 0.5, -1, 1), F('sy', 'Mover Y', 0.5, -1, 1), F('vx', 'Velocidad X', 0, -2, 2), F('vy', 'Velocidad Y', 0, -2, 2)],
+      I => `st += vec2(${I.sx} + u_time * ${I.vx}, ${I.sy} + u_time * ${I.vy}); st = fract(st);`),
+    h_scrollX: hCoord('scrollX', [F('sx', 'Mover', 0.5, -1, 1), F('speed', 'Velocidad', 0, -2, 2)], I => `st.x += ${I.sx} + u_time * ${I.speed}; st = fract(st);`),
+    h_scrollY: hCoord('scrollY', [F('sy', 'Mover', 0.5, -1, 1), F('speed', 'Velocidad', 0, -2, 2)], I => `st.y += ${I.sy} + u_time * ${I.speed}; st = fract(st);`),
+    // colour
+    h_posterize: hColor('posterize', [F('bins', 'Niveles', 3, 1, 32), F('gamma', 'Gamma', 0.6, 0.01, 4)],
+      I => `vec4 q = pow(max(c, 0.0), vec4(${I.gamma})); q = floor(q * ${I.bins}) / ${I.bins}; c = pow(max(q, 0.0), vec4(1.0 / ${I.gamma}));`),
+    h_shift: hColor('shift', [F('r', 'Rojo', 0.5, -1, 1), F('g', 'Verde', 0, -1, 1), F('b', 'Azul', 0, -1, 1)], I => `c.rgb = fract(c.rgb + vec3(${I.r}, ${I.g}, ${I.b}));`),
+    h_invert: hColor('invert', [F('amount', 'Cantidad', 1, 0, 1)], I => `c.rgb = (1.0 - c.rgb) * ${I.amount} + c.rgb * (1.0 - ${I.amount});`),
+    h_contrast: hColor('contrast', [F('amount', 'Contraste', 1.6, 0, 10)], I => `c.rgb = (c.rgb - 0.5) * ${I.amount} + 0.5;`),
+    h_brightness: hColor('brightness', [F('amount', 'Brillo', 0.4, -1, 1)], I => `c.rgb += ${I.amount};`),
+    h_luma: hColor('luma', [F('th', 'Umbral', 0.5, 0, 1), F('tol', 'Tolerancia', 0.1, 0, 1)],
+      I => `float l = smoothstep(${I.th} - (${I.tol} + 1e-7), ${I.th} + (${I.tol} + 1e-7), h_luma(c.rgb)); c = vec4(c.rgb * l, l);`),
+    h_thresh: hColor('thresh', [F('th', 'Umbral', 0.5, 0, 1), F('tol', 'Tolerancia', 0.04, 0, 1)],
+      I => `c.rgb = vec3(smoothstep(${I.th} - (${I.tol} + 1e-7), ${I.th} + (${I.tol} + 1e-7), h_luma(c.rgb)));`),
+    h_color: hColor('color', [F('r', 'Rojo', 1, -2, 2), F('g', 'Verde', 1, -2, 2), F('b', 'Azul', 1, -2, 2)],
+      I => `vec3 k = vec3(${I.r}, ${I.g}, ${I.b}); c.rgb = mix((1.0 - c.rgb) * abs(k), k * c.rgb, step(0.0, k));`),
+    h_saturate: hColor('saturate', [F('amount', 'Saturación', 2, 0, 10)], I => `c.rgb = mix(vec3(h_luma(c.rgb)), c.rgb, ${I.amount});`),
+    h_hue: hColor('hue', [F('amount', 'Tono', 0.4, -1, 1)], I => `vec3 h = rgb2hsv(clamp(c.rgb, 0.0, 1.0)); h.x = fract(h.x + ${I.amount}); c.rgb = hsv2rgb(h);`),
+    h_colorama: hColor('colorama', [F('amount', 'Cantidad', 0.005, -1, 1)], I => `vec3 h = rgb2hsv(clamp(c.rgb, 0.0, 1.0)); h = fract(h + ${I.amount}); c.rgb = hsv2rgb(h);`),
+    h_r: hColor('r', [F('scale', 'Escala', 1, -5, 5), F('offset', 'Desfase', 0, -1, 1)], I => `c = vec4(c.r * ${I.scale} + ${I.offset});`),
+    h_g: hColor('g', [F('scale', 'Escala', 1, -5, 5), F('offset', 'Desfase', 0, -1, 1)], I => `c = vec4(c.g * ${I.scale} + ${I.offset});`),
+    h_b: hColor('b', [F('scale', 'Escala', 1, -5, 5), F('offset', 'Desfase', 0, -1, 1)], I => `c = vec4(c.b * ${I.scale} + ${I.offset});`),
+    // blend two chains
+    h_add: hBlend('add', [F('amount', 'Cantidad', 1, -2, 2)], I => `c = (c + b) * ${I.amount} + c * (1.0 - ${I.amount});`),
+    h_sub: hBlend('sub', [F('amount', 'Cantidad', 1, -2, 2)], I => `c = (c - b) * ${I.amount} + c * (1.0 - ${I.amount});`),
+    h_mult: hBlend('mult', [F('amount', 'Cantidad', 1, -2, 2)], I => `c = c * (1.0 - ${I.amount}) + (c * b) * ${I.amount};`),
+    h_blend: hBlend('blend', [F('amount', 'Mezcla', 0.5, 0, 1)], I => `c = c * (1.0 - ${I.amount}) + b * ${I.amount};`),
+    h_diff: hBlend('diff', [], () => `c = vec4(abs(c.rgb - b.rgb), max(c.a, b.a));`),
+    h_layer: hBlend('layer', [], () => `c = vec4(mix(c.rgb, b.rgb, b.a), clamp(c.a + b.a, 0.0, 1.0));`),
+    h_mask: hBlend('mask', [], () => `float l = h_luma(b.rgb); c = vec4(c.rgb * l, l * c.a);`),
+    // modulate: another chain bends the coordinates
+    h_modulate: hMod('modulate', [F('amount', 'Cantidad', 0.1, -2, 2)], I => `st += m.xy * ${I.amount};`),
+    h_modulateScale: hMod('modulateScale', [F('mult', 'Multiplicar', 1, -10, 10), F('offset', 'Base', 1, -10, 10)],
+      I => `st = (st - 0.5) / vec2(${I.offset} + ${I.mult} * m.r, ${I.offset} + ${I.mult} * m.g) + 0.5;`),
+    h_modulateRotate: hMod('modulateRotate', [F('mult', 'Multiplicar', 1, -10, 10), F('offset', 'Base', 0, -10, 10)],
+      I => `st = h_rot(${I.offset} + m.x * ${I.mult}) * (st - 0.5) + 0.5;`),
+    h_modulatePixelate: hMod('modulatePixelate', [F('mult', 'Multiplicar', 10, 0, 500), F('offset', 'Base', 3, 0, 500)],
+      I => `vec2 xy = vec2(${I.offset} + m.x * ${I.mult}, ${I.offset} + m.y * ${I.mult}); st = (floor(st * xy) + 0.5) / xy;`),
+    h_modulateKaleid: hMod('modulateKaleid', [F('n', 'Lados', 4, 1, 30)], I => KAL(I.n, '(m.r + rr)')),
+    h_modulateScrollX: hMod('modulateScrollX', [F('sx', 'Mover', 0.5, -1, 1), F('speed', 'Velocidad', 0, -2, 2)], I => `st.x += m.r * ${I.sx} + u_time * ${I.speed}; st = fract(st);`),
+    h_modulateScrollY: hMod('modulateScrollY', [F('sy', 'Mover', 0.5, -1, 1), F('speed', 'Velocidad', 0, -2, 2)], I => `st.y += m.r * ${I.sy} + u_time * ${I.speed}; st = fract(st);`),
+    h_modulateRepeat: hMod('modulateRepeat', [F('rx', 'Repetir X', 3, 1, 30), F('ry', 'Repetir Y', 3, 1, 30), F('ox', 'Desfase X', 0.5, 0, 1), F('oy', 'Desfase Y', 0.5, 0, 1)],
+      I => `vec2 s = st * vec2(${I.rx}, ${I.ry}); s.x += step(1.0, mod(s.y, 2.0)) + m.r * ${I.ox}; s.y += step(1.0, mod(s.x, 2.0)) + m.g * ${I.oy}; st = fract(s);`),
+    h_modulateRepeatX: hMod('modulateRepeatX', [F('reps', 'Repeticiones', 3, 1, 30), F('offset', 'Desfase', 0.5, 0, 1)],
+      I => `vec2 s = st * vec2(${I.reps}, 1.0); s.y += step(1.0, mod(s.x, 2.0)) + m.r * ${I.offset}; st = fract(s);`),
+    h_modulateRepeatY: hMod('modulateRepeatY', [F('reps', 'Repeticiones', 3, 1, 30), F('offset', 'Desfase', 0.5, 0, 1)],
+      I => `vec2 s = st * vec2(1.0, ${I.reps}); s.x += step(1.0, mod(s.y, 2.0)) + m.r * ${I.offset}; st = fract(s);`),
+    h_modulateHue: hMod('modulateHue', [F('amount', 'Cantidad', 1, -10, 10)], I => `st += vec2(m.g - m.r, m.b - m.g) * ${I.amount} / u_res;`),
+  };
+  Object.assign(NODES, HYDRA_NODES);
+
+  // «Expresión»: a GLSL formula that gives a number every frame (Hydra's () => … and [a, b, c] become one)
+  // t = seconds, beat = beats of the tempo, level / bass / mid / high = audio. Whole numbers are fine (2 → 2.0).
+  const exprGLSL = s => String(s || '0').replace(/[;{}]/g, ' ').replace(/(?<![\w.]|[eE][-+])(\d+)(?![\w.])/g, '$1.0');
+  NODES.expr = { title: 'Expresión', cat: 'Entrada',
+    inputs: [],
+    params: [{ k: 'expr', kind: 'text', label: 'sin(t) * 0.5 + 0.5   (t, beat, bass, mid, high, level)', v: 'sin(t) * 0.5 + 0.5' }],
+    outputs: [['v', 'float', 'Valor']],
+    glsl: (I, O, P) => `float ${O.v} = 0.0; { float t = u_time; float beat = u_beat; float level = u_audio.x; float bass = u_audio.y; float mid = u_audio.z; float high = u_audio.w; ${O.v} = float(${exprGLSL(P.expr)}); }`,
+    usesAudio: true };
+
   /* Speeds, spins and drifts get a cubic slider: fine near 0 (super slow is easy), fast at the ends.
      slider position p 0–1 ↔ value; ranges that cross 0 keep 0 in the middle. */
   const SPEEDY_K = /speed|spin|drift|veloc/i, SPEEDY_L = /veloc|girar|deriva|ciclar/i;
@@ -588,7 +710,7 @@ vec3 n${id}_march(vec2 uv, float size, float twist, float speed, float sp, out v
     return q >= 0 ? hi * Math.pow(q, inp.curve) : lo * Math.pow(-q, inp.curve);
   }
   const inputsOf = n => { const d = NODES[n.type]; return d && d.dynInputs ? [...(d.inputs || []), ...d.dynInputs(n).map(markCurve)] : ((d && d.inputs) || []); };
-  const CATEGORIES = ['Entrada', 'Generar', 'Coordenadas', 'Color', 'Efectos', 'Código', 'Salida'];
+  const CATEGORIES = ['Entrada', 'Generar', 'Coordenadas', 'Color', 'Efectos', 'Código', 'Hydra', 'Salida'];
 
   /* ── Graph helpers ──────────────────────────────────────── */
   function defaultsFor(type) {
@@ -615,6 +737,7 @@ vec3 n${id}_march(vec2 uv, float size, float twist, float speed, float sp, out v
     const uniforms = [];      // { name, type: 'float' | 'color', node, key }
     const textures = [];      // { node, kind, p, texName, aspName }  (Image / Text nodes)
     const globals = [];       // functions written by Code / 3D nodes (outside main)
+    const libs = new Set();   // helpers shared by a node family (Hydra), written once
     const lines = [];
     const done = new Set(), visiting = new Set();
     let usesAudio = false, usesFeedback = false;
@@ -647,6 +770,7 @@ vec3 n${id}_march(vec2 uv, float size, float twist, float speed, float sp, out v
       (def.outputs || []).forEach(o => { O[o[0]] = outVar(node.id, o[0]); });
       const P = { ...defaultsFor(node.type).p, ...(node.p || {}) };
       if (def.globals) globals.push(`// ${def.title} #${node.id}\n` + def.globals(P, node.id));
+      if (def.lib) libs.add(def.lib);
       lines.push(`  // ${def.title} #${node.id}\n  ` + def.glsl(I, O, P, node.id));
       if (def.tex) textures.push({ node: node.id, kind: node.type, p: P, texName: `u_${node.id}_tex`, aspName: `u_${node.id}_aspect` });
       if (def.usesAudio) usesAudio = true;
@@ -698,6 +822,7 @@ uniform vec4 u_audio;
 uniform sampler2D u_prev;
 ${decl}
 ${LIB}
+${[...libs].join('\n')}
 ${globals.length ? TOY_HEAD + '\n' + globals.join('\n') : ''}
 void main(){
   vec2 p = (v_uv - 0.5) * vec2(u_res.x / u_res.y, 1.0);
