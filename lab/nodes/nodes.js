@@ -563,7 +563,30 @@ vec3 n${id}_march(vec2 uv, float size, float twist, float speed, float sp, out v
       outputs: [],
       glsl: () => '' },
   };
-  const inputsOf = n => { const d = NODES[n.type]; return d && d.dynInputs ? [...(d.inputs || []), ...d.dynInputs(n)] : ((d && d.inputs) || []); };
+  /* Speeds, spins and drifts get a cubic slider: fine near 0 (super slow is easy), fast at the ends.
+     slider position p 0–1 ↔ value; ranges that cross 0 keep 0 in the middle. */
+  const SPEEDY_K = /speed|spin|drift|veloc/i, SPEEDY_L = /veloc|girar|deriva|ciclar/i;
+  function markCurve(inp) {
+    if (inp && inp.t === 'float' && inp.curve === undefined && (SPEEDY_K.test(inp.k) || SPEEDY_L.test(inp.label || '')) && inp.min <= 0 && inp.max > 0 && (inp.min === 0 || Math.abs(inp.min + inp.max) < 1e-9)) inp.curve = 3;
+    return inp;
+  }
+  Object.values(NODES).forEach(d => (d.inputs || []).forEach(markCurve));
+  function sliderPos(inp, v) {
+    const lo = inp.min ?? 0, hi = inp.max ?? 1;
+    if (!inp.curve) return Math.min(1, Math.max(0, (v - lo) / ((hi - lo) || 1)));
+    const e = 1 / inp.curve;
+    if (lo >= 0) return Math.pow(Math.min(1, Math.max(0, v / hi)), e);
+    return v >= 0 ? 0.5 + 0.5 * Math.pow(Math.min(1, v / hi), e) : 0.5 - 0.5 * Math.pow(Math.min(1, v / lo), e);
+  }
+  function sliderVal(inp, p) {
+    const lo = inp.min ?? 0, hi = inp.max ?? 1;
+    p = Math.min(1, Math.max(0, p));
+    if (!inp.curve) return lo + p * (hi - lo);
+    if (lo >= 0) return hi * Math.pow(p, inp.curve);
+    const q = (p - 0.5) * 2;
+    return q >= 0 ? hi * Math.pow(q, inp.curve) : lo * Math.pow(-q, inp.curve);
+  }
+  const inputsOf = n => { const d = NODES[n.type]; return d && d.dynInputs ? [...(d.inputs || []), ...d.dynInputs(n).map(markCurve)] : ((d && d.inputs) || []); };
   const CATEGORIES = ['Entrada', 'Generar', 'Coordenadas', 'Color', 'Efectos', 'Código', 'Salida'];
 
   /* ── Graph helpers ──────────────────────────────────────── */
@@ -1542,5 +1565,5 @@ void main(){ gl_FragColor = vec4(mix(texture2D(u_a, v_uv).rgb, texture2D(u_b, v_
     };
   }
 
-  window.PudrusNodes = { fpsLimiter, FPS_CAPS, createTransition, createFxChain, ES3, inputsOf, glslParams, clock, assets, media, drawOverlay, textPicture, createMixer, GLSL_TEMPLATES, NODES, CATEGORIES, compile, createRenderer, createThumbs, createStage, structureKey, uniformValues, defaultsFor, dependsOn, uniformName, postValues, applyValues };
+  window.PudrusNodes = { sliderPos, sliderVal, fpsLimiter, FPS_CAPS, createTransition, createFxChain, ES3, inputsOf, glslParams, clock, assets, media, drawOverlay, textPicture, createMixer, GLSL_TEMPLATES, NODES, CATEGORIES, compile, createRenderer, createThumbs, createStage, structureKey, uniformValues, defaultsFor, dependsOn, uniformName, postValues, applyValues };
 })();

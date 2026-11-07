@@ -111,9 +111,10 @@
     const w = el('div', 'num'), fill = el('div', 'num-fill'), l = el('span', '', label), v = el('span', 'num-v');
     w.append(fill, l, v);
     const min = spec.min ?? 0, max = spec.max ?? 1, step = spec.step || 0;
-    const fmt = x => (step >= 1 ? String(Math.round(x)) : Math.abs(x) >= 100 ? x.toFixed(0) : x.toFixed(2));
+    const fmt = x => (step >= 1 ? String(Math.round(x)) : Math.abs(x) >= 100 ? x.toFixed(0) : x !== 0 && Math.abs(x) < 0.1 ? x.toFixed(3) : x.toFixed(2));
     let cur = value;
-    const paint = () => { v.textContent = fmt(cur); fill.style.width = Math.max(0, Math.min(1, (cur - min) / (max - min || 1))) * 100 + '%'; };
+    const paint = () => { v.textContent = fmt(cur); fill.style.width = N.sliderPos({ min, max, curve: spec.curve }, cur) * 100 + '%'; };
+    if (spec.curve) w.title = 'Arrastrá: fino cerca de 0, rápido en los extremos · Shift: más fino · clic: escribir el valor';
     const set = x => { cur = step ? Math.round(x / step) * step : x; paint(); onChange(cur); };
     paint();
     w.setDisplay = x => { cur = x; paint(); };
@@ -129,8 +130,10 @@
       const dx = e.clientX - drag.x;
       if (Math.abs(dx) > 3) drag.moved = true;
       if (!drag.moved) return;
+      const k = dx / 220 * (e.shiftKey ? 0.1 : 1);
+      if (spec.curve) { const sp = { min, max, curve: spec.curve }; set(N.sliderVal(sp, N.sliderPos(sp, drag.v) + k)); return; }
       const range = (max - min) || 1;
-      set(Math.min(max, Math.max(min, drag.v + dx / 220 * range * (e.shiftKey ? 0.1 : 1))));
+      set(Math.min(max, Math.max(min, drag.v + k * range)));
     });
     w.addEventListener('pointerup', () => {
       if (drag && !drag.moved) {   // click: type a value (any value, also beyond the slider range)
@@ -1264,14 +1267,18 @@
     return { f, lo: Number.isFinite(lo) ? lo : f.inp.min, hi: Number.isFinite(hi) ? hi : f.inp.max };
   }
   const curVal = f => (f.n.v && f.n.v[f.inp.k] !== undefined ? f.n.v[f.inp.k] : f.inp.v);
+  const curvedRange = r => r.f.inp.curve && r.lo === r.f.inp.min && r.hi === r.f.inp.max;
   function ctlNorm(c, y) {
     const r = ctlRange(c, y);
-    return r ? Math.min(1, Math.max(0, (curVal(r.f) - r.lo) / ((r.hi - r.lo) || 1))) : 0;
+    if (!r) return 0;
+    if (curvedRange(r)) return N.sliderPos(r.f.inp, curVal(r.f));
+    return Math.min(1, Math.max(0, (curVal(r.f) - r.lo) / ((r.hi - r.lo) || 1)));
   }
   function ctlSet(c, norm, y) {
     const r = ctlRange(c, y);
     if (!r) return;
-    setAbs(y ? c.id2 : c.id, y ? c.k2 : c.k, y ? c.t2 : c.t, r.lo + Math.min(1, Math.max(0, +norm || 0)) * (r.hi - r.lo));
+    const p = Math.min(1, Math.max(0, +norm || 0));
+    setAbs(y ? c.id2 : c.id, y ? c.k2 : c.k, y ? c.t2 : c.t, curvedRange(r) ? N.sliderVal(r.f.inp, p) : r.lo + p * (r.hi - r.lo));
   }
   // momentary buttons: jump to a value while pressed, back on release
   const pressed = new Map();

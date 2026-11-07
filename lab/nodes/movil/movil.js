@@ -258,14 +258,18 @@
       const min = inp.min ?? 0, max = inp.max ?? 1, step = inp.step || (max - min) / 400;
       row.classList.add('m-sl');
       const lab = el('span', 'm-sl-l', inp.label), vb = el('b', 'm-sl-v');
-      const r = el('input'); r.type = 'range'; r.min = min; r.max = max; r.step = step; r.value = val;
-      const fmt = x => (step >= 1 ? String(Math.round(x)) : Math.abs(x) >= 100 ? (+x).toFixed(0) : (+x).toFixed(2));
-      const paint = x => { vb.textContent = fmt(x); r.style.setProperty('--p', ((x - min) / ((max - min) || 1) * 100) + '%'); };
+      // speeds: the slider moves along a curve (fine near 0), so it works in positions 0–1
+      const cv = !!inp.curve, pos = x => N.sliderPos(inp, x), valAt = p => N.sliderVal(inp, p);
+      const r = el('input'); r.type = 'range';
+      if (cv) { r.min = 0; r.max = 1; r.step = 0.0005; r.value = pos(val); } else { r.min = min; r.max = max; r.step = step; r.value = val; }
+      const fmt = x => (step >= 1 && !cv ? String(Math.round(x)) : Math.abs(x) >= 100 ? (+x).toFixed(0) : x !== 0 && Math.abs(x) < 0.1 ? (+x).toFixed(3) : (+x).toFixed(2));
+      const paint = x => { vb.textContent = fmt(x); r.style.setProperty('--p', (cv ? pos(x) : (x - min) / ((max - min) || 1)) * 100 + '%'); };
       paint(val);
-      const apply = x => { r.value = x; paint(x); setVal(n, inp.k, x, true); };
-      r.addEventListener('input', () => apply(+r.value));
-      touchSlider(row, r, () => +r.value, apply, inp.v);
-      sliders.set(n.id + '.' + inp.k, { sync: x => { r.value = x; paint(x); } });
+      const apply = x => { r.value = cv ? pos(x) : x; paint(x); setVal(n, inp.k, x, true); };
+      r.addEventListener('input', () => apply(cv ? valAt(+r.value) : +r.value));
+      if (cv) touchSlider(row, r, () => +r.value, p => apply(valAt(p)), pos(inp.v));
+      else touchSlider(row, r, () => +r.value, apply, inp.v);
+      sliders.set(n.id + '.' + inp.k, { sync: x => { r.value = cv ? pos(x) : x; paint(x); } });
       row.append(lab, r, vb); body.append(row);
     }
     if (body.children.length) c.append(body);
