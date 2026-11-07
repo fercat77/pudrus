@@ -15,7 +15,7 @@
 
   const G = '#66ff33', CY = '#00d4ff', MG = '#ff3fa4', BG = '#050508';
   const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
-  const DUR = { home: 2100, juegos: 2300, nodrus: 2500 }[mode] || 2100;
+  const DUR = { home: 2100, juegos: 2300, nodrus: 2500, syndrus: 2400 }[mode] || 2100;
 
   // overlay
   const ov = document.createElement('div');
@@ -55,7 +55,7 @@
 
   /* ── calm version ── */
   if (reduce) {
-    const name = { home: 'PUDRUS', juegos: 'JUEGOS', nodrus: 'NODRUS' }[mode];
+    const name = { home: 'PUDRUS', juegos: 'JUEGOS', nodrus: 'NODRUS', syndrus: 'SYNDRUS' }[mode];
     g.fillStyle = BG; g.fillRect(0, 0, W, H);
     g.font = FONT(Math.min(W / 7, 90)); g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillStyle = G;
     g.fillText(name, W / 2, H / 2);
@@ -272,7 +272,52 @@
     }
   }
 
-  const frame = ({ home, juegos, nodrus }[mode] || home)();
+  /* ── SYNDRUS · «Espectro»: an LED spectrum analyser dances, then its dots settle into the name and pulse at 128 BPM ── */
+  function syndrus() {
+    const cell = Math.max(7, Math.min(12, Math.round(W / 110))), cols = Math.floor(W * 0.9 / cell), rows = Math.floor(H * 0.5 / cell);
+    const left = (W - cols * cell) / 2, top = (H - rows * cell) / 2;
+    let mask = null, th = null;
+    function makeMask() {
+      const m = document.createElement('canvas'); m.width = cols; m.height = rows; const mg = m.getContext('2d');
+      const fs = Math.min(cols / 4.6, rows * 0.8);
+      mg.fillStyle = '#fff'; mg.font = FONT(fs); mg.textAlign = 'center'; mg.textBaseline = 'middle'; mg.fillText('SYNDRUS', cols / 2, rows / 2 + 1);
+      const d = mg.getImageData(0, 0, cols, rows).data; mask = new Uint8Array(cols * rows); th = new Float32Array(cols * rows);
+      for (let i = 0; i < mask.length; i++) { mask[i] = d[i * 4] > 120 ? 1 : 0; th[i] = Math.random(); }
+    }
+    const lvl = new Float32Array(cols), peak = new Float32Array(cols), seedc = Array.from({ length: cols }, () => Math.random() * 10);
+    const fall = new Float32Array(cols * rows), vel = Array.from({ length: cols * rows }, () => 0.6 + Math.random());
+    return t => {
+      if (!mask) makeMask();
+      g.fillStyle = BG; g.fillRect(0, 0, W, H);
+      const form = seg(t, 750, 1300), beat = t > 1300 ? Math.pow(1 - (((t - 1300) / 469) % 1), 3) : 0, drop = seg(t, 1950, 2400);
+      const words = [];
+      for (let x = 0; x < cols; x++) {
+        const f = x / cols, target = (0.3 + 0.65 * (1 - f * 0.7) * (0.5 + 0.5 * Math.sin(t * 0.008 + seedc[x])) + 0.2 * Math.random()) * (1 - form);
+        lvl[x] += (target - lvl[x]) * 0.3; peak[x] = Math.max(peak[x] - 0.01, lvl[x]);
+        for (let y = 0; y < rows; y++) {
+          const i = y * cols + x, up = (rows - 1 - y) / rows, cx = left + (x + 0.5) * cell, cy = top + (y + 0.5) * cell;
+          const word = mask[i] && form > th[i] * 0.85;
+          if (word) { if (drop > 0) fall[i] += vel[i] * drop * 1.6; words.push([cx, cy + fall[i] * cell]); continue; }
+          let a = 0.06, col = '#1d3a28';
+          if (up < lvl[x]) { a = 0.75 * (1 - form); col = up > 0.72 ? MG : up > 0.48 ? '#ffd23f' : G; }
+          else if (Math.abs(up - peak[x]) < 0.6 / rows && form < 1) { a = 0.9 * (1 - form); col = CY; }
+          g.globalAlpha = Math.max(0.06, a) * (1 - drop); g.fillStyle = col;
+          g.fillRect(cx - cell * 0.3, cy - cell * 0.3, cell * 0.6, cell * 0.6);
+        }
+      }
+      // the name: a soft glow pass, then crisp dots (white on the beat)
+      g.globalAlpha = (0.18 + beat * 0.2) * (1 - drop); g.fillStyle = G;
+      for (const [x, y] of words) g.fillRect(x - cell * 0.75, y - cell * 0.75, cell * 1.5, cell * 1.5);
+      g.globalAlpha = 1 - drop * 0.7; g.fillStyle = beat > 0.6 ? '#ffffff' : G;
+      const r = cell * (0.34 + beat * 0.06);
+      for (const [x, y] of words) g.fillRect(x - r, y - r, r * 2, r * 2);
+      g.globalAlpha = 1;
+      const ta = seg(t, 1350, 1600) * (1 - drop);
+      if (ta > 0) { g.globalAlpha = ta; g.fillStyle = CY; g.font = FONT(Math.max(11, cell * 1.1)); g.textAlign = 'center'; g.textBaseline = 'top'; g.fillText('128 BPM · SÍNTESIS EN EL NAVEGADOR', W / 2, top + rows * cell + cell * 1.5); g.globalAlpha = 1; }
+    };
+  }
+
+  const frame = ({ home, juegos, nodrus, syndrus }[mode] || home)();
   (function loop(now) {
     const t = now - t0;
     try { frame(t); } catch (e) { window.__splashError = String(e && e.stack || e); end(); return; }

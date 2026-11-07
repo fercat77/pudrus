@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="robots" content="noindex, nofollow">
+  <meta name="theme-color" content="#050508">
+  <title>SYNDRUS — PUDRUS Lab</title>
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600;700&display=swap">
+  <link rel="stylesheet" href="syndrus.css?v=1">
+</head>
+<body>
+<script src="/js/splash.js?v=2" data-splash="syndrus"></script>
+
+<header class="sy-bar">
+  <a class="sy-logo" href="/" title="PUDRUS.XYZ">SYN<span>DRUS</span></a>
+  <button class="sy-btn sy-play" id="play" title="Play / stop (Espacio)">▶</button>
+  <div class="sy-group" id="tempo"></div>
+  <div class="sy-group">
+    <select id="root" title="Tónica"></select>
+    <select id="scale" title="Escala"></select>
+  </div>
+  <div class="sy-group">
+    <select id="preset" title="Empezar desde un preset"><option value="">Presets…</option></select>
+    <button class="sy-btn" id="rndTechno" title="Un patrón techno al azar">🎲 Techno</button>
+    <button class="sy-btn" id="rndAmbient" title="Un paisaje ambient al azar">🎲 Ambient</button>
+  </div>
+  <span class="sy-sp"></span>
+  <div class="sy-group">
+    <select id="bars" title="Largo del loop"><option value="1">1 compás</option><option value="2">2 compases</option><option value="4" selected>4 compases</option><option value="8">8 compases</option></select>
+    <button class="sy-btn" id="export" title="Bajar el loop en WAV (sin cortes al repetirse)">⤓ WAV</button>
+    <button class="sy-btn" id="share" title="Copiar un enlace con este patrón">🔗</button>
+    <button class="sy-btn" id="help" title="Ayuda y atajos">?</button>
+  </div>
+</header>
+
+<main class="sy-main">
+  <section class="sy-panel sy-drums">
+    <div class="sy-head"><b>RITMO</b><span>clic: paso · Shift/clic derecho: acento · clic en el nombre: escuchar</span><span class="sy-sp"></span><button class="sy-mini" id="clearDrums">Vaciar</button></div>
+    <div class="sy-grid" id="drumGrid"></div>
+    <div class="sy-params" id="drumParams"></div>
+  </section>
+
+  <section class="sy-panel sy-synth">
+    <div class="sy-head"><b>SYNTH</b><span>clic: nota · arrastrá arriba/abajo: altura · A acento · S slide · teclado: A W S E D F T G Y H U J K (Z/X octava)</span><span class="sy-sp"></span><button class="sy-mini" id="mSynth">M</button><button class="sy-mini" id="clearSynth">Vaciar</button></div>
+    <div class="sy-seq" id="synthSeq"></div>
+    <div class="sy-params" id="synthParams"></div>
+    <div class="sy-keys" id="keys"></div>
+  </section>
+
+  <section class="sy-panel sy-rings">
+    <div class="sy-head"><b>EUCLÍDEO</b><span>golpes repartidos en un círculo de pasos: polirritmos y melodías generativas</span></div>
+    <div class="sy-ringrow" id="rings"></div>
+  </section>
+
+  <aside class="sy-panel sy-master">
+    <div class="sy-head"><b>MASTER</b><span class="sy-sp"></span><span id="cpu" class="sy-dim"></span></div>
+    <canvas id="scope" width="600" height="220"></canvas>
+    <div class="sy-params" id="fxParams"></div>
+  </aside>
+</main>
+
+<div class="sy-help" id="helpPop" hidden>
+  <b>SYNDRUS</b> · todo el sonido se genera en el navegador (sin samples).<br><br>
+  <b>Espacio</b> play/stop · <b>A…K</b> tocar el synth · <b>Z/X</b> octava · <b>Shift</b> + clic en un paso: acento.<br>
+  Los parámetros se arrastran a los costados (Shift = fino, doble clic = valor inicial, rueda = ajuste).<br>
+  <b>⤓ WAV</b> exporta el loop listo para repetirse sin cortes, con la cola del delay y la reverb doblada al principio.<br>
+  <b>🔗</b> copia un enlace con todo el patrón. Todo se guarda solo en este navegador.
+  <div style="margin-top:10px"><button class="sy-btn" id="helpClose">Cerrar</button></div>
+</div>
+<div class="sy-toast" id="toast"></div>
+
+<script src="engine.js?v=1"></script>
+<script src="app.js?v=1"></script>
+</body>
+</html>
