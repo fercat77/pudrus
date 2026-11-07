@@ -762,7 +762,7 @@ void main(){
         e = { img: null, v: 0 };
         mem.set(id, e);
         run('readonly', st => st.get(id)).then(b => {
-          if (!b) { setTimeout(() => { if (mem.get(id) === e) mem.delete(id); }, 1000); return; }   // not stored yet: retry
+          if (!b) { if (api.onMiss) api.onMiss(id); setTimeout(() => { if (mem.get(id) === e) mem.delete(id); }, 1000); return; }   // not stored yet: retry (a remote screen asks the editor for it)
           const im = new Image();
           im.onload = () => { e.img = im; e.v++; };
           im.src = URL.createObjectURL(b);
@@ -770,11 +770,12 @@ void main(){
       }
       return e;
     }
-    return {
-      image,
+    const api = {
+      image, onMiss: null,
       get: id => run('readonly', st => st.get(id)),
       put: (id, blob) => run('readwrite', st => st.put(blob, id)).then(() => { mem.delete(id); }),
     };
+    return api;
   })();
 
   const FONTS = {

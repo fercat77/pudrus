@@ -14,6 +14,9 @@ let bridge = null, bridgeError = '';
 try { bridge = require('@napolab/texture-bridge-core'); } catch (e) { bridgeError = String(e.message || e); }
 
 const TEST = process.argv.includes('--nodrus-test');
+// remote screens get the video over the local wifi: offer the real LAN address, not an mDNS «.local» name
+// (TVs and some tablets can't resolve those)
+app.commandLine.appendSwitch('disable-features', 'WebRtcHideLocalIpsWithMdns');
 const WEB = app.isPackaged ? path.join(process.resourcesPath, 'web') : path.join(__dirname, '..');
 const VENDOR = {
   '/vendor/qrcode.js': path.join(__dirname, 'node_modules', 'qrcode-generator', 'qrcode.js'),
@@ -71,10 +74,12 @@ const phones = new Map();
 let phoneSeq = 0, mainWin = null;
 function startPhones() {
   const wss = new WebSocketServer({ server, path: '/ws', maxPayload: 64 * 1024 });
-  wss.on('connection', ws => {
+  wss.on('connection', (ws, req) => {
     const id = ++phoneSeq;
     phones.set(id, ws);
-    toEditor('remote', { type: 'open', id });
+    // phones (controller) and remote screens (output.html?ws on a TV / tablet / another computer)
+    const role = /[?&]screen(=|&|$)/.test(req.url || '') ? 'screen' : 'phone';
+    toEditor('remote', { type: 'open', id, role });
     ws.on('message', data => {
       let msg; try { msg = JSON.parse(String(data)); } catch (e) { return; }
       if (msg && typeof msg === 'object') toEditor('remote', { type: 'msg', id, msg });

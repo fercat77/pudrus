@@ -63,6 +63,27 @@ module.exports = async function run({ app, mainWin, base, port, startSpout, stop
     out.phoneXf = await js('__nodesEditor.stage.x');
     ws.close();
 
+    // 3b) a remote screen (TV / tablet) over the wifi: first it draws by itself, then it receives the video
+    {
+      const { BrowserWindow } = require('electron');
+      const mk = () => new BrowserWindow({ show: false, width: 640, height: 360, webPreferences: { backgroundThrottling: false } });
+      const w0 = mk(); await w0.loadURL(base + '/favicon.svg');   // same origin: store the mode first, like a device that chose before
+      await w0.webContents.executeJavaScript('localStorage.setItem("pudrus_screen_mode", "render")'); w0.destroy();
+      const sw = mk(); await sw.loadURL(base + '/lab/nodes/output.html?ws');
+      const sjs = code => sw.webContents.executeJavaScript(code, true);
+      await wait(3000);
+      const pix = 'new Promise(r => requestAnimationFrame(() => { const c = document.querySelector("#surfaces canvas"); const x = document.createElement("canvas"); x.width = 32; x.height = 18; const g = x.getContext("2d"); g.drawImage(c, 0, 0, 32, 18); const d = g.getImageData(0, 0, 32, 18).data; let s = 0; for (let i = 0; i < d.length; i += 4) s += d[i] + d[i + 1] + d[i + 2]; r(Math.round(s / (d.length / 4) / 3)); }))';
+      out.screenRender = { stored: await sjs('localStorage.getItem("pudrus_screen_mode")'), btn: await sjs('document.getElementById("scrRender").className'), editorSees: await js(`[...__nodesEditor.remoteScreens.entries()].map(([k, s]) => k + ":" + s.name + ":" + s.mode)`), conn: await sjs('document.getElementById("scrConn").textContent'), avg: await sjs(pix) };
+      await sjs('document.getElementById("scrVideo").click()');
+      for (let i = 0; i < 20; i++) { await wait(500); if (await sjs('document.getElementById("vid").videoWidth')) break; }
+      out.screenVideo = { editorSees: await js('[...__nodesEditor.remoteScreens.values()].map(s => s.name + ":" + s.mode + ":" + (s.pc ? s.pc.connectionState : "-"))'), video: await sjs('({ w: document.getElementById("vid").videoWidth, h: document.getElementById("vid").videoHeight })'), avg: await sjs(pix), stat: await js('document.getElementById("status").textContent.includes("📺")') };
+      out.screenDiag = { editorFps: await js('document.querySelector(".st-fps") && document.querySelector(".st-fps").textContent'),
+        sent: await js('(async () => { const s = [...__nodesEditor.remoteScreens.values()][0]; if (!s || !s.pc) return null; const r = await s.pc.getStats(); let o = null; r.forEach(x => { if (x.type === "outbound-rtp") o = { bytes: x.bytesSent, frames: x.framesEncoded, lim: x.qualityLimitationReason }; }); return o; })()'),
+        recv: await sjs('({ rs: document.getElementById("vid").readyState, src: !!document.getElementById("vid").srcObject, paused: document.getElementById("vid").paused })') };
+      sw.destroy(); await wait(600);
+      out.screenGone = await js("__nodesEditor.remoteScreens.size");
+    }
+
     // 4) the phone page and libraries are served locally
     const get = p => new Promise(res => require('http').get(base + p, r => { let n = 0; r.on('data', c => { n += c.length; }); r.on('end', () => res({ status: r.statusCode, bytes: n })); }).on('error', e => res({ error: e.message })));
     out.served = { control: await get('/lab/nodes/control/?ws'), qrcode: await get('/vendor/qrcode.js'), mp4: await get('/vendor/mp4-muxer.js'), outside: await get('/../../desktop/main.js'), secret: await get('/desktop/main.js') };

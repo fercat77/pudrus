@@ -51,6 +51,21 @@
     .hint { position: fixed; left: 50%; bottom: 20px; z-index: 40; transform: translateX(-50%); padding: 8px 14px; border-radius: 8px;
             background: rgba(0,0,0,0.7); color: #ccc; transition: opacity .4s; white-space: nowrap; }
     body.idle .hint { opacity: 0; }
+    /* remote screen (TV, tablet, another computer) */
+    .scr { position: fixed; left: 50%; top: 50%; transform: translate(-50%, -50%); z-index: 50; width: min(640px, calc(100vw - 32px)); box-sizing: border-box;
+           padding: 18px; border-radius: 12px; background: rgba(15,15,22,0.95); border: 1px solid #333; text-align: center; line-height: 1.45; }
+    .scr[hidden] { display: none; }
+    .scr > b { font-size: 16px; color: #fff; }
+    .scr p { margin: 6px 0 12px; color: #ffd166; }
+    .scr p.ok { color: #66ff33; }
+    .scr-opts { display: flex; gap: 10px; flex-wrap: wrap; }
+    .scr-opts button { flex: 1 1 240px; text-align: left; padding: 12px; border-radius: 10px; border: 1px solid #333; background: #1d1d27; color: #ddd; font: inherit; cursor: pointer; }
+    .scr-opts button:hover, .scr-opts button:focus { border-color: #888; outline: none; }
+    .scr-opts button.on { border-color: #66ff33; }
+    .scr-opts b { display: block; font-size: 14px; color: #fff; margin-bottom: 4px; }
+    .scr-opts span { color: #999; }
+    .scr small { display: block; margin-top: 12px; color: #777; }
+    #vid { display: none; }
   </style>
 </head>
 <body>
@@ -86,8 +101,18 @@
   </div>
   <div class="tip" id="tip"></div>
 </div>
+<div class="scr" id="scr" hidden>
+  <b>📺 Pantalla remota de NODRUS</b>
+  <p id="scrConn">Conectando con el editor…</p>
+  <div class="scr-opts">
+    <button id="scrRender"><b>Dibujar en este aparato</b><span>Sin demora y con calidad perfecta. Usa la placa de video de este aparato: ideal para otra compu.</span></button>
+    <button id="scrVideo"><b>Video desde la compu</b><span>Se ve igual en cualquier aparato (TV, tablet, celular), con 0,1–0,2 s de demora y algo de compresión.</span></button>
+  </div>
+  <small>Elegir abre la pantalla completa · V: volver a este menú · M: ajustar superficies</small>
+</div>
+<video id="vid" muted playsinline autoplay></video>
 <div class="hint" id="hint">Doble clic: pantalla completa · M: ajustar (superficies y máscaras) · esperando al editor…</div>
-<script src="nodes.js?v=32"></script>
+<script src="nodes.js?v=34"></script>
 <script>
 (function () {
   // Shows what is ON AIR in the editor (not the preview), with the same cross-fades and overlay.
@@ -97,7 +122,117 @@
   // each mapping surface then shows a piece of it, warped into place
   const stage = N.createMixer($('src'));
   let time = 0, audio = [0, 0, 0, 0], playing = true, lastMsg = 0, fpsCap = 0;
-  const ch = new BroadcastChannel('pudrus-nodes');
+
+  /* ── Where the editor's messages come from: this browser (BroadcastChannel) or — as a remote
+     screen — the desktop app over the wifi (?ws) or the internet relay (?remote#room) ── */
+  const Q = new URLSearchParams(location.search);
+  const REMOTE = Q.has('ws') ? 'ws' : (Q.has('remote') && location.hash.length > 1 ? 'peer' : '');
+  const MODE_KEY = 'pudrus_screen_mode';
+  let screenMode = (() => { try { return localStorage.getItem(MODE_KEY) || ''; } catch (e) { return ''; } })();
+  const vid = $('vid');
+  let videoOn = false, pc = null, pcReady = Promise.resolve();
+  function setConn(txt, ok) {
+    const p = $('scrConn'); if (p) { p.textContent = txt; p.classList.toggle('ok', !!ok); }
+    $('hint').textContent = txt + ' · V: modo · doble clic: pantalla completa';
+  }
+  const deviceName = () => { const u = navigator.userAgent; return /Tizen|Web0S|SMART-TV|SmartTV|BRAVIA|AFT[A-Z]|CrKey|GoogleTV|Android TV/i.test(u) ? 'TV' : /iPad/.test(u) ? 'iPad' : /iPhone/.test(u) ? 'iPhone' : /Android/.test(u) ? (/Mobile/.test(u) ? 'Celular Android' : 'Tablet Android') : /Mac/.test(u) ? 'Mac' : /Windows/.test(u) ? 'PC' : /Linux|CrOS/.test(u) ? 'Compu' : 'Pantalla'; };
+  function useVideo(st) {
+    if (vid.srcObject !== st) vid.srcObject = st;
+    videoOn = !!st;
+    if (st) vid.play().catch(() => {});
+  }
+  function stopRtc() { if (pc) { try { pc.close(); } catch (e) { /* closed */ } pc = null; } useVideo(null); }
+  // WebRTC by hand (desktop app): the editor offers, this page answers
+  function onRtc(m) {
+    if (m.stop) { stopRtc(); return; }
+    if (m.sdp && m.sdp.type === 'offer') {
+      stopRtc();
+      const p = pc = new RTCPeerConnection({ iceServers: REMOTE === 'peer' ? [{ urls: 'stun:stun.l.google.com:19302' }] : [] });
+      p.ontrack = e => { if (pc === p) useVideo(e.streams[0] || new MediaStream([e.track])); };
+      p.onicecandidate = e => { if (e.candidate) ch.postMessage({ type: 'rtc', cand: e.candidate.toJSON() }); };
+      p.onconnectionstatechange = () => { if (pc === p && p.connectionState === 'failed') setConn('No se pudo recibir el video por el wifi: probá «Dibujar en este aparato»'); };
+      pcReady = p.setRemoteDescription(m.sdp).then(() => p.createAnswer()).then(a => p.setLocalDescription(a))
+        .then(() => ch.postMessage({ type: 'rtc', sdp: p.localDescription.toJSON() })).catch(() => {});
+    } else if (m.cand && pc) { const p = pc; pcReady = pcReady.then(() => p.addIceCandidate(m.cand)).catch(() => {}); }
+  }
+  // pictures (Image nodes, logos) live in the editor's browser: ask for the ones this device lacks
+  const asked = new Map();
+  if (REMOTE) N.assets.onMiss = id => { const t = asked.get(id); if (t && performance.now() - t < 8000) return; asked.set(id, performance.now()); ch.postMessage({ type: 'asset?', id }); };
+  function gotAsset(m) {
+    let data = m.data;
+    if (typeof data === 'string') { const bin = atob(data), u = new Uint8Array(bin.length); for (let i = 0; i < bin.length; i++) u[i] = bin.charCodeAt(i); data = u; }
+    if (!data) return;
+    N.assets.put(m.id, new Blob([data], { type: m.mime || 'image/png' })).catch(() => {});
+  }
+  function remoteLink() {
+    const link = { onmessage: null, postMessage: m => link.out(m), out: () => {} };
+    const deliver = m => {
+      if (!m || typeof m !== 'object') return;
+      if (m.type === 'rtc') onRtc(m);
+      else if (m.type === 'asset') gotAsset(m);
+      else if (m.type === 'screenmode') setScreenMode(m.mode, true);
+      else if (link.onmessage) link.onmessage({ data: m });
+    };
+    const up = () => { setConn('Conectado al editor', true); link.postMessage({ type: 'hello', screen: true, mode: screenMode || 'render', name: deviceName() }); };
+    const down = () => { setConn('Sin conexión con el editor · reintentando…'); stopRtc(); };
+    if (REMOTE === 'ws') {
+      let ws = null;
+      const connect = () => {
+        try { ws = new WebSocket(`ws://${location.host}/ws?screen`); } catch (e) { setTimeout(connect, 2000); return; }
+        ws.onopen = up;
+        ws.onmessage = e => { let m; try { m = JSON.parse(e.data); } catch (x) { return; } deliver(m); };
+        ws.onclose = () => { down(); setTimeout(connect, 2000); };
+        ws.onerror = () => {};
+      };
+      link.out = m => { if (ws && ws.readyState === 1) ws.send(JSON.stringify(m)); };
+      connect();
+    } else {
+      const room = decodeURIComponent(location.hash.slice(1));
+      let peer = null, conn = null, rt = 0;
+      const retry = ms => { clearTimeout(rt); rt = setTimeout(dial, ms); };
+      function dial() {
+        if (!peer || peer.destroyed) return;
+        if (peer.disconnected) { try { peer.reconnect(); } catch (e) { /* later */ } retry(2000); return; }
+        const c = conn = peer.connect(room, { metadata: { role: 'screen' }, reliable: true });
+        c.on('open', () => { if (conn === c) up(); });
+        c.on('data', m => { if (conn === c) deliver(m); });
+        c.on('close', () => { if (conn === c) { down(); retry(2000); } });
+        c.on('error', () => {});
+      }
+      const s = document.createElement('script');
+      s.src = 'https://cdn.jsdelivr.net/npm/peerjs@1.5.4/dist/peerjs.min.js';
+      s.onerror = () => setConn('No se pudo cargar la conexión (¿hay internet?)');
+      s.onload = () => {
+        peer = new window.Peer({ debug: 0 });
+        peer.on('open', () => retry(0));
+        peer.on('error', err => {
+          if (err.type === 'peer-unavailable') { setConn('Esperando al editor (abrilo en la compu) · reintentando…'); retry(3000); }
+          else if (err.type === 'network' || err.type === 'server-error' || err.type === 'socket-error') { setConn('Sin conexión con el servidor · reintentando…'); retry(4000); }
+        });
+        peer.on('call', call => { call.answer(); call.on('stream', st => useVideo(st)); call.on('close', () => useVideo(null)); });
+      };
+      document.head.append(s);
+      link.out = m => { if (conn && conn.open) try { conn.send(m); } catch (e) { /* closed */ } };
+    }
+    return link;
+  }
+  const ch = REMOTE ? remoteLink() : new BroadcastChannel('pudrus-nodes');
+  function setScreenMode(m, fromEditor) {
+    screenMode = m === 'video' ? 'video' : 'render';
+    try { localStorage.setItem(MODE_KEY, screenMode); } catch (e) { /* ignore */ }
+    $('scrRender').classList.toggle('on', screenMode === 'render'); $('scrVideo').classList.toggle('on', screenMode === 'video');
+    if (screenMode === 'render') stopRtc();
+    if (!fromEditor) ch.postMessage({ type: 'screenmode', mode: screenMode });
+  }
+  if (REMOTE) {
+    const scr = $('scr');
+    const pick = m => { setScreenMode(m); scr.hidden = true; if (!document.fullscreenElement) document.documentElement.requestFullscreen().catch(() => {}); };
+    $('scrRender').addEventListener('click', () => pick('render'));
+    $('scrVideo').addEventListener('click', () => pick('video'));
+    if (screenMode) setScreenMode(screenMode, true); else { scr.hidden = false; setTimeout(() => $('scrVideo').focus(), 50); }
+    addEventListener('keydown', e => { if (e.key.toLowerCase() === 'v' && !document.body.classList.contains('editing')) { scr.hidden = !scr.hidden; if (!scr.hidden) $(screenMode === 'render' ? 'scrRender' : 'scrVideo').focus(); } });
+    setConn('Conectando con el editor…');
+  }
 
   function size() { stage.resize(Math.min(2560, innerWidth * devicePixelRatio), Math.min(1440, innerHeight * devicePixelRatio)); }
   size();
@@ -118,7 +253,7 @@
       else if (m.type === 'play') playing = m.playing;
     } catch (err) { /* keep the last good shader */ }
   };
-  ch.postMessage({ type: 'hello' });
+  if (!REMOTE) ch.postMessage({ type: 'hello' });
 
   /* ── Mapping data (this browser, 0–1 screen units) ── */
   const STORE = 'pudrus_nodes_map_v1';
@@ -193,7 +328,8 @@
     ctx.restore();
   }
   function paintSurfaces() {
-    const src = stage.canvas, SW = src.width, SH = src.height;
+    const src = srcEl(), SW = src.videoWidth || src.width, SH = src.videoHeight || src.height;
+    if (!SW || !SH) return;
     map.surfaces.forEach((s, i) => {
       const e = surfEls[i]; if (!e) return;
       const [x, y, w, h] = s.crop;
@@ -202,12 +338,13 @@
     });
   }
 
+  const srcEl = () => (videoOn && vid.videoWidth ? vid : stage.canvas);
   let last = performance.now(), oFrames = 0, oT0 = performance.now();
   const oId = Math.random().toString(36).slice(2);
   setInterval(() => {
     const n = performance.now(), fps = oFrames / ((n - oT0) / 1000); oFrames = 0; oT0 = n;
-    const c = stage.canvas;
-    ch.postMessage({ type: 'ostat', id: oId, fps, w: c.width, h: c.height, sw: Math.round(screen.width * devicePixelRatio), sh: Math.round(screen.height * devicePixelRatio), full: !!document.fullscreenElement });
+    const c = srcEl();
+    ch.postMessage({ type: 'ostat', id: oId, fps, w: c.videoWidth || c.width, h: c.videoHeight || c.height, mode: REMOTE ? (videoOn ? 'video' : 'render') : '', sw: Math.round(screen.width * devicePixelRatio), sh: Math.round(screen.height * devicePixelRatio), full: !!document.fullscreenElement });
   }, 1000);
   const limit = N.fpsLimiter();
   function loop(now) {
@@ -217,7 +354,7 @@
     // keep running smoothly between editor messages (e.g. when the editor tab is in the background)
     if (playing && now - lastMsg > 100) time += Math.min(0.1, (now - last) / 1000);
     last = now;
-    stage.render(time, audio);
+    if (!videoOn || !vid.videoWidth) stage.render(time, audio);   // video mode: the editor already drew it
     paintSurfaces();
     if (editing && mode === 'corners') paintMini();
   }
@@ -397,7 +534,7 @@
   const mini = $('mini'), mctx = mini.getContext('2d');
   function paintMini() {
     const W = mini.width, H = mini.height;
-    mctx.drawImage(stage.canvas, 0, 0, W, H);
+    { const s = srcEl(); if (s.videoWidth || s.width) mctx.drawImage(s, 0, 0, W, H); }
     map.surfaces.forEach((sf, i) => {
       const [x, y, w, h] = sf.crop;
       mctx.lineWidth = i === sel ? 4 : 2;

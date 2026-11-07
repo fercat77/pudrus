@@ -964,9 +964,21 @@
 
   /* ── Output window (second screen / projector) ─────────── */
   const channel = 'BroadcastChannel' in window ? new BroadcastChannel('pudrus-nodes') : null;
-  function broadcast(msg) { if (channel) channel.postMessage(msg); }
+  const screens = new Map();   // remote screens (TV, tablet, another computer) → see «Remote screens»
+  function broadcast(msg) {
+    if (channel) channel.postMessage(msg);
+    if (screens.size) screens.forEach(s => { if (s.mode === 'render' && s.name) try { s.send(msg); } catch (e) { /* closed */ } });
+  }
+  // everything an output needs to show what is on air right now
+  function sendState(send) {
+    liveByDeck[deckSel] = liveGraph;
+    ['A', 'B'].forEach(d => send({ type: 'live', graph: liveByDeck[d], fade: 0, deck: d }));
+    send({ type: 'mix', x: stage.x, mode: stage.mode }); send({ type: 'play', playing });
+    send({ type: 'master', black: stage.black, strobe: stage.strobe, fade: 0 });
+    send({ type: 'overlay', ov }); send({ type: 'screenfx', fx: sfx }); send({ type: 'transition', t: opts.trans || null }); send({ type: 'fpscap', fps: opts.fpsCap || 0 });
+  }
   const outStats = new Map();   // output windows: id → { fps, w, h, at }
-  if (channel) channel.onmessage = e => { if (e.data && e.data.type === 'ostat') { outStats.set(e.data.id, { ...e.data, at: performance.now() }); return; } if (e.data && e.data.type === 'hello') { liveByDeck[deckSel] = liveGraph; ['A', 'B'].forEach(d => broadcast({ type: 'live', graph: liveByDeck[d], fade: 0, deck: d })); broadcastMix(); broadcast({ type: 'play', playing }); broadcastMaster(0); broadcast({ type: 'overlay', ov }); broadcast({ type: 'screenfx', fx: sfx }); broadcast({ type: 'transition', t: opts.trans || null }); broadcast({ type: 'fpscap', fps: opts.fpsCap || 0 }); } };
+  if (channel) channel.onmessage = e => { if (e.data && e.data.type === 'ostat') { outStats.set(e.data.id, { ...e.data, at: performance.now() }); return; } if (e.data && e.data.type === 'hello') sendState(m => channel.postMessage(m)); };
   $('#btnOut').addEventListener('click', () => {
     const w = window.open('output.html', 'pudrus-output', 'width=960,height=540');
     if (!w) toast('El navegador bloqueó la ventana: permití las ventanas emergentes', true);
@@ -1473,6 +1485,12 @@
       peer = { desktop: true }; peerReady = true;
       const byId = new Map();
       DESK.onRemote(m => {
+        if (m.role === 'screen' || screens.has('d' + m.id)) {
+          if (m.type === 'open') addScreen({ key: 'd' + m.id, desk: true, mode: 'render', name: '', send: msg => DESK.sendRemote(m.id, msg) });
+          else if (m.type === 'msg') { const s = screens.get('d' + m.id); if (s) screenMsg(s, m.msg); }
+          else if (m.type === 'close') removeScreen('d' + m.id);
+          return;
+        }
         if (m.type === 'open') {
           const c = { id: m.id, desk: true, send: msg => DESK.sendRemote(m.id, msg) };
           byId.set(m.id, c); conns.add(c); c.send(fullState());
@@ -1488,7 +1506,8 @@
     } catch (e) { remoteStatus('No se pudo cargar la conexión (¿hay internet?)'); return; }
     remoteStatus('Conectando…');
     peer = new window.Peer(opts.room, { debug: 0 });
-    peer.on('open', () => { peerReady = true; remoteStatus(conns.size ? `${conns.size} celular(es) conectado(s)` : 'Listo: escaneá el código con el celular'); });
+    peer.on('open', () => { peerReady = true; remoteStatus(conns.size ? `${conns.size} celular(es) conectado(s)` : 'Listo: escaneá el código'); });
+    setInterval(() => { if (peer && !peer.destroyed && peer.disconnected) try { peer.reconnect(); } catch (e) { /* next time */ } }, 6000);
     peer.on('disconnected', () => { peerReady = false; remoteStatus('Reconectando…'); setTimeout(() => { try { peer.reconnect(); } catch (e) { /* retry later */ } }, 1500); });
     peer.on('error', err => {
       if (err.type === 'unavailable-id') remoteStatus('Este control ya está abierto en otra pestaña');
@@ -1496,30 +1515,37 @@
       else if (err.type !== 'peer-unavailable') remoteStatus('Error de conexión: ' + err.type);
     });
     peer.on('connection', conn => {
+      if (conn.metadata && conn.metadata.role === 'screen') {
+        const key = 'p' + conn.peer;
+        conn.on('open', () => { removeScreen(key); addScreen({ key, peer: conn.peer, mode: 'render', name: '', send: msg => { if (conn.open) conn.send(msg); } }); });
+        conn.on('data', m => { const s = screens.get(key); if (s) screenMsg(s, m); });
+        const gone = () => removeScreen(key);
+        conn.on('close', gone); conn.on('error', gone);
+        return;
+      }
       conn.on('open', () => { conns.add(conn); remoteStatus(`${conns.size} celular(es) conectado(s)`); conn.send(fullState()); toast('📱 Celular conectado'); });
       conn.on('data', m => remoteMsg(m, conn));
       const gone = () => { if (conn.mcall) { try { conn.mcall.close(); } catch (e) { /* closed */ } conn.mcall = null; } if (conns.delete(conn)) { remoteStatus(conns.size ? `${conns.size} celular(es) conectado(s)` : 'Celular desconectado · esperando…'); } };
       conn.on('close', gone); conn.on('error', gone);
     });
   }
-  async function showQR() {
+  async function showQR(url = remoteUrl()) {
     const box = $('#rmQR');
-    if (box.dataset.done) return;
+    if (box.dataset.url === url) return;
     try {
       if (!window.qrcode) await loadScript(DESK ? '/vendor/qrcode.js' : 'https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.js');
-      const q = window.qrcode(0, 'M'); q.addData(remoteUrl()); q.make();
+      const q = window.qrcode(0, 'M'); q.addData(url); q.make();
       box.innerHTML = q.createSvgTag({ cellSize: 4, margin: 2, scalable: true });
-      box.dataset.done = '1';
+      box.dataset.url = url;
     } catch (e) { box.textContent = 'No se pudo generar el QR: abrí el enlace en el celular.'; }
   }
   $('#btnRemote').addEventListener('click', e => {
     e.stopPropagation();
     try {
       const r = e.currentTarget.getBoundingClientRect();
-      $('#rmUrl').href = $('#rmUrl').textContent = remoteUrl();
       paintControls();
       openPop($('#remotePop'), r.left - 160, r.bottom + 4);
-      showQR(); startRemote();
+      setRmTab(rmTab); startRemote();
     } catch (err) { console.error(err); toast('No se pudo abrir el control: ' + (err.message || err), true); }
   });
   $('#ctlSuggest').addEventListener('click', () => {
@@ -1528,7 +1554,9 @@
     save(); remember(); rebuild(); paintControls(); pushState();
     toast('Controles sugeridos: podés cambiarles nombre, rango o tipo');
   });
-  $('#rmCopy').addEventListener('click', () => { navigator.clipboard && navigator.clipboard.writeText(remoteUrl()).then(() => toast('Enlace copiado'), () => {}); });
+  $('#rmCopy').addEventListener('click', () => { navigator.clipboard && navigator.clipboard.writeText($('#rmUrl').href).then(() => toast('Enlace copiado'), () => {}); });
+  $('#rmTabPhone').addEventListener('click', () => setRmTab('phone'));
+  $('#rmTabScreen').addEventListener('click', () => { setRmTab('screen'); startRemote(); });
 
   function fullState() {
     return {
@@ -1581,6 +1609,137 @@
     else if (m.t === 'video' && conn) sendVideo(conn, !!m.on);
     else if (m.t === 'fade' && [0, 0.5, 1, 2, 4].includes(m.v)) { opts.fade = m.v; fadeSel.value = String(m.v); saveOpts(); pushState(); }
   }
+  /* ── Remote screens: output.html on a TV / tablet / another computer (wifi or internet).
+     «render»: the device draws the patch itself (messages like the output window) ·
+     «video»: this computer sends what is on air as live WebRTC video ── */
+  const screenUrl = () => (DESK && deskInfo ? deskInfo.lanUrl + '/lab/nodes/output.html?ws' : new URL('output.html?remote#' + opts.room, document.baseURI).href);
+  let castStream = null;
+  function getCast() {
+    const t = castStream && castStream.getVideoTracks()[0];
+    if (t && t.readyState === 'live') return castStream;
+    castStream = stage.canvas.captureStream();
+    const vt = castStream.getVideoTracks()[0]; if (vt && 'contentHint' in vt) vt.contentHint = 'motion';
+    return castStream;
+  }
+  function tuneSender(pc) {
+    if (!pc || !pc.getSenders) return;
+    pc.getSenders().forEach(snd => {
+      if (!snd.track || snd.track.kind !== 'video') return;
+      try {
+        const p = snd.getParameters();
+        if (!p.encodings || !p.encodings.length) p.encodings = [{}];
+        p.encodings[0].maxBitrate = 12e6; p.encodings[0].maxFramerate = opts.fpsCap || 60;
+        p.degradationPreference = 'balanced';
+        snd.setParameters(p).catch(() => {});
+      } catch (e) { /* not supported */ }
+    });
+  }
+  function stopScreenVideo(s) {
+    if (s.pc) { try { s.pc.close(); } catch (e) { /* closed */ } s.pc = null; s.send({ type: 'rtc', stop: true }); }
+  }
+  function startScreenVideo(s) {
+    stopScreenVideo(s);
+    if (!stage.canvas.captureStream || typeof RTCPeerConnection === 'undefined') { toast('Este navegador no puede mandar video', true); return; }
+    const stream = getCast();
+    // the offer / answer travel over the connection that is already open (app wifi or the relay's data channel),
+    // so the video does not need the relay server again; on the internet a public STUN finds the way
+    const pc = s.pc = new RTCPeerConnection({ iceServers: s.desk ? [] : [{ urls: 'stun:stun.l.google.com:19302' }] });
+    s.pcReady = Promise.resolve();
+    stream.getVideoTracks().forEach(t => pc.addTrack(t, stream));
+    pc.onicecandidate = e => { if (e.candidate) s.send({ type: 'rtc', cand: e.candidate.toJSON() }); };
+    pc.onconnectionstatechange = () => { if (s.pc !== pc) return; if (pc.connectionState === 'connected') tuneSender(pc); if (pc.connectionState === 'failed') toast(`📺 ${s.name}: no pasó el video · probá «dibuja ella misma»`, true); };
+    pc.createOffer().then(o => pc.setLocalDescription(o)).then(() => s.send({ type: 'rtc', sdp: pc.localDescription.toJSON() })).catch(e => toast('Video a la pantalla: ' + (e.message || e), true));
+  }
+  function screenRtc(s, m) {
+    const pc = s.pc; if (!pc) return;
+    if (m.sdp && m.sdp.type === 'answer') s.pcReady = pc.setRemoteDescription(m.sdp).catch(() => {});
+    else if (m.cand) s.pcReady = s.pcReady.then(() => pc.addIceCandidate(m.cand)).catch(() => {});
+  }
+  const usesMedia = g => !!g && (g.nodes || []).some(n => n.type === 'camera' || n.type === 'video');
+  function applyScreenMode(s) {
+    if (s.mode === 'video') startScreenVideo(s);
+    else {
+      stopScreenVideo(s); sendState(s.send);
+      if (usesMedia(liveByDeck.A) || usesMedia(liveByDeck.B)) toast(`📺 ${s.name} dibuja ella misma: la cámara y los videos no le llegan · pasala a «video»`);
+    }
+    paintScreens();
+  }
+  function addScreen(s) {
+    screens.set(s.key, s);
+    if (!opts.screenAuto) { opts.screenAuto = true; saveOpts(); }   // the web version reconnects them next time
+  }
+  function removeScreen(key) {
+    const s = screens.get(key); if (!s) return;
+    stopScreenVideo(s); screens.delete(key); outStats.delete('scr-' + key);
+    if (s.name) toast(`📺 ${s.name} desconectada`);
+    paintScreens();
+  }
+  function screenMsg(s, m) {
+    if (!m || typeof m !== 'object') return;
+    if (m.type === 'hello') {
+      const first = !s.name;
+      s.name = String(m.name || 'Pantalla').slice(0, 40); s.mode = m.mode === 'video' ? 'video' : 'render';
+      if (first) toast(`📺 ${s.name} conectada · ${s.mode === 'video' ? 'video desde esta compu' : 'dibuja ella misma'}`);
+      applyScreenMode(s);
+    } else if (m.type === 'screenmode') { s.mode = m.mode === 'video' ? 'video' : 'render'; applyScreenMode(s); }
+    else if (m.type === 'ostat') { outStats.set('scr-' + s.key, { ...m, at: performance.now(), remote: true, name: s.name }); refreshScreenStats(); }
+    else if (m.type === 'rtc') screenRtc(s, m);
+    else if (m.type === 'asset?' && typeof m.id === 'string') sendAsset(s, m.id);
+  }
+  // pictures of Image nodes / logos live in this browser: hand them to the screen that asks
+  async function sendAsset(s, id) {
+    try {
+      const b = await N.assets.get(id);
+      if (!b || b.size > 20e6) return;
+      const buf = await b.arrayBuffer();
+      let data = buf;
+      if (s.desk) { const u = new Uint8Array(buf); let bin = ''; for (let i = 0; i < u.length; i += 0x8000) bin += String.fromCharCode.apply(null, u.subarray(i, i + 0x8000)); data = btoa(bin); }
+      s.send({ type: 'asset', id, mime: b.type, data });
+    } catch (e) { /* not available */ }
+  }
+  function setScreenModeFromEditor(key, mode) {
+    const s = screens.get(key); if (!s) return;
+    s.mode = mode === 'video' ? 'video' : 'render'; s.send({ type: 'screenmode', mode: s.mode }); applyScreenMode(s);
+  }
+  function paintScreens() {
+    const box = $('#rmScreens'); if (!box) return;
+    box.innerHTML = '';
+    if (!screens.size) { box.append(el('p', 'dim', 'Ninguna pantalla conectada todavía.')); return; }
+    screens.forEach(s => {
+      const row = el('div', 'rm-scr');
+      const sel = el('select'); sel.title = 'Cómo se muestra en esa pantalla';
+      [['render', 'dibuja ella misma'], ['video', 'video de esta compu']].forEach(([v, t]) => { const o = el('option'); o.value = v; o.textContent = t; sel.append(o); });
+      sel.value = s.mode || 'render'; sel.addEventListener('change', () => setScreenModeFromEditor(s.key, sel.value));
+      const info = el('span', 'dim'); info.dataset.scr = s.key;
+      row.append(el('span', 'nm', `📺 ${s.name || 'Pantalla'}`), sel, info);
+      box.append(row);
+    });
+    refreshScreenStats();
+  }
+  function refreshScreenStats() {
+    document.querySelectorAll('#rmScreens [data-scr]').forEach(sp => {
+      const o = outStats.get('scr-' + sp.dataset.scr);
+      sp.textContent = o && performance.now() - o.at < 3000 ? `${Math.round(o.fps)} fps · ${o.w}×${o.h}` : '…';
+    });
+  }
+  let rmTab = 'phone';
+  const RM_PHONE_DESC = 'Escaneá el código (mismo wifi = menos demora). Hace falta internet sólo para conectar.';
+  function setRmTab(t) {
+    rmTab = t === 'screen' ? 'screen' : 'phone';
+    const scr = rmTab === 'screen';
+    $('#rmTabPhone').classList.toggle('is-on', !scr); $('#rmTabScreen').classList.toggle('is-on', scr);
+    $('#rmTitle').textContent = scr ? 'Pantalla por wifi (TV, tablet, otra compu)' : 'Celular como controlador';
+    $('#rmDesc').textContent = scr
+      ? (DESK ? 'Abrí esta dirección en el navegador del otro aparato, conectado al mismo wifi que esta compu. Ahí elegís si dibuja él mismo o recibe el video.'
+              : 'Abrí esta dirección en el navegador del otro aparato. Hace falta internet para conectar (el mismo wifi da menos demora). Ahí elegís si dibuja él mismo o recibe el video.')
+      : RM_PHONE_DESC;
+    const url = scr ? screenUrl() : remoteUrl();
+    $('#rmUrl').href = $('#rmUrl').textContent = url;
+    $('#rmScreenBox').hidden = !scr; $('#rmCtlHead').hidden = scr; $('#ctlList').hidden = scr;
+    showQR(url);
+    if (scr) paintScreens();
+  }
+
   // a small live video of what is on air, for the phone
   function sendVideo(conn, on) {
     if (conn.desk) return;   // live video to the phone needs the web version's relay
@@ -2034,7 +2193,7 @@
     out.push(item(`PRV ${vw}×${vh}`, 'Resolución del PREVIO', 'lo'));
     // output windows
     const outs = [...outStats.values()].filter(o => now - o.at < 3000);
-    if (outs.length) outs.forEach((o, i) => out.push(item(`🖵${outs.length > 1 ? i + 1 : ''} <b class="${fpsCls(o.fps)}">●</b> ${Math.round(o.fps)} fps ${o.w}×${o.h}`, `Ventana de salida: ${o.fps.toFixed(1)} fps · dibuja a ${o.w}×${o.h} · pantalla ${o.sw}×${o.sh}${o.full ? ' · pantalla completa' : ''}`)));
+    if (outs.length) outs.forEach((o, i) => out.push(item(`${o.remote ? '📺' : '🖵'}${outs.length > 1 ? i + 1 : ''} <b class="${fpsCls(o.fps)}">●</b> ${Math.round(o.fps)} fps ${o.w}×${o.h}`, `${o.remote ? `Pantalla remota «${o.name || ''}» · ${o.mode === 'video' ? 'recibe el video' : 'dibuja ella misma'}` : 'Ventana de salida'}: ${o.fps.toFixed(1)} fps · ${o.w}×${o.h} · pantalla ${o.sw}×${o.sh}${o.full ? ' · pantalla completa' : ''}`)));
     else out.push(item('🖵 sin salida', 'No hay ninguna ventana de salida abierta (⧉ Salida)', 'dim'));
     out.push('<span class="st-sep"></span>');
     // the show
@@ -2170,9 +2329,10 @@
   layoutPreview();
   requestAnimationFrame(() => { frameAll(); drawLinks(); });
   requestAnimationFrame(loop);
+  if (!DESK && opts.screenAuto) setTimeout(startRemote, 500);   // remote screens used before reconnect by themselves
   // fonts change node sizes -> redraw links once they are in
   if (document.fonts) document.fonts.ready.then(() => drawLinks());
-  window.__nodesEditor = { get graph() { return graph; }, get compiled() { return compiled; }, get liveGraph() { return liveGraph; }, stage, addNode, connect, removeNodes, undo, redo, goLive, modulate, set valueTarget(v) { valueTarget = v; }, setDirect, storeScene, fireScene, openScene, setThumbs, get scenes() { return scenes; }, get controls() { return ctlList(graph); }, setTransition, get transition() { return opts.trans; }, addScreenFilter, get sfx() { return sfx; }, setFxOn, paintFx,
+  window.__nodesEditor = { remoteScreens: screens, get peer() { return peer; }, get graph() { return graph; }, get compiled() { return compiled; }, get liveGraph() { return liveGraph; }, stage, addNode, connect, removeNodes, undo, redo, goLive, modulate, set valueTarget(v) { valueTarget = v; }, setDirect, storeScene, fireScene, openScene, setThumbs, get scenes() { return scenes; }, get controls() { return ctlList(graph); }, setTransition, get transition() { return opts.trans; }, addScreenFilter, get sfx() { return sfx; }, setFxOn, paintFx,
     loadGraph(g, msg) { graph = ensureControls(g); selected.clear(); rebuild(); recompile(); save(); remember(); frameAll(); if (msg) toast(msg); },
     selectedGlsl() { const ids = [...selected]; const n = ids.length === 1 && graph.nodes.find(m => m.id === ids[0]); return n && n.type === 'glsl' ? n : null; },
     setGlsl(n, code, src) { n.p = { ...(n.p || {}), code, src }; rebuild(); recompile(); save(); remember(); },

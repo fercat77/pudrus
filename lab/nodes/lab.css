@@ -228,6 +228,12 @@ button { cursor: pointer; }
 .lab-remote .dim, .lab-pop .dim { color: var(--dim); }
 .lab-remote a { color: var(--accent); word-break: break-all; font-size: 11px; }
 .rm-top { display: flex; gap: 12px; align-items: flex-start; }
+.rm-tabs { display: flex; gap: 6px; margin-bottom: 10px; }
+.rm-tabs .lab-mini.is-on { border-color: var(--accent); color: var(--accent); }
+.rm-scr { display: flex; align-items: center; gap: 8px; padding: 4px 0; border-bottom: 1px solid var(--line, #2a2a33); }
+.rm-scr .nm { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.rm-scr .dim { flex: none; font-size: 11px; min-width: 110px; text-align: right; }
+#ctlList[hidden], .ctl-head[hidden] { display: none; }
 .rm-qr { flex: none; width: 150px; height: 150px; background: #fff; border-radius: 6px; padding: 4px; color: #000; font-size: 11px; }
 .rm-qr svg { display: block; width: 100%; height: 100%; }
 .rm-status { color: #ffd166; }
