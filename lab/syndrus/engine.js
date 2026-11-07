@@ -157,7 +157,9 @@
       const input = ctx.createGain(), lv = ctx.createGain(), sd = ctx.createGain(), sr = ctx.createGain(), an = ctx.createAnalyser();
       sd.gain.value = 0; sr.gain.value = 0; an.fftSize = 256;
       input.connect(lv); lv.connect(deckIn); lv.connect(sd); lv.connect(sr); sd.connect(dIn); sr.connect(rIn); lv.connect(an);
-      return { input, lv, sd, sr, an, set(p) { lv.gain.value = p.level; sd.gain.value = p.delay; sr.gain.value = p.reverb; } };
+      // smooth changes (no zipper clicks while a fader moves)
+      const to = (prm, v) => { if (Math.abs(prm.value - v) > 1e-4) prm.setTargetAtTime(v, ctx.currentTime, 0.015); };
+      return { input, lv, sd, sr, an, set(p) { to(lv.gain, p.level); to(sd.gain, p.delay); to(sr.gain, p.reverb); } };
     }
     D.drumStrips = DRUMS.map(() => strip());
     D.synthStrip = strip();
@@ -174,12 +176,17 @@
     lfo.connect(lfoG); lfoG.connect(filt.frequency);
     [o1, o2, sub, lfo].forEach(o => o.start()); nz.start();
     let P = null, lastFreq = 110;
+    // settings → nodes. Only what CHANGED is touched: re-applying the cutoff on every mixer move
+    // used to drag the filter back to its base in the middle of a note (an audible sweep)
+    let lastCut = null;
     S.set = p => {
       P = p;
-      o1.type = p.wave1; o2.type = p.wave2; o2.detune.value = p.detune;
-      g1.gain.value = p.mix1; g2.gain.value = p.mix2; gs.gain.value = p.sub; gn.gain.value = p.noise * 0.5;
-      filt.Q.value = 0.5 + p.res * 22; lfo.frequency.value = p.lfoRate; lfoG.gain.value = p.lfoDepth * 2500;
-      filt.frequency.setTargetAtTime(p.cutoff, ctx.currentTime, 0.02);
+      const now = ctx.currentTime, glide = (prm, v) => { if (Math.abs(prm.value - v) > 1e-4) prm.setTargetAtTime(v, now, 0.015); };
+      if (o1.type !== p.wave1) o1.type = p.wave1;
+      if (o2.type !== p.wave2) o2.type = p.wave2;
+      glide(o2.detune, p.detune); glide(g1.gain, p.mix1); glide(g2.gain, p.mix2); glide(gs.gain, p.sub); glide(gn.gain, p.noise * 0.5);
+      glide(filt.Q, 0.5 + p.res * 22); glide(lfo.frequency, p.lfoRate); glide(lfoG.gain, p.lfoDepth * 2500);
+      if (lastCut !== p.cutoff) { lastCut = p.cutoff; filt.frequency.setTargetAtTime(p.cutoff, now, 0.02); }
     };
     function freqAt(t, f, glide) {
       for (const [o, k] of [[o1, 1], [o2, Math.pow(2, P.oct2)], [sub, 0.5]]) {
@@ -249,6 +256,13 @@
         return true;
       }
       return true;
+    };
+
+    // a short beep that goes ONLY to the cue: to check where the cue comes out
+    E.cueTest = t => {
+      [880, 1320].forEach((f, k) => { const o = ctx.createOscillator(), g = ctx.createGain(), s0 = t + k * 0.18; o.frequency.value = f;
+        g.gain.setValueAtTime(0.0001, s0); g.gain.exponentialRampToValueAtTime(0.4, s0 + 0.01); g.gain.exponentialRampToValueAtTime(0.0001, s0 + 0.16);
+        o.connect(g); g.connect(cueBus); o.start(s0); o.stop(s0 + 0.2); });
     };
 
     /* ── performance FX, all scheduled on the audio clock ── */

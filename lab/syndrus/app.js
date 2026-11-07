@@ -151,7 +151,7 @@
     return {
       v: 2, bpm: a.bpm || decks[0].bpm || 128, swing: a.swing || 0, lockBpm: !!a.lockBpm, lockKey: !!a.lockKey, edit: a.edit === 1 ? 1 : 0, decks,
       mix: { x: Number.isFinite(m.x) ? m.x : 0, drive: Number.isFinite(m.drive) ? m.drive : 0.12, volume: Number.isFinite(m.volume) ? m.volume : 0.8,
-        cueMode: 'off', cueBlend: Number.isFinite(m.cueBlend) ? m.cueBlend : 0.25, cueSink: '',
+        cueMode: ['off', 'split', 'device'].includes(m.cueMode) ? m.cueMode : 'off', cueBlend: Number.isFinite(m.cueBlend) ? m.cueBlend : 0.25, cueSink: typeof m.cueSink === 'string' ? m.cueSink : '',
         decks: [0, 1].map(i => ({ ...deckMix(), ...((m.decks || [])[i] || {}), mute: { ...deckMix().mute, ...(((m.decks || [])[i] || {}).mute || {}) } })) },
       bank: Array.from({ length: 8 }, (_, i) => ((a.bank || [])[i] ? { name: String(a.bank[i].name || 'Patrón').slice(0, 24), p: sane(a.bank[i].p) } : null)),
     };
@@ -584,12 +584,25 @@
     box.append(cols);
     // where the cue goes
     const cueRow = el('div', 'sy-cue'), cs = el('label', 'sy-sel'), sel = el('select');
-    [['off', 'apagado'], ['split', 'mitad y mitad (izq cue · der master)']].concat(outDevices.map(dv => ['dev:' + dv.deviceId, '🎧 ' + (dv.label || 'otra salida')])).forEach(([v, t]) => { const o = el('option', '', t); o.value = v; sel.append(o); });
-    sel.value = M.cueMode === 'device' ? 'dev:' + M.cueSink : M.cueMode;
-    sel.addEventListener('focus', listOutputs, { once: true });
-    sel.addEventListener('change', () => { const v = sel.value; if (v.startsWith('dev:')) { M.cueMode = 'device'; M.cueSink = v.slice(4); } else { M.cueMode = v; M.cueSink = ''; } applyCue(); save(); });
+    [['off', 'apagado'], ['split', 'auriculares: izq cue · der master']].concat(outDevices.map(dv => ['dev:' + dv.deviceId, '🎧 ' + (dv.label || 'salida')]), canSink() ? [['pick', '🎧 Elegir otra salida…']] : []).forEach(([v, t]) => { const o = el('option', '', t); o.value = v; sel.append(o); });
+    sel.value = M.cueMode === 'device' && outDevices.some(d => d.deviceId === M.cueSink) ? 'dev:' + M.cueSink : M.cueMode === 'device' ? 'off' : M.cueMode;
+    sel.addEventListener('change', async () => {
+      const v = sel.value;
+      if (v === 'pick') {
+        toast('El navegador va a pedir permiso de micrófono sólo para mostrar el nombre de tus salidas (no se usa)', 5000);
+        const ok = await listOutputs(true);
+        if (!ok) toast('No encontré otra salida de audio: conectá los auriculares o la placa y volvé a probar', 5000);
+        paintMixer(); return;
+      }
+      if (v.startsWith('dev:')) { M.cueMode = 'device'; M.cueSink = v.slice(4); } else { M.cueMode = v; M.cueSink = ''; }
+      await applyCue(); save();
+      const dv = outDevices.find(d => d.deviceId === M.cueSink);
+      toast(M.cueMode === 'device' ? '🎧 Cue → ' + (dv ? dv.label : 'otra salida') + ' · el master sigue por la salida normal' : M.cueMode === 'split' ? '🎧 Auriculares en la salida normal: izquierda = cue, derecha = master' : 'Cue apagado', 4000);
+    });
     cs.append(el('span', '', 'Cue'), sel);
-    cueRow.append(cs, param('Mezcla cue', M, 'cueBlend', 0, 1, { fmt: x => (x < 0.05 ? 'solo cue' : Math.round(x * 100) + '% master'), on: () => { applyCue(); save(); } }));
+    const test = el('button', 'sy-mini', '🔊 Probar'); test.title = 'Un pitido sólo por el cue: así sabés por dónde sale';
+    test.addEventListener('click', () => { ensureAudio(); if (app.mix.cueMode === 'off') { toast('Elegí primero dónde sale el cue'); return; } E.cueTest(ac.currentTime + 0.05); });
+    cueRow.append(cs, test, param('Mezcla cue', M, 'cueBlend', 0, 1, { fmt: x => (x < 0.05 ? 'solo cue' : Math.round(x * 100) + '% master'), on: () => { applyCue(); save(); } }));
     box.append(cueRow);
     const tools = el('div', 'sy-xfbtns');
     const cAB = el('button', 'sy-mini', 'A → B'), cBA = el('button', 'sy-mini', 'B → A'), sw = el('button', 'sy-mini', 'A ⇄ B'); sw.title = 'Intercambiar los decks';
@@ -622,13 +635,22 @@
   }
   // headphones on another output: Chrome / Edge can send audio to a chosen device
   let outDevices = [];
-  async function listOutputs() {
+  // Chrome only names the outputs (and gives their real ids) once the page has audio permission:
+  // «Elegir otra salida…» asks for it once (the microphone itself is not used) and lists the real devices
+  const canSink = () => !!(navigator.mediaDevices && HTMLMediaElement.prototype.setSinkId);
+  async function listOutputs(ask) {
+    if (!canSink()) return false;
     try {
-      if (!navigator.mediaDevices || !HTMLMediaElement.prototype.setSinkId) return;
-      const ds = await navigator.mediaDevices.enumerateDevices();
-      const outs = ds.filter(d => d.kind === 'audiooutput' && d.deviceId !== 'default' && d.deviceId !== 'communications');
-      if (outs.length !== outDevices.length) { outDevices = outs; paintMixer(); }
-    } catch (e) { /* not allowed */ }
+      let ds = await navigator.mediaDevices.enumerateDevices();
+      const named = () => ds.some(d => d.kind === 'audiooutput' && d.deviceId && d.label);
+      if (!named() && ask) {
+        const sm = await navigator.mediaDevices.getUserMedia({ audio: true });
+        sm.getTracks().forEach(t => t.stop());
+        ds = await navigator.mediaDevices.enumerateDevices();
+      }
+      outDevices = ds.filter(d => d.kind === 'audiooutput' && d.deviceId && d.deviceId !== 'default' && d.deviceId !== 'communications');
+      return outDevices.length > 0;
+    } catch (e) { return false; }
   }
   async function applyCue() {
     if (!E) return;
@@ -900,6 +922,7 @@
   $('#remoteBtn').addEventListener('click', () => { if ($('#remotePop').hidden) openRemote(); else $('#remotePop').hidden = true; });
   $('#rmClose').addEventListener('click', () => { $('#remotePop').hidden = true; });
   rmReady = true;
+  if (app.mix.cueMode === 'device') listOutputs(false).then(() => { paintMixer(); applyCue(); });   // restore a saved headphone output
   if (DESK) startRemote();   // desktop app: phones on the wifi can join at any moment
   $('#rmCopy').addEventListener('click', () => { navigator.clipboard && navigator.clipboard.writeText($('#rmUrl').href).then(() => toast('Enlace copiado'), () => {}); });
 
