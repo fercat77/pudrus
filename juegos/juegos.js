@@ -52,6 +52,8 @@
     eco: `<svg viewBox="0 0 64 64"><rect x="4" y="4" width="26" height="26" rx="6" fill="${C.g}"/><rect x="34" y="4" width="26" height="26" rx="6" fill="none" stroke="${C.c}" stroke-width="3"/><rect x="4" y="34" width="26" height="26" rx="6" fill="none" stroke="${C.m}" stroke-width="3"/><rect x="34" y="34" width="26" height="26" rx="6" fill="none" stroke="${C.y}" stroke-width="3"/></svg>`,
     interferencia: `<svg viewBox="0 0 150 64"><text x="4" y="44" font-family="monospace" font-weight="700" font-size="34" fill="${C.c}">ROJO</text><rect x="100" y="16" width="44" height="30" rx="5" fill="${C.c}"/></svg>`,
     garabato: `<svg viewBox="0 0 120 64"><path d="M8 50 C 20 0, 40 70, 56 26 S 90 6, 112 40" fill="none" stroke="${C.g}" stroke-width="4" stroke-linecap="round"/><path d="M60 30 q 8 -14 18 0 q -9 12 -18 0" fill="none" stroke="#fff" stroke-width="2.5"/><circle cx="70" cy="28" r="2.5" fill="#fff"/></svg>`,
+    recorrido: `<svg viewBox="0 0 120 64"><path d="M12 12h32v40h32V12h32v40" fill="none" stroke="${C.g}" stroke-width="9" stroke-linejoin="round" stroke-linecap="round" opacity="0.9"/><g font-family="monospace" font-weight="700" font-size="12" text-anchor="middle"><circle cx="12" cy="12" r="10" fill="#050508" stroke="${C.g}" stroke-width="2.5"/><text x="12" y="16" fill="${C.g}">1</text><circle cx="76" cy="52" r="10" fill="#050508" stroke="${C.g}" stroke-width="2.5"/><text x="76" y="56" fill="${C.g}">2</text><circle cx="108" cy="52" r="10" fill="#050508" stroke="${C.c}" stroke-width="2.5"/><text x="108" y="56" fill="${C.c}">3</text></g></svg>`,
+    sudoku: `<svg viewBox="0 0 64 64"><rect x="2" y="2" width="60" height="60" fill="none" stroke="${C.g}" stroke-width="2.5"/><path d="M22 2v60M42 2v60M2 22h60M2 42h60" stroke="${C.g}" stroke-width="1.5" opacity="0.6"/><g font-family="monospace" font-weight="700" font-size="14" text-anchor="middle"><text x="12" y="17" fill="#fff">5</text><text x="52" y="17" fill="${C.g}">3</text><text x="32" y="37" fill="#fff">9</text><text x="12" y="57" fill="${C.c}">7</text><text x="52" y="57" fill="#fff">1</text></g></svg>`,
     milusos: `<svg viewBox="0 0 120 64"><rect x="6" y="18" width="40" height="28" rx="3" fill="none" stroke="${C.g}" stroke-width="3"/><g fill="${C.g}"><circle cx="66" cy="20" r="3"/><circle cx="66" cy="32" r="3"/><circle cx="66" cy="44" r="3"/></g><g stroke="${C.c}" stroke-width="3" stroke-linecap="round"><path d="M76 20h36M76 32h28M76 44h32"/></g></svg>`,
   };
 
@@ -423,6 +425,232 @@
       return () => clearInterval(tick);
     } });
 
+  /* ── RECORRIDO: one line through every square, joining the numbers in order ──
+     (a classic family of numbered-path puzzles; any path that follows the rules is a solution) */
+  GAMES.push({ id: 'recorrido', title: 'Recorrido', tag: 'Lógica', desc: 'Una sola línea que pasa por todos los casilleros y une los números en orden.',
+    how: 'Arrastrá desde el 1 y pasá por cada casillero una sola vez, tocando los números en orden (1, 2, 3…) hasta el último. Para corregir, volvé sobre la línea o tocá un casillero de la línea para cortarla ahí. Tres tableros; cuenta el tiempo total. Teclado: flechas para avanzar, Retroceso para deshacer.',
+    better: 'low', fmt: s => mmss(s),
+    start(ctx) {
+      const SIZES = [5, 6, 7];
+      let level = 0, n, N, nums, maxNum, sol, path = [], drawing = false, done = false, t0 = performance.now(), S = 0;
+      const cv = el('canvas', 'jg-canvas'), g = cv.getContext('2d'), msg = el('p', 'jg-msg');
+      cv.style.touchAction = 'none';
+      ctx.stage.append(cv, msg);
+      const nb = c => { const x = c % n, y = (c / n) | 0, o = []; if (x > 0) o.push(c - 1); if (x < n - 1) o.push(c + 1); if (y > 0) o.push(c - n); if (y < n - 1) o.push(c + n); return o; };
+      const adj = (a, b) => nb(a).includes(b);
+      function hamilton() {   // a path through every square (Warnsdorff: go where fewer ways remain)
+        for (let tries = 0; tries < 300; tries++) {
+          const seen = new Uint8Array(N); let cur = Math.floor(ctx.rnd() * N); const p = [cur]; seen[cur] = 1;
+          while (p.length < N) {
+            const opts = nb(cur).filter(j => !seen[j]); if (!opts.length) break;
+            let best = [], bd = 9;
+            for (const j of opts) { const d = nb(j).filter(k => !seen[k]).length; if (d < bd) { bd = d; best = [j]; } else if (d === bd) best.push(j); }
+            cur = best[Math.floor(ctx.rnd() * best.length)]; seen[cur] = 1; p.push(cur);
+          }
+          if (p.length === N) return p;
+        }
+        return Array.from({ length: N }, (_, i) => { const y = (i / n) | 0, x = i % n; return y * n + (y % 2 ? n - 1 - x : x); });   // snake
+      }
+      function make() {
+        n = SIZES[level]; N = n * n; sol = hamilton(); path = []; drawing = false;
+        const K = n + 1, idx = new Set([0, N - 1]);
+        for (let i = 1; i < K - 1; i++) { const base = i * (N - 1) / (K - 1), j = Math.round(base + (ctx.rnd() - 0.5) * (N / K) * 0.6); idx.add(Math.max(1, Math.min(N - 2, j))); }
+        const order = [...idx].sort((a, b) => a - b);
+        nums = new Map(order.map((i, k) => [sol[i], k + 1])); maxNum = order.length;
+        size(); draw();
+        msg.textContent = `Tablero ${level + 1} de ${SIZES.length} · ${n}×${n} · del 1 al ${maxNum}`;
+      }
+      const lastNum = () => path.reduce((m, c) => Math.max(m, nums.get(c) || 0), 0);
+      function size() { const w = Math.min(ctx.stage.clientWidth || 480, 520); S = Math.floor(w / n); const dpr = Math.min(2, devicePixelRatio || 1); cv.width = S * n * dpr; cv.height = S * n * dpr; cv.style.width = cv.style.height = S * n + 'px'; g.setTransform(dpr, 0, 0, dpr, 0, 0); }
+      const ctr = c => [(c % n + 0.5) * S, (((c / n) | 0) + 0.5) * S];
+      function draw() {
+        g.fillStyle = '#07070d'; g.fillRect(0, 0, S * n, S * n);
+        const inPath = new Set(path);
+        for (let c = 0; c < N; c++) { const x = (c % n) * S, y = ((c / n) | 0) * S; g.fillStyle = inPath.has(c) ? 'rgba(102,255,51,0.10)' : '#0b0b14'; g.fillRect(x + 1, y + 1, S - 2, S - 2); }
+        if (path.length > 1) {
+          const [ax, ay] = ctr(path[0]), [bx, by] = ctr(path[path.length - 1]);
+          const grad = g.createLinearGradient(ax, ay, bx, by); grad.addColorStop(0, C.g); grad.addColorStop(1, C.c);
+          g.save(); g.strokeStyle = grad; g.lineWidth = S * 0.38; g.lineCap = g.lineJoin = 'round'; g.shadowColor = C.g; g.shadowBlur = 14;
+          g.beginPath(); path.forEach((c, i) => { const [x, y] = ctr(c); i ? g.lineTo(x, y) : g.moveTo(x, y); }); g.stroke(); g.restore();
+        }
+        g.textAlign = 'center'; g.textBaseline = 'middle'; g.font = `700 ${Math.round(S * 0.32)}px "IBM Plex Mono", monospace`;
+        nums.forEach((k, c) => {
+          const [x, y] = ctr(c), on = inPath.has(c);
+          g.beginPath(); g.arc(x, y, S * 0.3, 0, 7); g.fillStyle = on ? C.g : '#050508'; g.fill();
+          g.lineWidth = 2.5; g.strokeStyle = C.g; g.stroke();
+          g.fillStyle = on ? '#050508' : C.g; g.fillText(String(k), x, y + 1);
+        });
+        if (path.length) { const [x, y] = ctr(path[path.length - 1]); g.beginPath(); g.arc(x, y, S * 0.1, 0, 7); g.fillStyle = '#fff'; g.fill(); }
+      }
+      function step(c) {   // try to extend (or back up) the line to square c
+        const L = path.length, last = path[L - 1];
+        if (c === last) return false;
+        if (L >= 2 && c === path[L - 2]) { path.pop(); return true; }
+        if (!adj(last, c) || path.includes(c)) return false;
+        const k = nums.get(c);
+        if (k && k !== lastNum() + 1) return false;
+        path.push(c); return true;
+      }
+      function toward(c) {   // the pointer may skip squares: walk there one square at a time
+        let guard = 0;
+        while (path.length && path[path.length - 1] !== c && guard++ < 2 * n) {
+          const last = path[path.length - 1], lx = last % n, ly = (last / n) | 0, tx = c % n, ty = (c / n) | 0;
+          if (adj(last, c)) { if (!step(c)) break; continue; }
+          const dx = Math.sign(tx - lx), dy = Math.sign(ty - ly);
+          const next = Math.abs(tx - lx) >= Math.abs(ty - ly) ? last + dx : last + dy * n;
+          if (!step(next)) break;
+        }
+      }
+      function check() {
+        if (done || path.length !== N || nums.get(path[N - 1]) !== maxNum) return;
+        okSound(); done = true; level++;
+        if (level >= SIZES.length) { const tot = Math.round((performance.now() - t0) / 1000); setTimeout(() => ctx.done({ score: tot, text: `Tres recorridos en ${mmss(tot)}`, better: 'low' }), 500); }
+        else setTimeout(() => { done = false; make(); }, 500);
+      }
+      const cellAt = e => { const r = cv.getBoundingClientRect(); const x = Math.floor((e.clientX - r.left) / S), y = Math.floor((e.clientY - r.top) / S); return x >= 0 && y >= 0 && x < n && y < n ? y * n + x : -1; };
+      cv.addEventListener('pointerdown', e => {
+        if (done) return; const c = cellAt(e); if (c < 0) return;
+        if (path.includes(c)) path.length = path.indexOf(c) + 1;
+        else if (nums.get(c) === 1) path = [c];
+        else if (path.length && adj(path[path.length - 1], c)) step(c);
+        else { msg.textContent = 'Empezá desde el 1 (o seguí desde la punta de la línea)'; return; }
+        drawing = true; cv.setPointerCapture(e.pointerId); tone(400, 0.04, 'triangle', 0.04); draw(); check();
+      });
+      cv.addEventListener('pointermove', e => { if (!drawing || done) return; const c = cellAt(e); if (c < 0) return; const before = path.length; toward(c); if (path.length !== before) { tone(300 + path.length * 12, 0.03, 'triangle', 0.03); draw(); check(); } });
+      const up = () => { drawing = false; }; cv.addEventListener('pointerup', up); cv.addEventListener('pointercancel', up);
+      const key = e => {
+        if (done) return;
+        const k = e.key;
+        if (k === 'Backspace') { e.preventDefault(); path.pop(); draw(); return; }
+        if (!k.startsWith('Arrow')) return;
+        e.preventDefault();
+        if (!path.length) { for (const [c, v] of nums) if (v === 1) path = [c]; draw(); return; }
+        const last = path[path.length - 1], x = last % n, y = (last / n) | 0;
+        const nx = x + (k === 'ArrowRight') - (k === 'ArrowLeft'), ny = y + (k === 'ArrowDown') - (k === 'ArrowUp');
+        if (nx < 0 || ny < 0 || nx >= n || ny >= n) return;
+        if (step(ny * n + nx)) { draw(); check(); }
+      };
+      addEventListener('keydown', key);
+      ctx.test.solve = () => { if (done) return; path = sol.slice(); draw(); check(); };
+      const tick = setInterval(() => ctx.hud(`Tiempo<b>${mmss((performance.now() - t0) / 1000)}</b> Casilleros<b>${path.length}/${N}</b>`), 250);
+      const rs = () => { size(); draw(); }; addEventListener('resize', rs);
+      make();
+      return () => { clearInterval(tick); removeEventListener('keydown', key); removeEventListener('resize', rs); };
+    } });
+
+  /* ── SUDOKU: the classic, generated here with a single solution ── */
+  function sdCount(g, limit) {   // how many solutions (stops at `limit`)
+    const R = new Uint16Array(9), Cc = new Uint16Array(9), B = new Uint16Array(9);
+    for (let i = 0; i < 81; i++) if (g[i]) { const r = (i / 9) | 0, c = i % 9, b = ((r / 3) | 0) * 3 + ((c / 3) | 0), m = 1 << g[i]; R[r] |= m; Cc[c] |= m; B[b] |= m; }
+    let count = 0;
+    (function rec() {
+      let best = -1, bm = 0, bc = 10;
+      for (let i = 0; i < 81; i++) if (!g[i]) {
+        const r = (i / 9) | 0, c = i % 9, b = ((r / 3) | 0) * 3 + ((c / 3) | 0), m = ~(R[r] | Cc[c] | B[b]) & 0x3FE;
+        let k = 0; for (let v = m; v; v &= v - 1) k++;
+        if (k < bc) { bc = k; best = i; bm = m; if (!k) return; }
+      }
+      if (best < 0) { count++; return; }
+      const r = (best / 9) | 0, c = best % 9, b = ((r / 3) | 0) * 3 + ((c / 3) | 0);
+      for (let d = 1; d <= 9 && count < limit; d++) if (bm & (1 << d)) {
+        g[best] = d; R[r] |= 1 << d; Cc[c] |= 1 << d; B[b] |= 1 << d;
+        rec();
+        g[best] = 0; R[r] &= ~(1 << d); Cc[c] &= ~(1 << d); B[b] &= ~(1 << d);
+      }
+    })();
+    return count;
+  }
+  function sdMake(rnd, clues) {
+    const g = new Array(81).fill(0);
+    const ok = (i, d) => { const r = (i / 9) | 0, c = i % 9, br = r - r % 3, bc = c - c % 3; for (let k = 0; k < 9; k++) { if (g[r * 9 + k] === d || g[k * 9 + c] === d || g[(br + ((k / 3) | 0)) * 9 + bc + k % 3] === d) return false; } return true; };
+    (function fill(i) {
+      if (i === 81) return true;
+      const ds = [1, 2, 3, 4, 5, 6, 7, 8, 9].sort(() => rnd() - 0.5);
+      for (const d of ds) if (ok(i, d)) { g[i] = d; if (fill(i + 1)) return true; g[i] = 0; }
+      return false;
+    })(0);
+    const solution = g.slice(), puzzle = g.slice();
+    const order = [...Array(81).keys()].sort(() => rnd() - 0.5);
+    let left = 81;
+    for (const i of order) {
+      if (left <= clues) break;
+      const keep = puzzle[i]; puzzle[i] = 0;
+      if (sdCount(puzzle.slice(), 2) !== 1) puzzle[i] = keep; else left--;
+    }
+    return { puzzle, solution };
+  }
+  GAMES.push({ id: 'sudoku', title: 'Sudoku', tag: 'Lógica', desc: 'El clásico: completá la grilla para que cada fila, columna y caja tenga del 1 al 9.',
+    how: 'Elegí un casillero y escribí un número (teclado o botones). Cada fila, columna y caja de 3×3 lleva del 1 al 9 sin repetir; los choques se marcan en rojo. «Notas» sirve para anotar candidatos chiquitos. Cada sudoku tiene una sola solución. Teclado: flechas, 1–9, Retroceso para borrar, N para notas.',
+    better: 'low', fmt: s => mmss(s),
+    options: [['facil', 'Fácil', 40], ['medio', 'Medio', 32], ['dificil', 'Difícil', 26]], dailyOption: 'medio',
+    start(ctx) {
+      const opt = (this.options.find(o => o[0] === ctx.option) || this.options[1]);
+      const { puzzle, solution } = sdMake(ctx.rnd, opt[2]);
+      const val = puzzle.slice(), notes = Array.from({ length: 81 }, () => new Set());
+      let sel = puzzle.findIndex(v => !v), noteMode = false, over = false, t0 = performance.now();
+      const grid = el('div', 'sd-grid'), padEl = el('div', 'sd-pad'), msg = el('p', 'jg-msg', `Nivel ${opt[1].toLowerCase()} · ${puzzle.filter(Boolean).length} pistas`);
+      const cells = val.map((v, i) => {
+        const b = el('button', 'sd-cell' + (puzzle[i] ? ' given' : ''));
+        const r = (i / 9) | 0, c = i % 9;
+        if (c % 3 === 0 && c) b.classList.add('bl'); if (r % 3 === 0 && r) b.classList.add('bt');
+        b.addEventListener('click', () => { sel = i; paint(); });
+        grid.append(b); return b;
+      });
+      for (let d = 1; d <= 9; d++) { const b = el('button', 'jg-btn sd-num', String(d)); b.addEventListener('click', () => put(d)); padEl.append(b); }
+      const del = el('button', 'jg-btn', '⌫ Borrar'); del.addEventListener('click', () => put(0));
+      const nb = el('button', 'jg-btn', '✎ Notas'); nb.addEventListener('click', () => { noteMode = !noteMode; nb.classList.toggle('on', noteMode); });
+      padEl.append(del, nb);
+      ctx.stage.append(grid, padEl, msg);
+      const peers = i => { const r = (i / 9) | 0, c = i % 9, br = r - r % 3, bc = c - c % 3, s = new Set(); for (let k = 0; k < 9; k++) { s.add(r * 9 + k); s.add(k * 9 + c); s.add((br + ((k / 3) | 0)) * 9 + bc + k % 3); } s.delete(i); return s; };
+      const PEERS = val.map((_, i) => peers(i));
+      function paint() {
+        const sv = sel >= 0 ? val[sel] : 0, sp = sel >= 0 ? PEERS[sel] : new Set();
+        cells.forEach((b, i) => {
+          const v = val[i], bad = v && [...PEERS[i]].some(j => val[j] === v);
+          b.classList.toggle('sel', i === sel); b.classList.toggle('peer', sp.has(i)); b.classList.toggle('same', !!sv && v === sv && i !== sel); b.classList.toggle('bad', !!bad);
+          if (v) b.textContent = v;
+          else if (notes[i].size) { b.textContent = ''; const nt = el('span', 'sd-notes'); for (let d = 1; d <= 9; d++) nt.append(el('i', '', notes[i].has(d) ? String(d) : '')); b.append(nt); }
+          else b.textContent = '';
+        });
+        // a digit already placed 9 times is done
+        padEl.querySelectorAll('.sd-num').forEach((b, k) => { b.classList.toggle('full', val.filter(x => x === k + 1).length >= 9); });
+      }
+      function put(d) {
+        if (over || sel < 0 || puzzle[sel]) return;
+        if (noteMode && d) { notes[sel].has(d) ? notes[sel].delete(d) : notes[sel].add(d); val[sel] = 0; }
+        else {
+          val[sel] = d; notes[sel].clear();
+          if (d) PEERS[sel].forEach(j => notes[j].delete(d));   // the number leaves the notes of its row, column and box
+          tone(d ? 420 + d * 30 : 200, 0.05, 'triangle', 0.05);
+        }
+        paint();
+        if (val.every(Boolean) && val.every((v, i) => ![...PEERS[i]].some(j => val[j] === v))) {
+          over = true; okSound();
+          const tot = Math.round((performance.now() - t0) / 1000);
+          setTimeout(() => ctx.done({ score: tot, text: `Sudoku ${opt[1].toLowerCase()} en ${mmss(tot)}`, better: 'low' }), 400);
+        }
+      }
+      const key = e => {
+        if (over) return;
+        const k = e.key;
+        if (/^[1-9]$/.test(k)) { put(+k); return; }
+        if (k === 'Backspace' || k === 'Delete' || k === '0') { e.preventDefault(); put(0); return; }
+        if (k === 'n' || k === 'N') { nb.click(); return; }
+        if (k.startsWith('Arrow')) {
+          e.preventDefault(); if (sel < 0) sel = 0;
+          const r = (sel / 9) | 0, c = sel % 9;
+          const nr = (r + (k === 'ArrowDown') - (k === 'ArrowUp') + 9) % 9, nc = (c + (k === 'ArrowRight') - (k === 'ArrowLeft') + 9) % 9;
+          sel = nr * 9 + nc; paint();
+        }
+      };
+      addEventListener('keydown', key);
+      ctx.test.solve = () => { solution.forEach((v, i) => { if (!puzzle[i] && i !== sel) val[i] = v; }); if (!puzzle[sel]) { const d = solution[sel]; put(d); } else paint(); };
+      ctx.test.solution = solution; ctx.test.puzzle = puzzle;
+      const tick = setInterval(() => ctx.hud(`Tiempo<b>${mmss((performance.now() - t0) / 1000)}</b> Faltan<b>${val.filter(v => !v).length}</b>`), 250);
+      paint();
+      return () => { clearInterval(tick); removeEventListener('keydown', key); };
+    } });
+
   /* ═══════════════════ the page ═══════════════════ */
   const hub = $('#hub'), play = $('#play'), stage = $('#stage'), hud = $('#hud'), how = $('#how'), result = $('#result');
   const byId = id => GAMES.find(g => g.id === id);
@@ -436,15 +664,23 @@
     const grid = $('#grid'); grid.innerHTML = '';
     GAMES.forEach(gm => {
       const c = el('button', 'jg-card'); c.dataset.id = gm.id;
-      const best = gm.better ? store.best[gm.id] : store.count[gm.id];
-      c.innerHTML = `<div class="art">${ART[gm.id] || ''}</div><div class="tag">${gm.tag}</div><h3>${gm.title}</h3><p>${gm.desc}</p><div class="best${best === undefined ? ' none' : ''}">${best === undefined ? 'Sin jugar todavía' : (gm.better ? 'Récord: ' : '') + gm.fmt(best)}</div>`;
+      let line;
+      if (gm.options) {   // a record per level
+        const got = gm.options.filter(([k]) => store.best[gm.id + ':' + k] !== undefined).map(([k, label]) => `${label} ${gm.fmt(store.best[gm.id + ':' + k])}`);
+        line = got.length ? `<div class="best">Récords: ${got.join(' · ')}</div>` : '<div class="best none">Sin jugar todavía</div>';
+      } else {
+        const best = gm.better ? store.best[gm.id] : store.count[gm.id];
+        line = `<div class="best${best === undefined ? ' none' : ''}">${best === undefined ? 'Sin jugar todavía' : (gm.better ? 'Récord: ' : '') + gm.fmt(best)}</div>`;
+      }
+      c.innerHTML = `<div class="art">${ART[gm.id] || ''}</div><div class="tag">${gm.tag}</div><h3>${gm.title}</h3><p>${gm.desc}</p>${line}`;
       c.addEventListener('click', () => { location.hash = gm.id; });
       grid.append(c);
     });
   }
   $('#daily').addEventListener('click', () => { location.hash = dailyGame().id + '/hoy'; });
 
-  let cleanup = null, current = null, isDaily = false, testHook = {};
+  let cleanup = null, current = null, isDaily = false, testHook = {}, option = null;
+  const bestKey = gm => gm.id + (gm.options && option ? ':' + option : '');
   function open(id, daily) {
     const gm = byId(id); if (!gm) { showHub(); return; }
     close(); current = gm; isDaily = !!daily;
@@ -457,14 +693,20 @@
     window.scrollTo(0, 0);
     // a start screen first: read the rules, then play
     const st = el('div', 'jg-start');
-    st.append(el('div', 'big', '◈'), el('button', 'jg-btn primary', 'Empezar'));
-    st.lastChild.addEventListener('click', go);
-    stage.append(st); st.lastChild.focus();
+    st.append(el('div', 'big', '◈'));
+    option = isDaily ? gm.dailyOption : (store.opt && store.opt[gm.id]) || (gm.options ? gm.options[0][0] : null);
+    if (gm.options && !isDaily) {
+      const row = el('div', 'jg-btns');
+      gm.options.forEach(([k, label]) => { const b = el('button', 'jg-btn' + (k === option ? ' on' : ''), label); b.addEventListener('click', () => { option = k; store.opt = store.opt || {}; store.opt[gm.id] = k; save(); row.querySelectorAll('.jg-btn').forEach(x => x.classList.toggle('on', x === b)); }); row.append(b); });
+      st.append(row);
+    }
+    const goBtn = el('button', 'jg-btn primary', 'Empezar'); goBtn.addEventListener('click', go);
+    st.append(goBtn); stage.append(st); goBtn.focus();
     function go() {
       stage.innerHTML = '';
       const rnd = isDaily ? mulberry(hashStr(dayKey() + ':' + gm.id)) : Math.random;
       testHook = {};
-      cleanup = gm.start({ test: testHook, stage, rnd, daily: isDaily, hud: h => { hud.innerHTML = h; }, done: r => finish(gm, r) });
+      cleanup = gm.start({ test: testHook, option, stage, rnd, daily: isDaily, hud: h => { hud.innerHTML = h; }, done: r => finish(gm, r) });
     }
   }
   function close() { if (cleanup) { try { cleanup(); } catch (e) { /* ignore */ } cleanup = null; } }
@@ -473,9 +715,9 @@
     close(); markPlayed();
     let rec = false, prev;
     if (gm.better && typeof r.score === 'number') {
-      prev = store.best[gm.id];
+      prev = store.best[bestKey(gm)];
       rec = prev === undefined || (gm.better === 'high' ? r.score > prev : r.score < prev);
-      if (rec) store.best[gm.id] = r.score;
+      if (rec) store.best[bestKey(gm)] = r.score;
     }
     if (isDaily && typeof r.score === 'number') { const t = dayKey(), old = store.daily[t]; if (old === undefined || !gm.better || (gm.better === 'high' ? r.score > old : r.score < old)) store.daily[t] = r.score; }
     save();
@@ -484,7 +726,7 @@
     $('#rLabel').textContent = r.text || '';
     const b = $('#rBest');
     b.className = 'jg-best' + (rec && prev !== undefined ? ' rec' : '');
-    b.textContent = !gm.better ? (r.detail || '') : rec ? (prev === undefined ? 'Primer récord' : `¡Nuevo récord! (antes ${gm.fmt(prev)})`) : `Récord: ${gm.fmt(store.best[gm.id])}`;
+    b.textContent = !gm.better ? (r.detail || '') : rec ? (prev === undefined ? 'Primer récord' : `¡Nuevo récord! (antes ${gm.fmt(prev)})`) : `Récord: ${gm.fmt(store.best[bestKey(gm)])}`;
     const ex = $('#rExtra'); ex.innerHTML = '';
     if (gm.better && r.detail) ex.append(el('p', 'jg-best', r.detail));
     (r.extra || []).forEach(x => ex.append(x));

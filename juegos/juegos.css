@@ -63,6 +63,22 @@ body.juegos { background: var(--bg); }
 /* Circuito */
 .jg-canvas { display: block; touch-action: manipulation; border-radius: 10px; border: 1px solid var(--border); background: #07070d; max-width: 100%; }
 
+/* Sudoku */
+.sd-grid { display: grid; grid-template-columns: repeat(9, 1fr); width: min(460px, 100%); aspect-ratio: 1; border: 2px solid var(--c1); border-radius: 8px; overflow: hidden; background: #07070d; box-shadow: 0 0 24px rgba(102,255,51,0.12); }
+.sd-cell { position: relative; font: inherit; font-size: clamp(16px, 4.6vw, 24px); color: var(--c1); background: #0b0b14; border: 0; border-right: 1px solid rgba(0,212,255,0.12); border-bottom: 1px solid rgba(0,212,255,0.12); padding: 0; cursor: pointer; display: flex; align-items: center; justify-content: center; }
+.sd-cell.bl { border-left: 2px solid rgba(102,255,51,0.55); }
+.sd-cell.bt { border-top: 2px solid rgba(102,255,51,0.55); }
+.sd-cell.given { color: #fff; font-weight: 700; }
+.sd-cell.peer { background: #10101c; }
+.sd-cell.same { background: rgba(102,255,51,0.14); }
+.sd-cell.sel { background: rgba(102,255,51,0.28); outline: 2px solid var(--c1); outline-offset: -2px; z-index: 1; }
+.sd-cell.bad { color: #ff3355; }
+.sd-notes { position: absolute; inset: 2px; display: grid; grid-template-columns: repeat(3, 1fr); font-size: clamp(7px, 1.6vw, 10px); color: var(--text2); line-height: 1; }
+.sd-notes i { font-style: normal; display: flex; align-items: center; justify-content: center; }
+.sd-pad { display: flex; gap: 6px; flex-wrap: wrap; justify-content: center; width: min(460px, 100%); }
+.sd-pad .sd-num { width: 42px; padding: 9px 0; font-size: 16px; }
+.sd-pad .sd-num.full { opacity: 0.3; }
+
 /* Qué sigue */
 .qs-row { display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; }
 .qs-cell { width: 92px; height: 92px; border: 1px solid var(--border); border-radius: 10px; background: var(--bg2); display: flex; align-items: center; justify-content: center; }
