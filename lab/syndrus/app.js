@@ -168,7 +168,7 @@
   let st = app.decks[app.edit];   // the pattern being edited (deck A or B)
   const ab = i => (i ? 'B' : 'A');
   let saveT = 0;
-  const save = () => { clearTimeout(saveT); saveT = setTimeout(() => { try { localStorage.setItem(KEY, JSON.stringify(app)); savedAt = Date.now(); } catch (e) { /* full / private */ } }, 300); };
+  const save = () => { if (typeof rmPush === 'function') rmPush(); clearTimeout(saveT); saveT = setTimeout(() => { try { localStorage.setItem(KEY, JSON.stringify(app)); savedAt = Date.now(); } catch (e) { /* full / private */ } }, 300); };
   const toast = (m, ms = 2200) => { const t = $('#toast'); t.textContent = m; t.classList.add('show'); clearTimeout(toast.t); toast.t = setTimeout(() => t.classList.remove('show'), ms); };
 
   /* ── audio + clock ── */
@@ -214,7 +214,7 @@
   }
   function setPlay(on) {
     ensureAudio();
-    playing = on; $('#play').classList.toggle('on', on); $('#play').textContent = on ? '■' : '▶';
+    playing = on; $('#play').classList.toggle('on', on); $('#play').textContent = on ? '■' : '▶'; rmPush();
     clearInterval(timer);
     if (on) { step = 0; nextTime = ac.currentTime + 0.06; tick(); timer = setInterval(tick, 25); }
     else { E.decks.forEach(D => D.synth.noteOff(ac.currentTime)); queue.length = 0; paintNow(-1); if (pending[0] || pending[1]) applyPending(); }
@@ -327,7 +327,7 @@
     $('#root').value = st.root; $('#scale').value = st.scale;
   }
   function setEdit(i) {
-    app.edit = i; st = app.decks[i]; save();
+    app.edit = i; st = app.decks[i]; save(); rmPush();
     document.body.dataset.deck = ab(i);
     paintAll(); toast(`Editando el deck ${ab(i)}`, 1200);
   }
@@ -669,7 +669,7 @@
       [1, 2, 4, 8].forEach(n => { const b = el('button', n === fxBars ? 'on' : '', n + (n === 1 ? ' compás' : ' c')); b.addEventListener('click', () => { fxBars = n; paintFx(); }); seg.append(b); });
       const perf = el('div', 'sy-perf');
       [['up', '↗\nSubida', 'Barrido de ruido que sube (para preparar un drop)'], ['down', '↘\nBajada', 'Barrido que baja (para salir de un drop)'], ['impact', '💥\nImpacto', 'Golpe de sub con explosión'], ['drop', '⤓\nDROP', 'Drop automático: el filtro sube, el último tiempo corta y en el uno vuelve todo con un impacto']].forEach(([k, l, tt]) => {
-        const b = el('button', k === 'drop' ? 'drop' : ''); b.title = tt; b.style.whiteSpace = 'pre-line'; b.textContent = l.replace('\\n', '\n');
+        const b = el('button', k === 'drop' ? 'drop' : ''); b.title = tt; b.dataset.k = k; b.style.whiteSpace = 'pre-line'; b.textContent = l.replace('\\n', '\n');
         if (armed.has(k)) b.classList.add('armed');
         b.addEventListener('click', () => perform(k, b)); perf.append(b);
       });
@@ -794,6 +794,114 @@
   $('#consoleBtn').addEventListener('click', () => { setConsole(conEl.hidden); $('#more').classList.remove('open'); });
   $('#conClose').addEventListener('click', () => setConsole(false));
   addEventListener('resize', () => { if (!conEl.hidden) paintConsole(); });
+
+  /* ── phone remote: the console, the mixer and the FX from a phone (like NODRUS' control).
+     Web: PeerJS (internet only to connect) · desktop app: WebSocket over the wifi ── */
+  const DESK = window.nodrusDesktop || null;
+  const rmPhones = new Set();
+  let rmPeer = null, deskInfo = null;
+  let rmRoom = (() => { try { return localStorage.getItem('syndrus_room') || ''; } catch (e) { return ''; } })();
+  if (!/^syndrus-[a-z0-9]{8,32}$/.test(rmRoom)) { rmRoom = 'syndrus-' + Array.from(crypto.getRandomValues(new Uint8Array(12)), b => (b % 36).toString(36)).join(''); try { localStorage.setItem('syndrus_room', rmRoom); } catch (e) { /* ignore */ } }
+  const rmUrl = () => (DESK && deskInfo ? deskInfo.lanUrl + '/lab/syndrus/control/?ws' : new URL('control/#' + rmRoom, location.href).href);
+  const loadScript = src => new Promise((res, rej) => { const sc = document.createElement('script'); sc.src = src; sc.onload = res; sc.onerror = rej; document.head.append(sc); });
+  function rmStatus(t) { const e = $('#rmStatus'); if (e) e.textContent = t; $('#remoteBtn').classList.toggle('on', rmPhones.size > 0); }
+  const chList = () => [...st.drums.map((d, i) => ({ c: d, n: X.DRUMS[i][1], g: 'ritmo', solo: true })), { c: st.synth, n: 'Synth', g: 'synth' }, ...st.rings.map((r, i) => ({ c: r, n: 'Anillo ' + (i + 1), g: 'anillo' }))];
+  function rmState() {
+    return { t: 'state', playing, bpm: app.bpm, edit: app.edit, fxBars,
+      keys: app.decks.map(p => `${X.NOTE_NAMES[p.root]} ${X.SCALE_NAMES[p.scale].toLowerCase()}`),
+      ch: chList().map(({ c, n, g, solo }) => ({ n, g, level: c.level, mute: !!c.mute, solo: solo ? !!c.solo : null, delay: c.delay, reverb: c.reverb })),
+      mix: { x: app.mix.x, volume: app.mix.volume, decks: app.mix.decks.map(d => ({ level: d.level, dj: d.dj, kill: !!d.kill, cue: !!d.cue })) } };
+  }
+  let rmT = 0;
+  var rmReady = false;   // var: readable (false) even before this block runs
+  function rmPush() {
+    if (!rmReady || !rmPhones.size) return;
+    clearTimeout(rmT); rmT = setTimeout(() => { const s = rmState(); rmPhones.forEach(p => { try { p.send(s); } catch (e) { /* closed */ } }); }, 80);
+  }
+  // meters for the phone: the 13 channels of the edited deck, deck A, deck B, master
+  const rmBuf = new Float32Array(2048);
+  const peakOf = an => { if (!an) return 0; const b = an.fftSize === 2048 ? rmBuf : new Float32Array(an.fftSize); an.getFloatTimeDomainData(b); let p = 0; for (let i = 0; i < b.length; i += 2) p = Math.max(p, Math.abs(b[i])); return p > 0 ? Math.max(0, Math.min(1, (20 * Math.log10(p) + 48) / 48)) : 0; };
+  setInterval(() => {
+    if (!rmPhones.size || !E) return;
+    const D = E.decks[app.edit];
+    const v = [...D.drumStrips.map(s => s.an), D.synthStrip.an, ...D.ringStrips.map(s => s.an), E.decks[0].an, E.decks[1].an, E.analyser].map(an => +peakOf(an).toFixed(2));
+    rmPhones.forEach(p => { try { p.send({ t: 'meters', v }); } catch (e) { /* closed */ } });
+  }, 90);
+  let rmPaintT = 0;
+  const rmRepaint = () => { clearTimeout(rmPaintT); rmPaintT = setTimeout(() => { paintAll(); }, 250); };
+  function rmMsg(m) {
+    if (!m || typeof m !== 'object') return;
+    const num = x => typeof x === 'number' && Number.isFinite(x), clamp = (x, a, b) => Math.max(a, Math.min(b, x));
+    const list = chList();
+    if (m.t === 'hello') { rmPush(); return; }
+    if (m.t === 'ch' && list[m.i] && ['level', 'delay', 'reverb'].includes(m.k) && num(m.v)) { list[m.i].c[m.k] = clamp(m.v, 0, m.k === 'level' ? 1.2 : 1); mix(); rmRepaint(); }
+    else if (m.t === 'mute' && list[m.i]) { list[m.i].c.mute = !list[m.i].c.mute; save(); rmRepaint(); }
+    else if (m.t === 'solo' && list[m.i] && list[m.i].solo) { list[m.i].c.solo = !list[m.i].c.solo; save(); rmRepaint(); }
+    else if (m.t === 'deck' && app.mix.decks[m.i]) {
+      const d = app.mix.decks[m.i];
+      if (m.k === 'level' && num(m.v)) d.level = clamp(m.v, 0, 1.2);
+      else if (m.k === 'dj' && num(m.v)) d.dj = clamp(m.v, -1, 1);
+      else if (m.k === 'kill') d.kill = !d.kill;
+      else if (m.k === 'cue') { d.cue = !d.cue; if (d.cue && app.mix.cueMode === 'off') { app.mix.cueMode = 'split'; applyCue(); } }
+      mix(); rmRepaint();
+    }
+    else if (m.t === 'mix' && ['x', 'volume'].includes(m.k) && num(m.v)) { app.mix[m.k] = clamp(m.v, 0, m.k === 'x' ? 1 : 1.2); mix(); rmRepaint(); }
+    else if (m.t === 'play') setPlay(!playing);
+    else if (m.t === 'edit' && (m.i === 0 || m.i === 1)) setEdit(m.i);
+    else if (m.t === 'fx' && ['up', 'down', 'impact', 'drop'].includes(m.k)) perform(m.k, document.querySelector(`.sy-perf button[data-k="${m.k}"]`) || document.createElement('button'));
+    else if (m.t === 'cancel') { if (E) { E.cancelFx(); linkFx('cancel', ac.currentTime); } }
+    else if (m.t === 'bars' && [1, 2, 4, 8].includes(m.n)) { fxBars = m.n; paintFx(); }
+    else if (m.t === 'roll') roll = playing && [1, 2, 4].includes(m.len) ? { start: step, len: m.len } : null;
+    rmPush();
+  }
+  async function startRemote() {
+    if (rmPeer) return;
+    if (DESK) {
+      rmPeer = { desktop: true };
+      try { deskInfo = await DESK.info(); } catch (e) { deskInfo = null; }
+      const byId = new Map();
+      DESK.onRemote(m => {
+        if (m.type === 'open') { const c = { send: msg => DESK.sendRemote(m.id, msg) }; byId.set(m.id, c); rmPhones.add(c); c.send(rmState()); rmStatus(`${rmPhones.size} celular(es) conectado(s) por wifi`); toast('📱 Celular conectado'); }
+        else if (m.type === 'msg') rmMsg(m.msg);
+        else if (m.type === 'close') { const c = byId.get(m.id); if (c) { rmPhones.delete(c); byId.delete(m.id); } rmStatus(rmPhones.size ? `${rmPhones.size} celular(es) conectado(s)` : 'Celular desconectado · esperando…'); }
+      });
+      rmStatus('Listo: escaneá el código (mismo wifi que esta compu)');
+      return;
+    }
+    try { if (!window.Peer) await loadScript('https://cdn.jsdelivr.net/npm/peerjs@1.5.4/dist/peerjs.min.js'); }
+    catch (e) { rmStatus('No se pudo cargar la conexión (¿hay internet?)'); return; }
+    rmStatus('Conectando…');
+    rmPeer = new window.Peer(rmRoom, { debug: 0 });
+    rmPeer.on('open', () => rmStatus(rmPhones.size ? `${rmPhones.size} celular(es) conectado(s)` : 'Listo: escaneá el código con el celular'));
+    rmPeer.on('disconnected', () => { rmStatus('Reconectando…'); setTimeout(() => { try { rmPeer.reconnect(); } catch (e) { /* later */ } }, 1500); });
+    rmPeer.on('error', err => { if (err.type !== 'peer-unavailable') rmStatus(err.type === 'unavailable-id' ? 'Este control ya está abierto en otra pestaña' : 'Error de conexión: ' + err.type); });
+    rmPeer.on('connection', conn => {
+      const c = { send: msg => { if (conn.open) conn.send(msg); } };
+      conn.on('open', () => { rmPhones.add(c); c.send(rmState()); rmStatus(`${rmPhones.size} celular(es) conectado(s)`); toast('📱 Celular conectado'); });
+      conn.on('data', rmMsg);
+      const gone = () => { if (rmPhones.delete(c)) rmStatus(rmPhones.size ? `${rmPhones.size} celular(es) conectado(s)` : 'Celular desconectado · esperando…'); };
+      conn.on('close', gone); conn.on('error', gone);
+    });
+  }
+  async function openRemote() {
+    $('#remotePop').hidden = false; $('#more').classList.remove('open');
+    await startRemote();
+    const url = rmUrl();
+    $('#rmUrl').href = $('#rmUrl').textContent = url;
+    const box = $('#rmQR');
+    if (box.dataset.url !== url) {
+      try {
+        if (!window.qrcode) await loadScript(DESK ? '/vendor/qrcode.js' : 'https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.js');
+        const q = window.qrcode(0, 'M'); q.addData(url); q.make();
+        box.innerHTML = q.createSvgTag({ cellSize: 4, margin: 2, scalable: true }); box.dataset.url = url;
+      } catch (e) { box.textContent = 'No se pudo generar el QR: abrí el enlace en el celular.'; }
+    }
+  }
+  $('#remoteBtn').addEventListener('click', () => { if ($('#remotePop').hidden) openRemote(); else $('#remotePop').hidden = true; });
+  $('#rmClose').addEventListener('click', () => { $('#remotePop').hidden = true; });
+  rmReady = true;
+  if (DESK) startRemote();   // desktop app: phones on the wifi can join at any moment
+  $('#rmCopy').addEventListener('click', () => { navigator.clipboard && navigator.clipboard.writeText($('#rmUrl').href).then(() => toast('Enlace copiado'), () => {}); });
 
   /* ── status bar ── */
   const gcd = (a, b) => (b ? gcd(b, a % b) : a), lcm = (a, b) => a / gcd(a, b) * b;

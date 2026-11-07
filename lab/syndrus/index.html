@@ -10,7 +10,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600;700&display=swap">
-  <link rel="stylesheet" href="syndrus.css?v=9">
+  <link rel="stylesheet" href="syndrus.css?v=10">
 </head>
 <body data-tab="drums">
 <script src="/js/splash.js?v=3" data-splash="syndrus"></script>
@@ -36,6 +36,7 @@
       <select id="bars" title="Largo del loop"><option value="1">1 compás</option><option value="2">2 compases</option><option value="4" selected>4 compases</option><option value="8">8 compases</option></select>
       <button class="sy-btn" id="export" title="Bajar el loop en WAV (sin cortes al repetirse)">⤓ WAV</button>
       <button class="sy-btn" id="share" title="Copiar un enlace con este patrón">🔗</button>
+      <button class="sy-btn" id="remoteBtn" title="Manejar la consola, la mezcla y los FX desde el celular">📱</button>
       <button class="sy-btn" id="consoleBtn" title="Consola: todos los faders del deck en una vista (C)">🎚 Consola</button>
       <button class="sy-btn" id="nodrus" title="Abrir NODRUS: las visuales siguen el tempo, el pulso, el sonido y los drops de SYNDRUS">◈ NODRUS</button>
       <button class="sy-btn" id="help" title="Ayuda y atajos">?</button>
@@ -76,6 +77,18 @@
   </section>
 </main>
 
+<div class="sy-help sy-remote" id="remotePop" hidden>
+  <div class="sy-rmtop">
+    <div id="rmQR" class="sy-qr"></div>
+    <div>
+      <b>📱 SYNDRUS en el celular</b>
+      <p class="sy-dim">Escaneá el código: consola, mezcla y FX en la mano. En la web hace falta internet sólo para conectar; con la app de escritorio va por tu wifi.</p>
+      <p id="rmStatus" class="sy-rmstatus">…</p>
+      <p><a id="rmUrl" target="_blank" rel="noopener"></a></p>
+      <div class="sy-group"><button class="sy-btn" id="rmCopy">Copiar enlace</button><button class="sy-btn" id="rmClose">Cerrar</button></div>
+    </div>
+  </div>
+</div>
 <div class="sy-console" id="console" hidden>
   <div class="sy-conhead"><b>🎚 CONSOLA</b><div class="sy-deck" id="conDeck"></div><span class="sy-hint">arrastrá los faders · doble clic: valor inicial · M silencio · S solo</span><span class="sy-sp"></span><button class="sy-btn" id="conClose" title="Cerrar (C o Esc)">✕</button></div>
   <div class="sy-conbody"><div class="sy-strips" id="strips"></div><div class="sy-conmaster" id="conMaster"></div></div>
@@ -101,6 +114,6 @@
 <div class="sy-toast" id="toast"></div>
 
 <script src="engine.js?v=5"></script>
-<script src="app.js?v=12"></script>
+<script src="app.js?v=15"></script>
 </body>
 </html>

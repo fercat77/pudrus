@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no">
+  <meta name="robots" content="noindex, nofollow">
+  <meta name="theme-color" content="#050508">
+  <title>SYNDRUS · control</title>
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+  <style>
+    :root { color-scheme: dark; --bg: #050508; --bg2: #0b0b14; --bg3: #12121c; --line: rgba(0,212,255,0.16); --g: #66ff33; --c: #00d4ff; --m: #ff3fa4; --y: #ffd23f; --r: #ff3355; --text: #d0efff; --dim: rgba(208,239,255,0.5); }
+    * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+    html, body { margin: 0; height: 100%; background: var(--bg); color: var(--text); font: 13px/1.3 'IBM Plex Mono', ui-monospace, Menlo, Consolas, monospace; overflow: hidden; touch-action: manipulation; user-select: none; -webkit-user-select: none; }
+    body { display: flex; flex-direction: column; height: 100dvh; padding-bottom: env(safe-area-inset-bottom); }
+    button { font: inherit; color: inherit; }
+    header { display: flex; align-items: center; gap: 8px; padding: 8px 10px; border-bottom: 1px solid var(--line); }
+    .logo { font-weight: 700; letter-spacing: .06em; } .logo span { color: var(--g); }
+    .dot { width: 9px; height: 9px; border-radius: 50%; background: #444; flex: none; } .dot.on { background: var(--g); box-shadow: 0 0 8px var(--g); } .dot.wait { background: var(--y); }
+    #status { font-size: 10px; color: var(--dim); flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    #play { width: 52px; height: 38px; border-radius: 9px; border: 1px solid rgba(102,255,51,0.5); background: var(--bg2); color: var(--g); font-size: 17px; }
+    #play.on { background: var(--g); color: var(--bg); box-shadow: 0 0 16px rgba(102,255,51,0.5); }
+    #bpm { font-size: 12px; color: var(--dim); white-space: nowrap; } #bpm b { color: #fff; font-size: 15px; }
+    .deck { display: flex; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; }
+    .deck button { width: 38px; height: 36px; border: 0; background: var(--bg2); font-weight: 700; color: var(--dim); }
+    .deck button.on.a { background: var(--c); color: #000; } .deck button.on.b { background: var(--m); color: #000; }
+    main { flex: 1; min-height: 0; overflow: hidden; padding: 8px; }
+    section { display: none; height: 100%; } section.on { display: flex; flex-direction: column; gap: 8px; }
+    nav { display: flex; height: 54px; border-top: 1px solid var(--line); background: #07070c; }
+    nav button { flex: 1; border: 0; background: transparent; color: var(--dim); font-size: 13px; }
+    nav button.on { color: var(--g); box-shadow: inset 0 2px 0 var(--g); }
+    /* faders */
+    .strips { flex: 1; min-height: 0; display: flex; gap: 6px; overflow-x: auto; padding-bottom: 4px; scroll-snap-type: x proximity; }
+    .strip { flex: 0 0 74px; display: flex; flex-direction: column; gap: 6px; padding: 6px; border-radius: 10px; background: var(--bg2); border: 1px solid var(--line); scroll-snap-align: start; }
+    .strip.synth { border-color: rgba(0,212,255,0.45); } .strip.anillo { border-color: rgba(255,63,164,0.4); }
+    .strip .nm { font-size: 10.5px; text-align: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .strip .grp { font-size: 8.5px; text-align: center; color: var(--dim); text-transform: uppercase; letter-spacing: .1em; }
+    .fw { flex: 1; min-height: 80px; display: flex; gap: 5px; justify-content: center; }
+    .vf { position: relative; width: 38px; border-radius: 8px; background: #07070c; border: 1px solid var(--line); touch-action: none; }
+    .vf::before { content: ''; position: absolute; left: 50%; top: 10px; bottom: 10px; width: 3px; margin-left: -1.5px; background: #1d1d2b; border-radius: 2px; }
+    .vf .th { position: absolute; left: 3px; right: 3px; height: 22px; margin-top: -11px; border-radius: 5px; background: linear-gradient(#e6eef4, #8a96a0); box-shadow: 0 2px 6px rgba(0,0,0,0.6); }
+    .vf .th::after { content: ''; position: absolute; left: 4px; right: 4px; top: 10px; height: 2px; background: #111; }
+    .vf.a .th { background: linear-gradient(#a6f3ff, #2aa9c9); } .vf.b .th { background: linear-gradient(#ffb7de, #c9387f); } .vf.ms .th { background: linear-gradient(#ccff9f, #4fbf1c); }
+    .mt { position: relative; width: 9px; border-radius: 3px; background: #07070c; border: 1px solid var(--line); overflow: hidden; }
+    .mt i { position: absolute; left: 0; right: 0; bottom: 0; height: 0; background: linear-gradient(to top, var(--g) 65%, var(--y) 85%, var(--r)); }
+    .val { font-size: 10px; text-align: center; color: var(--dim); }
+    .btns { display: flex; gap: 4px; } .btns button { flex: 1; height: 34px; border-radius: 7px; border: 1px solid var(--line); background: var(--bg3); color: var(--dim); font-size: 12px; }
+    .btns button.on.m { background: var(--m); color: #000; border-color: var(--m); } .btns button.on.s { background: var(--y); color: #000; border-color: var(--y); }
+    .hf { position: relative; height: 46px; border-radius: 9px; background: #07070c; border: 1px solid var(--line); touch-action: none; }
+    .hf .th { position: absolute; top: 3px; bottom: 3px; width: 26px; margin-left: -13px; border-radius: 6px; background: linear-gradient(90deg, #e6eef4, #8a96a0); }
+    .hf .lb { position: absolute; left: 10px; top: 50%; transform: translateY(-50%); font-size: 10px; color: var(--dim); text-transform: uppercase; pointer-events: none; }
+    .hf .center { position: absolute; left: 50%; top: 6px; bottom: 6px; width: 1px; background: #333; }
+    /* mixer */
+    .decks { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; flex: 1; min-height: 0; }
+    .dk { display: flex; flex-direction: column; gap: 6px; padding: 8px; border-radius: 10px; background: var(--bg2); border: 1px solid var(--line); min-height: 0; }
+    .dk.edit.a { border-color: var(--c); } .dk.edit.b { border-color: var(--m); }
+    .dk h3 { margin: 0; display: flex; align-items: baseline; gap: 6px; font-size: 18px; } .dk h3 small { font-size: 10px; color: var(--dim); font-weight: 400; }
+    .dk.a h3 { color: var(--c); } .dk.b h3 { color: var(--m); }
+    .xf { display: flex; flex-direction: column; gap: 4px; }
+    .xf .lbls { display: flex; justify-content: space-between; font-weight: 700; } .xf .lbls b:first-child { color: var(--c); } .xf .lbls b:last-child { color: var(--m); }
+    .xf .hf { height: 56px; } .xf .hf .th { width: 34px; margin-left: -17px; }
+    .quick { display: flex; gap: 4px; } .quick button { flex: 1; height: 34px; border-radius: 7px; border: 1px solid var(--line); background: var(--bg3); }
+    .row { display: flex; gap: 8px; align-items: center; } .row .hf { flex: 1; }
+    /* fx */
+    .seg { display: flex; gap: 4px; } .seg button { flex: 1; height: 38px; border-radius: 8px; border: 1px solid var(--line); background: var(--bg3); color: var(--dim); }
+    .seg button.on { border-color: var(--g); color: var(--g); }
+    .perf { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; flex: 1; min-height: 0; }
+    .perf button { border-radius: 12px; border: 1px solid var(--line); background: var(--bg2); font-size: 16px; line-height: 1.3; white-space: pre-line; }
+    .perf button:active { border-color: var(--g); }
+    .perf button.drop { border-color: rgba(255,63,164,0.6); color: var(--m); font-weight: 700; }
+    .perf button.fired { background: var(--y); color: #000; }
+    .rolls { display: flex; gap: 6px; } .rolls button { flex: 1; height: 64px; border-radius: 10px; border: 1px solid var(--line); background: var(--bg2); font-size: 15px; touch-action: none; }
+    .rolls button.on { background: var(--c); color: #000; border-color: var(--c); }
+    .lbl { font-size: 10px; color: var(--dim); text-transform: uppercase; letter-spacing: .08em; }
+    .nohash { margin: auto; text-align: center; color: var(--dim); padding: 30px; line-height: 1.6; }
+    .toast { position: fixed; left: 50%; bottom: 70px; transform: translateX(-50%); background: rgba(11,11,20,0.96); border: 1px solid rgba(102,255,51,0.45); border-radius: 8px; padding: 8px 14px; opacity: 0; transition: opacity .25s; pointer-events: none; }
+    .toast.on { opacity: 1; }
+  </style>
+</head>
+<body>
+<header>
+  <span class="dot" id="dot"></span>
+  <span class="logo">SYN<span>DRUS</span></span>
+  <span id="status">conectando…</span>
+  <span id="bpm"></span>
+  <div class="deck" id="deck"><button class="a" data-i="0">A</button><button class="b" data-i="1">B</button></div>
+  <button id="play">▶</button>
+</header>
+<main>
+  <section id="sCon" class="on"><div class="strips" id="strips"></div></section>
+  <section id="sMix">
+    <div class="decks" id="decks"></div>
+    <div class="xf"><div class="lbls"><b>A</b><span class="lbl">crossfader</span><b>B</b></div><div class="hf" id="xf"><div class="th"></div></div>
+      <div class="quick"><button data-x="0">A</button><button data-x="0.5">½</button><button data-x="1">B</button></div></div>
+    <div class="row"><span class="lbl">master</span><div class="hf" id="vol"><div class="th"></div><span class="lb">volumen</span></div><div class="mt" style="height:46px;width:12px"><i id="mMaster"></i></div></div>
+  </section>
+  <section id="sFx">
+    <div><span class="lbl">largo</span><div class="seg" id="bars"><button data-n="1">1 compás</button><button data-n="2">2</button><button data-n="4">4</button><button data-n="8">8</button></div></div>
+    <div class="perf" id="perf"><button data-k="up">↗
+Subida</button><button data-k="down">↘
+Bajada</button><button data-k="impact">💥
+Impacto</button><button data-k="drop" class="drop">⤓
+DROP</button></div>
+    <span class="lbl">roll (mantené apretado)</span>
+    <div class="rolls" id="rolls"><button data-len="4">1/4</button><button data-len="2">1/8</button><button data-len="1">1/16</button><button data-cancel="1">✕</button></div>
+  </section>
+  <p class="nohash" id="nohash" hidden>Abrí este control escaneando el código QR<br>desde «📱» en SYNDRUS.</p>
+</main>
+<nav id="nav"><button data-s="sCon" class="on">🎚 Consola</button><button data-s="sMix">⇄ Mezcla</button><button data-s="sFx">✦ FX</button></nav>
+<div class="toast" id="toast"></div>
+<script>
+(function () {
+  'use strict';
+  const $ = id => document.getElementById(id);
+  const el = (tag, cls, txt) => { const e = document.createElement(tag); if (cls) e.className = cls; if (txt !== undefined) e.textContent = txt; return e; };
+  const WS = new URLSearchParams(location.search).has('ws');   // desktop app on the same wifi
+  const room = decodeURIComponent(location.hash.slice(1));
+  if (!WS && !/^syndrus-[a-z0-9]{8,32}$/.test(room)) { $('nohash').hidden = false; document.querySelectorAll('section').forEach(s => { s.classList.remove('on'); }); $('status').textContent = ''; return; }
+  let ws = null, peer = null, conn = null, retry = 0, S = null;
+  const touching = new Set();
+  function status(t, k) { $('status').textContent = t; $('dot').className = 'dot ' + (k || ''); }
+  function send(m) { if (WS) { if (ws && ws.readyState === 1) ws.send(JSON.stringify(m)); } else if (conn && conn.open) conn.send(m); }
+  let toastT; function toast(t) { const e = $('toast'); e.textContent = t; e.classList.add('on'); clearTimeout(toastT); toastT = setTimeout(() => e.classList.remove('on'), 1500); }
+
+  /* ── connection (same as NODRUS' control) ── */
+  function connectWS() {
+    clearTimeout(retry); status('conectando…', 'wait');
+    try { ws = new WebSocket(`ws://${location.host}/ws?syndrus`); } catch (e) { retry = setTimeout(connectWS, 2000); return; }
+    ws.onopen = () => { status('conectado (wifi)', 'on'); send({ t: 'hello' }); };
+    ws.onmessage = e => { try { onData(JSON.parse(e.data)); } catch (er) { /* ignore */ } };
+    ws.onclose = () => { status('se cortó · reintentando', 'wait'); retry = setTimeout(connectWS, 1500); };
+  }
+  function connect() {
+    if (WS) { connectWS(); return; }
+    clearTimeout(retry);
+    if (!window.Peer) { status('sin internet', ''); retry = setTimeout(() => location.reload(), 4000); return; }
+    if (!peer || peer.destroyed) {
+      peer = new window.Peer({ debug: 0 });
+      peer.on('open', open);
+      peer.on('error', err => { status(err.type === 'peer-unavailable' ? 'SYNDRUS no está abierto' : 'sin conexión', 'wait'); retry = setTimeout(connect, 2500); });
+      peer.on('disconnected', () => { try { peer.reconnect(); } catch (e) { /* later */ } });
+    } else if (peer.open) open();
+  }
+  function open() {
+    status('conectando…', 'wait');
+    conn = peer.connect(room, { reliable: true });
+    conn.on('open', () => { status('conectado', 'on'); send({ t: 'hello' }); });
+    conn.on('data', onData);
+    conn.on('close', () => { status('se cortó · reintentando', 'wait'); retry = setTimeout(connect, 1500); });
+    conn.on('error', () => { retry = setTimeout(connect, 2500); });
+  }
+  function onData(m) {
+    if (!m || typeof m !== 'object') return;
+    if (m.t === 'state') { const first = !S || S.ch.length !== m.ch.length || (S.edit !== m.edit); S = m; first ? render() : refresh(); }
+    else if (m.t === 'meters' && Array.isArray(m.v)) paintMeters(m.v);
+  }
+
+  /* ── faders ── */
+  const thr = (fn, ms) => { let last = 0, t = 0, args; return (...a) => { args = a; const now = performance.now(); if (now - last >= ms) { last = now; fn(...args); } else { clearTimeout(t); t = setTimeout(() => { last = performance.now(); fn(...args); }, ms - (now - last)); } }; };
+  function vfader(key, get, max, cls, onv) {   // vertical fader; key identifies it while touched
+    const w = el('div', 'vf' + (cls ? ' ' + cls : '')), th = el('div', 'th'); w.append(th);
+    const sendT = thr(onv, 40);
+    w.paint = () => { const v = get(); th.style.top = (11 + (1 - v / max) * (w.clientHeight - 22)) + 'px'; };
+    const at = y => { const r = w.getBoundingClientRect(); return Math.max(0, Math.min(max, (1 - (y - r.top - 11) / Math.max(1, r.height - 22)) * max)); };
+    w.addEventListener('pointerdown', e => { touching.add(key); try { w.setPointerCapture(e.pointerId); } catch (x) { /* ok */ } const v = at(e.clientY); w.set(v); sendT(v); });
+    w.addEventListener('pointermove', e => { if (!touching.has(key)) return; const v = at(e.clientY); w.set(v); sendT(v); });
+    const end = () => touching.delete(key); w.addEventListener('pointerup', end); w.addEventListener('pointercancel', end);
+    w.set = v => { th.style.top = (11 + (1 - v / max) * (w.clientHeight - 22)) + 'px'; };
+    return w;
+  }
+  function hfader(node, key, get, min, max, onv) {   // horizontal fader on an existing .hf element
+    const th = node.querySelector('.th'), sendT = thr(onv, 40);
+    const paintV = v => { th.style.left = (13 + (v - min) / (max - min) * (node.clientWidth - 26)) + 'px'; };
+    node.paint = () => paintV(get());
+    const at = x => { const r = node.getBoundingClientRect(); return min + Math.max(0, Math.min(1, (x - r.left - 13) / Math.max(1, r.width - 26))) * (max - min); };
+    node.addEventListener('pointerdown', e => { touching.add(key); try { node.setPointerCapture(e.pointerId); } catch (x) { /* ok */ } const v = at(e.clientX); paintV(v); sendT(v); });
+    node.addEventListener('pointermove', e => { if (!touching.has(key)) return; const v = at(e.clientX); paintV(v); sendT(v); });
+    const end = () => touching.delete(key); node.addEventListener('pointerup', end); node.addEventListener('pointercancel', end);
+  }
+  const dB = v => (v <= 0.001 ? '−∞' : (20 * Math.log10(v)).toFixed(1) + ' dB');
+
+  /* ── render ── */
+  let faders = [], meterEls = [];
+  function render() {
+    if (!S) return;
+    faders = []; meterEls = [];
+    const box = $('strips'); box.innerHTML = '';
+    S.ch.forEach((c, i) => {
+      const s = el('div', 'strip ' + c.g), fw = el('div', 'fw'), mt = el('div', 'mt'), mi = el('i'); mt.append(mi);
+      const val = el('div', 'val');
+      const vf = vfader('ch' + i, () => S.ch[i].level, 1.2, '', v => { S.ch[i].level = v; val.textContent = dB(v); send({ t: 'ch', i, k: 'level', v: +v.toFixed(3) }); });
+      fw.append(vf, mt);
+      const btns = el('div', 'btns'), m = el('button', 'm' + (c.mute ? ' on' : ''), 'M');
+      m.addEventListener('click', () => { send({ t: 'mute', i }); m.classList.toggle('on'); });
+      btns.append(m);
+      if (c.solo !== null) { const so = el('button', 's' + (c.solo ? ' on' : ''), 'S'); so.addEventListener('click', () => { send({ t: 'solo', i }); so.classList.toggle('on'); }); btns.append(so); }
+      s.append(el('div', 'grp', c.g), el('div', 'nm', c.n), fw, val, btns);
+      box.append(s);
+      faders.push({ key: 'ch' + i, f: vf, val, get: () => S.ch[i].level, btns: { m, so: btns.children[1] }, i });
+      meterEls[i] = mi;
+    });
+    const dk = $('decks'); dk.innerHTML = '';
+    [0, 1].forEach(i => {
+      const ab = i ? 'b' : 'a', d = S.mix.decks[i], c = el('div', 'dk ' + ab + (S.edit === i ? ' edit' : ''));
+      const h = el('h3', '', i ? 'B' : 'A'); h.append(el('small', '', S.keys[i] || ''));
+      const fw = el('div', 'fw'), mt = el('div', 'mt'), mi = el('i'); mt.append(mi);
+      const val = el('div', 'val');
+      const vf = vfader('dk' + i, () => S.mix.decks[i].level, 1.2, ab, v => { S.mix.decks[i].level = v; val.textContent = dB(v); send({ t: 'deck', i, k: 'level', v: +v.toFixed(3) }); });
+      fw.append(vf, mt);
+      const flt = el('div', 'hf'); flt.append(el('div', 'center'), el('div', 'th'), el('span', 'lb', 'filtro'));
+      hfader(flt, 'dj' + i, () => S.mix.decks[i].dj, -1, 1, v => { const sn = Math.abs(v) < 0.06 ? 0 : v; S.mix.decks[i].dj = sn; send({ t: 'deck', i, k: 'dj', v: +sn.toFixed(3) }); });
+      const btns = el('div', 'btns'), kill = el('button', 'm' + (d.kill ? ' on' : ''), 'Bajos ✕'), cue = el('button', 's' + (d.cue ? ' on' : ''), '🎧 Cue');
+      kill.addEventListener('click', () => { send({ t: 'deck', i, k: 'kill' }); kill.classList.toggle('on'); });
+      cue.addEventListener('click', () => { send({ t: 'deck', i, k: 'cue' }); cue.classList.toggle('on'); });
+      btns.append(kill, cue);
+      c.append(h, fw, val, flt, btns); dk.append(c);
+      faders.push({ key: 'dk' + i, f: vf, val, get: () => S.mix.decks[i].level, h: flt, hk: 'dj' + i, deckBtns: { kill, cue }, di: i });
+      meterEls[S.ch.length + i] = mi;
+    });
+    meterEls[S.ch.length + 2] = $('mMaster');
+    requestAnimationFrame(refresh);
+  }
+  hfader($('xf'), 'x', () => (S ? S.mix.x : 0), 0, 1, v => { if (S) S.mix.x = v; send({ t: 'mix', k: 'x', v: +v.toFixed(3) }); });
+  hfader($('vol'), 'vol', () => (S ? S.mix.volume : 0.8), 0, 1.2, v => { if (S) S.mix.volume = v; send({ t: 'mix', k: 'volume', v: +v.toFixed(3) }); });
+  function refresh() {
+    if (!S) return;
+    $('play').classList.toggle('on', S.playing); $('play').textContent = S.playing ? '■' : '▶';
+    $('bpm').innerHTML = `<b>${S.bpm}</b> bpm`;
+    document.querySelectorAll('#deck button').forEach(b => b.classList.toggle('on', +b.dataset.i === S.edit));
+    faders.forEach(x => {
+      if (!touching.has(x.key)) { x.f.paint(); x.val.textContent = dB(x.get()); }
+      if (x.h && !touching.has(x.hk)) x.h.paint();
+      if (x.btns) { const c = S.ch[x.i]; x.btns.m.classList.toggle('on', c.mute); if (x.btns.so) x.btns.so.classList.toggle('on', !!c.solo); }
+      if (x.deckBtns) { const d = S.mix.decks[x.di]; x.deckBtns.kill.classList.toggle('on', d.kill); x.deckBtns.cue.classList.toggle('on', d.cue); }
+    });
+    if (!touching.has('x')) $('xf').paint(); if (!touching.has('vol')) $('vol').paint();
+    document.querySelectorAll('#bars button').forEach(b => b.classList.toggle('on', +b.dataset.n === S.fxBars));
+  }
+  const lv = [];
+  function paintMeters(v) { v.forEach((x, i) => { const e = meterEls[i]; if (!e) return; lv[i] = Math.max(x, (lv[i] || 0) * 0.8); e.style.height = (lv[i] * 100) + '%'; }); }
+
+  /* ── buttons ── */
+  $('play').addEventListener('click', () => send({ t: 'play' }));
+  document.querySelectorAll('#deck button').forEach(b => b.addEventListener('click', () => send({ t: 'edit', i: +b.dataset.i })));
+  document.querySelectorAll('#nav button').forEach(b => b.addEventListener('click', () => {
+    document.querySelectorAll('#nav button').forEach(x => x.classList.toggle('on', x === b));
+    document.querySelectorAll('main section').forEach(s => s.classList.toggle('on', s.id === b.dataset.s));
+    requestAnimationFrame(refresh);
+  }));
+  document.querySelectorAll('.quick button').forEach(b => b.addEventListener('click', () => { const v = +b.dataset.x; if (S) S.mix.x = v; send({ t: 'mix', k: 'x', v }); refresh(); }));
+  document.querySelectorAll('#bars button').forEach(b => b.addEventListener('click', () => { send({ t: 'bars', n: +b.dataset.n }); if (S) { S.fxBars = +b.dataset.n; refresh(); } }));
+  document.querySelectorAll('#perf button').forEach(b => b.addEventListener('click', () => {
+    send({ t: 'fx', k: b.dataset.k }); b.classList.add('fired'); setTimeout(() => b.classList.remove('fired'), 500);
+    if (navigator.vibrate) navigator.vibrate(15);
+    toast(b.dataset.k === 'drop' ? '⤓ DROP en el próximo compás' : 'En el próximo compás');
+  }));
+  document.querySelectorAll('#rolls button').forEach(b => {
+    if (b.dataset.cancel) { b.addEventListener('click', () => send({ t: 'cancel' })); return; }
+    const on = e => { e.preventDefault(); b.classList.add('on'); send({ t: 'roll', len: +b.dataset.len }); try { b.setPointerCapture(e.pointerId); } catch (x) { /* ok */ } };
+    const off = () => { if (!b.classList.contains('on')) return; b.classList.remove('on'); send({ t: 'roll', len: 0 }); };
+    b.addEventListener('pointerdown', on); b.addEventListener('pointerup', off); b.addEventListener('pointercancel', off); b.addEventListener('lostpointercapture', off);
+  });
+  addEventListener('resize', () => requestAnimationFrame(refresh));
+  if (!WS) { const sc = document.createElement('script'); sc.src = 'https://cdn.jsdelivr.net/npm/peerjs@1.5.4/dist/peerjs.min.js'; sc.onload = connect; sc.onerror = () => status('sin internet', ''); document.head.append(sc); }
+  else connect();
+  window.__syControl = { get state() { return S; }, send };
+})();
+</script>
+</body>
+</html>

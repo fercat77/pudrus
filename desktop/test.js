@@ -94,6 +94,7 @@ module.exports = async function run({ app, mainWin, base, port, startSpout, stop
     {
       const { BrowserWindow } = require('electron');
       const before = BrowserWindow.getAllWindows().length;
+      await js('document.querySelector("#srcSeg [data-src=syndrus]").click()');
       await js('document.getElementById("pmSyndrus").click()');
       await wait(2500);
       const wins = BrowserWindow.getAllWindows(), sy = wins.find(w => /syndrus/.test(w.webContents.getURL()));
@@ -102,6 +103,16 @@ module.exports = async function run({ app, mainWin, base, port, startSpout, stop
         await sy.webContents.executeJavaScript('window.__syndrus.setPlay(true)', true);
         await wait(2000);
         out.nodrusFollows = await js('document.getElementById("status").textContent.includes("SYNDRUS")');
+        // a phone controlling SYNDRUS over the wifi (control/?ws → ws?syndrus → the SYNDRUS window)
+        const WebSocket = require('ws');
+        const pws = new WebSocket(`ws://127.0.0.1:${port}/ws?syndrus`), pm = [];
+        pws.on('message', d => { try { pm.push(JSON.parse(String(d))); } catch (e) { /* ignore */ } });
+        await new Promise((res, rej) => { pws.once('open', res); pws.once('error', rej); });
+        pws.send(JSON.stringify({ t: 'hello' })); await wait(800);
+        const stM = pm.filter(m => m.t === 'state').pop();
+        pws.send(JSON.stringify({ t: 'ch', i: 0, k: 'level', v: 0.33 })); await wait(500);
+        out.syndrusPhone = { state: stM ? stM.ch.length : null, meters: pm.some(m => m.t === 'meters'), kick: await sy.webContents.executeJavaScript('window.__syndrus.state.drums[0].level', true), nodrusUntouched: !(await js('document.getElementById("rmStatus") && document.getElementById("rmStatus").textContent.includes("celular(es) conectado")')) };
+        pws.close();
         await sy.webContents.executeJavaScript('window.__syndrus.setPlay(false)', true); sy.destroy();
       }
     }

@@ -87,24 +87,29 @@ function startServer() {
 
 /* ── Phones over the wifi (WebSocket instead of the internet relay) ── */
 const phones = new Map();
-let phoneSeq = 0, mainWin = null;
+let phoneSeq = 0, mainWin = null, syWin = null;
+const roles = new Map();   // ws id → 'phone' | 'screen' | 'syndrus'
 function startPhones() {
   const wss = new WebSocketServer({ server, path: '/ws', maxPayload: 64 * 1024 });
   wss.on('connection', (ws, req) => {
     const id = ++phoneSeq;
     phones.set(id, ws);
     // phones (controller) and remote screens (output.html?ws on a TV / tablet / another computer)
-    const role = /[?&]screen(=|&|$)/.test(req.url || '') ? 'screen' : 'phone';
-    toEditor('remote', { type: 'open', id, role });
+    // …and phones that control SYNDRUS (control/?ws from the SYNDRUS QR): those go to the SYNDRUS window
+    const role = /[?&]screen(=|&|$)/.test(req.url || '') ? 'screen' : /[?&]syndrus(=|&|$)/.test(req.url || '') ? 'syndrus' : 'phone';
+    roles.set(id, role);
+    const to = (ch, p) => (role === 'syndrus' ? toSyndrus(ch, p) : toEditor(ch, p));
+    to('remote', { type: 'open', id, role });
     ws.on('message', data => {
       let msg; try { msg = JSON.parse(String(data)); } catch (e) { return; }
-      if (msg && typeof msg === 'object') toEditor('remote', { type: 'msg', id, msg });
+      if (msg && typeof msg === 'object') to('remote', { type: 'msg', id, msg });
     });
-    ws.on('close', () => { phones.delete(id); toEditor('remote', { type: 'close', id }); });
+    ws.on('close', () => { phones.delete(id); roles.delete(id); to('remote', { type: 'close', id }); });
     ws.on('error', () => {});
   });
 }
 const toEditor = (ch, payload) => { if (mainWin && !mainWin.isDestroyed()) mainWin.webContents.send(ch, payload); };
+const toSyndrus = (ch, payload) => { if (syWin && !syWin.isDestroyed()) syWin.webContents.send(ch, payload); };
 ipcMain.on('remote-send', (e, id, msg) => {
   const ws = phones.get(id);
   if (!ws || ws.readyState !== 1) return;
@@ -185,7 +190,7 @@ function createMain() {
       return { action: 'allow', overrideBrowserWindowOptions: { x: d.bounds.x + 40, y: d.bounds.y + 40, width: 960, height: 540, show: !TEST, backgroundColor: '#000000', autoHideMenuBar: true, title: 'NODRUS — Salida', webPreferences: { backgroundThrottling: false } } };
     }
     // SYNDRUS opens as a window of the app: same origin → it talks to NODRUS (BroadcastChannel); never throttled, it plays the clock
-    if (url.startsWith(base) && url.includes('/lab/syndrus/')) return { action: 'allow', overrideBrowserWindowOptions: { width: 1366, height: 820, show: !TEST, backgroundColor: '#050508', autoHideMenuBar: true, title: 'SYNDRUS', webPreferences: { backgroundThrottling: false } } };
+    if (url.startsWith(base) && url.includes('/lab/syndrus/')) return { action: 'allow', overrideBrowserWindowOptions: { width: 1366, height: 820, show: !TEST, backgroundColor: '#050508', autoHideMenuBar: true, title: 'SYNDRUS', webPreferences: { preload: path.join(__dirname, 'preload.js'), contextIsolation: true, nodeIntegration: false, backgroundThrottling: false } } };
     if (/^https?:/.test(url) && !url.startsWith(base)) shell.openExternal(url);
     return { action: 'deny' };
   });
@@ -195,7 +200,8 @@ function createMain() {
     e.preventDefault();
     if (/^https?:/.test(url)) shell.openExternal(url);
   });
-  mainWin.webContents.on('did-create-window', win => {
+  mainWin.webContents.on('did-create-window', (win, details) => {
+    if (details && /\/lab\/syndrus\//.test(details.url || '')) { syWin = win; win.on('closed', () => { syWin = null; }); return; }   // SYNDRUS: a normal window, it receives its phones
     // the output goes fullscreen on the projector when there is a second display
     const d = outputDisplay();
     if (d.id !== screen.getPrimaryDisplay().id && !TEST) win.once('ready-to-show', () => { win.setBounds(d.bounds); win.setFullScreen(true); });
