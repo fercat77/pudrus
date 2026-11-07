@@ -516,3 +516,10 @@ body.has-status .lab-toast { bottom: 34px; }
 .st-lv { display: inline-block; width: 34px; height: 6px; border-radius: 3px; background: linear-gradient(90deg, #3ddc84 0 calc(var(--v) * 100%), rgba(255,255,255,.12) 0); vertical-align: 1px; }
 @media (max-width: 1280px) { .lab-status .st-i.lo { display: none; } }
 @media (max-width: 700px) { .lab-status { display: none !important; } body.has-status .lab-work { bottom: 0; } }
+
+/* SYNDRUS drop effects (audio panel) */
+.df-box { display: flex; flex-direction: column; gap: 4px; padding: 6px 8px; margin: 2px 0 4px; border: 1px solid var(--line); border-radius: 6px; background: rgba(255,255,255,0.02); }
+.df-box select { width: 100%; }
+.df-l { font-size: 11px; color: var(--dim); }
+.df-checks { display: grid; grid-template-columns: 1fr 1fr; gap: 2px 8px; }
+.df-checks label { font-size: 11.5px; white-space: nowrap; }

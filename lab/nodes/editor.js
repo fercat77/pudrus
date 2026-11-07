@@ -38,6 +38,8 @@
   const LIVE_STORE = 'pudrus_nodes_live_v1';
   const opts = Object.assign({ direct: false, fade: 1, thumbs: true, labels: true, status: true }, (() => { try { return JSON.parse(localStorage.getItem(LIVE_STORE) || '{}'); } catch (e) { return {}; } })());
   const saveOpts = () => { try { localStorage.setItem(LIVE_STORE, JSON.stringify(opts)); } catch (e) { /* ignore */ } };
+  // what the visuals do on a SYNDRUS drop (see «SYNDRUS link»)
+  opts.dropFx = Object.assign({ build: 'none', cut: 'black', flash: true, scene: false, random: false, deck: false }, opts.dropFx || {});
 
   function load() {
     try { const g = JSON.parse(localStorage.getItem(STORE) || 'null'); return g && Array.isArray(g.nodes) ? g : null; } catch (e) { return null; }
@@ -742,6 +744,11 @@
   $('#syOpen').addEventListener('click', openSyndrus);
   $('#syLink').addEventListener('change', e => { opts.syLink = e.target.checked; saveOpts(); toast(e.target.checked ? 'Sigue a SYNDRUS cuando suena' : 'Ignora a SYNDRUS: tempo y audio propios'); });
   $('#syDrops').addEventListener('change', e => { opts.syDrops = e.target.checked; saveOpts(); });
+  $('#dfBuild').addEventListener('change', e => { opts.dropFx.build = e.target.value; saveOpts(); });
+  $('#dfCut').addEventListener('change', e => { opts.dropFx.cut = e.target.value; saveOpts(); });
+  ['flash', 'scene', 'random', 'deck'].forEach(k => $('#df_' + k).addEventListener('change', e => { opts.dropFx[k] = e.target.checked; saveOpts(); }));
+  $('#dfTest').addEventListener('click', () => { const b = 60000 / Math.max(40, bpm); runDrop(0, b * 7, b * 8); toast('Probando el drop: 2 compases'); });
+  paintDropFx();
   paintSyLink();
   hyArea.addEventListener('keydown', e => {
     e.stopPropagation();
@@ -1341,21 +1348,71 @@
         if (opts.syLink !== false && Math.abs(bpm - m.bpm) > 0.01) { bpm = m.bpm; $('#bpm').textContent = Math.round(bpm); }
         if (!was) toast('🎛 SYNDRUS conectado: NODRUS sigue su tempo, su pulso y su sonido');
       } else if (m.type === 'fx' && syFresh() && opts.syLink !== false && opts.syDrops !== false) {
-        // the drop: black on the last beat, back with a flash on the one; an impact flashes
+        // the drop: build · cut · the one, as chosen in the audio panel
         const at = Math.max(0, m.delay || 0);
-        if (m.kind === 'drop') {
-          syTimers.push(setTimeout(() => dropBlack(true), at + m.cut));
-          syTimers.push(setTimeout(() => { dropBlack(false); setStrobe(true); }, at + m.dur));
-          syTimers.push(setTimeout(() => setStrobe(false), at + m.dur + 140));
-        } else if (m.kind === 'impact') {
-          syTimers.push(setTimeout(() => setStrobe(true), at));
-          syTimers.push(setTimeout(() => setStrobe(false), at + 120));
-        } else if (m.kind === 'cancel') { syTimers.splice(0).forEach(clearTimeout); dropBlack(false); setStrobe(false); }
+        if (m.kind === 'drop') runDrop(at, m.cut, m.dur);
+        else if (m.kind === 'impact') { if (opts.dropFx.flash) flashAt(at, 120); }
+        else if (m.kind === 'cancel') resetDrop();
       } else if (m.type === 'hello-syndrus') syCh.postMessage({ type: 'nodrus', link: opts.syLink !== false });
     };
     syCh.postMessage({ type: 'hello-nodrus' });
     setInterval(() => syCh.postMessage({ type: 'nodrus', link: opts.syLink !== false }), 2000);
   }
+  /* ── what the visuals do on a SYNDRUS drop: build (while the filter rises) · cut (last beat) · the one ── */
+  let timeScale = 1, frozen = false, wasPlaying = true;
+  const later = (f, ms) => syTimers.push(setTimeout(f, Math.max(0, ms)));
+  function flashAt(ms, len) { later(() => setStrobe(true), ms); later(() => setStrobe(false), ms + len); }
+  function resetDrop() {
+    syTimers.splice(0).forEach(clearTimeout);
+    timeScale = 1;
+    if (frozen) { frozen = false; playing = wasPlaying; }
+    dropBlack(false); setStrobe(false);
+  }
+  function runDrop(at, cut, dur) {
+    resetDrop();
+    const fx = opts.dropFx, beat = 60000 / Math.max(40, bpm);
+    // build
+    if (fx.build === 'fade') later(() => { stage.setBlack(true, cut / 1000); broadcastMaster(cut / 1000); }, at);
+    else if (fx.build === 'strobe') {   // pulses getting closer: one per beat … sixteenths
+      let t = at + cut * 0.35;
+      while (t < at + cut - 30) { const p = (t - at) / cut, gap = beat * Math.pow(0.25, Math.min(1, (p - 0.35) / 0.6)); flashAt(t, Math.min(45, gap * 0.4)); t += gap; }
+    } else if (fx.build === 'speed') {   // the visuals run faster and faster
+      for (let k = 0; k <= 20; k++) later(() => { timeScale = 1 + 4 * Math.pow(k / 20, 2); }, at + cut * k / 20);
+    }
+    // cut (last beat)
+    if (fx.cut === 'black') later(() => dropBlack(true), at + cut);
+    else if (fx.cut === 'flicker') later(() => setStrobe(true), at + cut);
+    else if (fx.cut === 'freeze') later(() => { wasPlaying = playing; frozen = true; playing = false; }, at + cut);
+    // the one: undo the build and the cut, then what you chose
+    later(() => {
+      timeScale = 1;
+      if (frozen) { frozen = false; playing = wasPlaying; }
+      dropBlack(false); setStrobe(false);
+      if (fx.deck) setXf(stage.x < 0.5 ? 1 : 0);
+      if (fx.scene) stepScene(1);
+      if (fx.random) { randomPatch(); goLive(undefined, 0); }
+      if (fx.flash) flashAt(0, 140);
+    }, at + dur);
+  }
+  function paintDropFx() {
+    const fx = opts.dropFx;
+    if ($('#dfBuild')) $('#dfBuild').value = fx.build;
+    if ($('#dfCut')) $('#dfCut').value = fx.cut;
+    ['flash', 'scene', 'random', 'deck'].forEach(k => { const c = $('#df_' + k); if (c) c.checked = !!fx[k]; });
+  }
+  // the microphone rests while SYNDRUS plays (it gives the sound), and comes back after
+  let micBack = null;
+  function syMic() {
+    if (syLive() && audio.on) {
+      micBack = devSel.value || '';
+      audio.stop(); $('#btnAudio').classList.remove('is-on');
+      toast('🎤 Micrófono apagado: SYNDRUS da el sonido');
+    } else if (!syLive() && micBack !== null && !audio.on && opts.syLink !== false) {
+      const dev = micBack; micBack = null;
+      audio.start(dev || undefined).then(() => { $('#btnAudio').classList.add('is-on'); toast('🎤 Micrófono de nuevo (SYNDRUS en pausa)'); }).catch(() => {});
+    }
+  }
+  setInterval(syMic, 700);
   function syBeat() {   // the beat now, extrapolated from the last message
     return SY.playing ? SY.beat + (epochNow() - SY.epoch) / 1000 * SY.bpm / 60 : SY.beat;
   }
@@ -2413,7 +2470,7 @@
     if (!limit(now, opts.fpsCap || 0)) return;
     st.frames++; st.worst = Math.max(st.worst, now - last);
     const dt = Math.min(0.1, (now - last) / 1000); last = now;
-    if (playing) time += dt;
+    if (playing) time += dt * timeScale;   // timeScale > 1 during a SYNDRUS drop build («acelerar»)
     N.clock.beat = beatNow();
     if (deskOscOn) oscTick(now);
     flushLive();
@@ -2489,7 +2546,7 @@
   if (!DESK && opts.screenAuto) setTimeout(startRemote, 500);   // remote screens used before reconnect by themselves
   // fonts change node sizes -> redraw links once they are in
   if (document.fonts) document.fonts.ready.then(() => drawLinks());
-  window.__nodesEditor = { get audioBands() { return audio.bands.slice(); }, remoteScreens: screens, get peer() { return peer; }, get graph() { return graph; }, get compiled() { return compiled; }, get liveGraph() { return liveGraph; }, stage, addNode, connect, removeNodes, undo, redo, goLive, modulate, set valueTarget(v) { valueTarget = v; }, setDirect, storeScene, fireScene, openScene, setThumbs, get scenes() { return scenes; }, get controls() { return ctlList(graph); }, setTransition, get transition() { return opts.trans; }, addScreenFilter, get sfx() { return sfx; }, setFxOn, paintFx,
+  window.__nodesEditor = { get micOn() { return audio.on; }, get timeScale() { return timeScale; }, get isPlaying() { return playing; }, get audioBands() { return audio.bands.slice(); }, remoteScreens: screens, get peer() { return peer; }, get graph() { return graph; }, get compiled() { return compiled; }, get liveGraph() { return liveGraph; }, stage, addNode, connect, removeNodes, undo, redo, goLive, modulate, set valueTarget(v) { valueTarget = v; }, setDirect, storeScene, fireScene, openScene, setThumbs, get scenes() { return scenes; }, get controls() { return ctlList(graph); }, setTransition, get transition() { return opts.trans; }, addScreenFilter, get sfx() { return sfx; }, setFxOn, paintFx,
     loadGraph(g, msg) { graph = ensureControls(g); selected.clear(); rebuild(); recompile(); save(); remember(); frameAll(); if (msg) toast(msg); },
     selectedGlsl() { const ids = [...selected]; const n = ids.length === 1 && graph.nodes.find(m => m.id === ids[0]); return n && n.type === 'glsl' ? n : null; },
     setGlsl(n, code, src) { n.p = { ...(n.p || {}), code, src }; rebuild(); recompile(); save(); remember(); },
