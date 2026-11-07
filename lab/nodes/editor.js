@@ -184,6 +184,14 @@
         row.append(ta); body.append(row);
         continue;
       }
+      if (p.kind === 'hydracode') {
+        const b = el('button', 'nd-file nd-code', '✎ Editar Hydra');
+        b.title = 'Pegá o escribí un sketch de Hydra: este nodo lo dibuja entero';
+        b.addEventListener('pointerdown', e => e.stopPropagation());
+        b.addEventListener('click', () => openHydra(n));
+        row.append(b); body.append(row);
+        continue;
+      }
       if (p.kind === 'code') {
         const code = (n.p && n.p.code !== undefined) ? n.p.code : p.v;
         const toy = /\bmainImage\s*\(/.test(code);
@@ -676,10 +684,15 @@
   const HY_HELP = 'Escribí en el lenguaje de Hydra (hydra.ojack.xyz) · Ctrl+Enter: convertir a nodos · cada número queda en un slider · () => … y [a, b, c] se animan · a.fft[0] = graves · src(o0) = feedback';
   if (window.PudrusHydra) Object.keys(window.PudrusHydra.EXAMPLES).forEach(k => { const o = el('option'); o.value = k; o.textContent = k; $('#hydraEx').append(o); });
   $('#hydraLive').checked = opts.hydraLive !== false;
-  function openHydra() {
+  let hyNode = null;   // editing the code of a «Hydra (código)» node instead of the whole patch
+  function openHydra(node) {
     if (!window.PudrusHydra) { toast('No se cargó el traductor de Hydra', true); return; }
-    hyArea.value = graph.hydra || opts.hydraLast || window.PudrusHydra.EXAMPLES['Rayas que respiran'];
-    hyMsg.textContent = HY_HELP; hyMsg.classList.remove('is-err');
+    hyNode = node && node.type === 'hydra' ? node : null;
+    hyArea.value = hyNode ? (hyNode.p && hyNode.p.code !== undefined ? hyNode.p.code : N.NODES.hydra.params[0].v) : (graph.hydra || opts.hydraLast || window.PudrusHydra.EXAMPLES['Rayas que respiran']);
+    $('#hydraTitle').textContent = hyNode ? `Hydra · nodo #${hyNode.id}` : 'Hydra → nodos';
+    $('#hydraRun').textContent = hyNode ? 'Aplicar ⏎' : 'Convertir ⏎';
+    $('#hydraLiveBox').hidden = !!hyNode;
+    hyMsg.textContent = hyNode ? 'Este nodo dibuja el sketch entero: conectá su Color a lo que quieras · Ctrl+Enter: aplicar' : HY_HELP; hyMsg.classList.remove('is-err');
     closePops(); hyPop.hidden = false;
     setTimeout(() => hyArea.focus(), 0);
   }
@@ -688,6 +701,16 @@
     let r;
     try { r = window.PudrusHydra.translate(code); }
     catch (e) { hyMsg.textContent = (e.line ? `línea ${e.line}: ` : '') + (e.message || e); hyMsg.classList.add('is-err'); return; }
+    if (hyNode) {
+      if (!graph.nodes.includes(hyNode)) { hyPop.hidden = true; return; }
+      hyNode.p = { ...(hyNode.p || {}), code };
+      const err = recompile();
+      if (err) { hyMsg.textContent = String(err).split('\n')[0]; hyMsg.classList.add('is-err'); return; }
+      save(); remember();
+      hyMsg.classList.remove('is-err');
+      hyMsg.textContent = '✓ Aplicado al nodo' + (opts.direct ? '' : ' · Enter (fuera del código) lo manda al aire') + (r.warnings.length ? '\n⚠ ' + r.warnings.join('\n⚠ ') : '');
+      return;
+    }
     const shape = g => JSON.stringify([g.nodes.map(n => n.type), g.links.map(l => [l.a, l.ao, l.b, l.bi])]);
     const same = !!graph.hydra && shape(graph) === shape(r.graph);
     graph = { nodes: r.graph.nodes, links: r.graph.links, hydra: code };
@@ -704,6 +727,11 @@
   $('#hydraRun').addEventListener('click', runHydra);
   $('#hydraClose').addEventListener('click', () => { hyPop.hidden = true; });
   $('#hydraLive').addEventListener('change', e => { opts.hydraLive = e.target.checked; saveOpts(); });
+  $('#hydraRandom').addEventListener('click', () => {
+    const r = window.PudrusHydra.random();
+    hyArea.value = r.code; runHydra();
+    if (!hyMsg.classList.contains('is-err')) hyMsg.textContent = `🎲 Estilo ${r.style} · ` + hyMsg.textContent;
+  });
   $('#hydraEx').addEventListener('change', e => {
     const t = window.PudrusHydra.EXAMPLES[e.target.value];
     if (t && (hyArea.value.trim() === '' || confirm('¿Reemplazar el código por el ejemplo?'))) { hyArea.value = t; runHydra(); }

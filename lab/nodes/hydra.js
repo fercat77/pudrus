@@ -423,5 +423,70 @@
     'Pixeles en capas': `noise(4, 0.1)\n  .posterize(4, 0.6)\n  .pixelate(60, 40)\n  .diff(osc(30, 0.1, 2).rotate(0.6))\n  .out()`,
   };
 
-  window.PudrusHydra = { translate, parse, EXAMPLES, HydraError };
+  /* ── Random sketches: Hydra code written at random (readable, editable, then converted) ── */
+  function random(style) {
+    const R = (a, b) => a + Math.random() * (b - a);
+    const I = (a, b) => Math.floor(R(a, b + 1));
+    const pick = a => a[Math.floor(Math.random() * a.length)];
+    const wpick = list => { let t = list.reduce((s, x) => s + x[1], 0) * Math.random(); for (const x of list) { if ((t -= x[1]) <= 0) return x[0]; } return list[0][0]; };
+    const n = (v, d = 2) => String(+v.toFixed(d));
+    const sgn = () => (Math.random() < 0.5 ? -1 : 1);
+    // a value that sometimes moves: with the time, a list on the tempo, or the bass
+    const live = (lo, hi, d = 2) => {
+      const r = Math.random();
+      if (r < 0.12) return `() => Math.sin(time * ${n(R(0.1, 0.6))}) * ${n((hi - lo) / 2, d)} + ${n((hi + lo) / 2, d)}`;
+      if (r < 0.2) { const k = I(2, 4); return `[${Array.from({ length: k }, () => n(R(lo, hi), d)).join(', ')}]${Math.random() < 0.5 ? '.smooth()' : ''}${Math.random() < 0.4 ? `.fast(${pick([0.5, 2, 4])})` : ''}`; }
+      if (r < 0.26) return `() => ${n(lo, d)} + a.fft[0] * ${n(hi - lo, d)}`;
+      return n(R(lo, hi), d);
+    };
+    const SRC = {
+      osc: () => `osc(${live(4, 60, 0)}, ${n(R(0.02, 0.25) * sgn())}, ${n(R(0, 2))})`,
+      noise: () => `noise(${n(R(1, 8), 1)}, ${n(R(0.05, 0.4))})`,
+      voronoi: () => `voronoi(${n(R(3, 15), 1)}, ${n(R(0.1, 0.6))}, ${n(R(0, 0.6))})`,
+      shape: () => `shape(${pick([3, 4, 5, 6, 8, 40])}, ${live(0.2, 0.6)}, ${n(R(0.005, 0.3), 3)})`,
+      gradient: () => `gradient(${n(R(0, 1))})`,
+    };
+    const tex = (lean) => {   // a small chain used as texture (modulators, blends)
+      const s = SRC[wpick([['osc', 3], ['noise', 3], ['voronoi', 2], ['shape', lean ? 1 : 2]])]();
+      return Math.random() < 0.45 ? s + pick([`.rotate(${n(R(0, 3))})`, `.kaleid(${I(2, 6)})`, `.scale(${n(R(0.5, 3))})`, `.color(${n(R(0, 1))}, ${n(R(0, 1))}, ${n(R(0, 1))})`, `.repeat(${I(2, 4)}, ${I(2, 4)})`]) : s;
+    };
+    const COORD = [
+      [() => `.rotate(${n(R(0, 6.28))}, ${n(R(0, 0.2) * sgn(), 3)})`, 3], [() => `.kaleid(${live(3, 8, 0)})`, 3], [() => `.scale(${live(0.5, 2.5)})`, 2],
+      [() => `.repeat(${I(2, 5)}, ${I(2, 5)})`, 2], [() => `.pixelate(${I(8, 80)}, ${I(8, 80)})`, 1], [() => `.scroll(${n(R(0, 1))}, ${n(R(0, 1))}, ${n(R(0, 0.1) * sgn(), 3)}, ${n(R(0, 0.1) * sgn(), 3)})`, 1],
+      [() => `.scrollX(0, ${n(R(0.02, 0.2) * sgn(), 3)})`, 1],
+    ];
+    const MOD = [
+      [() => `.modulate(${tex(true)}, ${live(0.05, 0.5)})`, 4], [() => `.modulateScale(${tex(true)}, ${n(R(0.2, 2))})`, 2], [() => `.modulateRotate(${tex(true)}, ${n(R(0.5, 3))})`, 2],
+      [() => `.modulateKaleid(${tex(true)}, ${I(3, 8)})`, 1], [() => `.modulatePixelate(${tex(true)}, ${I(10, 60)}, ${I(3, 20)})`, 1], [() => `.modulateRepeat(${tex(true)}, ${I(2, 4)}, ${I(2, 4)}, ${n(R(0.2, 0.8))}, ${n(R(0.2, 0.8))})`, 1],
+      [() => `.modulateScrollX(${tex(true)}, ${n(R(0.1, 1))})`, 1], [() => `.modulateHue(${tex(true)}, ${I(5, 40)})`, 1],
+    ];
+    const COLOR = [
+      [() => `.color(${n(R(0.2, 1))}, ${n(R(0, 1))}, ${n(R(0.2, 1))})`, 3], [() => `.colorama(${n(R(0.002, 0.05), 3)})`, 2], [() => `.hue(${live(0, 1)})`, 2],
+      [() => `.posterize(${I(2, 6)}, ${n(R(0.4, 1))})`, 1], [() => `.contrast(${n(R(1.1, 2.2))})`, 1], [() => `.saturate(${n(R(1, 3))})`, 1],
+      [() => `.shift(${n(R(0, 0.5))}, ${n(R(0, 0.5))}, ${n(R(0, 0.5))})`, 1], [() => `.invert()`, 0.4], [() => `.thresh(${n(R(0.3, 0.7))}, ${n(R(0.02, 0.2))})`, 0.6],
+    ];
+    const BLEND = [
+      [() => `.add(${tex()}, ${live(0.2, 0.8)})`, 3], [() => `.diff(${tex()})`, 3], [() => `.blend(${tex()}, ${n(R(0.2, 0.6))})`, 2], [() => `.mult(${tex()}, ${n(R(0.4, 1))})`, 1],
+      [() => `.layer(${SRC.shape()}.color(${n(R(0, 1))}, ${n(R(0, 1))}, ${n(R(0, 1))}))`, 1], [() => `.mask(${SRC.shape()})`, 0.6],
+    ];
+    const step = list => wpick(list.map(([f, w]) => [f, w]))();
+    const STYLES = {
+      kaleido: () => [SRC[wpick([['osc', 3], ['noise', 1], ['voronoi', 1]])](), `.kaleid(${live(3, 9, 0)})`, step(MOD), step(COORD), step(COLOR), Math.random() < 0.5 ? step(BLEND) : ''],
+      modulado: () => [SRC[wpick([['osc', 2], ['voronoi', 2], ['noise', 1], ['shape', 1]])](), step(MOD), step(MOD), Math.random() < 0.6 ? step(COORD) : '', step(COLOR), Math.random() < 0.5 ? step(BLEND) : ''],
+      capas: () => [SRC[wpick([['osc', 2], ['shape', 2], ['voronoi', 1]])](), step(COORD), step(BLEND), step(BLEND), step(COLOR), Math.random() < 0.5 ? step(MOD) : ''],
+      feedback: () => [`src(o0)`, pick([`.scale(${n(R(1.005, 1.03), 3)})`, `.rotate(${n(R(0.005, 0.03) * sgn(), 3)})`, `.modulate(noise(${n(R(1, 4), 1)}), ${n(R(0.002, 0.02), 3)})`]),
+        Math.random() < 0.6 ? pick([`.rotate(${n(R(0.005, 0.03) * sgn(), 3)})`, `.scale(${n(R(1.005, 1.03), 3)})`, `.hue(${n(R(0.002, 0.02), 3)})`]) : '',
+        `.blend(${tex()}${pick(['.kaleid(4)', '.color(1, 0.4, 0.8)', '', `.rotate(0, ${n(R(0.05, 0.2))})`])}, ${n(R(0.05, 0.25))})`, Math.random() < 0.4 ? step(COLOR) : ''],
+      glitch: () => [SRC[wpick([['osc', 2], ['noise', 2], ['voronoi', 1]])](), `.pixelate(${I(10, 60)}, ${I(10, 60)})`, step(MOD), `.posterize(${I(2, 5)}, ${n(R(0.4, 1))})`, step(BLEND), Math.random() < 0.5 ? `.scrollX(0, ${n(R(0.05, 0.3) * sgn(), 3)})` : ''],
+    };
+    const name = style && STYLES[style] ? style : wpick([['kaleido', 3], ['modulado', 4], ['capas', 3], ['feedback', 2], ['glitch', 1.5]]);
+    const parts = STYLES[name]().filter(Boolean);
+    // noise / voronoi / shapes are grey: most of the time give them colour
+    if (!/osc\(|gradient\(|\.color\(|\.hue\(|colorama|\.shift\(/.test(parts.join('')) && Math.random() < 0.8)
+      parts.push(pick([`.color(${n(R(0.3, 1))}, ${n(R(0, 1))}, ${n(R(0.3, 1))})`, `.mult(osc(${I(4, 30)}, 0.1, ${n(R(0.5, 2))}))`, `.colorama(${n(R(0.1, 0.5))})`, `.add(osc(${I(4, 20)}, 0.05, 1.5).color(${n(R(0, 1))}, ${n(R(0, 1))}, ${n(R(0, 1))}), 0.4)`]));
+    const code = parts[0] + parts.slice(1).map(p => '\n  ' + p).join('') + '\n  .out()';
+    return { code, style: name };
+  }
+
+  window.PudrusHydra = { translate, parse, random, EXAMPLES, HydraError };
 })();

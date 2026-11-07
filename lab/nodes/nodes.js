@@ -676,6 +676,57 @@ mat2 h_rot(float a){ return mat2(cos(a), -sin(a), sin(a), cos(a)); }
   };
   Object.assign(NODES, HYDRA_NODES);
 
+  // «Hydra (código)»: a whole Hydra sketch as ONE node (its numbers stay in the code). hydra.js turns the
+  // code into Hydra nodes, which are written here as a GLSL function hydra_<id>(p) instead of separate nodes.
+  const hydraCache = new Map();
+  const glLit = v => { const s = String(+(+v || 0).toPrecision(7)); return /[.e]/.test(s) ? s : s + '.0'; };
+  const colLit = h => { const m = /^#?([0-9a-f]{6})$/i.exec(String(h || '')); const n = m ? parseInt(m[1], 16) : 0x808080; return `vec3(${glLit((n >> 16 & 255) / 255)}, ${glLit((n >> 8 & 255) / 255)}, ${glLit((n & 255) / 255)})`; };
+  function inlineGraph(g) {   // names carry @@, replaced by a per-node prefix
+    const byId = new Map(g.nodes.map(n => [n.id, n])), lines = [], done = new Set();
+    const V = (id, k) => `@@${id}_${k}`;
+    let fb = false;
+    function emit(n) {
+      if (done.has(n.id)) return; done.add(n.id);
+      const def = NODES[n.type];
+      if (def.tex) throw new Error('Hydra: la cámara (s0) no funciona dentro del nodo; usá ⌨ Hydra → nodos');
+      const I = {};
+      for (const inp of inputsOf(n)) {
+        const l = g.links.find(x => x.b === n.id && x.bi === inp.k), s = l && byId.get(l.a);
+        if (s) { emit(s); const o = (NODES[s.type].outputs || []).find(x => x[0] === l.ao); I[inp.k] = convert(V(s.id, o[0]), o[1], inp.t); }
+        else if (inp.t === 'vec2') I[inp.k] = 'p';
+        else if (inp.t === 'color') I[inp.k] = colLit(n.v && n.v[inp.k] !== undefined ? n.v[inp.k] : inp.v);
+        else I[inp.k] = glLit(n.v && n.v[inp.k] !== undefined ? n.v[inp.k] : inp.v);
+      }
+      const O = {}; (def.outputs || []).forEach(o => { O[o[0]] = V(n.id, o[0]); });
+      if (def.usesFeedback) fb = true;
+      lines.push('  ' + def.glsl(I, O, { ...defaultsFor(n.type).p, ...(n.p || {}) }, '@@' + n.id));
+    }
+    const out = g.nodes.find(n => n.type === 'output'), l = out && g.links.find(x => x.b === out.id && x.bi === 'c'), src = l && byId.get(l.a);
+    if (!src) return { body: '', c: 'vec3(0.0)', a: '1.0', fb };
+    emit(src);
+    const has = k => (NODES[src.type].outputs || []).some(o => o[0] === k);
+    return { body: lines.join('\n'), c: V(src.id, l.ao), a: has('a') ? V(src.id, 'a') : '1.0', fb };
+  }
+  function hydraInline(code) {
+    let r = hydraCache.get(code);
+    if (r) return r;
+    const H = window.PudrusHydra;
+    if (!H) throw new Error('Hydra: falta hydra.js');
+    let t;
+    try { t = H.translate(code); } catch (e) { throw new Error('Hydra' + (e.line ? ` (línea ${e.line})` : '') + ': ' + e.message); }
+    r = inlineGraph(t.graph); r.warnings = t.warnings;
+    if (hydraCache.size > 60) hydraCache.clear();
+    hydraCache.set(code, r);
+    return r;
+  }
+  NODES.hydra = { title: 'Hydra (código)', cat: 'Hydra', lib: HYDRA_LIB,
+    inputs: [UV],
+    params: [{ k: 'code', label: 'Código', kind: 'hydracode', v: 'osc(10, 0.1, 1.2)\n  .kaleid(4)\n  .modulate(noise(3), 0.1)\n  .out()' }],
+    outputs: HO,
+    globals: (P, id) => { const r = hydraInline(P.code), pre = `y${id}_`, fix = s => s.replace(/@@/g, pre); return `vec4 hydra_${id}(vec2 p){\n${fix(r.body)}\n  return vec4(${fix(r.c)}, ${fix(r.a)});\n}`; },
+    glsl: (I, O, P, id) => `vec4 _y${id} = hydra_${id}(${I.uv}); vec3 ${O.c} = _y${id}.rgb; float ${O.a} = _y${id}.a;`,
+    feedbackIf: P => { try { return hydraInline(P.code).fb; } catch (e) { return false; } } };
+
   // «Expresión»: a GLSL formula that gives a number every frame (Hydra's () => … and [a, b, c] become one)
   // t = seconds, beat = beats of the tempo, level / bass / mid / high = audio. Whole numbers are fine (2 → 2.0).
   const exprGLSL = s => String(s || '0').replace(/[;{}]/g, ' ').replace(/(?<![\w.]|[eE][-+])(\d+)(?![\w.])/g, '$1.0');
@@ -774,7 +825,7 @@ mat2 h_rot(float a){ return mat2(cos(a), -sin(a), sin(a), cos(a)); }
       lines.push(`  // ${def.title} #${node.id}\n  ` + def.glsl(I, O, P, node.id));
       if (def.tex) textures.push({ node: node.id, kind: node.type, p: P, texName: `u_${node.id}_tex`, aspName: `u_${node.id}_aspect` });
       if (def.usesAudio) usesAudio = true;
-      if (def.usesFeedback) usesFeedback = true;
+      if (def.usesFeedback || (def.feedbackIf && def.feedbackIf(P))) usesFeedback = true;
       visiting.delete(node.id);
       done.add(node.id);
     }
