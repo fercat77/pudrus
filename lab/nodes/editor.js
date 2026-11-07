@@ -738,6 +738,11 @@
     e.target.value = '';
   });
   $('#pmHydra').addEventListener('click', openHydra);
+  $('#pmSyndrus').addEventListener('click', openSyndrus);
+  $('#syOpen').addEventListener('click', openSyndrus);
+  $('#syLink').addEventListener('change', e => { opts.syLink = e.target.checked; saveOpts(); toast(e.target.checked ? 'Sigue a SYNDRUS cuando suena' : 'Ignora a SYNDRUS: tempo y audio propios'); });
+  $('#syDrops').addEventListener('change', e => { opts.syDrops = e.target.checked; saveOpts(); });
+  paintSyLink();
   hyArea.addEventListener('keydown', e => {
     e.stopPropagation();
     if (e.key === 'Enter' && (e.ctrlKey || e.metaKey || e.shiftKey)) { e.preventDefault(); runHydra(); }
@@ -977,6 +982,7 @@
       this.on = false; this.stream = this.ctx = this.an = null; this.bands = [0, 0, 0, 0];
     },
     read() {
+      if (syLive()) { this.bands = syBands(); return this.bands; }   // SYNDRUS replaces the microphone while it plays
       if (!this.on) return this.bands;
       this.an.getByteFrequencyData(this.data);
       const hz = this.ctx.sampleRate / this.an.fftSize;
@@ -1297,7 +1303,7 @@
   ['pointerup', 'pointercancel', 'lostpointercapture'].forEach(t => sb.addEventListener(t, () => setStrobe(false)));
 
   let bpm = opts.bpm || 120, beatOrigin = 0, taps = [];
-  const beatNow = () => (time - beatOrigin) * bpm / 60;
+  const beatNow = () => (syLive() ? syBeat() : (time - beatOrigin) * bpm / 60);
   function tap() {
     const now = performance.now();
     if (taps.length && now - taps[taps.length - 1] > 2000) taps = [];
@@ -1314,6 +1320,63 @@
   }
   $('#btnTap').addEventListener('click', tap);
   $('#bpm').textContent = Math.round(bpm);
+
+  /* ── SYNDRUS link: the music lab sends tempo, beat position, audio bands and drops
+     (same browser or the desktop app: BroadcastChannel 'pudrus-syndrus'). While it is alive,
+     NODRUS follows it instead of the tap tempo, and uses its sound instead of the microphone. ── */
+  const SY = { last: 0, bpm: 0, beat: 0, epoch: 0, playing: false, bands: [0, 0, 0, 0], smooth: [0, 0, 0, 0], deck: '' };
+  const syCh = 'BroadcastChannel' in window ? new BroadcastChannel('pudrus-syndrus') : null;
+  const epochNow = () => performance.timeOrigin + performance.now();
+  const syFresh = () => performance.now() - SY.last < 1500;
+  const syLive = () => opts.syLink !== false && syFresh() && SY.playing;   // stopped SYNDRUS → NODRUS keeps its own tempo and microphone
+  function dropBlack(on) { stage.setBlack(on, 0); broadcastMaster(0); $('#btnBlack').classList.toggle('is-rec', on); }
+  const syTimers = [];
+  if (syCh) {
+    syCh.onmessage = e => {
+      const m = e.data || {};
+      if (m.type === 'sync') {
+        const was = syFresh();
+        SY.last = performance.now(); SY.bpm = m.bpm; SY.beat = m.beat; SY.epoch = m.epoch; SY.playing = !!m.playing;
+        if (Array.isArray(m.bands)) SY.bands = m.bands;
+        if (opts.syLink !== false && Math.abs(bpm - m.bpm) > 0.01) { bpm = m.bpm; $('#bpm').textContent = Math.round(bpm); }
+        if (!was) toast('🎛 SYNDRUS conectado: NODRUS sigue su tempo, su pulso y su sonido');
+      } else if (m.type === 'fx' && syFresh() && opts.syLink !== false && opts.syDrops !== false) {
+        // the drop: black on the last beat, back with a flash on the one; an impact flashes
+        const at = Math.max(0, m.delay || 0);
+        if (m.kind === 'drop') {
+          syTimers.push(setTimeout(() => dropBlack(true), at + m.cut));
+          syTimers.push(setTimeout(() => { dropBlack(false); setStrobe(true); }, at + m.dur));
+          syTimers.push(setTimeout(() => setStrobe(false), at + m.dur + 140));
+        } else if (m.kind === 'impact') {
+          syTimers.push(setTimeout(() => setStrobe(true), at));
+          syTimers.push(setTimeout(() => setStrobe(false), at + 120));
+        } else if (m.kind === 'cancel') { syTimers.splice(0).forEach(clearTimeout); dropBlack(false); setStrobe(false); }
+      } else if (m.type === 'hello-syndrus') syCh.postMessage({ type: 'nodrus', link: opts.syLink !== false });
+    };
+    syCh.postMessage({ type: 'hello-nodrus' });
+    setInterval(() => syCh.postMessage({ type: 'nodrus', link: opts.syLink !== false }), 2000);
+  }
+  function syBeat() {   // the beat now, extrapolated from the last message
+    return SY.playing ? SY.beat + (epochNow() - SY.epoch) / 1000 * SY.bpm / 60 : SY.beat;
+  }
+  function syBands() {   // fast attack, slower release (like the microphone)
+    SY.smooth = SY.smooth.map((b, i) => {
+      const v = Math.min(1, (SY.bands[i] || 0) * audio.gain);   // SYNDRUS already sends shaped bands (drum hits + spectrum)
+      return v > b ? b + (v - b) * 0.6 : b + (v - b) * 0.12;
+    });
+    return SY.smooth;
+  }
+  function paintSyLink() {
+    const a = $('#syLink'), d = $('#syDrops');
+    if (a) a.checked = opts.syLink !== false;
+    if (d) d.checked = opts.syDrops !== false;
+  }
+  const syUrl = () => (DESK ? '/lab/syndrus/' : new URL('../syndrus/', document.baseURI).href);
+  function openSyndrus() {
+    const w = window.open(syUrl(), 'syndrus');
+    if (!w) toast('El navegador bloqueó la ventana: permití las ventanas emergentes', true);
+    else toast('🎛 SYNDRUS abierto: dale play allá y NODRUS lo sigue');
+  }
 
   /* ── Live controls: values you play from the phone or MIDI ── */
   const CTL_STORE = 'pudrus_nodes_ctl_v1', MIDI_STORE = 'pudrus_nodes_midi_v1';
@@ -2299,7 +2362,8 @@
     const nfx = sfx.on ? sfx.list.filter(f => f.on !== false).length : 0;
     if (nfx) out.push(item(`✨ ${nfx}`, `${nfx} filtro(s) de pantalla activos`));
     if (ov.on && ov.items.length) out.push(item('◧ capa', 'La capa de logo/texto está encendida'));
-    out.push(item(`<b class="st-beat">♩</b> ${bpm}`, 'Tempo (T = tap)'));
+    out.push(item(`<b class="st-beat">♩</b> ${Math.round(bpm * 10) / 10}`, syLive() ? 'Tempo de SYNDRUS' : 'Tempo (T = tap)'));
+    if (syFresh() && opts.syLink !== false) out.push(item(`🎛 SYNDRUS ${SY.playing ? '▶' : '■'}`, 'NODRUS sigue a SYNDRUS: tempo, pulso, sonido' + (opts.syDrops !== false ? ' y drops' : '')));
     if (audio.on) { const lv = Math.max(...st.audio); out.push(item(`🎤 <i class="st-lv" style="--v:${Math.min(1, lv).toFixed(2)}"></i>`, 'Nivel del audio que entra')); }
     if (conns.size) out.push(item(`📱 ${conns.size}`, `${conns.size} celular(es) conectado(s) como control`));
     if (midi && midi.inputs.size) out.push(item(`🎹 ${midi.inputs.size}`, [...midi.inputs.values()].map(i => i.name).join(', ') || 'MIDI'));
@@ -2425,7 +2489,7 @@
   if (!DESK && opts.screenAuto) setTimeout(startRemote, 500);   // remote screens used before reconnect by themselves
   // fonts change node sizes -> redraw links once they are in
   if (document.fonts) document.fonts.ready.then(() => drawLinks());
-  window.__nodesEditor = { remoteScreens: screens, get peer() { return peer; }, get graph() { return graph; }, get compiled() { return compiled; }, get liveGraph() { return liveGraph; }, stage, addNode, connect, removeNodes, undo, redo, goLive, modulate, set valueTarget(v) { valueTarget = v; }, setDirect, storeScene, fireScene, openScene, setThumbs, get scenes() { return scenes; }, get controls() { return ctlList(graph); }, setTransition, get transition() { return opts.trans; }, addScreenFilter, get sfx() { return sfx; }, setFxOn, paintFx,
+  window.__nodesEditor = { get audioBands() { return audio.bands.slice(); }, remoteScreens: screens, get peer() { return peer; }, get graph() { return graph; }, get compiled() { return compiled; }, get liveGraph() { return liveGraph; }, stage, addNode, connect, removeNodes, undo, redo, goLive, modulate, set valueTarget(v) { valueTarget = v; }, setDirect, storeScene, fireScene, openScene, setThumbs, get scenes() { return scenes; }, get controls() { return ctlList(graph); }, setTransition, get transition() { return opts.trans; }, addScreenFilter, get sfx() { return sfx; }, setFxOn, paintFx,
     loadGraph(g, msg) { graph = ensureControls(g); selected.clear(); rebuild(); recompile(); save(); remember(); frameAll(); if (msg) toast(msg); },
     selectedGlsl() { const ids = [...selected]; const n = ids.length === 1 && graph.nodes.find(m => m.id === ids[0]); return n && n.type === 'glsl' ? n : null; },
     setGlsl(n, code, src) { n.p = { ...(n.p || {}), code, src }; rebuild(); recompile(); save(); remember(); },

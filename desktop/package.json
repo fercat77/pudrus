@@ -56,6 +56,13 @@
       {
         "from": "../js/splash.js",
         "to": "web/js/splash.js"
+      },
+      {
+        "from": "../lab/syndrus",
+        "to": "web/lab/syndrus",
+        "filter": [
+          "**/*"
+        ]
       }
     ],
     "win": {

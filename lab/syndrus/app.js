@@ -190,6 +190,17 @@
       const n = roll ? roll.start + ((step - roll.start) % roll.len) : step;   // Roll: repeat a slice of the bar
       app.decks.forEach((p, i) => { if (g[i] > 0.001 || app.mix.decks[i].cue) X.playStep(E.decks[i], { ...p, bpm: app.bpm }, n, t, Math.random, app.mix.decks[i].mute); });
       queue.push({ step: n, t });
+      anchor = { beat: step / 4, time: nextTime, bpm: app.bpm };
+      // what NODRUS should feel: kicks, claps/snares and hats of the decks you hear (scaled by the crossfader)
+      app.decks.forEach((p, i) => {
+        if (g[i] < 0.05 || app.mix.decks[i].mute.drums) return;
+        const solo = p.drums.some(x => x.solo);
+        p.drums.forEach((tr, k) => {
+          const v = tr.steps[n % 16]; if (!v || tr.mute || (solo && !tr.solo)) return;
+          const cls = k === 0 ? 0 : (k === 1 || k === 2) ? 1 : (k === 3 || k === 4 || k === 7) ? 2 : -1;
+          if (cls >= 0) hits.push({ cls, t, v: g[i] * (v === 2 ? 1 : 0.75) * tr.level });
+        });
+      });
       nextTime += stepDur; step++;
     }
   }
@@ -209,6 +220,54 @@
     else { E.decks.forEach(D => D.synth.noteOff(ac.currentTime)); queue.length = 0; paintNow(-1); if (pending[0] || pending[1]) applyPending(); }
   }
   $('#play').addEventListener('click', () => setPlay(!playing));
+
+  /* ── link to NODRUS: tempo, beat position, audio bands and drops, ~25 times a second.
+     Runs on a timer (not on the screen refresh) so it keeps going when this window is behind NODRUS:
+     a tab that plays audio is not throttled. ── */
+  const linkCh = 'BroadcastChannel' in window ? new BroadcastChannel('pudrus-syndrus') : null;
+  let anchor = { beat: 0, time: 0, bpm: 128 }, nodrusSeen = 0, nodrusLink = true, bandBuf = null;
+  const hits = [];   // { cls: 0 kick · 1 clap/snare · 2 hats, t (audio time), v }
+  const latency = () => (ac ? (ac.outputLatency || ac.baseLatency || 0) : 0);
+  function beatAt(T) { return anchor.beat + (T - anchor.time) * anchor.bpm / 60; }
+  function linkBands() {
+    if (!E) return [0, 0, 0, 0];
+    const an = E.analyser; bandBuf = bandBuf || new Uint8Array(an.frequencyBinCount);
+    an.getByteFrequencyData(bandBuf);
+    const hz = ac.sampleRate / an.fftSize;
+    const band = (lo, hi) => { let s = 0, n = 0; for (let i = Math.max(1, Math.floor(lo / hz)); i <= Math.min(bandBuf.length - 1, Math.ceil(hi / hz)); i++) { s += bandBuf[i]; n++; } return n ? s / n / 255 : 0; };
+    return [band(20, 12000), band(20, 150), band(150, 2000), band(2000, 12000)];   // same bands as NODRUS' microphone
+  }
+  function sendSync() {
+    if (!linkCh) return;
+    const msg = { type: 'sync', bpm: app.bpm, playing };
+    if (ac && playing) { const T = ac.currentTime - latency(); msg.beat = beatAt(T); }
+    else msg.beat = 0;
+    msg.epoch = performance.timeOrigin + performance.now();
+    if (playing && ac) {
+      const T = ac.currentTime - latency(), env = [0, 0, 0], DEC = [0.16, 0.12, 0.07];
+      for (let i = hits.length - 1; i >= 0; i--) {
+        const h = hits[i];
+        if (T - h.t > 1.2) { hits.splice(i, 1); continue; }
+        if (T >= h.t) env[h.cls] = Math.max(env[h.cls], h.v * Math.exp(-(T - h.t) / DEC[h.cls]));
+      }
+      const b = linkBands();   // the real spectrum fills in what the drums don't say (bass lines, pads)
+      msg.bands = [b[0] * 0.7, Math.max(env[0], b[1] * 0.3), Math.max(env[1], b[2] * 0.45), Math.max(env[2], b[3] * 0.5)].map(v => +Math.min(1, v).toFixed(3));
+    } else msg.bands = [0, 0, 0, 0];
+    linkCh.postMessage(msg);
+  }
+  if (linkCh) {
+    linkCh.onmessage = e => {
+      const m = e.data || {};
+      if (m.type === 'nodrus') { const was = performance.now() - nodrusSeen < 4000; nodrusSeen = performance.now(); nodrusLink = m.link !== false; if (!was) toast('◈ NODRUS conectado: las visuales siguen esta música'); }
+      else if (m.type === 'hello-nodrus') { nodrusSeen = performance.now(); sendSync(); }
+    };
+    linkCh.postMessage({ type: 'hello-syndrus' });
+    setInterval(sendSync, 40);
+  }
+  function linkFx(kind, t, dur, cut) {   // times on the audio clock → milliseconds from now, as heard
+    if (!linkCh || !ac) return;
+    linkCh.postMessage({ type: 'fx', kind, delay: Math.max(0, (t - ac.currentTime + latency()) * 1000), dur: (dur || 0) * 1000, cut: (cut || 0) * 1000 });
+  }
 
   /* ── drag parameter widget (like NODRUS) ── */
   function param(label, obj, key, min, max, opts = {}) {
@@ -593,6 +652,7 @@
     else if (kind === 'down') E.downer(t, Math.min(dur, bar * 2));
     else if (kind === 'impact') E.impact(t);
     else if (kind === 'drop') E.drop(t, dur, beat);
+    linkFx(kind, t, kind === 'down' ? Math.min(dur, bar * 2) : dur, dur - beat);
     // the button blinks until it starts, then glows while it lasts
     const wait = Math.max(0, (t - ac.currentTime) * 1000), len = kind === 'impact' ? 400 : kind === 'down' ? Math.min(dur, bar * 2) * 1000 : dur * 1000;
     btn.classList.add('armed'); armed.add(kind);
@@ -622,7 +682,7 @@
         rolls.append(b);
       });
       const cancel = el('button', 'sy-mini', '✕'); cancel.title = 'Cancelar el drop y abrir el filtro';
-      cancel.addEventListener('click', () => { if (E) E.cancelFx(); });
+      cancel.addEventListener('click', () => { if (E) { E.cancelFx(); linkFx('cancel', ac.currentTime); } });
       rolls.append(cancel);
       body.append(seg, perf, rolls);
     } else if (fxTab === 'deck') {
@@ -655,6 +715,7 @@
       `<span class="lo">${X.NOTE_NAMES[st.root]} ${X.SCALE_NAMES[st.scale].toLowerCase()}</span>`,
       `<span class="lo">ciclo de los anillos <b>${cycTxt}</b></span>`,
       `<span class="meter" title="Pico de salida"><i style="width:${Math.max(0, Math.min(1, (db + 48) / 48)) * 100}%"></i></span> ${isFinite(db) ? db.toFixed(1) + ' dB' : '−∞'}${clip ? ' <span class="clip">CLIP</span>' : ''}`,
+      performance.now() - nodrusSeen < 4000 ? `<span class="ok">◈ NODRUS ${nodrusLink ? 'sigue esta música' : 'conectado (sin seguir)'}</span>` : '<span class="lo">◈ NODRUS sin abrir</span>',
       `<span class="lo">${ac ? `${(ac.sampleRate / 1000).toFixed(1)} kHz · latencia ${lat} ms` : 'audio apagado (tocá ▶)'}</span>`,
       `<span class="lo ${Date.now() - savedAt < 2500 ? 'ok' : ''}">${Date.now() - savedAt < 2500 ? 'guardado ✓' : 'guardado en este navegador'}</span>`,
     ];
@@ -733,6 +794,11 @@
     (navigator.clipboard ? navigator.clipboard.writeText(url) : Promise.reject()).then(() => toast('Enlace copiado: quien lo abra escucha esta mezcla (los dos decks)'), () => { prompt('Copiá este enlace:', url); });
   });
   $('#help').addEventListener('click', () => { $('#helpPop').hidden = !$('#helpPop').hidden; });
+  $('#nodrus').addEventListener('click', () => {
+    const local = /^https?:\/\/(127\.0\.0\.1|localhost)/.test(location.href);
+    const w = window.open(local && location.pathname.startsWith('/lab/') ? '/lab/nodes/' : new URL('../nodes/', location.href).href, 'nodrus');
+    if (!w) toast('El navegador bloqueó la ventana: permití las ventanas emergentes');
+  });
   $('#helpClose').addEventListener('click', () => { $('#helpPop').hidden = true; });
   if (location.hash.startsWith('#s=')) history.replaceState(null, '', location.pathname);
 

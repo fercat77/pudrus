@@ -60,11 +60,11 @@ function serve(req, res) {
   if (p === '/') { res.writeHead(302, { Location: '/lab/nodes/?pc' }); res.end(); return; }
   let file = VENDOR[p];
   if (!file) {
-    if (!(p.startsWith('/lab/nodes/') || p === '/favicon.svg' || p === '/js/splash.js')) { res.writeHead(404); res.end('no'); return; }
+    if (!(p.startsWith('/lab/nodes/') || p.startsWith('/lab/syndrus/') || p === '/favicon.svg' || p === '/js/splash.js')) { res.writeHead(404); res.end('no'); return; }
     if (p.endsWith('/')) p += 'index.html';
     file = path.normalize(path.join(WEB, p));
-    const root = path.normalize(path.join(WEB, 'lab', 'nodes'));
-    if (!(file.startsWith(root + path.sep) || file === path.join(WEB, 'favicon.svg') || file === path.join(WEB, 'js', 'splash.js'))) { res.writeHead(403); res.end(); return; }
+    const root = path.normalize(path.join(WEB, 'lab', 'nodes')), syRoot = path.normalize(path.join(WEB, 'lab', 'syndrus'));
+    if (!(file.startsWith(root + path.sep) || file.startsWith(syRoot + path.sep) || file === path.join(WEB, 'favicon.svg') || file === path.join(WEB, 'js', 'splash.js'))) { res.writeHead(403); res.end(); return; }
   }
   fs.stat(file, (err, st) => {
     if (err || !st.isFile()) { res.writeHead(404); res.end('no'); return; }
@@ -184,6 +184,8 @@ function createMain() {
       const d = outputDisplay();
       return { action: 'allow', overrideBrowserWindowOptions: { x: d.bounds.x + 40, y: d.bounds.y + 40, width: 960, height: 540, show: !TEST, backgroundColor: '#000000', autoHideMenuBar: true, title: 'NODRUS — Salida', webPreferences: { backgroundThrottling: false } } };
     }
+    // SYNDRUS opens as a window of the app: same origin → it talks to NODRUS (BroadcastChannel); never throttled, it plays the clock
+    if (url.startsWith(base) && url.includes('/lab/syndrus/')) return { action: 'allow', overrideBrowserWindowOptions: { width: 1366, height: 820, show: !TEST, backgroundColor: '#050508', autoHideMenuBar: true, title: 'SYNDRUS', webPreferences: { backgroundThrottling: false } } };
     if (/^https?:/.test(url) && !url.startsWith(base)) shell.openExternal(url);
     return { action: 'deny' };
   });

@@ -88,8 +88,23 @@ module.exports = async function run({ app, mainWin, base, port, startSpout, stop
 
     // 4) the phone page and libraries are served locally
     const get = p => new Promise(res => require('http').get(base + p, r => { let n = 0; r.on('data', c => { n += c.length; }); r.on('end', () => res({ status: r.statusCode, bytes: n })); }).on('error', e => res({ error: e.message })));
-    out.served = { control: await get('/lab/nodes/control/?ws'), qrcode: await get('/vendor/qrcode.js'), mp4: await get('/vendor/mp4-muxer.js'), outside: await get('/../../desktop/main.js'), secret: await get('/desktop/main.js') };
+    out.served = { syndrus: await get('/lab/syndrus/'), syndrusEngine: await get('/lab/syndrus/engine.js'), control: await get('/lab/nodes/control/?ws'), qrcode: await get('/vendor/qrcode.js'), mp4: await get('/vendor/mp4-muxer.js'), outside: await get('/../../desktop/main.js'), secret: await get('/desktop/main.js') };
     out.remoteUrl = await js('document.getElementById("rmUrl") ? (window.__nodesEditor && "ok") : "?"');
+    // SYNDRUS opens as a window of the app and NODRUS hears it
+    {
+      const { BrowserWindow } = require('electron');
+      const before = BrowserWindow.getAllWindows().length;
+      await js('document.getElementById("pmSyndrus").click()');
+      await wait(2500);
+      const wins = BrowserWindow.getAllWindows(), sy = wins.find(w => /syndrus/.test(w.webContents.getURL()));
+      out.syndrusWindow = { opened: wins.length > before, url: sy ? sy.webContents.getURL().replace(base, '') : null };
+      if (sy) {
+        await sy.webContents.executeJavaScript('window.__syndrus.setPlay(true)', true);
+        await wait(2000);
+        out.nodrusFollows = await js('document.getElementById("status").textContent.includes("SYNDRUS")');
+        await sy.webContents.executeJavaScript('window.__syndrus.setPlay(false)', true); sy.destroy();
+      }
+    }
     out.errorsInEditor = await js('window.__deskErrors || []');
     finish(0);
   } catch (e) {
