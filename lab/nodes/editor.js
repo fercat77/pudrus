@@ -1050,7 +1050,8 @@
   const screens = new Map();   // remote screens (TV, tablet, another computer) → see «Remote screens»
   function broadcast(msg) {
     if (channel) channel.postMessage(msg);
-    if (screens.size) screens.forEach(s => { if (s.mode === 'render' && s.name) try { s.send(msg); } catch (e) { /* closed */ } });
+    // a slow wifi must not pile up messages: the clock of every frame can be skipped (the next one replaces it)
+    if (screens.size) screens.forEach(s => { if (s.mode === 'render' && s.name && !(msg.type === 'frame' && s.busy && s.busy())) try { s.send(msg); } catch (e) { /* closed */ } });
   }
   // everything an output needs to show what is on air right now
   function sendState(send) {
@@ -1604,7 +1605,7 @@
     peer.on('connection', conn => {
       if (conn.metadata && conn.metadata.role === 'screen') {
         const key = 'p' + conn.peer;
-        conn.on('open', () => { removeScreen(key); addScreen({ key, peer: conn.peer, mode: 'render', name: '', send: msg => { if (conn.open) conn.send(msg); } }); });
+        conn.on('open', () => { removeScreen(key); addScreen({ key, peer: conn.peer, mode: 'render', name: '', send: msg => { if (conn.open) conn.send(msg); }, busy: () => (conn.bufferSize || 0) > 30 || !!(conn.dataChannel && conn.dataChannel.bufferedAmount > 512e3) }); });
         conn.on('data', m => { const s = screens.get(key); if (s) screenMsg(s, m); });
         const gone = () => removeScreen(key);
         conn.on('close', gone); conn.on('error', gone);
@@ -1723,6 +1724,8 @@
   }
   function stopScreenVideo(s) {
     if (s.pc) { try { s.pc.close(); } catch (e) { /* closed */ } s.pc = null; s.send({ type: 'rtc', stop: true }); }
+    // nobody watches the video any more: stop capturing the canvas
+    if (castStream && ![...screens.values()].some(x => x !== s && x.pc)) { castStream.getTracks().forEach(t => t.stop()); castStream = null; }
   }
   function startScreenVideo(s) {
     stopScreenVideo(s);
@@ -2011,7 +2014,10 @@
   fxChanged(true);
 
   /* ── Transitions for «Al aire» and the crossfader ── */
-  function transLabel() { $('#btnTrans').innerHTML = '⇄<span class="t"> ' + (opts.trans ? opts.trans.name : 'Fundido') + '</span>'; $('#btnTrans').classList.toggle('is-on', !!opts.trans); }
+  function transLabel() {   // the name may come from an imported ISF file: text, never HTML
+    const b = $('#btnTrans'), t = el('span', 't', ' ' + (opts.trans ? opts.trans.name : 'Fundido'));
+    b.textContent = '⇄'; b.append(t); b.classList.toggle('is-on', !!opts.trans);
+  }
   function setTransition(entry) {
     opts.trans = entry ? { lib: entry.id, name: entry.name, code: entry.code, v: {}, param: entry.transParam || 'g_progress', author: entry.author || '' } : null;
     saveOpts(); stage.setTransition(opts.trans);

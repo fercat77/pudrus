@@ -105,7 +105,12 @@ function startPhones() {
   });
 }
 const toEditor = (ch, payload) => { if (mainWin && !mainWin.isDestroyed()) mainWin.webContents.send(ch, payload); };
-ipcMain.on('remote-send', (e, id, msg) => { const ws = phones.get(id); if (ws && ws.readyState === 1) ws.send(JSON.stringify(msg)); });
+ipcMain.on('remote-send', (e, id, msg) => {
+  const ws = phones.get(id);
+  if (!ws || ws.readyState !== 1) return;
+  if (msg && msg.type === 'frame' && ws.bufferedAmount > 512e3) return;   // slow wifi: skip clock ticks instead of piling them up
+  ws.send(JSON.stringify(msg));
+});
 
 /* ── Spout: an invisible, clean copy of the output window, shared on the GPU ── */
 let spout = null;
@@ -181,6 +186,12 @@ function createMain() {
     }
     if (/^https?:/.test(url) && !url.startsWith(base)) shell.openExternal(url);
     return { action: 'deny' };
+  });
+  // the editor window (which has the desktop bridge) never leaves NODRUS: outside links open in the browser
+  mainWin.webContents.on('will-navigate', (e, url) => {
+    if (url.startsWith(base)) return;
+    e.preventDefault();
+    if (/^https?:/.test(url)) shell.openExternal(url);
   });
   mainWin.webContents.on('did-create-window', win => {
     // the output goes fullscreen on the projector when there is a second display
