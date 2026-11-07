@@ -74,6 +74,50 @@
     .nohash { margin: auto; text-align: center; color: var(--dim); padding: 30px; line-height: 1.6; }
     .toast { position: fixed; left: 50%; bottom: 70px; transform: translateX(-50%); background: rgba(11,11,20,0.96); border: 1px solid rgba(102,255,51,0.45); border-radius: 8px; padding: 8px 14px; opacity: 0; transition: opacity .25s; pointer-events: none; }
     .toast.on { opacity: 1; }
+    nav button i { font-style: normal; }
+    .strip .nm .short { display: none; }
+
+    /* ── phone sideways: controls in a slim rail on the left, all 13 faders at once ── */
+    @media (orientation: landscape) and (max-height: 560px) {
+      body { display: grid; grid-template-columns: 62px minmax(0, 1fr); grid-template-rows: minmax(0, 1fr) auto; grid-template-areas: "head main" "nav main"; padding-left: env(safe-area-inset-left); padding-right: env(safe-area-inset-right); }
+      header { grid-area: head; flex-direction: column; justify-content: flex-start; gap: 6px; padding: 6px 4px; border-bottom: 0; border-right: 1px solid var(--line); }
+      .logo, #status { display: none; }
+      header .dot { order: -1; }
+      #bpm { font-size: 9px; text-align: center; } #bpm b { display: block; font-size: 13px; }
+      .deck { flex-direction: column; } .deck button { width: 48px; height: 30px; }
+      #play { width: 50px; height: 40px; order: 9; margin-top: auto; }
+      nav { grid-area: nav; flex-direction: column; height: auto; border-top: 0; border-right: 1px solid var(--line); }
+      nav button { height: 44px; font-size: 18px; } nav button span { display: none; }
+      nav button.on { box-shadow: inset 3px 0 0 var(--g); }
+      main { grid-area: main; padding: 5px 6px; }
+      /* console: the strips share the width */
+      .strips { overflow-x: hidden; gap: 4px; }
+      .strip { flex: 1 1 0; min-width: 0; padding: 4px 3px; gap: 4px; border-radius: 8px; }
+      .strip .grp { display: none; }
+      .strip .nm { font-size: 9.5px; } .strip .nm .full { display: none; } .strip .nm .short { display: inline; }
+      .vf { width: 100%; max-width: 30px; } .vf .th { height: 18px; margin-top: -9px; } .vf .th::after { top: 8px; }
+      .mt { width: 6px; }
+      .fw { gap: 3px; min-height: 0; }
+      .val { font-size: 8.5px; }
+      .btns { gap: 2px; } .btns button { height: 26px; font-size: 10px; border-radius: 5px; }
+      /* mixer: decks on the left, crossfader + master on the right */
+      #sMix.on { display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr); grid-template-rows: minmax(0, 1fr) auto; grid-template-areas: "decks xf" "decks vol"; gap: 8px; }
+      #sMix .decks { grid-area: decks; }
+      #sMix .xf { grid-area: xf; justify-content: center; }
+      #sMix .row { grid-area: vol; }
+      .dk { padding: 6px; gap: 4px; } .dk h3 { font-size: 15px; }
+      .dk .hf { height: 34px; } .dk .btns button { height: 30px; }
+      /* fx: everything in view */
+      #sFx.on { display: grid; grid-template-rows: auto minmax(0, 1fr) auto auto; gap: 6px; }
+      .perf { grid-template-columns: repeat(4, 1fr); gap: 6px; }
+      .perf button { font-size: 14px; }
+      .seg button { height: 32px; }
+      .rolls button { height: 48px; }
+    }
+    /* turn-me hint (portrait, once) */
+    .turn { position: fixed; left: 50%; top: 64px; transform: translateX(-50%); z-index: 5; background: rgba(11,11,20,0.96); border: 1px solid rgba(0,212,255,0.45); border-radius: 10px; padding: 9px 14px; font-size: 12px; white-space: nowrap; }
+    .turn[hidden] { display: none; }
+    @media (orientation: landscape) { .turn { display: none; } }
   </style>
 </head>
 <body>
@@ -105,8 +149,9 @@ DROP</button></div>
   </section>
   <p class="nohash" id="nohash" hidden>Abrí este control escaneando el código QR<br>desde «📱» en SYNDRUS.</p>
 </main>
-<nav id="nav"><button data-s="sCon" class="on">🎚 Consola</button><button data-s="sMix">⇄ Mezcla</button><button data-s="sFx">✦ FX</button></nav>
+<nav id="nav"><button data-s="sCon" class="on"><i>🎚</i><span> Consola</span></button><button data-s="sMix"><i>⇄</i><span> Mezcla</span></button><button data-s="sFx"><i>✦</i><span> FX</span></button></nav>
 <div class="toast" id="toast"></div>
+<div class="turn" id="turn" hidden>📱↻ Girá el celular para ver todos los faders</div>
 <script>
 (function () {
   'use strict';
@@ -180,6 +225,7 @@ DROP</button></div>
 
   /* ── render ── */
   let faders = [], meterEls = [];
+  const SHORT = { Redoblante: 'Redob.', 'Hat cerrado': 'Hat C', 'Hat abierto': 'Hat A', 'Anillo 1': '◎1', 'Anillo 2': '◎2', 'Anillo 3': '◎3', 'Anillo 4': '◎4' };   // sideways the strips are narrow
   function render() {
     if (!S) return;
     faders = []; meterEls = [];
@@ -193,7 +239,8 @@ DROP</button></div>
       m.addEventListener('click', () => { send({ t: 'mute', i }); m.classList.toggle('on'); });
       btns.append(m);
       if (c.solo !== null) { const so = el('button', 's' + (c.solo ? ' on' : ''), 'S'); so.addEventListener('click', () => { send({ t: 'solo', i }); so.classList.toggle('on'); }); btns.append(so); }
-      s.append(el('div', 'grp', c.g), el('div', 'nm', c.n), fw, val, btns);
+      const nm = el('div', 'nm'); nm.append(el('span', 'full', c.n), el('span', 'short', SHORT[c.n] || c.n));
+      s.append(el('div', 'grp', c.g), nm, fw, val, btns);
       box.append(s);
       faders.push({ key: 'ch' + i, f: vf, val, get: () => S.ch[i].level, btns: { m, so: btns.children[1] }, i });
       meterEls[i] = mi;
@@ -260,6 +307,14 @@ DROP</button></div>
     b.addEventListener('pointerdown', on); b.addEventListener('pointerup', off); b.addEventListener('pointercancel', off); b.addEventListener('lostpointercapture', off);
   });
   addEventListener('resize', () => requestAnimationFrame(refresh));
+  // portrait: suggest turning the phone once (the console fits sideways)
+  try {
+    if (!localStorage.getItem('syndrus_turn_hint') && matchMedia('(orientation: portrait)').matches) {
+      $('turn').hidden = false; localStorage.setItem('syndrus_turn_hint', '1');
+      setTimeout(() => { $('turn').hidden = true; }, 5000);
+    }
+  } catch (e) { /* private mode */ }
+  $('turn').addEventListener('click', () => { $('turn').hidden = true; });
   if (!WS) { const sc = document.createElement('script'); sc.src = 'https://cdn.jsdelivr.net/npm/peerjs@1.5.4/dist/peerjs.min.js'; sc.onload = connect; sc.onerror = () => status('sin internet', ''); document.head.append(sc); }
   else connect();
   window.__syControl = { get state() { return S; }, send };
