@@ -37,8 +37,19 @@
     const vol = ctx.createGain(); vol.gain.value = 0.8;
     const comp = ctx.createDynamicsCompressor(); comp.threshold.value = -14; comp.ratio.value = 3; comp.attack.value = 0.01; comp.release.value = 0.2; comp.knee.value = 8;
     const analyser = ctx.createAnalyser(); analyser.fftSize = 2048; analyser.smoothingTimeConstant = 0.75;
-    masterIn.connect(drive); drive.connect(vol); vol.connect(comp); comp.connect(analyser); analyser.connect(out);
+    const masterHP = ctx.createBiquadFilter(); masterHP.type = 'highpass'; masterHP.frequency.value = 10; masterHP.Q.value = 1.4;
+    const gate = ctx.createGain();
+    masterIn.connect(masterHP); masterHP.connect(gate); gate.connect(drive); drive.connect(vol); vol.connect(comp); comp.connect(analyser); analyser.connect(out);
     E.analyser = analyser;
+    // performance FX bus (risers, impacts): after the master filter, with its own long reverb
+    const fxIn = ctx.createGain(), fxConv = ctx.createConvolver(), fxWet = ctx.createGain(); fxWet.gain.value = 0.6;
+    fxIn.connect(vol); fxIn.connect(fxConv); fxConv.connect(fxWet); fxWet.connect(vol);
+    { const len = Math.floor(ctx.sampleRate * 3.5), ir = ctx.createBuffer(2, len, ctx.sampleRate);
+      for (let ch = 0; ch < 2; ch++) { const d = ir.getChannelData(ch); let q = 4242 + ch; for (let i = 0; i < len; i++) { q = (q * 1103515245 + 12345) & 0x7fffffff; d[i] = (q / 0x3fffffff - 1) * Math.pow(1 - i / len, 2.2); } }
+      fxConv.buffer = ir; }
+    // cue (pre-listen): the decks send here before the crossfader
+    const cueBus = ctx.createGain();
+    E.cueBus = cueBus;
     function setDrive(k) {   // 0–1 soft saturation
       const n = 1024, c = new Float32Array(n), a = 1 + k * 20;
       for (let i = 0; i < n; i++) { const x = i / (n - 1) * 2 - 1; c[i] = Math.tanh(a * x) / Math.tanh(a); }
@@ -119,7 +130,8 @@
     const djHP = ctx.createBiquadFilter(); djHP.type = 'highpass'; djHP.frequency.value = 10; djHP.Q.value = 0.9;
     const kill = ctx.createBiquadFilter(); kill.type = 'lowshelf'; kill.frequency.value = 220; kill.gain.value = 0;
     const xf = ctx.createGain(), lvl = ctx.createGain();
-    deckIn.connect(djLP); djLP.connect(djHP); djHP.connect(kill); kill.connect(lvl); lvl.connect(xf); xf.connect(masterIn);
+    const cue = ctx.createGain(); cue.gain.value = 0;
+    deckIn.connect(djLP); djLP.connect(djHP); djHP.connect(kill); kill.connect(lvl); lvl.connect(xf); xf.connect(masterIn); lvl.connect(cue); cue.connect(cueBus);
     function setDJ(v) {   // -1 = low-pass closed … 0 open … +1 = high-pass
       const now = ctx.currentTime;
       const lp = v < 0 ? 20000 * Math.pow(60 / 20000, -v) : 20000, hp = v > 0 ? 10 * Math.pow(6000 / 10, v) : 10;
@@ -199,12 +211,84 @@
     D.setMix = (m, gain) => {
       const now = ctx.currentTime;
       lvl.gain.setTargetAtTime(m.level, now, 0.02); xf.gain.setTargetAtTime(gain, now, 0.02);
-      setDJ(m.dj); kill.gain.setTargetAtTime(m.kill ? -40 : 0, now, 0.03);
+      setDJ(m.dj); kill.gain.setTargetAtTime(m.kill ? -40 : 0, now, 0.03); cue.gain.setTargetAtTime(m.cue ? 1 : 0, now, 0.02);
     };
     return D;
     }
     E.decks = [buildDeck(), buildDeck()];
     E.setMaster = m => { setDrive(m.drive); vol.gain.setTargetAtTime(m.volume, ctx.currentTime, 0.02); };
+
+    /* ── cue output ──
+       'off'    · normal stereo master
+       'split'  · one output: left = cue (mixed with some master), right = master — the classic split cue
+       'device' · the cue goes to another output (headphones) through an <audio> element with setSinkId */
+    let cueMode = 'off', cueEl = null;
+    const cueSum = ctx.createGain(), cueMaster = ctx.createGain(), cueOwn = ctx.createGain();
+    cueBus.connect(cueOwn); analyser.connect(cueMaster); cueOwn.connect(cueSum); cueMaster.connect(cueSum); cueMaster.gain.value = 0;
+    const toMono = node => { const g = ctx.createGain(); g.channelCount = 1; g.channelCountMode = 'explicit'; g.channelInterpretation = 'speakers'; node.connect(g); return g; };
+    const merger = ctx.createChannelMerger(2), monoCue = toMono(cueSum), monoMaster = toMono(analyser);
+    monoCue.connect(merger, 0, 0);
+    let streamDest = null;
+    E.setCue = async (mode, blend, sinkId) => {
+      cueOwn.gain.value = 1 - blend * 0.85; cueMaster.gain.value = blend;
+      if (mode === cueMode && mode !== 'device') return true;
+      try { analyser.disconnect(out); } catch (e) { /* not connected */ }
+      try { monoMaster.disconnect(merger); } catch (e) { /* idem */ }
+      try { merger.disconnect(out); } catch (e) { /* idem */ }
+      if (cueEl) { cueEl.pause(); cueEl.srcObject = null; }
+      cueMode = mode;
+      if (mode === 'split') { monoMaster.connect(merger, 0, 1); merger.connect(out); return true; }
+      analyser.connect(out);
+      if (mode === 'device' && ctx.createMediaStreamDestination) {
+        if (!streamDest) { streamDest = ctx.createMediaStreamDestination(); cueSum.connect(streamDest); }
+        cueEl = cueEl || new Audio();
+        cueEl.srcObject = streamDest.stream;
+        try { if (sinkId && cueEl.setSinkId) await cueEl.setSinkId(sinkId); } catch (e) { return false; }
+        cueEl.play().catch(() => {});
+        return true;
+      }
+      return true;
+    };
+
+    /* ── performance FX, all scheduled on the audio clock ── */
+    const nz = () => { const s = ctx.createBufferSource(); s.buffer = nb; s.loop = true; return s; };
+    E.riser = (t, dur, peak = 0.32) => {   // white noise sweeping up
+      const n = nz(), bp = ctx.createBiquadFilter(), hp = ctx.createBiquadFilter(), g = ctx.createGain();
+      bp.type = 'bandpass'; bp.Q.value = 2.5; bp.frequency.setValueAtTime(250, t); bp.frequency.exponentialRampToValueAtTime(9000, t + dur);
+      hp.type = 'highpass'; hp.frequency.value = 180;
+      g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(peak, t + dur * 0.97); g.gain.linearRampToValueAtTime(0, t + dur + 0.03);
+      n.connect(bp); bp.connect(hp); hp.connect(g); g.connect(fxIn); n.start(t); n.stop(t + dur + 0.1);
+    };
+    E.downer = (t, dur, peak = 0.3) => {   // the sweep that comes down: leaving a drop
+      const n = nz(), bp = ctx.createBiquadFilter(), g = ctx.createGain();
+      bp.type = 'bandpass'; bp.Q.value = 2; bp.frequency.setValueAtTime(9000, t); bp.frequency.exponentialRampToValueAtTime(180, t + dur);
+      g.gain.setValueAtTime(peak, t); g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+      n.connect(bp); bp.connect(g); g.connect(fxIn); n.start(t); n.stop(t + dur + 0.1);
+    };
+    E.impact = t => {   // sub boom + a burst of noise into the long reverb
+      const o = ctx.createOscillator(), g = ctx.createGain();
+      o.frequency.setValueAtTime(70, t); o.frequency.exponentialRampToValueAtTime(28, t + 1.6);
+      g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(0.9, t + 0.01); g.gain.exponentialRampToValueAtTime(0.0001, t + 1.8);
+      o.connect(g); g.connect(fxIn); o.start(t); o.stop(t + 2);
+      const n = nz(), lp = ctx.createBiquadFilter(), ng = ctx.createGain(); lp.type = 'lowpass'; lp.frequency.setValueAtTime(9000, t); lp.frequency.exponentialRampToValueAtTime(400, t + 1.2);
+      ng.gain.setValueAtTime(0.5, t); ng.gain.exponentialRampToValueAtTime(0.0001, t + 1.3);
+      n.connect(lp); lp.connect(ng); ng.connect(fxIn); n.start(t); n.stop(t + 1.4);
+    };
+    // the automatic drop: the master filter climbs for `dur`, the last beat is silence, then everything slams back with an impact
+    E.drop = (t, dur, beat) => {
+      const f = masterHP.frequency, gg = gate.gain, cut = t + dur - beat;
+      f.cancelScheduledValues(t); gg.cancelScheduledValues(t);
+      f.setValueAtTime(10, t); f.exponentialRampToValueAtTime(950, cut);
+      gg.setValueAtTime(1, t); gg.setValueAtTime(1, cut); gg.linearRampToValueAtTime(0.0001, cut + 0.015);
+      gg.setValueAtTime(0.0001, t + dur - 0.004); gg.linearRampToValueAtTime(1, t + dur);
+      f.setValueAtTime(950, t + dur - 0.004); f.setValueAtTime(10, t + dur);
+      E.riser(t, dur - beat * 0.5, 0.36); E.impact(t + dur);
+    };
+    E.cancelFx = () => {
+      const now = ctx.currentTime;
+      masterHP.frequency.cancelScheduledValues(now); gate.gain.cancelScheduledValues(now);
+      masterHP.frequency.setTargetAtTime(10, now, 0.02); gate.gain.setTargetAtTime(1, now, 0.01);
+    };
     return E;
   }
 

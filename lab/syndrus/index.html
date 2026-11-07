@@ -10,7 +10,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600;700&display=swap">
-  <link rel="stylesheet" href="syndrus.css?v=5">
+  <link rel="stylesheet" href="syndrus.css?v=7">
 </head>
 <body data-tab="drums">
 <script src="/js/splash.js?v=2" data-splash="syndrus"></script>
@@ -66,11 +66,12 @@
     <div class="sy-head"><b>MEZCLA</b><span class="sy-hint">dos patrones sincronizados · el crossfader decide qué suena</span></div>
     <canvas id="scope" width="600" height="160"></canvas>
     <div class="sy-mixer" id="mixer"></div>
-    <div class="sy-subhead"><b id="fxTitle">EFECTOS</b></div>
-    <div class="sy-params" id="fxParams"></div>
-    <div class="sy-subhead"><b>MASTER</b></div>
-    <div class="sy-params" id="masterParams"></div>
   </aside>
+
+  <section class="sy-panel sy-fx" data-sec="fx">
+    <div class="sy-head"><b>FX</b><span class="sy-sp"></span><span class="sy-tabs-in" id="fxTabs"></span></div>
+    <div class="sy-fxbody" id="fxBody"></div>
+  </section>
 </main>
 
 <footer class="sy-status" id="status"></footer>
@@ -78,8 +79,9 @@
 <nav class="sy-tabbar" id="tabbar">
   <button data-tab="drums">◼ Ritmo</button>
   <button data-tab="synth">∿ Synth</button>
-  <button data-tab="rings">◎ Euclídeo</button>
+  <button data-tab="rings">◎ Anillos</button>
   <button data-tab="master">⇄ Mezcla</button>
+  <button data-tab="fx">✦ FX</button>
 </nav>
 
 <div class="sy-help" id="helpPop" hidden>
@@ -92,7 +94,7 @@
 </div>
 <div class="sy-toast" id="toast"></div>
 
-<script src="engine.js?v=3"></script>
-<script src="app.js?v=5"></script>
+<script src="engine.js?v=4"></script>
+<script src="app.js?v=7"></script>
 </body>
 </html>

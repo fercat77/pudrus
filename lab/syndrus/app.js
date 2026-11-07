@@ -130,7 +130,7 @@
 
   /* ── load / save / share ── */
   const KEY = 'syndrus_v2', OLD_KEY = 'syndrus_v1';
-  const deckMix = () => ({ level: 0.9, dj: 0, kill: false, mute: { drums: false, synth: false, rings: false } });
+  const deckMix = () => ({ level: 0.9, dj: 0, kill: false, cue: false, mute: { drums: false, synth: false, rings: false } });
   function sane(s) {   // a pattern: fill anything missing from an old or shared one
     const b = blank();
     if (!s || typeof s !== 'object') return b;
@@ -151,6 +151,7 @@
     return {
       v: 2, bpm: a.bpm || decks[0].bpm || 128, swing: a.swing || 0, lockBpm: !!a.lockBpm, lockKey: !!a.lockKey, edit: a.edit === 1 ? 1 : 0, decks,
       mix: { x: Number.isFinite(m.x) ? m.x : 0, drive: Number.isFinite(m.drive) ? m.drive : 0.12, volume: Number.isFinite(m.volume) ? m.volume : 0.8,
+        cueMode: 'off', cueBlend: Number.isFinite(m.cueBlend) ? m.cueBlend : 0.25, cueSink: '',
         decks: [0, 1].map(i => ({ ...deckMix(), ...((m.decks || [])[i] || {}), mute: { ...deckMix().mute, ...(((m.decks || [])[i] || {}).mute || {}) } })) },
       bank: Array.from({ length: 8 }, (_, i) => ((a.bank || [])[i] ? { name: String(a.bank[i].name || 'Patrón').slice(0, 24), p: sane(a.bank[i].p) } : null)),
     };
@@ -174,19 +175,21 @@
   let ac = null, E = null, playing = false, nextTime = 0, step = 0, timer = 0;
   const queue = [];
   function ensureAudio() {
-    if (!ac) { ac = new (window.AudioContext || window.webkitAudioContext)({ latencyHint: 'interactive' }); E = X.buildEngine(ac, ac.destination); X.applyMix(E, app); }
+    if (!ac) { ac = new (window.AudioContext || window.webkitAudioContext)({ latencyHint: 'interactive' }); E = X.buildEngine(ac, ac.destination); X.applyMix(E, app); applyCue(); }
     if (ac.state === 'suspended') ac.resume();
   }
   const mix = () => { if (E) X.applyMix(E, app); save(); };
   const deck = () => E.decks[app.edit];
   const pending = [null, null];   // bank patterns waiting for the next bar, per deck
+  let roll = null;                 // { start, len } while a Roll button is held
   function tick() {
     const stepDur = 60 / app.bpm / 4, g = X.xfGains(app.mix.x);
     while (nextTime < ac.currentTime + 0.12) {
       if (step % 16 === 0 && (pending[0] || pending[1])) applyPending();
       const t = nextTime + (step % 2 ? app.swing * stepDur * 0.5 : 0);
-      app.decks.forEach((p, i) => { if (g[i] > 0.001) X.playStep(E.decks[i], { ...p, bpm: app.bpm }, step, t, Math.random, app.mix.decks[i].mute); });
-      queue.push({ step, t });
+      const n = roll ? roll.start + ((step - roll.start) % roll.len) : step;   // Roll: repeat a slice of the bar
+      app.decks.forEach((p, i) => { if (g[i] > 0.001 || app.mix.decks[i].cue) X.playStep(E.decks[i], { ...p, bpm: app.bpm }, n, t, Math.random, app.mix.decks[i].mute); });
+      queue.push({ step: n, t });
       nextTime += stepDur; step++;
     }
   }
@@ -239,7 +242,7 @@
   const mq = matchMedia('(max-width: 760px)');
   const mobile = () => mq.matches;
   (mq.addEventListener ? mq.addEventListener.bind(mq, 'change') : mq.addListener.bind(mq))(() => { paintDrums(); paintRings(); });
-  const TABS = ['drums', 'synth', 'rings', 'master'];
+  const TABS = ['drums', 'synth', 'rings', 'master', 'fx'];
   function setTab(t) {
     if (!TABS.includes(t)) t = 'drums';
     document.body.dataset.tab = t;
@@ -510,9 +513,25 @@
       [['drums', 'Ritmo'], ['synth', 'Synth'], ['rings', 'Anillos']].forEach(([k, l]) => { const b = el('button', 'sy-mini' + (d.mute[k] ? ' on' : ''), l); b.title = 'Silenciar este grupo en el deck ' + ab(i); b.addEventListener('click', () => { d.mute[k] = !d.mute[k]; b.classList.toggle('on', d.mute[k]); save(); }); mutes.append(b); });
       const ps = el('div', 'sy-params');
       ps.append(param('Volumen', d, 'level', 0, 1.2), param('Filtro', d, 'dj', -1, 1, { fmt: x => (Math.abs(x) < 0.02 ? 'abierto' : x < 0 ? 'LP ' + Math.round(-x * 100) + '%' : 'HP ' + Math.round(x * 100) + '%') }));
-      c.append(h, ps, kill, mutes); cols.append(c);
+      const cueB = el('button', 'sy-mini sy-cuebtn' + (d.cue ? ' on' : ''), '🎧 Cue'); cueB.title = 'Escuchar este deck en los auriculares (antes del crossfader)';
+      cueB.addEventListener('click', () => {
+        d.cue = !d.cue; cueB.classList.toggle('on', d.cue);
+        if (d.cue && app.mix.cueMode === 'off') { app.mix.cueMode = 'split'; applyCue(); paintMixer(); toast('Cue en «mitad y mitad»: auricular izquierdo = cue, derecho = master. Si tenés otra salida, elegila en «Cue»', 5000); }
+        mix();
+      });
+      const row2 = el('div', 'sy-mutes'); row2.append(kill, cueB);
+      c.append(h, ps, row2, mutes); cols.append(c);
     });
     box.append(cols);
+    // where the cue goes
+    const cueRow = el('div', 'sy-cue'), cs = el('label', 'sy-sel'), sel = el('select');
+    [['off', 'apagado'], ['split', 'mitad y mitad (izq cue · der master)']].concat(outDevices.map(dv => ['dev:' + dv.deviceId, '🎧 ' + (dv.label || 'otra salida')])).forEach(([v, t]) => { const o = el('option', '', t); o.value = v; sel.append(o); });
+    sel.value = M.cueMode === 'device' ? 'dev:' + M.cueSink : M.cueMode;
+    sel.addEventListener('focus', listOutputs, { once: true });
+    sel.addEventListener('change', () => { const v = sel.value; if (v.startsWith('dev:')) { M.cueMode = 'device'; M.cueSink = v.slice(4); } else { M.cueMode = v; M.cueSink = ''; } applyCue(); save(); });
+    cs.append(el('span', '', 'Cue'), sel);
+    cueRow.append(cs, param('Mezcla cue', M, 'cueBlend', 0, 1, { fmt: x => (x < 0.05 ? 'solo cue' : Math.round(x * 100) + '% master'), on: () => { applyCue(); save(); } }));
+    box.append(cueRow);
     const tools = el('div', 'sy-xfbtns');
     const cAB = el('button', 'sy-mini', 'A → B'), cBA = el('button', 'sy-mini', 'B → A'), sw = el('button', 'sy-mini', 'A ⇄ B'); sw.title = 'Intercambiar los decks';
     cAB.addEventListener('click', () => { app.decks[1] = clone(app.decks[0]); st = app.decks[app.edit]; paintAll(); mix(); toast('A copiado en B'); });
@@ -542,15 +561,80 @@
     });
     box.append(bh, bank);
   }
+  // headphones on another output: Chrome / Edge can send audio to a chosen device
+  let outDevices = [];
+  async function listOutputs() {
+    try {
+      if (!navigator.mediaDevices || !HTMLMediaElement.prototype.setSinkId) return;
+      const ds = await navigator.mediaDevices.enumerateDevices();
+      const outs = ds.filter(d => d.kind === 'audiooutput' && d.deviceId !== 'default' && d.deviceId !== 'communications');
+      if (outs.length !== outDevices.length) { outDevices = outs; paintMixer(); }
+    } catch (e) { /* not allowed */ }
+  }
+  async function applyCue() {
+    if (!E) return;
+    const M = app.mix, ok = await E.setCue(M.cueMode, M.cueBlend, M.cueSink);
+    if (!ok) toast('No se pudo usar esa salida para el cue: probá «mitad y mitad»', 4000);
+  }
+
+  /* ── FX panel: performance (risers, drop, impact, roll), the edited deck's effects, master ── */
+  let fxTab = 'perf', fxBars = 4;
+  const armed = new Set();
+  function nextBarTime() {   // when the next bar starts on the audio clock (now if stopped)
+    if (!playing) return ac.currentTime + 0.03;
+    const stepDur = 60 / app.bpm / 4, k = Math.ceil(step / 16) * 16;
+    return nextTime + (k - step) * stepDur;
+  }
+  function perform(kind, btn) {
+    ensureAudio();
+    const t = nextBarTime(), bar = 60 / app.bpm * 4, beat = 60 / app.bpm, dur = fxBars * bar;
+    if (kind === 'drop' && !playing) { toast('Dale play primero: el drop sigue al compás'); return; }
+    if (kind === 'up') E.riser(t, dur);
+    else if (kind === 'down') E.downer(t, Math.min(dur, bar * 2));
+    else if (kind === 'impact') E.impact(t);
+    else if (kind === 'drop') E.drop(t, dur, beat);
+    // the button blinks until it starts, then glows while it lasts
+    const wait = Math.max(0, (t - ac.currentTime) * 1000), len = kind === 'impact' ? 400 : kind === 'down' ? Math.min(dur, bar * 2) * 1000 : dur * 1000;
+    btn.classList.add('armed'); armed.add(kind);
+    setTimeout(() => { btn.classList.remove('armed'); btn.classList.add('live'); }, wait);
+    setTimeout(() => { btn.classList.remove('live'); armed.delete(kind); }, wait + len);
+    if (playing && wait > 60) toast(`${btn.textContent.replace(/\n/g, ' ')} entra en el próximo compás${kind === 'drop' ? ` · ${fxBars} compás${fxBars > 1 ? 'es' : ''} de subida y corte` : ''}`, 1600);
+  }
   function paintFx() {
-    const p = $('#fxParams'); p.innerHTML = '';
-    const fx = st.fx;
-    $('#fxTitle').textContent = `EFECTOS · DECK ${ab(app.edit)}`;
-    p.append(
-      choice('Delay', fx, 'delayBeats', [[0.25, '1/16'], [0.375, '1/16 ·'], [0.5, '1/8'], [0.75, '1/8 ·'], [1, '1/4'], [1.5, '1/4 ·']]),
-      param('Repeticiones', fx, 'feedback', 0, 0.92), param('Tono delay', fx, 'delayTone', 300, 6000, { curve: 2, fmt: x => Math.round(x) + ' Hz' }), param('Espacio', fx, 'space', 0, 1));
-    const m = $('#masterParams'); m.innerHTML = '';
-    m.append(param('Saturación', app.mix, 'drive', 0, 1), param('Volumen', app.mix, 'volume', 0, 1.2));
+    const tabs = $('#fxTabs'); tabs.innerHTML = '';
+    [['perf', 'Actuación'], ['deck', 'Deck ' + ab(app.edit)], ['master', 'Master']].forEach(([k, l]) => { const b = el('button', k === fxTab ? 'on' : '', l); b.addEventListener('click', () => { fxTab = k; paintFx(); }); tabs.append(b); });
+    const body = $('#fxBody'); body.innerHTML = '';
+    if (fxTab === 'perf') {
+      const seg = el('div', 'sy-seg'); seg.append(el('span', '', 'Largo'));
+      [1, 2, 4, 8].forEach(n => { const b = el('button', n === fxBars ? 'on' : '', n + (n === 1 ? ' compás' : ' c')); b.addEventListener('click', () => { fxBars = n; paintFx(); }); seg.append(b); });
+      const perf = el('div', 'sy-perf');
+      [['up', '↗\nSubida', 'Barrido de ruido que sube (para preparar un drop)'], ['down', '↘\nBajada', 'Barrido que baja (para salir de un drop)'], ['impact', '💥\nImpacto', 'Golpe de sub con explosión'], ['drop', '⤓\nDROP', 'Drop automático: el filtro sube, el último tiempo corta y en el uno vuelve todo con un impacto']].forEach(([k, l, tt]) => {
+        const b = el('button', k === 'drop' ? 'drop' : ''); b.title = tt; b.style.whiteSpace = 'pre-line'; b.textContent = l.replace('\\n', '\n');
+        if (armed.has(k)) b.classList.add('armed');
+        b.addEventListener('click', () => perform(k, b)); perf.append(b);
+      });
+      const rolls = el('div', 'sy-rolls'); rolls.append(el('span', '', 'Roll'));
+      [['1/4', 4], ['1/8', 2], ['1/16', 1]].forEach(([l, len]) => {
+        const b = el('button', '', l); b.title = 'Mantené apretado: repite ese pedazo del compás';
+        const on = e => { e.preventDefault(); if (!playing) return; roll = { start: step, len }; b.classList.add('on'); b.setPointerCapture && e.pointerId !== undefined && b.setPointerCapture(e.pointerId); };
+        const off = () => { roll = null; b.classList.remove('on'); };
+        b.addEventListener('pointerdown', on); b.addEventListener('pointerup', off); b.addEventListener('pointercancel', off); b.addEventListener('lostpointercapture', off);
+        rolls.append(b);
+      });
+      const cancel = el('button', 'sy-mini', '✕'); cancel.title = 'Cancelar el drop y abrir el filtro';
+      cancel.addEventListener('click', () => { if (E) E.cancelFx(); });
+      rolls.append(cancel);
+      body.append(seg, perf, rolls);
+    } else if (fxTab === 'deck') {
+      const fx = st.fx, p = el('div', 'sy-params');
+      p.append(choice('Delay', fx, 'delayBeats', [[0.25, '1/16'], [0.375, '1/16 ·'], [0.5, '1/8'], [0.75, '1/8 ·'], [1, '1/4'], [1.5, '1/4 ·']]),
+        param('Repeticiones', fx, 'feedback', 0, 0.92), param('Tono delay', fx, 'delayTone', 300, 6000, { curve: 2, fmt: x => Math.round(x) + ' Hz' }), param('Espacio', fx, 'space', 0, 1));
+      body.append(p);
+    } else {
+      const p = el('div', 'sy-params');
+      p.append(param('Saturación', app.mix, 'drive', 0, 1), param('Volumen', app.mix, 'volume', 0, 1.2));
+      body.append(p);
+    }
     paintMixer();
   }
 
@@ -657,5 +741,5 @@
   paintAll();
   try { setTab(sessionStorage.getItem('syndrus_tab') || 'drums'); } catch (e) { setTab('drums'); }
   paintStatus();
-  window.__syndrus = { get app() { return app; }, get state() { return st; }, setEdit, get pending() { return pending; }, get engine() { return E; }, get ctx() { return ac; }, setPlay, load, PRESETS, randomTechno, randomAmbient };
+  window.__syndrus = { perform, get roll() { return roll; }, set roll(v) { roll = v; }, get app() { return app; }, get state() { return st; }, setEdit, get pending() { return pending; }, get engine() { return E; }, get ctx() { return ac; }, setPlay, load, PRESETS, randomTechno, randomAmbient };
 })();
