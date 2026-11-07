@@ -132,6 +132,7 @@
     const xf = ctx.createGain(), lvl = ctx.createGain();
     const cue = ctx.createGain(); cue.gain.value = 0;
     deckIn.connect(djLP); djLP.connect(djHP); djHP.connect(kill); kill.connect(lvl); lvl.connect(xf); xf.connect(masterIn); lvl.connect(cue); cue.connect(cueBus);
+    D.an = ctx.createAnalyser(); D.an.fftSize = 256; xf.connect(D.an);   // what this deck sends to the master (console meter)
     function setDJ(v) {   // -1 = low-pass closed … 0 open … +1 = high-pass
       const now = ctx.currentTime;
       const lp = v < 0 ? 20000 * Math.pow(60 / 20000, -v) : 20000, hp = v > 0 ? 10 * Math.pow(6000 / 10, v) : 10;
@@ -153,10 +154,10 @@
 
     /* channel strips: level + two sends */
     function strip() {
-      const input = ctx.createGain(), lv = ctx.createGain(), sd = ctx.createGain(), sr = ctx.createGain();
-      sd.gain.value = 0; sr.gain.value = 0;
-      input.connect(lv); lv.connect(deckIn); lv.connect(sd); lv.connect(sr); sd.connect(dIn); sr.connect(rIn);
-      return { input, lv, sd, sr, set(p) { lv.gain.value = p.level; sd.gain.value = p.delay; sr.gain.value = p.reverb; } };
+      const input = ctx.createGain(), lv = ctx.createGain(), sd = ctx.createGain(), sr = ctx.createGain(), an = ctx.createAnalyser();
+      sd.gain.value = 0; sr.gain.value = 0; an.fftSize = 256;
+      input.connect(lv); lv.connect(deckIn); lv.connect(sd); lv.connect(sr); sd.connect(dIn); sr.connect(rIn); lv.connect(an);
+      return { input, lv, sd, sr, an, set(p) { lv.gain.value = p.level; sd.gain.value = p.delay; sr.gain.value = p.reverb; } };
     }
     D.drumStrips = DRUMS.map(() => strip());
     D.synthStrip = strip();

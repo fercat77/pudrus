@@ -598,7 +598,7 @@
     sw.addEventListener('click', () => { app.decks.reverse(); app.mix.decks.reverse(); st = app.decks[app.edit]; paintAll(); mix(); toast('Decks intercambiados'); });
     tools.append(cAB, cBA, sw); box.append(tools);
     // bank
-    const bh = el('div', 'sy-subhead'), bs = el('button', 'sy-mini' + (bankSave ? ' on' : ''), bankSave ? '💾 tocá un lugar' : '💾 Guardar');
+    const bh = el('div', 'sy-subhead'), bs = el('button', 'sy-mini' + (bankSave ? ' on' : ''), bankSave ? 'Elegí un lugar' : 'Guardar');
     bs.title = 'Guardar el deck que editás en un lugar del banco'; bs.addEventListener('click', () => { bankSave = !bankSave; paintMixer(); });
     bh.append(el('b', '', 'BANCO'), el('span', 'sy-dim', playing ? `entra en el próximo compás · deck ${ab(app.edit)}` : `se carga en el deck ${ab(app.edit)}`), el('span', 'sy-sp'), bs);
     const bank = el('div', 'sy-bank');
@@ -698,6 +698,103 @@
     paintMixer();
   }
 
+  /* ── console: every fader of the edited deck as vertical strips, with live meters; decks + master on the right ── */
+  const conEl = $('#console');
+  let conMeters = [];   // [{ an, el }]
+  function vfader(obj, key, min, max, cls, onSet, fmtV) {
+    const w = el('div', 'sy-vf' + (cls ? ' ' + cls : '')), th = el('div', 'thumb'); w.append(th);
+    const def = obj[key], val = el('div', 'val');
+    const paint = () => { const p = (obj[key] - min) / (max - min); th.style.top = (8 + (1 - p) * (w.clientHeight - 16)) + 'px'; val.textContent = fmtV ? fmtV(obj[key]) : (obj[key] <= 0.001 ? '−∞' : (20 * Math.log10(obj[key])).toFixed(1) + ' dB'); };
+    const set = y => { const r = w.getBoundingClientRect(), p = 1 - (y - r.top - 8) / Math.max(1, r.height - 16); obj[key] = Math.round(Math.max(min, Math.min(max, min + p * (max - min))) * 1000) / 1000; paint(); (onSet || mix)(); };
+    let drag = false;
+    w.addEventListener('pointerdown', e => { drag = true; try { w.setPointerCapture(e.pointerId); } catch (x) { /* synthetic */ } set(e.clientY); });
+    w.addEventListener('pointermove', e => { if (drag) set(e.clientY); });
+    w.addEventListener('pointerup', () => { drag = false; });
+    w.addEventListener('dblclick', () => { obj[key] = def; paint(); (onSet || mix)(); });
+    w.addEventListener('wheel', e => { e.preventDefault(); obj[key] = Math.max(min, Math.min(max, obj[key] - Math.sign(e.deltaY) * (max - min) / 50)); paint(); (onSet || mix)(); }, { passive: false });
+    w.paint = paint; w.val = val;
+    requestAnimationFrame(paint);
+    return w;
+  }
+  function knob(label, obj, key, min, max, fmt) {
+    const w = el('div', 'sy-knob'), f = el('div', 'fill'), l = el('span', 'l', label), v = el('span', 'v');
+    w.append(f, l, v);
+    const paint = () => { f.style.width = ((obj[key] - min) / (max - min)) * 100 + '%'; v.textContent = fmt ? fmt(obj[key]) : Math.round(obj[key] * 100) + '%'; };
+    let drag = null;
+    w.addEventListener('pointerdown', e => { drag = { x: e.clientX, v: obj[key] }; try { w.setPointerCapture(e.pointerId); } catch (x) { /* synthetic */ } });
+    w.addEventListener('pointermove', e => { if (!drag) return; obj[key] = Math.max(min, Math.min(max, drag.v + (e.clientX - drag.x) / 120 * (max - min))); paint(); mix(); });
+    w.addEventListener('pointerup', () => { drag = null; });
+    paint(); return w;
+  }
+  function strip(name, grp, ch, an, cls, solo) {
+    const s = el('div', 'sy-strip' + (cls ? ' ' + cls : ''));
+    const fw = el('div', 'sy-faderwrap'), mt = el('div', 'sy-meter'), mi = el('i'); mt.append(mi);
+    const vf = vfader(ch, 'level', 0, 1.2);
+    fw.append(vf, mt);
+    const btns = el('div', 'btns'), m = el('button', 'm' + (ch.mute ? ' on' : ''), 'M');
+    m.addEventListener('click', () => { ch.mute = !ch.mute; m.classList.toggle('on', ch.mute); save(); paintDrums(); paintSynth(); paintRings(); });
+    btns.append(m);
+    if (solo) { const sb = el('button', 's' + (ch.solo ? ' on' : ''), 'S'); sb.addEventListener('click', () => { ch.solo = !ch.solo; sb.classList.toggle('on', ch.solo); save(); paintDrums(); }); btns.append(sb); }
+    s.append(el('div', 'grp', grp), el('div', 'nm', name), knob('Dly', ch, 'delay', 0, 1), knob('Rev', ch, 'reverb', 0, 1), fw, vf.val, btns);
+    conMeters.push({ an: () => an(), el: mi });
+    return s;
+  }
+  function paintConsole() {
+    if (conEl.hidden) return;
+    conMeters = [];
+    const dk = $('#conDeck'); dk.innerHTML = '';
+    [0, 1].forEach(i => { const b = el('button', i === app.edit ? 'on' : '', ab(i)); b.addEventListener('click', () => { setEdit(i); paintConsole(); }); dk.append(b); });
+    const box = $('#strips'); box.innerHTML = '';
+    const D = () => (E ? E.decks[app.edit] : null);
+    X.DRUMS.forEach(([, name], i) => box.append(strip(name, 'ritmo', st.drums[i], () => D() && D().drumStrips[i].an, '', true)));
+    box.append(strip('Synth', 'synth', st.synth, () => D() && D().synthStrip.an, 'grp-synth sep'));
+    st.rings.forEach((r, i) => box.append(strip('Anillo ' + (i + 1), 'anillo', r, () => D() && D().ringStrips[i].an, 'grp-rings' + (i ? '' : ' sep'))));
+    // decks + crossfader + master
+    const mb = $('#conMaster'); mb.innerHTML = '';
+    [0, 1].forEach(i => {
+      const d = app.mix.decks[i], s = el('div', 'sy-strip'), fw = el('div', 'sy-faderwrap'), mt = el('div', 'sy-meter'), mi = el('i'); mt.append(mi);
+      const vf = vfader(d, 'level', 0, 1.2, 'deck' + ab(i)); fw.append(vf, mt);
+      const kill = el('button', d.kill ? 'on m' : 'm', 'Bajos ✕'); kill.title = 'Cortar los graves del deck'; kill.addEventListener('click', () => { d.kill = !d.kill; kill.classList.toggle('on', d.kill); mix(); paintMixer(); });
+      const cue = el('button', d.cue ? 'on s' : 's', '🎧'); cue.title = 'Cue'; cue.addEventListener('click', () => { d.cue = !d.cue; cue.classList.toggle('on', d.cue); if (d.cue && app.mix.cueMode === 'off') { app.mix.cueMode = 'split'; applyCue(); } mix(); paintMixer(); });
+      const btns = el('div', 'btns'); btns.append(kill, cue);
+      s.append(el('div', 'grp', 'deck'), el('div', 'nm', ab(i)), knob('Filtro', d, 'dj', -1, 1, x => (Math.abs(x) < 0.02 ? '—' : x < 0 ? 'LP' : 'HP')), fw, vf.val, btns);
+      conMeters.push({ an: () => E && E.decks[i].an, el: mi });
+      mb.append(s);
+    });
+    const xw = el('div', 'sy-xfwrap'), lbls = el('div', 'lbls'), xf = el('div', 'sy-xfh'), th = el('div', 'thumb'); xf.append(th);
+    lbls.append(el('b', '', 'A'), el('span', 'sy-dim', 'crossfader'), el('b', '', 'B'));
+    const paintX = () => { th.style.left = (8 + app.mix.x * (xf.clientWidth - 16)) + 'px'; };
+    let dx = false; const setX = cx => { const r = xf.getBoundingClientRect(); app.mix.x = Math.max(0, Math.min(1, (cx - r.left - 8) / Math.max(1, r.width - 16))); paintX(); mix(); };
+    xf.addEventListener('pointerdown', e => { dx = true; try { xf.setPointerCapture(e.pointerId); } catch (x) { /* synthetic */ } setX(e.clientX); });
+    xf.addEventListener('pointermove', e => { if (dx) setX(e.clientX); }); xf.addEventListener('pointerup', () => { dx = false; });
+    const qb = el('div', 'sy-xfbtns'); [['A', 0], ['½', 0.5], ['B', 1]].forEach(([l, v]) => { const b = el('button', 'sy-mini', l); b.addEventListener('click', () => { app.mix.x = v; paintX(); mix(); }); qb.append(b); });
+    xw.append(lbls, xf, qb); requestAnimationFrame(paintX);
+    const ms = el('div', 'sy-strip'), fw = el('div', 'sy-faderwrap'), mt = el('div', 'sy-meter'), mi = el('i'); mt.append(mi);
+    const mv = vfader(app.mix, 'volume', 0, 1.2, 'master'); fw.append(mv, mt);
+    ms.append(el('div', 'grp', 'master'), el('div', 'nm', 'Salida'), knob('Satur.', app.mix, 'drive', 0, 1), fw, mv.val);
+    conMeters.push({ an: () => E && E.analyser, el: mi, big: true });
+    mb.append(xw, ms);
+  }
+  const meterBuf = new Float32Array(256);
+  function paintMeters() {
+    if (conEl.hidden || !E) return;
+    for (const m of conMeters) {
+      const an = m.an(); if (!an) continue;
+      const buf = an.fftSize === 256 ? meterBuf : (m.buf || (m.buf = new Float32Array(an.fftSize)));
+      an.getFloatTimeDomainData(buf);
+      let pk = 0; for (let i = 0; i < buf.length; i += 2) pk = Math.max(pk, Math.abs(buf[i]));
+      const db = pk > 0 ? 20 * Math.log10(pk) : -60, h = Math.max(0, Math.min(1, (db + 48) / 48));
+      m.lv = Math.max(h, (m.lv || 0) * 0.86); m.el.style.height = (m.lv * 100) + '%';
+    }
+  }
+  function setConsole(on) {
+    conEl.hidden = !on; $('#consoleBtn').classList.toggle('on', on);
+    if (on) { ensureAudio(); paintConsole(); }
+  }
+  $('#consoleBtn').addEventListener('click', () => { setConsole(conEl.hidden); $('#more').classList.remove('open'); });
+  $('#conClose').addEventListener('click', () => setConsole(false));
+  addEventListener('resize', () => { if (!conEl.hidden) paintConsole(); });
+
   /* ── status bar ── */
   const gcd = (a, b) => (b ? gcd(b, a % b) : a), lcm = (a, b) => a / gcd(a, b) * b;
   let peakHold = 0, clipAt = -1e9, savedAt = 0;
@@ -737,6 +834,7 @@
   let wave = null, spec = null;
   function frame() {
     requestAnimationFrame(frame);
+    paintMeters();
     if (ac && playing) {
       while (queue.length && queue[0].t <= ac.currentTime) { curStep = queue.shift().step; paintNow(curStep); }
     }
@@ -768,6 +866,8 @@
     if (e.target.closest && e.target.closest('input, select, textarea')) return;
     if (e.ctrlKey || e.metaKey || e.altKey) return;
     if (e.code === 'Space') { e.preventDefault(); setPlay(!playing); return; }
+    if (e.key === 'Escape' && !conEl.hidden) { setConsole(false); return; }
+    if (e.key.toLowerCase() === 'c' && !e.repeat) { setConsole(conEl.hidden); return; }
     const k = e.key.toLowerCase();
     if (k === 'z') { kbOct = Math.max(-2, kbOct - 1); toast('Octava del teclado ' + (st.synth.octave + kbOct)); return; }
     if (k === 'x') { kbOct = Math.min(3, kbOct + 1); toast('Octava del teclado ' + (st.synth.octave + kbOct)); return; }
@@ -802,7 +902,7 @@
   $('#helpClose').addEventListener('click', () => { $('#helpPop').hidden = true; });
   if (location.hash.startsWith('#s=')) history.replaceState(null, '', location.pathname);
 
-  function paintAll() { paintTop(); paintDrums(); paintSynth(); paintRings(); paintFx(); }
+  function paintAll() { paintTop(); paintDrums(); paintSynth(); paintRings(); paintFx(); paintConsole(); }
   document.body.dataset.deck = ab(app.edit);
   paintAll();
   try { setTab(sessionStorage.getItem('syndrus_tab') || 'drums'); } catch (e) { setTab('drums'); }
