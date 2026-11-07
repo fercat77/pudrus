@@ -54,6 +54,8 @@
     garabato: `<svg viewBox="0 0 120 64"><path d="M8 50 C 20 0, 40 70, 56 26 S 90 6, 112 40" fill="none" stroke="${C.g}" stroke-width="4" stroke-linecap="round"/><path d="M60 30 q 8 -14 18 0 q -9 12 -18 0" fill="none" stroke="#fff" stroke-width="2.5"/><circle cx="70" cy="28" r="2.5" fill="#fff"/></svg>`,
     recorrido: `<svg viewBox="0 0 120 64"><path d="M12 12h32v40h32V12h32v40" fill="none" stroke="${C.g}" stroke-width="9" stroke-linejoin="round" stroke-linecap="round" opacity="0.9"/><g font-family="monospace" font-weight="700" font-size="12" text-anchor="middle"><circle cx="12" cy="12" r="10" fill="#050508" stroke="${C.g}" stroke-width="2.5"/><text x="12" y="16" fill="${C.g}">1</text><circle cx="76" cy="52" r="10" fill="#050508" stroke="${C.g}" stroke-width="2.5"/><text x="76" y="56" fill="${C.g}">2</text><circle cx="108" cy="52" r="10" fill="#050508" stroke="${C.c}" stroke-width="2.5"/><text x="108" y="56" fill="${C.c}">3</text></g></svg>`,
     sudoku: `<svg viewBox="0 0 64 64"><rect x="2" y="2" width="60" height="60" fill="none" stroke="${C.g}" stroke-width="2.5"/><path d="M22 2v60M42 2v60M2 22h60M2 42h60" stroke="${C.g}" stroke-width="1.5" opacity="0.6"/><g font-family="monospace" font-weight="700" font-size="14" text-anchor="middle"><text x="12" y="17" fill="#fff">5</text><text x="52" y="17" fill="${C.g}">3</text><text x="32" y="37" fill="#fff">9</text><text x="12" y="57" fill="${C.c}">7</text><text x="52" y="57" fill="#fff">1</text></g></svg>`,
+    destellos: `<svg viewBox="0 0 64 64"><g fill="#12121c" stroke="${C.dim}" stroke-width="1.5">${[0,1,2].map(r=>[0,1,2].map(c=>`<rect x="${4+c*20}" y="${4+r*20}" width="16" height="16" rx="3"/>`).join('')).join('')}</g><rect x="24" y="4" width="16" height="16" rx="3" fill="${C.g}"/><rect x="4" y="44" width="16" height="16" rx="3" fill="${C.g}"/><rect x="44" y="24" width="16" height="16" rx="3" fill="${C.g}"/></svg>`,
+    intruso: `<svg viewBox="0 0 120 64"><g fill="${C.c}">${[0,1,2,3,4].map(i=>`<path d="M${8+i*22} 46 l8-28 l8 28 z"/>`).join('')}</g><path d="M96 46 l8-28 l8 28 z" fill="${C.c}" transform="rotate(25 104 34)" opacity="0.9"/><circle cx="104" cy="34" r="18" fill="none" stroke="${C.g}" stroke-width="2.5"/></svg>`,
     milusos: `<svg viewBox="0 0 120 64"><rect x="6" y="18" width="40" height="28" rx="3" fill="none" stroke="${C.g}" stroke-width="3"/><g fill="${C.g}"><circle cx="66" cy="20" r="3"/><circle cx="66" cy="32" r="3"/><circle cx="66" cy="44" r="3"/></g><g stroke="${C.c}" stroke-width="3" stroke-linecap="round"><path d="M76 20h36M76 32h28M76 44h32"/></g></svg>`,
   };
 
@@ -651,6 +653,100 @@
       return () => { clearInterval(tick); removeEventListener('keydown', key); };
     } });
 
+  /* ── DESTELLOS: some squares flash, tap the same ones (spatial memory) ── */
+  GAMES.push({ id: 'destellos', title: 'Destellos', tag: 'Memoria', desc: 'Se encienden unas casillas un instante. Tocá las mismas. Cada ronda, una más.',
+    how: 'Mirá qué casillas se encienden y, cuando se apagan, tocá esas mismas en cualquier orden. Cada ronda suma una casilla y la grilla crece. Tenés tres vidas: un error cuesta una y te muestra las que eran.',
+    better: 'high', fmt: s => String(s),
+    start(ctx) {
+      let n = 4, k = 3, lives = 3, best = 0, targets = new Set(), found = new Set(), phase = 'show', over = false;
+      const grid = el('div', 'ds-grid'), msg = el('p', 'jg-msg');
+      ctx.stage.append(grid, msg);
+      const timers = [];
+      const later = (f, ms) => timers.push(setTimeout(f, ms));
+      function hud() { ctx.hud(`Casillas<b>${k}</b> Vidas<b>${'●'.repeat(lives)}${'○'.repeat(3 - lives)}</b>`); }
+      function build() {
+        grid.innerHTML = ''; grid.style.gridTemplateColumns = `repeat(${n}, 1fr)`;
+        for (let i = 0; i < n * n; i++) { const b = el('button', 'ds-cell'); b.addEventListener('pointerdown', e => { e.preventDefault(); tap(i); }); grid.append(b); }
+      }
+      function round() {
+        n = k <= 5 ? 4 : k <= 8 ? 5 : 6; build();
+        targets = new Set(); found = new Set();
+        while (targets.size < k) targets.add(Math.floor(ctx.rnd() * n * n));
+        ctx.test.cells = [...targets];
+        phase = 'show'; grid.classList.add('locked'); msg.textContent = 'Mirá…'; hud();
+        later(() => { targets.forEach(i => grid.children[i].classList.add('lit')); tone(520, 0.08, 'triangle', 0.05); }, 350);
+        later(() => { targets.forEach(i => grid.children[i].classList.remove('lit')); phase = 'play'; grid.classList.remove('locked'); msg.textContent = `Tocá las ${k} casillas`; }, 350 + 900 + k * 120);
+      }
+      function tap(i) {
+        if (phase !== 'play' || over || found.has(i)) return;
+        const c = grid.children[i];
+        if (targets.has(i)) {
+          found.add(i); c.classList.add('ok'); tone(600 + found.size * 40, 0.06, 'triangle', 0.05);
+          if (found.size === targets.size) { phase = 'wait'; best = k; okSound(); msg.textContent = '¡Bien!'; k++; later(round, 700); }
+          return;
+        }
+        lives--; c.classList.add('bad'); badSound(); hud();
+        phase = 'wait'; targets.forEach(j => { if (!found.has(j)) grid.children[j].classList.add('miss'); });
+        if (lives <= 0) { over = true; msg.textContent = 'Sin vidas'; later(() => ctx.done({ score: best, text: best ? `Recordaste hasta ${best} casillas` : 'Ninguna ronda completa: ¡otra!', better: 'high' }), 1100); }
+        else { msg.textContent = 'Eran esas · otra vez'; later(round, 1300); }
+      }
+      ctx.test.tap = i => tap(i); ctx.test.phase = () => phase;
+      round();
+      return () => timers.forEach(clearTimeout);
+    } });
+
+  /* ── INTRUSO: all the figures are the same but one; find it fast ── */
+  GAMES.push({ id: 'intruso', title: 'Intruso', tag: 'Atención', desc: 'Todas las figuras son iguales menos una. Encontrala rápido: la grilla crece y la diferencia se achica.',
+    how: 'Tocá la figura distinta: puede estar girada, tener otro tono o ser un poco más chica. 45 segundos; cada acierto suma y agranda la grilla, cada error resta 3 segundos.',
+    better: 'high', fmt: s => String(s),
+    start(ctx) {
+      let found = 0, left = 45, over = false, odd = -1;
+      const grid = el('div', 'it-grid'), msg = el('p', 'jg-msg', 'Encontrá la distinta');
+      ctx.stage.append(grid, msg);
+      const SHAPES = [
+        'M50 10 L80 60 L62 60 L62 90 L38 90 L38 60 L20 60 Z',             // arrow
+        'M20 20 H55 V40 H40 V80 H20 Z',                                    // L
+        'M50 12 L88 50 L50 88 L12 50 Z M50 34 L66 50 L50 66 L34 50 Z',      // diamond ring
+        'M15 70 Q50 5 85 70 L70 70 Q50 35 30 70 Z',                         // arch
+        'M30 15 H70 L85 50 L70 85 H30 L45 50 Z',                            // chevron
+      ];
+      const COLS = [[102, 255, 51], [0, 212, 255], [255, 63, 164], [255, 210, 63]];
+      function round() {
+        const level = found, n = Math.min(8, 3 + Math.floor(level / 2)), N = n * n;
+        const shape = SHAPES[Math.floor(ctx.rnd() * SHAPES.length)], col = COLS[Math.floor(ctx.rnd() * COLS.length)], rot = Math.floor(ctx.rnd() * 4) * 90;
+        // how different the intruder is: obvious at first, subtle later
+        const k = Math.max(0.18, 1 - level * 0.07), kind = ['rot', 'tint', 'size', 'mirror'][Math.floor(ctx.rnd() * (level < 3 ? 3 : 4))];
+        odd = Math.floor(ctx.rnd() * N); ctx.test.odd = odd;
+        grid.innerHTML = ''; grid.style.gridTemplateColumns = `repeat(${n}, 1fr)`;
+        for (let i = 0; i < N; i++) {
+          let r = rot, c = col, s = 1, flip = 1;
+          if (i === odd) {
+            if (kind === 'rot') r += (ctx.rnd() < 0.5 ? -1 : 1) * Math.max(10, 70 * k);
+            else if (kind === 'tint') c = col.map(v => Math.round(v * (1 - 0.55 * k)));
+            else if (kind === 'size') s = 1 - 0.4 * k;
+            else flip = -1;
+          }
+          const b = el('button', 'it-cell');
+          b.innerHTML = `<svg viewBox="0 0 100 100"><path d="${shape}" fill="rgb(${c.join(',')})" fill-rule="evenodd" transform="rotate(${r} 50 50) translate(50 50) scale(${s * flip} ${s}) translate(-50 -50)"/></svg>`;
+          b.addEventListener('pointerdown', e => { e.preventDefault(); pick(i, b); });
+          grid.append(b);
+        }
+      }
+      function pick(i, b) {
+        if (over) return;
+        if (i === odd) { found++; okSound(); round(); }
+        else { left -= 3; badSound(); b.classList.add('bad'); grid.classList.remove('flash-bad'); void grid.offsetWidth; grid.classList.add('flash-bad'); }
+        ctx.hud(`Tiempo<b>${Math.max(0, Math.ceil(left))}</b> Encontradas<b>${found}</b>`);
+      }
+      ctx.test.pick = i => pick(i, grid.children[i]);
+      round();
+      const tick = setInterval(() => {
+        left -= 0.1; ctx.hud(`Tiempo<b>${Math.max(0, Math.ceil(left))}</b> Encontradas<b>${found}</b>`);
+        if (left <= 0 && !over) { over = true; clearInterval(tick); ctx.done({ score: found, text: `${found} intrusos encontrados`, better: 'high' }); }
+      }, 100);
+      return () => clearInterval(tick);
+    } });
+
   /* ═══════════════════ the page ═══════════════════ */
   const hub = $('#hub'), play = $('#play'), stage = $('#stage'), hud = $('#hud'), how = $('#how'), result = $('#result');
   const byId = id => GAMES.find(g => g.id === id);
@@ -684,16 +780,16 @@
   function open(id, daily) {
     const gm = byId(id); if (!gm) { showHub(); return; }
     close(); current = gm; isDaily = !!daily;
-    hub.hidden = true; play.hidden = false; result.hidden = true;
+    hub.hidden = true; play.hidden = false; result.hidden = true; document.body.classList.remove('hubmode');
     $('#gTitle').textContent = gm.title + (isDaily ? ' · desafío del día' : '');
     $('#gTag').textContent = gm.tag;
-    how.textContent = gm.how; how.hidden = false;
+    how.textContent = gm.how; how.hidden = true;
     hud.innerHTML = ''; stage.innerHTML = '';
-    document.title = `${gm.title} — Juegos — PUDRUS.XYZ`;
+    document.title = `${gm.title} — DRUS — PUDRUS.XYZ`;
     window.scrollTo(0, 0);
     // a start screen first: read the rules, then play
     const st = el('div', 'jg-start');
-    st.append(el('div', 'big', '◈'));
+    st.append(el('div', 'big', '◈'), el('p', 'jg-rules', gm.how));
     option = isDaily ? gm.dailyOption : (store.opt && store.opt[gm.id]) || (gm.options ? gm.options[0][0] : null);
     if (gm.options && !isDaily) {
       const row = el('div', 'jg-btns');
@@ -710,7 +806,7 @@
     }
   }
   function close() { if (cleanup) { try { cleanup(); } catch (e) { /* ignore */ } cleanup = null; } }
-  function showHub() { close(); current = null; play.hidden = true; result.hidden = true; hub.hidden = false; document.title = 'Juegos — PUDRUS.XYZ'; paintHub(); }
+  function showHub() { close(); current = null; play.hidden = true; result.hidden = true; hub.hidden = false; document.body.classList.add('hubmode'); document.title = 'DRUS — PUDRUS.XYZ'; paintHub(); }
   function finish(gm, r) {
     close(); markPlayed();
     let rec = false, prev;

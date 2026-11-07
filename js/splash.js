@@ -55,7 +55,7 @@
 
   /* ── calm version ── */
   if (reduce) {
-    const name = { home: 'PUDRUS', juegos: 'JUEGOS', nodrus: 'NODRUS', syndrus: 'SYNDRUS' }[mode];
+    const name = { home: 'PUDRUS', juegos: 'DRUS', nodrus: 'NODRUS', syndrus: 'SYNDRUS' }[mode];
     g.fillStyle = BG; g.fillRect(0, 0, W, H);
     g.font = FONT(Math.min(W / 7, 90)); g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillStyle = G;
     g.fillText(name, W / 2, H / 2);
@@ -133,6 +133,8 @@
   /* ── JUEGOS · «Circuito»: the letters are pipes that turn into place while the current lights them ── */
   function juegos() {
     const F = {   // 5×7 pixel letters
+      D: ['11110', '10001', '10001', '10001', '10001', '10001', '11110'],
+      R: ['11110', '10001', '10001', '11110', '10100', '10010', '10001'],
       J: ['00111', '00010', '00010', '00010', '10010', '10010', '01100'],
       U: ['10001', '10001', '10001', '10001', '10001', '10001', '01110'],
       E: ['11111', '10000', '10000', '11110', '10000', '10000', '11111'],
@@ -140,7 +142,7 @@
       O: ['01110', '10001', '10001', '10001', '10001', '10001', '01110'],
       S: ['01111', '10000', '10000', '01110', '00001', '00001', '11110'],
     };
-    const word = 'JUEGOS', gw = word.length * 6 - 1, gh = 7;
+    const word = 'DRUS', gw = word.length * 6 - 1, gh = 7;
     const S = Math.floor(Math.min(W * 0.84 / gw, H * 0.5 / gh)), ox = Math.round((W - gw * S) / 2), oy = Math.round((H - gh * S) / 2);
     const on = new Set();
     [...word].forEach((ch, li) => F[ch].forEach((row, y) => [...row].forEach((b, x) => { if (b === '1') on.add(`${li * 6 + x},${y}`); })));

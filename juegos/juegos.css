@@ -152,4 +152,59 @@ body.juegos { background: var(--bg); }
   .st-opts { grid-template-columns: repeat(2, minmax(64px, 1fr)); width: 100%; }
   .jg-hud { width: 100%; order: 5; }
 }
+/* ── DRUS v3: the hub always fits the window (no scroll), footer visible; the play area is its own panel ── */
+body.juegos.hubmode { height: 100vh; height: 100dvh; overflow: hidden; display: flex; flex-direction: column; }
+body.juegos.hubmode main { flex: 1; min-height: 0; display: flex; }
+body.juegos.hubmode .jg-hub { flex: 1; min-height: 0; display: flex; flex-direction: column; padding-top: calc(var(--nav-height) + clamp(10px, 2.2vh, 26px)); padding-bottom: clamp(8px, 1.6vh, 18px); width: 100%; }
+body.juegos .jg-head { margin-bottom: clamp(8px, 1.6vh, 18px); }
+body.juegos .jg-head .section-title { margin-bottom: 4px; font-size: clamp(22px, 3.4vh, 34px); }
+body.juegos .jg-head .section-desc { margin: 0; }
+body.juegos .jg-daily { padding: clamp(8px, 1.4vh, 16px) 16px; margin-bottom: clamp(8px, 1.4vh, 16px); }
+body.juegos.hubmode .jg-grid { flex: 1; min-height: 0; grid-template-columns: repeat(5, minmax(0, 1fr)); grid-auto-rows: minmax(0, 1fr); gap: clamp(8px, 1.2vh, 14px); }
+body.juegos.hubmode .jg-card { min-height: 0; padding: clamp(8px, 1.4vh, 16px); gap: clamp(3px, 0.8vh, 8px); }
+body.juegos .jg-card .art { height: clamp(28px, 6vh, 64px); }
+body.juegos .jg-card .art svg { height: 100%; }
+body.juegos .jg-card h3 { font-size: clamp(14px, 2vh, 18px); }
+body.juegos .jg-card p { overflow: hidden; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; }
+body.juegos .jg-card p { flex: 0 1 auto; }
+body.juegos .jg-card .best { margin-top: auto; }
+@media (max-height: 860px) and (min-width: 601px) { body.juegos .jg-card p { -webkit-line-clamp: 2; } }
+body.juegos footer { padding: 10px var(--gutter) calc(10px + env(safe-area-inset-bottom)); flex-direction: row; gap: 6px 16px; font-size: 10px; }
+body.juegos footer .footer-separator { display: inline; }
+@media (max-width: 1100px) { body.juegos.hubmode .jg-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+@media (max-width: 860px) { body.juegos.hubmode .jg-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); } body.juegos .jg-card p { -webkit-line-clamp: 2; } }
+@media (max-width: 600px) {
+  body.juegos.hubmode .jg-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  body.juegos .jg-card p, body.juegos .jg-card .tag { display: none; }
+  body.juegos.hubmode .jg-card { flex-direction: row; align-items: center; gap: 8px; }
+  body.juegos .jg-card .art { height: min(30px, 4.2vh); width: 46px; flex: none; justify-content: center; }
+  body.juegos.hubmode .jg-card { padding: 4px 8px; }
+  body.juegos .jg-card h3 { font-size: 14px; }
+  body.juegos .jg-card .best { position: absolute; right: 8px; bottom: 4px; font-size: 9px; }
+  body.juegos .jg-head .section-desc, body.juegos .jg-streak { display: none; }
+  body.juegos footer span:not(:first-child), body.juegos footer .footer-separator { display: none; }
+}
+@media (max-height: 640px) { body.juegos .jg-card p { display: none; } body.juegos .jg-head .section-desc { display: none; } }
+
+/* the play area: a panel of its own, a shade lighter than the page, with a faint grid */
+.jg-stage { background: linear-gradient(rgba(0,212,255,0.035) 1px, transparent 1px) 0 0 / 24px 24px, linear-gradient(90deg, rgba(0,212,255,0.035) 1px, transparent 1px) 0 0 / 24px 24px, #0c0c16;
+  border: 1px solid rgba(102,255,51,0.22); border-radius: 14px; padding: clamp(14px, 2.4vh, 26px) 12px; margin-top: 12px; box-shadow: inset 0 0 40px rgba(0,0,0,0.5); }
+.jg-rules { max-width: 560px; color: rgba(208,239,255,0.8); line-height: 1.6; margin: 0; }
+.jg-how:not([hidden]) { position: relative; background: var(--bg2); border: 1px solid rgba(102,255,51,0.35); border-radius: 10px; padding: 10px 14px; }
+
+/* Destellos */
+.ds-grid { display: grid; gap: 8px; width: min(380px, 86vw); }
+.ds-cell { aspect-ratio: 1; border-radius: 10px; border: 1px solid var(--border); background: #12121e; cursor: pointer; padding: 0; transition: background .12s, box-shadow .12s; }
+.ds-grid.locked .ds-cell { cursor: default; }
+.ds-cell.lit { background: var(--c1); box-shadow: 0 0 22px rgba(102,255,51,0.6); }
+.ds-cell.ok { background: rgba(102,255,51,0.45); border-color: var(--c1); }
+.ds-cell.bad { background: #ff3355; }
+.ds-cell.miss { border: 2px dashed var(--c1); }
+
+/* Intruso */
+.it-grid { display: grid; gap: 6px; width: min(440px, 88vw); }
+.it-cell { aspect-ratio: 1; border-radius: 8px; border: 1px solid var(--border); background: #10101a; cursor: pointer; padding: 10%; }
+.it-cell svg { width: 100%; height: 100%; display: block; }
+.it-cell:hover { border-color: rgba(255,255,255,0.3); }
+.it-cell.bad { border-color: #ff3355; }
 @media (prefers-reduced-motion: reduce) { .glitch, .flash-ok, .flash-bad, .mu-list span.new { animation: none; } }
