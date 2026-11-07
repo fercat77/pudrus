@@ -18,6 +18,22 @@
     return 12 * (octave + 1) + root + s[i] + 12 * o;
   }
   const noteName = m => NOTE_NAMES[m % 12] + (Math.floor(m / 12) - 1);
+  // chords built from the scale (diatonic): degree offsets on top of the note
+  const CHORDS = { triad: [0, 2, 4], seventh: [0, 2, 4, 6], sus2: [0, 1, 4], sus4: [0, 3, 4], add9: [0, 2, 4, 8] };
+  const CHORD_NAMES = [['off', 'una nota'], ['triad', 'tríada'], ['seventh', 'séptima'], ['sus2', 'sus2'], ['sus4', 'sus4'], ['add9', 'add9'], ['power', 'quinta'], ['oct', 'octava']];
+  function chordNotes(root, scale, deg, octave, kind) {
+    const base = degreeToMidi(root, scale, deg, octave);
+    if (kind === 'power') return [base, base + 7, base + 12];
+    if (kind === 'oct') return [base, base + 12];
+    const d = CHORDS[kind];
+    return d ? d.map(x => degreeToMidi(root, scale, deg + x, octave)) : [base];
+  }
+  // the scale degree of a MIDI note (the nearest one at or below it): to build chords from played notes
+  function midiToDegree(root, scale, midi, octave) {
+    let deg = Math.round((midi - degreeToMidi(root, scale, 0, octave)) * (SCALES[scale] || SCALES.minor).length / 12) + 2;
+    while (deg > -60 && degreeToMidi(root, scale, deg, octave) > midi) deg--;
+    return deg;
+  }
 
   const DRUMS = [
     ['kick', 'Bombo'], ['clap', 'Clap'], ['snare', 'Redoblante'], ['ch', 'Hat cerrado'],
@@ -208,6 +224,28 @@
       filt.frequency.setTargetAtTime(cut + (top - cut) * P.sustain * 0.3, t + 0.004, Math.max(0.005, P.fdecay / 4));
     };
     S.noteOff = t => { vca.gain.cancelScheduledValues(t); vca.gain.setTargetAtTime(0, t, Math.max(0.005, P.release / 4)); filt.frequency.setTargetAtTime(P.cutoff, t, Math.max(0.01, P.release / 3)); };
+    // a polyphonic voice with the same sound (waves, filter, envelopes): for chords
+    S.polyOn = (t, midis, vel = 1) => {
+      const p = P, voices = [], k = 1 / Math.sqrt(Math.max(1, midis.length)), acc = vel > 1;
+      for (const m of midis) {
+        const f = mtof(m), a = ctx.createOscillator(), b = ctx.createOscillator(), ga = ctx.createGain(), gb = ctx.createGain(), lp = ctx.createBiquadFilter(), env = ctx.createGain();
+        a.type = p.wave1; b.type = p.wave2; b.detune.value = p.detune; a.frequency.value = f; b.frequency.value = f * Math.pow(2, p.oct2);
+        ga.gain.value = p.mix1 * k; gb.gain.value = p.mix2 * k; lp.type = 'lowpass'; lp.Q.value = 0.5 + p.res * 8;
+        const top = Math.min(16000, p.cutoff + p.envAmt * 6000 * (acc ? 1.5 : 1));
+        lp.frequency.setValueAtTime(top, t); lp.frequency.setTargetAtTime(p.cutoff, t + 0.004, Math.max(0.01, p.fdecay / 3));
+        const peak = 0.42 * (acc ? 1.3 : 1);
+        env.gain.setValueAtTime(0.0001, t); env.gain.linearRampToValueAtTime(peak, t + Math.max(0.004, p.attack));
+        env.gain.setTargetAtTime(peak * Math.max(0.05, p.sustain), t + Math.max(0.004, p.attack), Math.max(0.01, p.decay / 4));
+        a.connect(ga); b.connect(gb); ga.connect(lp); gb.connect(lp); lp.connect(env); env.connect(D.synthStrip.input);
+        a.start(t); b.start(t); voices.push({ a, b, env });
+      }
+      return voices;
+    };
+    S.polyOff = (voices, t) => {
+      const rel = Math.max(0.02, P.release);
+      voices.forEach(v => { v.env.gain.cancelScheduledValues(t); v.env.gain.setTargetAtTime(0.0001, t, rel / 4); v.a.stop(t + rel * 2 + 0.1); v.b.stop(t + rel * 2 + 0.1); });
+    };
+    S.poly = (t, midis, dur, vel) => S.polyOff(S.polyOn(t, midis, vel), t + dur);
     D.synth = S;
 
     D.setFx = fx => {
@@ -324,7 +362,9 @@
       D.hit(DRUMS[i][0], D.drumStrips[i].input, t, { tune: tr.tune, decay: tr.decay, vel: s === 2 ? 1 : 0.7 });
     });
     const sy = st.synth, cur = sy.steps[n % 16], prev = sy.steps[(n + 15) % 16];
-    if (!mute.synth && !sy.mute && cur && cur.on) {
+    if (!mute.synth && !sy.mute && cur && cur.on && sy.chord && sy.chord !== 'off') {   // chord stabs (polyphonic)
+      D.synth.poly(t, chordNotes(st.root, st.scale, cur.deg, sy.octave, sy.chord), stepDur * Math.max(0.2, sy.gate), cur.acc ? 1.3 : 1);
+    } else if (!mute.synth && !sy.mute && cur && cur.on) {
       const midi = degreeToMidi(st.root, st.scale, cur.deg, sy.octave);
       const slide = !!(prev && prev.on && prev.slide);
       D.synth.noteOn(t, midi, cur.acc ? 1.3 : 1, slide);
@@ -380,5 +420,5 @@
     return new Blob([bytes], { type: 'audio/wav' });
   }
 
-  window.SyndrusEngine = { buildEngine, playStep, applyPattern, applyMix, xfGains, renderLoop, euclid, degreeToMidi, noteName, mtof, SCALES, SCALE_NAMES, NOTE_NAMES, DRUMS };
+  window.SyndrusEngine = { chordNotes, midiToDegree, CHORD_NAMES, buildEngine, playStep, applyPattern, applyMix, xfGains, renderLoop, euclid, degreeToMidi, noteName, mtof, SCALES, SCALE_NAMES, NOTE_NAMES, DRUMS };
 })();

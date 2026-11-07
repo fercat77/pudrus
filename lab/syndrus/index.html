@@ -10,7 +10,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600;700&display=swap">
-  <link rel="stylesheet" href="syndrus.css?v=10">
+  <link rel="stylesheet" href="syndrus.css?v=11">
 </head>
 <body data-tab="drums">
 <script src="/js/splash.js?v=3" data-splash="syndrus"></script>
@@ -36,6 +36,7 @@
       <select id="bars" title="Largo del loop"><option value="1">1 compás</option><option value="2">2 compases</option><option value="4" selected>4 compases</option><option value="8">8 compases</option></select>
       <button class="sy-btn" id="export" title="Bajar el loop en WAV (sin cortes al repetirse)">⤓ WAV</button>
       <button class="sy-btn" id="share" title="Copiar un enlace con este patrón">🔗</button>
+      <button class="sy-btn" id="midiBtn" title="MIDI: tu teclado, tus perillas y el reloj">🎹</button>
       <button class="sy-btn" id="remoteBtn" title="Manejar la consola, la mezcla y los FX desde el celular">📱</button>
       <button class="sy-btn" id="consoleBtn" title="Consola: todos los faders del deck en una vista (C)">🎚 Consola</button>
       <button class="sy-btn" id="nodrus" title="Abrir NODRUS: las visuales siguen el tempo, el pulso, el sonido y los drops de SYNDRUS">◈ NODRUS</button>
@@ -77,6 +78,10 @@
   </section>
 </main>
 
+<div class="sy-help sy-midi" id="midiPop" hidden>
+  <div class="sy-group" style="justify-content:space-between"><b>🎹 MIDI</b><button class="sy-btn" id="midiClose">✕</button></div>
+  <div id="midiBody"></div>
+</div>
 <div class="sy-help sy-remote" id="remotePop" hidden>
   <div class="sy-rmtop">
     <div id="rmQR" class="sy-qr"></div>
@@ -108,12 +113,13 @@
   <b>Espacio</b> play/stop · <b>A…K</b> tocar el synth · <b>Z/X</b> octava · <b>Shift</b> + clic en un paso: acento.<br>
   Los parámetros se arrastran a los costados (Shift = fino, doble clic = valor inicial, rueda = ajuste).<br>
   <b>⤓ WAV</b> exporta el loop listo para repetirse sin cortes, con la cola del delay y la reverb doblada al principio.<br>
-  <b>🔗</b> copia un enlace con todo el patrón. Todo se guarda solo en este navegador.
+  <b>🔗</b> copia un enlace con todo el patrón. Todo se guarda solo en este navegador.<br>
+  <b>🎹 MIDI</b>: las notas de tu teclado tocan el synth; «Aprender» asigna perillas y faders; el reloj sigue o manda el tempo. En Synth → <b>Acordes · arpegio</b>: acordes de la escala y arpegiador a tempo.
   <div style="margin-top:10px"><button class="sy-btn" id="helpClose">Cerrar</button></div>
 </div>
 <div class="sy-toast" id="toast"></div>
 
-<script src="engine.js?v=6"></script>
-<script src="app.js?v=16"></script>
+<script src="engine.js?v=7"></script>
+<script src="app.js?v=18"></script>
 </body>
 </html>

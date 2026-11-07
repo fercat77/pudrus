@@ -20,7 +20,7 @@
       synth: { steps: Array.from({ length: 16 }, () => ({ on: false, deg: 0, acc: false, slide: false })), octave: 2, gate: 0.55,
         wave1: 'sawtooth', wave2: 'square', detune: 7, oct2: 0, mix1: 0.6, mix2: 0.25, sub: 0.35, noise: 0,
         cutoff: 520, res: 0.6, envAmt: 0.45, fdecay: 0.22, attack: 0.003, decay: 0.25, sustain: 0.3, release: 0.12, glide: 0.07,
-        lfoRate: 0.2, lfoDepth: 0, level: 0.7, delay: 0.1, reverb: 0.05, mute: false },
+        lfoRate: 0.2, lfoDepth: 0, level: 0.7, delay: 0.1, reverb: 0.05, mute: false, chord: 'off', arp: 'off', arpRate: 1, arpOct: 1, latch: false },
       rings: [ring({ sound: 'rim', steps: 16, pulses: 0, level: 0.5, reverb: 0.1, delay: 0.2 }), ring({ steps: 12, deg: 2 }), ring({ steps: 7, deg: 4, octave: 5 }), ring({ sound: 'pluck', steps: 9, deg: 0, octave: 3 })],
       fx: { drive: 0.12, feedback: 0.42, delayTone: 1800, delayBeats: 0.75, space: 0.45, volume: 0.8, dj: 0 },
     };
@@ -190,6 +190,7 @@
       const n = roll ? roll.start + ((step - roll.start) % roll.len) : step;   // Roll: repeat a slice of the bar
       app.decks.forEach((p, i) => { if (g[i] > 0.001 || app.mix.decks[i].cue) X.playStep(E.decks[i], { ...p, bpm: app.bpm }, n, t, Math.random, app.mix.decks[i].mute); });
       queue.push({ step: n, t });
+      arpTick(step, t, stepDur); clockOut(nextTime, stepDur);
       anchor = { beat: step / 4, time: nextTime, bpm: app.bpm };
       // what NODRUS should feel: kicks, claps/snares and hats of the decks you hear (scaled by the crossfader)
       app.decks.forEach((p, i) => {
@@ -216,8 +217,9 @@
     ensureAudio();
     playing = on; $('#play').classList.toggle('on', on); $('#play').textContent = on ? '■' : '▶'; rmPush();
     clearInterval(timer);
-    if (on) { step = 0; nextTime = ac.currentTime + 0.06; tick(); timer = setInterval(tick, 25); }
-    else { E.decks.forEach(D => D.synth.noteOff(ac.currentTime)); queue.length = 0; paintNow(-1); if (pending[0] || pending[1]) applyPending(); }
+    if (on) { step = 0; nextTime = ac.currentTime + 0.06; if (midiO.clockOut) midiSend([0xFA], performance.now() + (nextTime - ac.currentTime + latency()) * 1000); tick(); timer = setInterval(tick, 25); }
+    else {
+      if (midiO.clockOut) midiSend([0xFC]); E.decks.forEach(D => D.synth.noteOff(ac.currentTime)); queue.length = 0; paintNow(-1); if (pending[0] || pending[1]) applyPending(); }
   }
   $('#play').addEventListener('click', () => setPlay(!playing));
 
@@ -279,7 +281,7 @@
     const paint = () => { v.textContent = fmt(obj[key]); fill.style.width = toPos(obj[key]) * 100 + '%'; };
     const set = x => { x = Math.max(min, Math.min(max, x)); if (step) x = Math.round(x / step) * step; obj[key] = x; paint(); (opts.on || mix)(); };
     let drag = null;
-    w.addEventListener('pointerdown', e => { drag = { x: e.clientX, p: toPos(obj[key]) }; w.setPointerCapture(e.pointerId); });
+    w.addEventListener('pointerdown', e => { if (learnMode) { e.stopPropagation(); armLearn(obj, key, min, max, curve, step, label); w.classList.add('sy-armed'); return; } drag = { x: e.clientX, p: toPos(obj[key]) }; w.setPointerCapture(e.pointerId); });
     w.addEventListener('pointermove', e => { if (!drag) return; set(toVal(drag.p + (e.clientX - drag.x) / 180 * (e.shiftKey ? 0.15 : 1))); });
     w.addEventListener('pointerup', () => { drag = null; });
     w.addEventListener('dblclick', () => set(def));
@@ -449,6 +451,12 @@
         param('Env filtro', sy, 'envAmt', 0, 1), param('Caída filtro', sy, 'fdecay', 0.02, 1.5, { curve: 2 }), param('LFO vel.', sy, 'lfoRate', 0.02, 12, { curve: 3, fmt: x => x.toFixed(2) + ' Hz' }), param('LFO → corte', sy, 'lfoDepth', 0, 1)]],
       env: ['Envolvente', () => [param('Ataque', sy, 'attack', 0.001, 2, { curve: 3 }), param('Caída', sy, 'decay', 0.02, 2, { curve: 2 }), param('Sostén', sy, 'sustain', 0, 1),
         param('Suelta', sy, 'release', 0.01, 4, { curve: 2 }), param('Glide', sy, 'glide', 0.005, 1, { curve: 2 }), param('Largo nota', sy, 'gate', 0.1, 8, { curve: 2, fmt: x => x.toFixed(2) + ' p' })]],
+      arp: ['Acordes · arpegio', () => [
+        choice('Acorde', sy, 'chord', X.CHORD_NAMES, () => { save(); }),
+        choice('Arpegio', sy, 'arp', [['off', 'apagado'], ['up', 'arriba'], ['down', 'abajo'], ['updown', 'ida y vuelta'], ['random', 'al azar'], ['played', 'como se toca']], () => { arpSet = heldN.slice(); arpIdx = -1; save(); }),
+        choice('Velocidad', sy, 'arpRate', [[4, '1/4'], [2, '1/8'], [1, '1/16'], [0.5, '1/32']], () => save()),
+        choice('Octavas', sy, 'arpOct', [[1, '1'], [2, '2'], [3, '3']], () => save()),
+        choice('Mantener', sy, 'latch', [[false, 'no'], [true, 'sí (latch)']], () => { sy.latch = sy.latch === true || sy.latch === 'true'; if (!sy.latch) arpSet = heldN.slice(); save(); })]],
       mix: ['Mezcla', () => [choice('Octava', sy, 'octave', [[1, '1'], [2, '2'], [3, '3'], [4, '4'], [5, '5']], () => { paintSynth(); save(); }),
         param('Volumen', sy, 'level', 0, 1.2), param('→ Delay', sy, 'delay', 0, 1), param('→ Reverb', sy, 'reverb', 0, 1)]],
     };
@@ -480,17 +488,64 @@
     }
   }
   const keyMidi = i => 12 * (st.synth.octave + 1 + kbOct) + st.root + i;
-  function press(i) {
-    ensureAudio(); if (held.includes(i)) return;
-    const legato = held.length > 0; held.push(i);
-    deck().synth.noteOn(ac.currentTime + 0.005, keyMidi(i), 1, legato);
-    const k = document.querySelector(`.sy-key[data-i="${i}"]`); if (k) k.classList.add('on');
+  const keyBase = () => 12 * (st.synth.octave + 1 + kbOct) + st.root;
+  function press(i) { noteDown(keyMidi(i), 0.8); const k = document.querySelector(`.sy-key[data-i="${i}"]`); if (k) k.classList.add('on'); }
+  function release(i) { noteUp(keyMidi(i)); const k = document.querySelector(`.sy-key[data-i="${i}"]`); if (k) k.classList.remove('on'); }
+
+  /* ── playing notes (computer keys, the screen keyboard, MIDI): mono line, chords, or the arpeggiator ── */
+  const heldN = [];            // MIDI notes held now, in the order they were played
+  let arpSet = [], arpIdx = 0, arpDir = 1, chordVoices = new Map(), arpWarned = false;
+  const arpOn = () => st.synth.arp && st.synth.arp !== 'off';
+  // a played note → its chord in the scale (or just the note)
+  const chordOf = m => (st.synth.chord && st.synth.chord !== 'off'
+    ? X.chordNotes(st.root, st.scale, X.midiToDegree(st.root, st.scale, m, st.synth.octave), st.synth.octave, st.synth.chord)
+    : [m]);
+  function noteDown(m, vel = 0.8) {
+    ensureAudio(); if (heldN.includes(m)) return;
+    const first = heldN.length === 0; heldN.push(m);
+    const D = deck(), now = ac.currentTime + 0.005, acc = vel > 0.85 ? 1.3 : 1;
+    if (arpOn()) {
+      if (st.synth.latch && first) arpSet = [];   // latch: a new chord replaces the held one
+      if (!arpSet.length) { arpIdx = -1; arpDir = 1; }   // a fresh arpeggio starts from its first note
+      if (!arpSet.includes(m)) arpSet.push(m);
+      if (!playing) { if (!arpWarned) { toast('El arpegiador sigue el tempo: dale ▶ (Espacio)'); arpWarned = true; } D.synth.noteOn(now, m, acc, false); D.synth.noteOff(now + 0.25); }
+      return;
+    }
+    if (st.synth.chord && st.synth.chord !== 'off') { chordVoices.set(m, D.synth.polyOn(now, chordOf(m), acc)); return; }
+    D.synth.noteOn(now, m, acc, !first);
   }
-  function release(i) {
-    const j = held.indexOf(i); if (j < 0) return; held.splice(j, 1);
-    const k = document.querySelector(`.sy-key[data-i="${i}"]`); if (k) k.classList.remove('on');
-    if (held.length) deck().synth.noteOn(ac.currentTime + 0.005, keyMidi(held[held.length - 1]), 1, true);
-    else deck().synth.noteOff(ac.currentTime + 0.005);
+  function noteUp(m) {
+    const j = heldN.indexOf(m); if (j < 0) return; heldN.splice(j, 1);
+    const D = E && deck(); if (!D) return;
+    const now = ac.currentTime + 0.005;
+    if (arpOn()) { if (!st.synth.latch) arpSet = arpSet.filter(x => x !== m); return; }
+    if (chordVoices.has(m)) { D.synth.polyOff(chordVoices.get(m), now); chordVoices.delete(m); return; }
+    if (heldN.length) D.synth.noteOn(now, heldN[heldN.length - 1], 1, true);
+    else D.synth.noteOff(now);
+  }
+  // the arpeggiator plays on the clock (tick): which note comes next
+  function arpNext() {
+    const sy = st.synth;
+    let notes = [];
+    arpSet.forEach(m => chordOf(m).forEach(x => { for (let o = 0; o < (sy.arpOct || 1); o++) notes.push(x + 12 * o); }));
+    if (!notes.length) return null;
+    if (sy.arp !== 'played') notes = [...new Set(notes)].sort((a, b) => a - b);
+    const n = notes.length;
+    if (sy.arp === 'random') return notes[Math.floor(Math.random() * n)];
+    if (sy.arp === 'down') { arpIdx = (arpIdx + 1) % n; return notes[n - 1 - arpIdx]; }
+    if (sy.arp === 'updown') {
+      if (n === 1) return notes[0];
+      arpIdx += arpDir; if (arpIdx >= n - 1) { arpIdx = n - 1; arpDir = -1; } else if (arpIdx <= 0) { arpIdx = 0; arpDir = 1; }
+      return notes[arpIdx];
+    }
+    arpIdx = (arpIdx + 1) % n; return notes[arpIdx];   // up / played
+  }
+  function arpTick(n, t, stepDur) {
+    if (!arpOn() || !arpSet.length) return;
+    const r = st.synth.arpRate || 1, D = deck();
+    const play = tt => { const m = arpNext(); if (m == null) return; D.synth.noteOn(tt, m, 1, false); D.synth.noteOff(tt + stepDur * r * 0.75); };
+    if (r < 1) { play(t); play(t + stepDur / 2); }
+    else if (n % r === 0) play(t);
   }
 
   /* ── rings: canvas + parameters in tabs (Ritmo · Tono · Mezcla); one at a time on the phone ── */
@@ -729,7 +784,7 @@
     const paint = () => { const p = (obj[key] - min) / (max - min); th.style.top = (8 + (1 - p) * (w.clientHeight - 16)) + 'px'; val.textContent = fmtV ? fmtV(obj[key]) : (obj[key] <= 0.001 ? '−∞' : (20 * Math.log10(obj[key])).toFixed(1) + ' dB'); };
     const set = y => { const r = w.getBoundingClientRect(), p = 1 - (y - r.top - 8) / Math.max(1, r.height - 16); obj[key] = Math.round(Math.max(min, Math.min(max, min + p * (max - min))) * 1000) / 1000; paint(); (onSet || mix)(); };
     let drag = false;
-    w.addEventListener('pointerdown', e => { drag = true; try { w.setPointerCapture(e.pointerId); } catch (x) { /* synthetic */ } set(e.clientY); });
+    w.addEventListener('pointerdown', e => { if (learnMode) { armLearn(obj, key, min, max, 1, 0, key === 'volume' ? 'Volumen master' : 'Fader'); w.classList.add('sy-armed'); return; } drag = true; try { w.setPointerCapture(e.pointerId); } catch (x) { /* synthetic */ } set(e.clientY); });
     w.addEventListener('pointermove', e => { if (drag) set(e.clientY); });
     w.addEventListener('pointerup', () => { drag = false; });
     w.addEventListener('dblclick', () => { obj[key] = def; paint(); (onSet || mix)(); });
@@ -743,7 +798,7 @@
     w.append(f, l, v);
     const paint = () => { f.style.width = ((obj[key] - min) / (max - min)) * 100 + '%'; v.textContent = fmt ? fmt(obj[key]) : Math.round(obj[key] * 100) + '%'; };
     let drag = null;
-    w.addEventListener('pointerdown', e => { drag = { x: e.clientX, v: obj[key] }; try { w.setPointerCapture(e.pointerId); } catch (x) { /* synthetic */ } });
+    w.addEventListener('pointerdown', e => { if (learnMode) { armLearn(obj, key, min, max, 1, 0, label); w.classList.add('sy-armed'); return; } drag = { x: e.clientX, v: obj[key] }; try { w.setPointerCapture(e.pointerId); } catch (x) { /* synthetic */ } });
     w.addEventListener('pointermove', e => { if (!drag) return; obj[key] = Math.max(min, Math.min(max, drag.v + (e.clientX - drag.x) / 120 * (max - min))); paint(); mix(); });
     w.addEventListener('pointerup', () => { drag = null; });
     paint(); return w;
@@ -926,6 +981,106 @@
   if (DESK) startRemote();   // desktop app: phones on the wifi can join at any moment
   $('#rmCopy').addEventListener('click', () => { navigator.clipboard && navigator.clipboard.writeText($('#rmUrl').href).then(() => toast('Enlace copiado'), () => {}); });
 
+  /* ── MIDI: notes play the synth, «Aprender» maps knobs/faders of your controller to any control, and the clock
+     (follow your DAW's tempo and play/stop, or send SYNDRUS' clock) ── */
+  const MIDI_KEY = 'syndrus_midi';
+  const midiO = (() => { try { return Object.assign({ notes: true, clockIn: false, clockOut: false, out: '', map: {} }, JSON.parse(localStorage.getItem(MIDI_KEY) || '{}')); } catch (e) { return { notes: true, clockIn: false, clockOut: false, out: '', map: {} }; } })();
+  const saveMidi = () => { try { localStorage.setItem(MIDI_KEY, JSON.stringify(midiO)); } catch (e) { /* ignore */ } };
+  let midiAcc = null, learnMode = false, learnArmed = null;
+  const clockTimes = [];
+  // a control → a description that survives deck changes and reloads, and back
+  function describe(obj, key, min, max, curve, stepV) {
+    const base = { key, min, max, curve: curve || 1, step: stepV || 0 };
+    if (obj === app) return { k: 'app', ...base };
+    if (obj === app.mix) return { k: 'mix', ...base };
+    let i = app.mix.decks.indexOf(obj); if (i >= 0) return { k: 'dmix', i, ...base };
+    if (obj === st.synth) return { k: 'synth', ...base };
+    if (obj === st.fx) return { k: 'fx', ...base };
+    i = st.drums.indexOf(obj); if (i >= 0) return { k: 'drum', i, ...base };
+    i = st.rings.indexOf(obj); if (i >= 0) return { k: 'ring', i, ...base };
+    return null;
+  }
+  function resolve(d) {
+    return d.k === 'app' ? app : d.k === 'mix' ? app.mix : d.k === 'dmix' ? app.mix.decks[d.i] : d.k === 'synth' ? st.synth : d.k === 'fx' ? st.fx : d.k === 'drum' ? st.drums[d.i] : d.k === 'ring' ? st.rings[d.i] : null;
+  }
+  function armLearn(obj, key, min, max, curve, stepV, label) {
+    const d = describe(obj, key, min, max, curve, stepV);
+    if (!d) { toast('Ese control no se puede asignar'); return; }
+    learnArmed = { ...d, label: label || key };
+    document.querySelectorAll('.sy-armed').forEach(x => x.classList.remove('sy-armed'));
+    toast(`🎹 «${learnArmed.label}» · ahora mové una perilla o fader de tu controlador`, 4000);
+  }
+  let ccPaint = 0;
+  function applyCC(d, v01) {
+    const obj = resolve(d); if (!obj) return;
+    let v = d.min + (d.max - d.min) * Math.pow(v01, d.curve || 1);
+    if (d.step) v = Math.round(v / d.step) * d.step;
+    obj[d.key] = v; mix();
+    clearTimeout(ccPaint); ccPaint = setTimeout(paintAll, 160);
+  }
+  function midiOuts() { return midiAcc ? [...midiAcc.outputs.values()].filter(o => !midiO.out || o.id === midiO.out) : []; }
+  function midiSend(bytes, ts) { midiOuts().forEach(o => { try { o.send(bytes, ts); } catch (e) { /* port gone */ } }); }
+  function onMidi(e) {
+    const [s0, d1, d2] = e.data, type = s0 & 0xF0, ch = s0 & 0x0F;
+    if (s0 === 0xF8) { if (midiO.clockIn) clockTick(e.timeStamp); return; }
+    if (s0 === 0xFA || s0 === 0xFB) { if (midiO.clockIn && !playing) setPlay(true); return; }
+    if (s0 === 0xFC) { if (midiO.clockIn && playing) setPlay(false); return; }
+    if (type === 0x90 && d2 > 0) { if (midiO.notes) noteDown(d1, d2 / 127); flashMidi(); }
+    else if (type === 0x80 || (type === 0x90 && d2 === 0)) { if (midiO.notes) noteUp(d1); }
+    else if (type === 0xB0) {
+      const key = `cc:${ch}:${d1}`;
+      if (learnArmed) { midiO.map[key] = learnArmed; toast(`🎹 CC ${d1} (canal ${ch + 1}) → «${learnArmed.label}»`); learnArmed = null; saveMidi(); paintMidi(); return; }
+      const d = midiO.map[key]; if (d) applyCC(d, d2 / 127);
+      flashMidi();
+    }
+  }
+  function clockTick(ts) {   // 24 pulses per beat → tempo
+    clockTimes.push(ts); if (clockTimes.length > 49) clockTimes.shift();
+    if (clockTimes.length < 25) return;
+    const iv = (clockTimes[clockTimes.length - 1] - clockTimes[0]) / (clockTimes.length - 1), bpm = Math.round(60000 / (iv * 24) * 10) / 10;
+    if (bpm >= 40 && bpm <= 240 && Math.abs(bpm - app.bpm) > 0.25) { app.bpm = bpm; mix(); clearTimeout(ccPaint); ccPaint = setTimeout(paintAll, 300); }
+  }
+  // the clock out rides on the scheduler: 6 pulses per 16th, stamped on the audio time
+  function clockOut(t, stepDur) {
+    if (!midiO.clockOut || !midiAcc) return;
+    const base = performance.now() + (t - ac.currentTime + latency()) * 1000;
+    for (let k = 0; k < 6; k++) midiSend([0xF8], base + k * stepDur * 1000 / 6);
+  }
+  let flashT = 0;
+  function flashMidi() { const b = $('#midiBtn'); b.classList.add('rx'); clearTimeout(flashT); flashT = setTimeout(() => b.classList.remove('rx'), 120); }
+  async function midiInit() {
+    if (midiAcc) return true;
+    if (!navigator.requestMIDIAccess) { toast('Este navegador no tiene MIDI: probá con Chrome o Edge (o la app de escritorio)', 5000); return false; }
+    try { midiAcc = await navigator.requestMIDIAccess({ sysex: false }); }
+    catch (e) { toast('No se pudo usar MIDI (permiso denegado)'); return false; }
+    const hook = () => { midiAcc.inputs.forEach(i => { i.onmidimessage = onMidi; }); paintMidi(); };
+    midiAcc.onstatechange = hook; hook();
+    try { localStorage.setItem('syndrus_midi_on', '1'); } catch (e) { /* ignore */ }
+    return true;
+  }
+  function paintMidi() {
+    const box = $('#midiBody'); if (!box) return;
+    box.innerHTML = '';
+    if (!midiAcc) { const b = el('button', 'sy-btn', '🎹 Activar MIDI'); b.addEventListener('click', async () => { await midiInit(); paintMidi(); }); box.append(el('p', 'sy-dim', 'Conectá tu teclado o controlador por USB y activalo. El navegador puede pedir permiso.'), b); return; }
+    const ins = [...midiAcc.inputs.values()], outs = [...midiAcc.outputs.values()];
+    box.append(el('p', ins.length ? 'ok' : 'sy-dim', ins.length ? '🎹 Entradas: ' + ins.map(i => i.name).join(', ') : 'No hay dispositivos MIDI conectados'));
+    const chk = (label, key, tip) => { const l = el('label', 'sy-chk'), c = el('input'); c.type = 'checkbox'; c.checked = !!midiO[key]; c.addEventListener('change', () => { midiO[key] = c.checked; saveMidi(); if (key === 'clockOut' && playing) midiSend([c.checked ? 0xFA : 0xFC]); }); l.title = tip || ''; l.append(c, document.createTextNode(' ' + label)); return l; };
+    box.append(chk('Las notas tocan el synth (con acordes y arpegiador)', 'notes'), chk('Seguir el reloj de afuera (tempo y play/stop de tu DAW)', 'clockIn'), chk('Mandar el reloj de SYNDRUS (para que tu DAW o tus máquinas sigan)', 'clockOut'));
+    const os = el('select'); [['', 'todas las salidas'], ...outs.map(o => [o.id, o.name])].forEach(([v, t]) => { const o = el('option', '', t); o.value = v; os.append(o); });
+    os.value = midiO.out; os.addEventListener('change', () => { midiO.out = os.value; saveMidi(); });
+    const orow = el('label', 'sy-sel'); orow.append(el('span', '', 'Salida del reloj'), os); box.append(orow);
+    const n = Object.keys(midiO.map).length;
+    const lb = el('button', 'sy-btn' + (learnMode ? ' on' : ''), learnMode ? '✓ Aprendiendo: tocá un control y mové una perilla' : '🎹 Aprender MIDI');
+    lb.addEventListener('click', () => { learnMode = !learnMode; learnArmed = null; document.body.classList.toggle('sy-learning', learnMode); paintMidi(); if (learnMode) toast('Tocá cualquier control (fader, perilla, crossfader) y después mové una perilla de tu controlador', 5000); });
+    const clr = el('button', 'sy-btn', `Borrar asignaciones (${n})`); clr.disabled = !n;
+    clr.addEventListener('click', () => { if (confirm('¿Borrar todas las asignaciones MIDI?')) { midiO.map = {}; saveMidi(); paintMidi(); } });
+    const row = el('div', 'sy-group'); row.append(lb, clr); box.append(row);
+    if (n) box.append(el('p', 'sy-dim', Object.entries(midiO.map).map(([k, d]) => `CC ${k.split(':')[2]} → ${d.label}`).join(' · ')));
+  }
+  $('#midiBtn').addEventListener('click', () => { const p = $('#midiPop'); p.hidden = !p.hidden; $('#more').classList.remove('open'); if (!p.hidden) paintMidi(); });
+  $('#midiClose').addEventListener('click', () => { $('#midiPop').hidden = true; });
+  try { if (localStorage.getItem('syndrus_midi_on')) midiInit(); } catch (e) { /* ignore */ }   // permission already given: reconnect
+
   /* ── status bar ── */
   const gcd = (a, b) => (b ? gcd(b, a % b) : a), lcm = (a, b) => a / gcd(a, b) * b;
   let peakHold = 0, clipAt = -1e9, savedAt = 0;
@@ -1038,5 +1193,5 @@
   paintAll();
   try { setTab(sessionStorage.getItem('syndrus_tab') || 'drums'); } catch (e) { setTab('drums'); }
   paintStatus();
-  window.__syndrus = { perform, get roll() { return roll; }, set roll(v) { roll = v; }, get app() { return app; }, get state() { return st; }, setEdit, get pending() { return pending; }, get engine() { return E; }, get ctx() { return ac; }, setPlay, load, PRESETS, randomTechno, randomAmbient };
+  window.__syndrus = { midiTest: { onMidi, setLearn: v => { learnMode = v; learnArmed = null; }, get map() { return midiO.map; }, opts: midiO, noteDown, noteUp, get arpSet() { return arpSet; } }, perform, get roll() { return roll; }, set roll(v) { roll = v; }, get app() { return app; }, get state() { return st; }, setEdit, get pending() { return pending; }, get engine() { return E; }, get ctx() { return ac; }, setPlay, load, PRESETS, randomTechno, randomAmbient };
 })();

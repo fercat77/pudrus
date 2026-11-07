@@ -308,3 +308,14 @@ select option, select optgroup { background: #0b0b14; color: #d0efff; }
 .sy-remote a { color: var(--g); word-break: break-all; font-size: 11px; }
 #remoteBtn.on { border-color: var(--g); color: var(--g); box-shadow: 0 0 8px rgba(102,255,51,0.35); }
 @media (max-width: 760px) { .sy-rmtop { flex-direction: column; align-items: center; } }
+
+/* MIDI */
+#midiBtn.rx { border-color: var(--y); color: var(--y); }
+.sy-midi { width: min(540px, calc(100vw - 32px)); display: flex; flex-direction: column; gap: 8px; }
+#midiBody { display: flex; flex-direction: column; gap: 8px; }
+#midiBody .ok { color: var(--g); }
+.sy-chk { display: flex; gap: 8px; align-items: center; cursor: pointer; }
+#midiBody .sy-sel { height: auto; padding: 4px 8px; }
+.sy-btn.on { border-color: var(--y); color: var(--y); }
+body.sy-learning .sy-param, body.sy-learning .sy-knob, body.sy-learning .sy-vf { outline: 1px dashed rgba(255,210,63,0.6); outline-offset: 1px; cursor: crosshair; }
+.sy-armed { outline: 2px solid var(--y) !important; box-shadow: 0 0 12px rgba(255,210,63,0.5); }
