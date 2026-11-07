@@ -97,8 +97,48 @@ select { height: 30px; background: var(--bg2); border: 1px solid var(--line); bo
 .sy-ring .sy-params { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 4px; }
 .sy-ringchips { display: none; }
 
+/* deck A/B and locks in the top bar */
+.sy-deck { display: flex; border: 1px solid var(--line); border-radius: 7px; overflow: hidden; }
+.sy-deck button { height: 30px; width: 34px; border: 0; background: var(--bg2); cursor: pointer; font-weight: 700; color: var(--dim); }
+.sy-deck button.on { background: var(--c); color: #000; }
+body[data-deck="B"] .sy-deck button.on { background: var(--m); }
+.sy-lock { height: 30px; width: 30px; padding: 0; border-radius: 7px; border: 1px solid var(--line); background: var(--bg2); cursor: pointer; opacity: 0.55; }
+.sy-lock.on { opacity: 1; border-color: var(--y); box-shadow: 0 0 8px rgba(255,210,63,0.35); }
+/* the edited deck tints the panels' titles */
+body[data-deck="A"] .sy-drums .sy-head b, body[data-deck="A"] .sy-synth .sy-head b, body[data-deck="A"] .sy-rings .sy-head b { color: var(--c); }
+body[data-deck="B"] .sy-drums .sy-head b, body[data-deck="B"] .sy-synth .sy-head b, body[data-deck="B"] .sy-rings .sy-head b { color: var(--m); }
+body[data-deck="A"] .sy-drums .sy-head b::after, body[data-deck="A"] .sy-synth .sy-head b::after, body[data-deck="A"] .sy-rings .sy-head b::after { content: ' · A'; }
+body[data-deck="B"] .sy-drums .sy-head b::after, body[data-deck="B"] .sy-synth .sy-head b::after, body[data-deck="B"] .sy-rings .sy-head b::after { content: ' · B'; }
+/* mixer */
+.sy-mixer { display: flex; flex-direction: column; gap: 6px; }
+.sy-xf { height: calc(var(--ph) + 6px); }
+.sy-xf .fill { background: linear-gradient(90deg, rgba(0,212,255,0.3), rgba(255,63,164,0.3)); border-right-color: #fff; }
+.sy-xfbtns { display: flex; gap: 4px; }
+.sy-xfbtns .sy-mini { flex: 1; }
+.sy-decks { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+.sy-deckcol { display: flex; flex-direction: column; gap: 4px; padding: 6px; border-radius: 8px; border: 1px solid var(--line); background: var(--bg3); min-width: 0; }
+.sy-deckcol:first-child.edit { border-color: var(--c); }
+.sy-deckcol:last-child.edit { border-color: var(--m); }
+.sy-deckhead { display: flex; align-items: center; gap: 5px; min-width: 0; }
+.sy-deckhead b { font-size: 15px; }
+.sy-deckcol:first-child .sy-deckhead b { color: var(--c); }
+.sy-deckcol:last-child .sy-deckhead b { color: var(--m); }
+.sy-deckhead .sy-dim { font-size: 10px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.sy-deckcol .sy-params { grid-template-columns: 1fr; gap: 4px; }
+.sy-mutes { display: flex; gap: 3px; }
+.sy-mutes .sy-mini { flex: 1; padding: 0 2px; font-size: 10px; }
+.sy-mutes .sy-mini.on, .sy-deckcol > .sy-mini.on { background: var(--m); border-color: var(--m); color: #000; }
+.sy-subhead { display: flex; align-items: center; gap: 6px; margin-top: 2px; }
+.sy-subhead b { color: var(--g); letter-spacing: .12em; font-size: 10.5px; }
+.sy-subhead .sy-dim { font-size: 10px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.sy-bank { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 4px; }
+.sy-slot { height: 30px; border-radius: 6px; border: 1px dashed var(--line); background: var(--bg3); color: var(--dim); cursor: pointer; font-size: 10px; padding: 0 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.sy-slot.full { border-style: solid; color: #fff; border-color: rgba(102,255,51,0.35); }
+.sy-slot.queued { border-color: var(--y); color: var(--y); animation: syBlink .5s steps(2) infinite; }
+@keyframes syBlink { 50% { opacity: .45; } }
+
 /* master */
-#scope { width: 100%; height: clamp(90px, 32vh, 360px); display: block; border-radius: 6px; background: #030306; border: 1px solid var(--line); }
+#scope { width: 100%; height: clamp(60px, 15vh, 200px); display: block; border-radius: 6px; background: #030306; border: 1px solid var(--line); }
 .sy-master .sy-params { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 
 /* status bar */
@@ -134,7 +174,9 @@ select { height: 30px; background: var(--bg2); border: 1px solid var(--line); bo
   :root { --ph: 40px; --sh: 30px; --nh: 56px; --kh: 64px; }
   body { padding-bottom: 92px; }
   .sy-bar { position: sticky; top: 0; flex-wrap: nowrap; }
-  .sy-bar .sy-group .sy-param { width: 84px; }
+  .sy-bar .sy-group .sy-param { width: 76px; }
+  .sy-logo { display: none; }   /* the phone bar keeps play, deck A/B, BPM and its lock */
+  .sy-bar { gap: 6px; padding: 6px 8px; }
   .sy-morebtn { display: inline-block; margin-left: auto; }
   .sy-more { display: none; position: fixed; left: 8px; right: 8px; top: 50px; z-index: 30; flex-direction: column; align-items: stretch; gap: 10px; padding: 12px; background: var(--bg2); border: 1px solid rgba(102,255,51,0.4); border-radius: 12px; box-shadow: 0 10px 40px rgba(0,0,0,0.7); }
   .sy-more.open { display: flex; }

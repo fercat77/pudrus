@@ -129,8 +129,9 @@
   }
 
   /* ── load / save / share ── */
-  const KEY = 'syndrus_v1';
-  function sane(s) {   // fill anything missing from an old or shared state
+  const KEY = 'syndrus_v2', OLD_KEY = 'syndrus_v1';
+  const deckMix = () => ({ level: 0.9, dj: 0, kill: false, mute: { drums: false, synth: false, rings: false } });
+  function sane(s) {   // a pattern: fill anything missing from an old or shared one
     const b = blank();
     if (!s || typeof s !== 'object') return b;
     const out = { ...b, ...s, fx: { ...b.fx, ...(s.fx || {}) }, synth: { ...b.synth, ...(s.synth || {}) } };
@@ -139,39 +140,70 @@
     out.synth.steps = b.synth.steps.map((x, i) => ({ ...x, ...((s.synth && s.synth.steps || [])[i] || {}) }));
     return out;
   }
-  let st;
+  // the whole session: shared tempo, locks, the two decks (A, B), the mixer and a bank of 8 patterns
+  function saneApp(a) {
+    if (a && !a.decks) {   // an old single pattern (v1) or a shared pattern: it goes to deck A, a copy to B
+      const p = sane(a); a = { bpm: p.bpm, swing: p.swing, decks: [p, clone(p)], mix: { drive: (a.fx || {}).drive, volume: (a.fx || {}).volume } };
+    }
+    a = a && typeof a === 'object' ? a : {};
+    const decks = [0, 1].map(i => sane((a.decks || [])[i] || (i ? clone((a.decks || [])[0] || PRESETS['Techno 4×4']()) : PRESETS['Techno 4×4']())));
+    const m = a.mix || {};
+    return {
+      v: 2, bpm: a.bpm || decks[0].bpm || 128, swing: a.swing || 0, lockBpm: !!a.lockBpm, lockKey: !!a.lockKey, edit: a.edit === 1 ? 1 : 0, decks,
+      mix: { x: Number.isFinite(m.x) ? m.x : 0, drive: Number.isFinite(m.drive) ? m.drive : 0.12, volume: Number.isFinite(m.volume) ? m.volume : 0.8,
+        decks: [0, 1].map(i => ({ ...deckMix(), ...((m.decks || [])[i] || {}), mute: { ...deckMix().mute, ...(((m.decks || [])[i] || {}).mute || {}) } })) },
+      bank: Array.from({ length: 8 }, (_, i) => ((a.bank || [])[i] ? { name: String(a.bank[i].name || 'Patrón').slice(0, 24), p: sane(a.bank[i].p) } : null)),
+    };
+  }
+  let app;
   try {
     const h = location.hash.match(/^#s=(.+)$/);
-    if (h) st = sane(JSON.parse(decodeURIComponent(escape(atob(h[1])))));
-  } catch (e) { st = null; }
-  if (!st) { try { st = sane(JSON.parse(localStorage.getItem(KEY))); if (!localStorage.getItem(KEY)) st = PRESETS['Techno 4×4'](); } catch (e) { st = PRESETS['Techno 4×4'](); } }
+    if (h) app = saneApp(JSON.parse(decodeURIComponent(escape(atob(h[1])))));
+  } catch (e) { app = null; }
+  if (!app) {
+    try { const raw = localStorage.getItem(KEY) || localStorage.getItem(OLD_KEY); app = saneApp(raw ? JSON.parse(raw) : null); }
+    catch (e) { app = saneApp(null); }
+  }
+  let st = app.decks[app.edit];   // the pattern being edited (deck A or B)
+  const ab = i => (i ? 'B' : 'A');
   let saveT = 0;
-  const save = () => { clearTimeout(saveT); saveT = setTimeout(() => { try { localStorage.setItem(KEY, JSON.stringify(st)); savedAt = Date.now(); } catch (e) { /* full / private */ } }, 300); };
+  const save = () => { clearTimeout(saveT); saveT = setTimeout(() => { try { localStorage.setItem(KEY, JSON.stringify(app)); savedAt = Date.now(); } catch (e) { /* full / private */ } }, 300); };
   const toast = (m, ms = 2200) => { const t = $('#toast'); t.textContent = m; t.classList.add('show'); clearTimeout(toast.t); toast.t = setTimeout(() => t.classList.remove('show'), ms); };
 
   /* ── audio + clock ── */
   let ac = null, E = null, playing = false, nextTime = 0, step = 0, timer = 0;
   const queue = [];
   function ensureAudio() {
-    if (!ac) { ac = new (window.AudioContext || window.webkitAudioContext)({ latencyHint: 'interactive' }); E = X.buildEngine(ac, ac.destination); X.applyMix(E, st); }
+    if (!ac) { ac = new (window.AudioContext || window.webkitAudioContext)({ latencyHint: 'interactive' }); E = X.buildEngine(ac, ac.destination); X.applyMix(E, app); }
     if (ac.state === 'suspended') ac.resume();
   }
-  const mix = () => { if (E) X.applyMix(E, st); save(); };
+  const mix = () => { if (E) X.applyMix(E, app); save(); };
+  const deck = () => E.decks[app.edit];
+  const pending = [null, null];   // bank patterns waiting for the next bar, per deck
   function tick() {
-    const stepDur = 60 / st.bpm / 4;
+    const stepDur = 60 / app.bpm / 4, g = X.xfGains(app.mix.x);
     while (nextTime < ac.currentTime + 0.12) {
-      const t = nextTime + (step % 2 ? st.swing * stepDur * 0.5 : 0);
-      X.playStep(E, st, step, t);
+      if (step % 16 === 0 && (pending[0] || pending[1])) applyPending();
+      const t = nextTime + (step % 2 ? app.swing * stepDur * 0.5 : 0);
+      app.decks.forEach((p, i) => { if (g[i] > 0.001) X.playStep(E.decks[i], { ...p, bpm: app.bpm }, step, t, Math.random, app.mix.decks[i].mute); });
       queue.push({ step, t });
       nextTime += stepDur; step++;
     }
+  }
+  function applyPending() {
+    [0, 1].forEach(i => {
+      if (!pending[i]) return;
+      app.decks[i] = sane(clone(pending[i].p)); pending[i] = null;
+      if (i === app.edit) { st = app.decks[i]; setTimeout(() => { paintAll(); }, 0); }
+    });
+    mix(); setTimeout(paintMixer, 0);
   }
   function setPlay(on) {
     ensureAudio();
     playing = on; $('#play').classList.toggle('on', on); $('#play').textContent = on ? '■' : '▶';
     clearInterval(timer);
     if (on) { step = 0; nextTime = ac.currentTime + 0.06; tick(); timer = setInterval(tick, 25); }
-    else { E.synth.noteOff(ac.currentTime); queue.length = 0; paintNow(-1); }
+    else { E.decks.forEach(D => D.synth.noteOff(ac.currentTime)); queue.length = 0; paintNow(-1); if (pending[0] || pending[1]) applyPending(); }
   }
   $('#play').addEventListener('click', () => setPlay(!playing));
 
@@ -220,11 +252,22 @@
   document.addEventListener('pointerdown', e => { if (!e.target.closest('#more, #moreBtn')) $('#more').classList.remove('open'); });
 
   /* ── top bar ── */
+  function lockBtn(key, title) {
+    const b = el('button', 'sy-lock' + (app[key] ? ' on' : ''), app[key] ? '🔒' : '🔓'); b.title = title;
+    b.addEventListener('click', () => { app[key] = !app[key]; b.classList.toggle('on', app[key]); b.textContent = app[key] ? '🔒' : '🔓'; save(); toast(app[key] ? title.replace('Bloquear', 'Bloqueado:') : title.replace('Bloquear', 'Libre:')); });
+    return b;
+  }
   function paintTop() {
     $('#tempo').innerHTML = ''; $('#swingBox').innerHTML = '';
-    $('#tempo').append(param('BPM', st, 'bpm', 60, 180, { step: 1, on: () => { mix(); } }));
-    $('#swingBox').append(param('Swing', st, 'swing', 0, 0.6, { fmt: x => Math.round(x * 100) + '%' }));
+    const dk = el('div', 'sy-deck'); [0, 1].forEach(i => { const b = el('button', i === app.edit ? 'on' : '', ab(i)); b.title = `Editar el deck ${ab(i)}`; b.addEventListener('click', () => setEdit(i)); dk.append(b); });
+    $('#tempo').append(dk, param('BPM', app, 'bpm', 60, 180, { step: 1, on: () => { mix(); } }), lockBtn('lockBpm', 'Bloquear el tempo (los aleatorios y presets no lo cambian)'));
+    $('#swingBox').append(param('Swing', app, 'swing', 0, 0.6, { fmt: x => Math.round(x * 100) + '%' }), lockBtn('lockKey', 'Bloquear la tonalidad (los aleatorios y presets la respetan)'));
     $('#root').value = st.root; $('#scale').value = st.scale;
+  }
+  function setEdit(i) {
+    app.edit = i; st = app.decks[i]; save();
+    document.body.dataset.deck = ab(i);
+    paintAll(); toast(`Editando el deck ${ab(i)}`, 1200);
   }
   X.NOTE_NAMES.forEach((n, i) => { const o = el('option', '', n); o.value = i; $('#root').append(o); });
   Object.entries(X.SCALE_NAMES).forEach(([k, n]) => { const o = el('option', '', n); o.value = k; $('#scale').append(o); });
@@ -234,12 +277,20 @@
   $('#preset').addEventListener('change', e => { if (PRESETS[e.target.value]) load(PRESETS[e.target.value](), e.target.value); e.target.value = ''; $('#more').classList.remove('open'); });
   $('#rndTechno').addEventListener('click', () => { load(randomTechno(), '🎲 Techno al azar'); $('#more').classList.remove('open'); });
   $('#rndAmbient').addEventListener('click', () => { load(randomAmbient(), '🎲 Ambient al azar'); $('#more').classList.remove('open'); });
-  function load(s, msg) { st = sane(s); paintAll(); mix(); if (msg) toast(msg + ` · ${st.bpm} BPM · ${X.NOTE_NAMES[st.root]} ${X.SCALE_NAMES[st.scale].toLowerCase()}`); }
+  // a preset / random pattern into the deck being edited; the locks keep the tempo and the key
+  function load(s, msg) {
+    const p = sane(s);
+    if (app.lockKey) { p.root = st.root; p.scale = st.scale; }
+    if (!app.lockBpm) { app.bpm = p.bpm; app.swing = p.swing; }
+    app.decks[app.edit] = p; st = p;
+    paintAll(); mix();
+    if (msg) toast(`${msg} → deck ${ab(app.edit)} · ${app.bpm} BPM${app.lockBpm ? ' 🔒' : ''} · ${X.NOTE_NAMES[st.root]} ${X.SCALE_NAMES[st.scale].toLowerCase()}${app.lockKey ? ' 🔒' : ''}`);
+  }
 
   /* ── drums: a grid on the desktop, instrument chips + 4×4 pads on the phone ── */
   let selTrack = 0;
   let stepEls = [];
-  function hitTrack(i) { const tr = st.drums[i]; ensureAudio(); E.hit(X.DRUMS[i][0], E.drumStrips[i].input, ac.currentTime + 0.01, { tune: tr.tune, decay: tr.decay, vel: 0.9 }); }
+  function hitTrack(i) { const tr = st.drums[i]; ensureAudio(); deck().hit(X.DRUMS[i][0], deck().drumStrips[i].input, ac.currentTime + 0.01, { tune: tr.tune, decay: tr.decay, vel: 0.9 }); }
   function stepButton(tr, k, extra) {
     const b = el('button', 'sy-step' + (Math.floor(k / 4) % 2 ? ' q' : '') + (extra || ''));
     const paint = () => { b.classList.toggle('on', tr.steps[k] === 1); b.classList.toggle('acc', tr.steps[k] === 2); };
@@ -347,7 +398,7 @@
   function preview(s) {
     if (playing) return;
     ensureAudio(); const t = ac.currentTime + 0.01;
-    E.synth.noteOn(t, X.degreeToMidi(st.root, st.scale, s.deg, st.synth.octave), s.acc ? 1.3 : 1, false); E.synth.noteOff(t + 0.18);
+    deck().synth.noteOn(t, X.degreeToMidi(st.root, st.scale, s.deg, st.synth.octave), s.acc ? 1.3 : 1, false); deck().synth.noteOff(t + 0.18);
   }
   $('#mSynth').addEventListener('click', () => { st.synth.mute = !st.synth.mute; $('#mSynth').classList.toggle('on', st.synth.mute); save(); });
   $('#clearSynth').addEventListener('click', () => { st.synth.steps.forEach(s => { s.on = false; s.acc = false; s.slide = false; }); paintSynth(); save(); });
@@ -370,14 +421,14 @@
   function press(i) {
     ensureAudio(); if (held.includes(i)) return;
     const legato = held.length > 0; held.push(i);
-    E.synth.noteOn(ac.currentTime + 0.005, keyMidi(i), 1, legato);
+    deck().synth.noteOn(ac.currentTime + 0.005, keyMidi(i), 1, legato);
     const k = document.querySelector(`.sy-key[data-i="${i}"]`); if (k) k.classList.add('on');
   }
   function release(i) {
     const j = held.indexOf(i); if (j < 0) return; held.splice(j, 1);
     const k = document.querySelector(`.sy-key[data-i="${i}"]`); if (k) k.classList.remove('on');
-    if (held.length) E.synth.noteOn(ac.currentTime + 0.005, keyMidi(held[held.length - 1]), 1, true);
-    else E.synth.noteOff(ac.currentTime + 0.005);
+    if (held.length) deck().synth.noteOn(ac.currentTime + 0.005, keyMidi(held[held.length - 1]), 1, true);
+    else deck().synth.noteOff(ac.currentTime + 0.005);
   }
 
   /* ── rings: canvas + parameters in tabs (Ritmo · Tono · Mezcla); one at a time on the phone ── */
@@ -436,15 +487,71 @@
     g.fillText(`${Math.min(r.pulses, r.steps)}/${r.steps}`, c, c);
   }
 
-  /* ── master ── */
+  /* ── mixer: crossfader, the two decks, the bank, the edited deck's effects, master ── */
+  let bankSave = false;
+  function paintMixer() {
+    const box = $('#mixer'); if (!box) return;
+    box.innerHTML = '';
+    const M = app.mix;
+    const xfp = param('Crossfader', M, 'x', 0, 1, { wide: true, fmt: x => (x < 0.02 ? 'A' : x > 0.98 ? 'B' : `A ${Math.round((1 - x) * 100)} · ${Math.round(x * 100)} B`) });
+    xfp.classList.add('sy-xf');
+    const cut = el('div', 'sy-xfbtns');
+    [['A', 0], ['½', 0.5], ['B', 1]].forEach(([l, v]) => { const b = el('button', 'sy-mini', l); b.addEventListener('click', () => { M.x = v; xfp.paint(); mix(); }); cut.append(b); });
+    box.append(xfp, cut);
+    const cols = el('div', 'sy-decks');
+    [0, 1].forEach(i => {
+      const d = M.decks[i], c = el('div', 'sy-deckcol' + (i === app.edit ? ' edit' : ''));
+      const h = el('div', 'sy-deckhead'), name = el('b', '', ab(i)), info = el('span', 'sy-dim', `${X.NOTE_NAMES[app.decks[i].root]} ${X.SCALE_NAMES[app.decks[i].scale].toLowerCase()}`);
+      const edit = el('button', 'sy-mini' + (i === app.edit ? ' cur' : ''), i === app.edit ? 'editando' : 'editar'); edit.addEventListener('click', () => setEdit(i));
+      h.append(name, info, el('span', 'sy-sp'), edit);
+      const kill = el('button', 'sy-mini' + (d.kill ? ' on' : ''), 'Graves ✕'); kill.title = 'Cortar los graves de este deck (para cambiar de bajo sin que choquen)';
+      kill.addEventListener('click', () => { d.kill = !d.kill; kill.classList.toggle('on', d.kill); mix(); });
+      const mutes = el('div', 'sy-mutes');
+      [['drums', 'Ritmo'], ['synth', 'Synth'], ['rings', 'Anillos']].forEach(([k, l]) => { const b = el('button', 'sy-mini' + (d.mute[k] ? ' on' : ''), l); b.title = 'Silenciar este grupo en el deck ' + ab(i); b.addEventListener('click', () => { d.mute[k] = !d.mute[k]; b.classList.toggle('on', d.mute[k]); save(); }); mutes.append(b); });
+      const ps = el('div', 'sy-params');
+      ps.append(param('Volumen', d, 'level', 0, 1.2), param('Filtro', d, 'dj', -1, 1, { fmt: x => (Math.abs(x) < 0.02 ? 'abierto' : x < 0 ? 'LP ' + Math.round(-x * 100) + '%' : 'HP ' + Math.round(x * 100) + '%') }));
+      c.append(h, ps, kill, mutes); cols.append(c);
+    });
+    box.append(cols);
+    const tools = el('div', 'sy-xfbtns');
+    const cAB = el('button', 'sy-mini', 'A → B'), cBA = el('button', 'sy-mini', 'B → A'), sw = el('button', 'sy-mini', 'A ⇄ B'); sw.title = 'Intercambiar los decks';
+    cAB.addEventListener('click', () => { app.decks[1] = clone(app.decks[0]); st = app.decks[app.edit]; paintAll(); mix(); toast('A copiado en B'); });
+    cBA.addEventListener('click', () => { app.decks[0] = clone(app.decks[1]); st = app.decks[app.edit]; paintAll(); mix(); toast('B copiado en A'); });
+    sw.addEventListener('click', () => { app.decks.reverse(); app.mix.decks.reverse(); st = app.decks[app.edit]; paintAll(); mix(); toast('Decks intercambiados'); });
+    tools.append(cAB, cBA, sw); box.append(tools);
+    // bank
+    const bh = el('div', 'sy-subhead'), bs = el('button', 'sy-mini' + (bankSave ? ' on' : ''), bankSave ? '💾 tocá un lugar' : '💾 Guardar');
+    bs.title = 'Guardar el deck que editás en un lugar del banco'; bs.addEventListener('click', () => { bankSave = !bankSave; paintMixer(); });
+    bh.append(el('b', '', 'BANCO'), el('span', 'sy-dim', playing ? `entra en el próximo compás · deck ${ab(app.edit)}` : `se carga en el deck ${ab(app.edit)}`), el('span', 'sy-sp'), bs);
+    const bank = el('div', 'sy-bank');
+    app.bank.forEach((slot, k) => {
+      const q = pending.some(x => x && x.k === k);
+      const b = el('button', 'sy-slot' + (slot ? ' full' : '') + (q ? ' queued' : ''), slot ? slot.name : String(k + 1));
+      b.title = slot ? `${slot.name} · clic: cargar en el deck ${ab(app.edit)} · doble clic: borrar` : 'Vacío';
+      b.addEventListener('click', () => {
+        if (bankSave) {
+          const nm = `${k + 1} · ${X.NOTE_NAMES[st.root]} ${st.drums[0].steps.some(Boolean) ? 'beat' : 'amb'}`;
+          app.bank[k] = { name: nm, p: clone(st) }; bankSave = false; save(); paintMixer(); toast(`Deck ${ab(app.edit)} guardado en el lugar ${k + 1}`); return;
+        }
+        if (!slot) return;
+        if (playing) { pending[app.edit] = { k, p: slot.p }; toast(`«${slot.name}» entra en el deck ${ab(app.edit)} en el próximo compás`); paintMixer(); }
+        else { pending[app.edit] = { k, p: slot.p }; applyPending(); toast(`«${slot.name}» cargado en el deck ${ab(app.edit)}`); }
+      });
+      b.addEventListener('dblclick', () => { if (slot && !bankSave && confirm(`¿Borrar «${slot.name}» del banco?`)) { app.bank[k] = null; save(); paintMixer(); } });
+      bank.append(b);
+    });
+    box.append(bh, bank);
+  }
   function paintFx() {
     const p = $('#fxParams'); p.innerHTML = '';
     const fx = st.fx;
+    $('#fxTitle').textContent = `EFECTOS · DECK ${ab(app.edit)}`;
     p.append(
-      param('Filtro DJ', fx, 'dj', -1, 1, { wide: true, fmt: x => (Math.abs(x) < 0.02 ? 'abierto' : x < 0 ? 'graves ' + Math.round(-x * 100) + '%' : 'agudos ' + Math.round(x * 100) + '%') }),
-      param('Saturación', fx, 'drive', 0, 1), param('Volumen', fx, 'volume', 0, 1.2),
       choice('Delay', fx, 'delayBeats', [[0.25, '1/16'], [0.375, '1/16 ·'], [0.5, '1/8'], [0.75, '1/8 ·'], [1, '1/4'], [1.5, '1/4 ·']]),
       param('Repeticiones', fx, 'feedback', 0, 0.92), param('Tono delay', fx, 'delayTone', 300, 6000, { curve: 2, fmt: x => Math.round(x) + ' Hz' }), param('Espacio', fx, 'space', 0, 1));
+    const m = $('#masterParams'); m.innerHTML = '';
+    m.append(param('Saturación', app.mix, 'drive', 0, 1), param('Volumen', app.mix, 'volume', 0, 1.2));
+    paintMixer();
   }
 
   /* ── status bar ── */
@@ -459,7 +566,8 @@
     const out = [
       `<span class="${playing ? 'ok' : ''}">${playing ? '▶ sonando' : '■ parado'}</span>`,
       `pos <b>${pos}</b>`,
-      `<b>${st.bpm}</b> BPM${st.swing > 0.01 ? ' · swing ' + Math.round(st.swing * 100) + '%' : ''}`,
+      `<b>${app.bpm}</b> BPM${app.lockBpm ? ' 🔒' : ''}${app.swing > 0.01 ? ' · swing ' + Math.round(app.swing * 100) + '%' : ''}`,
+      `editás <b>${ab(app.edit)}</b> · mezcla ${app.mix.x < 0.02 ? 'A' : app.mix.x > 0.98 ? 'B' : `A${Math.round((1 - app.mix.x) * 100)}/B${Math.round(app.mix.x * 100)}`}${pending.some(Boolean) ? ' · <span class="warn">cambio en espera</span>' : ''}`,
       `<span class="lo">${X.NOTE_NAMES[st.root]} ${X.SCALE_NAMES[st.scale].toLowerCase()}</span>`,
       `<span class="lo">ciclo de los anillos <b>${cycTxt}</b></span>`,
       `<span class="meter" title="Pico de salida"><i style="width:${Math.max(0, Math.min(1, (db + 48) / 48)) * 100}%"></i></span> ${isFinite(db) ? db.toFixed(1) + ' dB' : '−∞'}${clip ? ' <span class="clip">CLIP</span>' : ''}`,
@@ -528,24 +636,26 @@
     const bars = +$('#bars').value, b = $('#export');
     b.disabled = true; b.textContent = '⤓ …';
     try {
-      const blob = await X.renderLoop(st, bars);
-      const a = el('a'); a.href = URL.createObjectURL(blob); a.download = `syndrus_${st.bpm}bpm_${X.NOTE_NAMES[st.root]}_${bars}c.wav`;
+      const blob = await X.renderLoop(app, bars);
+      const a = el('a'); a.href = URL.createObjectURL(blob); a.download = `syndrus_${app.bpm}bpm_${X.NOTE_NAMES[st.root]}_${bars}c.wav`;
       document.body.append(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 5000);
-      toast(`WAV listo · ${bars} compás${bars > 1 ? 'es' : ''} · ${st.bpm} BPM · se repite sin cortes`);
+      toast(`WAV listo · la mezcla A/B · ${bars} compás${bars > 1 ? 'es' : ''} · ${app.bpm} BPM · se repite sin cortes`);
     } catch (err) { toast('No se pudo exportar: ' + (err.message || err)); }
     b.disabled = false; b.textContent = '⤓ WAV';
   });
   $('#share').addEventListener('click', () => {
-    const url = location.origin + location.pathname + '#s=' + btoa(unescape(encodeURIComponent(JSON.stringify(st))));
-    (navigator.clipboard ? navigator.clipboard.writeText(url) : Promise.reject()).then(() => toast('Enlace copiado: quien lo abra escucha este patrón'), () => { prompt('Copiá este enlace:', url); });
+    const share = { v: 2, bpm: app.bpm, swing: app.swing, decks: app.decks, mix: app.mix, edit: app.edit };   // the bank stays here
+    const url = location.origin + location.pathname + '#s=' + btoa(unescape(encodeURIComponent(JSON.stringify(share))));
+    (navigator.clipboard ? navigator.clipboard.writeText(url) : Promise.reject()).then(() => toast('Enlace copiado: quien lo abra escucha esta mezcla (los dos decks)'), () => { prompt('Copiá este enlace:', url); });
   });
   $('#help').addEventListener('click', () => { $('#helpPop').hidden = !$('#helpPop').hidden; });
   $('#helpClose').addEventListener('click', () => { $('#helpPop').hidden = true; });
   if (location.hash.startsWith('#s=')) history.replaceState(null, '', location.pathname);
 
   function paintAll() { paintTop(); paintDrums(); paintSynth(); paintRings(); paintFx(); }
+  document.body.dataset.deck = ab(app.edit);
   paintAll();
   try { setTab(sessionStorage.getItem('syndrus_tab') || 'drums'); } catch (e) { setTab('drums'); }
   paintStatus();
-  window.__syndrus = { get state() { return st; }, get engine() { return E; }, get ctx() { return ac; }, setPlay, load, PRESETS, randomTechno, randomAmbient };
+  window.__syndrus = { get app() { return app; }, get state() { return st; }, setEdit, get pending() { return pending; }, get engine() { return E; }, get ctx() { return ac; }, setPlay, load, PRESETS, randomTechno, randomAmbient };
 })();

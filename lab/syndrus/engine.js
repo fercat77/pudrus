@@ -34,12 +34,10 @@
     /* master: drive → DJ filter → volume → glue compressor → (analyser) → out */
     const masterIn = ctx.createGain();
     const drive = ctx.createWaveShaper(); drive.oversample = '2x';
-    const djLP = ctx.createBiquadFilter(); djLP.type = 'lowpass'; djLP.frequency.value = 20000; djLP.Q.value = 0.9;
-    const djHP = ctx.createBiquadFilter(); djHP.type = 'highpass'; djHP.frequency.value = 10; djHP.Q.value = 0.9;
     const vol = ctx.createGain(); vol.gain.value = 0.8;
     const comp = ctx.createDynamicsCompressor(); comp.threshold.value = -14; comp.ratio.value = 3; comp.attack.value = 0.01; comp.release.value = 0.2; comp.knee.value = 8;
     const analyser = ctx.createAnalyser(); analyser.fftSize = 2048; analyser.smoothingTimeConstant = 0.75;
-    masterIn.connect(drive); drive.connect(djLP); djLP.connect(djHP); djHP.connect(vol); vol.connect(comp); comp.connect(analyser); analyser.connect(out);
+    masterIn.connect(drive); drive.connect(vol); vol.connect(comp); comp.connect(analyser); analyser.connect(out);
     E.analyser = analyser;
     function setDrive(k) {   // 0–1 soft saturation
       const n = 1024, c = new Float32Array(n), a = 1 + k * 20;
@@ -47,36 +45,6 @@
       drive.curve = c;
     }
     setDrive(0.1);
-    function setDJ(v) {   // -1 = low-pass closed … 0 open … +1 = high-pass
-      const now = ctx.currentTime;
-      const lp = v < 0 ? 20000 * Math.pow(60 / 20000, -v) : 20000, hp = v > 0 ? 10 * Math.pow(6000 / 10, v) : 10;
-      djLP.frequency.setTargetAtTime(lp, now, 0.03); djHP.frequency.setTargetAtTime(hp, now, 0.03);
-    }
-
-    /* sends: tempo delay (with a filter in the feedback) and a generated reverb */
-    const dIn = ctx.createGain(), delay = ctx.createDelay(4), fb = ctx.createGain(), dF = ctx.createBiquadFilter(), dOut = ctx.createGain();
-    dF.type = 'bandpass'; dF.frequency.value = 1800; dF.Q.value = 0.6; fb.gain.value = 0.45; dOut.gain.value = 0.7;
-    dIn.connect(delay); delay.connect(dF); dF.connect(fb); fb.connect(delay); dF.connect(dOut); dOut.connect(masterIn);
-    const rIn = ctx.createGain(), conv = ctx.createConvolver(), rOut = ctx.createGain(); rOut.gain.value = 0.8;
-    rIn.connect(conv); conv.connect(rOut); rOut.connect(masterIn);
-    function setReverb(sizeSec) {
-      const len = Math.floor(ctx.sampleRate * sizeSec), ir = ctx.createBuffer(2, len, ctx.sampleRate);
-      for (let ch = 0; ch < 2; ch++) { const d = ir.getChannelData(ch); let s = 777 + ch * 99; for (let i = 0; i < len; i++) { s = (s * 1103515245 + 12345) & 0x7fffffff; const x = i / len; d[i] = (s / 0x3fffffff - 1) * Math.pow(1 - x, 2.4) * (i < 80 ? i / 80 : 1); } }
-      conv.buffer = ir;
-    }
-    setReverb(3.2);
-
-    /* channel strips: level + two sends */
-    function strip() {
-      const input = ctx.createGain(), lv = ctx.createGain(), sd = ctx.createGain(), sr = ctx.createGain();
-      sd.gain.value = 0; sr.gain.value = 0;
-      input.connect(lv); lv.connect(masterIn); lv.connect(sd); lv.connect(sr); sd.connect(dIn); sr.connect(rIn);
-      return { input, lv, sd, sr, set(p) { lv.gain.value = p.level; sd.gain.value = p.delay; sr.gain.value = p.reverb; } };
-    }
-    E.drumStrips = DRUMS.map(() => strip());
-    E.synthStrip = strip();
-    E.ringStrips = [0, 1, 2, 3].map(() => strip());
-
     /* ── drum voices: (strip input, time, params {tune, decay, vel}) ── */
     const env = (g, t, peak, dec, att = 0.001) => { g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(peak, t + att); g.gain.exponentialRampToValueAtTime(0.0001, t + att + dec); };
     const metal = (dest, t, tune, dur) => {   // a bank of square waves: the classic machine hats
@@ -143,6 +111,45 @@
     };
     E.hit = (kind, dest, t, p) => { if (V[kind]) V[kind](dest, t, p); };
 
+    /* ── a deck: its own channels, synth voice, delay and reverb, then DJ filter, bass kill and crossfader ── */
+    function buildDeck() {
+    const D = { hit: (k, d, t, p) => E.hit(k, d, t, p) };
+    const deckIn = ctx.createGain();
+    const djLP = ctx.createBiquadFilter(); djLP.type = 'lowpass'; djLP.frequency.value = 20000; djLP.Q.value = 0.9;
+    const djHP = ctx.createBiquadFilter(); djHP.type = 'highpass'; djHP.frequency.value = 10; djHP.Q.value = 0.9;
+    const kill = ctx.createBiquadFilter(); kill.type = 'lowshelf'; kill.frequency.value = 220; kill.gain.value = 0;
+    const xf = ctx.createGain(), lvl = ctx.createGain();
+    deckIn.connect(djLP); djLP.connect(djHP); djHP.connect(kill); kill.connect(lvl); lvl.connect(xf); xf.connect(masterIn);
+    function setDJ(v) {   // -1 = low-pass closed … 0 open … +1 = high-pass
+      const now = ctx.currentTime;
+      const lp = v < 0 ? 20000 * Math.pow(60 / 20000, -v) : 20000, hp = v > 0 ? 10 * Math.pow(6000 / 10, v) : 10;
+      djLP.frequency.setTargetAtTime(lp, now, 0.03); djHP.frequency.setTargetAtTime(hp, now, 0.03);
+    }
+
+    /* sends: tempo delay (with a filter in the feedback) and a generated reverb */
+    const dIn = ctx.createGain(), delay = ctx.createDelay(4), fb = ctx.createGain(), dF = ctx.createBiquadFilter(), dOut = ctx.createGain();
+    dF.type = 'bandpass'; dF.frequency.value = 1800; dF.Q.value = 0.6; fb.gain.value = 0.45; dOut.gain.value = 0.7;
+    dIn.connect(delay); delay.connect(dF); dF.connect(fb); fb.connect(delay); dF.connect(dOut); dOut.connect(deckIn);
+    const rIn = ctx.createGain(), conv = ctx.createConvolver(), rOut = ctx.createGain(); rOut.gain.value = 0.8;
+    rIn.connect(conv); conv.connect(rOut); rOut.connect(deckIn);
+    function setReverb(sizeSec) {
+      const len = Math.floor(ctx.sampleRate * sizeSec), ir = ctx.createBuffer(2, len, ctx.sampleRate);
+      for (let ch = 0; ch < 2; ch++) { const d = ir.getChannelData(ch); let s = 777 + ch * 99; for (let i = 0; i < len; i++) { s = (s * 1103515245 + 12345) & 0x7fffffff; const x = i / len; d[i] = (s / 0x3fffffff - 1) * Math.pow(1 - x, 2.4) * (i < 80 ? i / 80 : 1); } }
+      conv.buffer = ir;
+    }
+    setReverb(3.2);
+
+    /* channel strips: level + two sends */
+    function strip() {
+      const input = ctx.createGain(), lv = ctx.createGain(), sd = ctx.createGain(), sr = ctx.createGain();
+      sd.gain.value = 0; sr.gain.value = 0;
+      input.connect(lv); lv.connect(deckIn); lv.connect(sd); lv.connect(sr); sd.connect(dIn); sr.connect(rIn);
+      return { input, lv, sd, sr, set(p) { lv.gain.value = p.level; sd.gain.value = p.delay; sr.gain.value = p.reverb; } };
+    }
+    D.drumStrips = DRUMS.map(() => strip());
+    D.synthStrip = strip();
+    D.ringStrips = [0, 1, 2, 3].map(() => strip());
+
     /* ── the synth: one mono voice that is always running (so slides glide, like a bassline box) ── */
     const S = {};
     const o1 = ctx.createOscillator(), o2 = ctx.createOscillator(), sub = ctx.createOscillator(), nz = noise();
@@ -150,7 +157,7 @@
     const filt = ctx.createBiquadFilter(), vca = ctx.createGain(), lfo = ctx.createOscillator(), lfoG = ctx.createGain();
     sub.type = 'square'; filt.type = 'lowpass'; vca.gain.value = 0;
     o1.connect(g1); o2.connect(g2); sub.connect(gs); nz.connect(gn);
-    [g1, g2, gs, gn].forEach(x => x.connect(filt)); filt.connect(vca); vca.connect(E.synthStrip.input);
+    [g1, g2, gs, gn].forEach(x => x.connect(filt)); filt.connect(vca); vca.connect(D.synthStrip.input);
     lfo.connect(lfoG); lfoG.connect(filt.frequency);
     [o1, o2, sub, lfo].forEach(o => o.start()); nz.start();
     let P = null, lastFreq = 110;
@@ -181,16 +188,23 @@
       filt.frequency.setTargetAtTime(cut + (top - cut) * P.sustain * 0.3, t + 0.004, Math.max(0.005, P.fdecay / 4));
     };
     S.noteOff = t => { vca.gain.cancelScheduledValues(t); vca.gain.setTargetAtTime(0, t, Math.max(0.005, P.release / 4)); filt.frequency.setTargetAtTime(P.cutoff, t, Math.max(0.01, P.release / 3)); };
-    E.synth = S;
+    D.synth = S;
 
-    E.setFx = fx => {
-      setDrive(fx.drive);
+    D.setFx = fx => {
       fb.gain.value = fx.feedback; dF.frequency.value = fx.delayTone;
-      const rk = Math.round(fx.space * 20); if (E._rev !== rk) { E._rev = rk; setReverb(0.6 + rk / 20 * 7); }   // rebuilt in 5 % steps, not on every pixel of a drag
-      vol.gain.value = fx.volume;
-      setDJ(fx.dj);
+      const rk = Math.round(fx.space * 20); if (D._rev !== rk) { D._rev = rk; setReverb(0.6 + rk / 20 * 7); }   // rebuilt in 5 % steps
     };
-    E.setDelayTime = sec => { delay.delayTime.setTargetAtTime(Math.min(3.9, sec), ctx.currentTime, 0.05); };
+    D.setDelayTime = sec => { delay.delayTime.setTargetAtTime(Math.min(3.9, sec), ctx.currentTime, 0.05); };
+    // mixer: level, DJ filter (-1…1), bass kill, crossfader gain
+    D.setMix = (m, gain) => {
+      const now = ctx.currentTime;
+      lvl.gain.setTargetAtTime(m.level, now, 0.02); xf.gain.setTargetAtTime(gain, now, 0.02);
+      setDJ(m.dj); kill.gain.setTargetAtTime(m.kill ? -40 : 0, now, 0.03);
+    };
+    return D;
+    }
+    E.decks = [buildDeck(), buildDeck()];
+    E.setMaster = m => { setDrive(m.drive); vol.gain.setTargetAtTime(m.volume, ctx.currentTime, 0.02); };
     return E;
   }
 
@@ -201,63 +215,71 @@
     for (let i = 0; i < steps; i++) if ((i * pulses) % steps < pulses) out[(i + rot) % steps] = 1;
     return out;
   }
-  function playStep(E, st, n, t, rnd = Math.random) {
+  // one deck, one 16th step: drums, synth line and rings of pattern `st` (mute = groups silenced by the mixer)
+  function playStep(D, st, n, t, rnd = Math.random, mute = {}) {
     const stepDur = 60 / st.bpm / 4;
-    // drums
-    st.drums.forEach((tr, i) => {
+    if (!mute.drums) st.drums.forEach((tr, i) => {
       if (tr.mute || (st.drums.some(x => x.solo) && !tr.solo)) return;
       const s = tr.steps[n % 16];
       if (!s || (tr.prob < 1 && rnd() > tr.prob)) return;
-      E.hit(DRUMS[i][0], E.drumStrips[i].input, t, { tune: tr.tune, decay: tr.decay, vel: s === 2 ? 1 : 0.7 });
+      D.hit(DRUMS[i][0], D.drumStrips[i].input, t, { tune: tr.tune, decay: tr.decay, vel: s === 2 ? 1 : 0.7 });
     });
-    // synth line
     const sy = st.synth, cur = sy.steps[n % 16], prev = sy.steps[(n + 15) % 16];
-    if (!sy.mute && cur && cur.on) {
+    if (!mute.synth && !sy.mute && cur && cur.on) {
       const midi = degreeToMidi(st.root, st.scale, cur.deg, sy.octave);
       const slide = !!(prev && prev.on && prev.slide);
-      E.synth.noteOn(t, midi, cur.acc ? 1.3 : 1, slide);
-      if (!cur.slide) E.synth.noteOff(t + stepDur * sy.gate);
-    }
-    // rings
-    st.rings.forEach((r, i) => {
+      D.synth.noteOn(t, midi, cur.acc ? 1.3 : 1, slide);
+      if (!cur.slide) D.synth.noteOff(t + stepDur * sy.gate);
+    } else if (mute.synth && cur && cur.on) D.synth.noteOff(t);
+    if (!mute.rings) st.rings.forEach((r, i) => {
       if (r.mute || !r.pulses) return;
       const pat = euclid(r.steps, r.pulses, r.rot), k = n % r.steps;
       if (!pat[k]) return;
-      let note = degreeToMidi(st.root, st.scale, r.deg, r.octave);
-      if (r.wander) note = degreeToMidi(st.root, st.scale, r.deg + Math.floor(rnd() * 5) - 1, r.octave);
-      E.hit(r.sound, E.ringStrips[i].input, t, { tune: r.tune, decay: r.decay, vel: 0.85, note });
+      const deg = r.wander ? r.deg + Math.floor(rnd() * 5) - 1 : r.deg;
+      D.hit(r.sound, D.ringStrips[i].input, t, { tune: r.tune, decay: r.decay, vel: 0.85, note: degreeToMidi(st.root, st.scale, deg, r.octave) });
     });
   }
-  function applyMix(E, st) {
-    st.drums.forEach((tr, i) => E.drumStrips[i].set(tr));
-    E.synthStrip.set(st.synth); E.synth.set(st.synth);
-    st.rings.forEach((r, i) => E.ringStrips[i].set(r));
-    E.setFx(st.fx); E.setDelayTime(60 / st.bpm * st.fx.delayBeats);
+  // a pattern's own sound settings into its deck (bpm = the shared tempo)
+  function applyPattern(D, st, bpm) {
+    st.drums.forEach((tr, i) => D.drumStrips[i].set(tr));
+    D.synthStrip.set(st.synth); D.synth.set(st.synth);
+    st.rings.forEach((r, i) => D.ringStrips[i].set(r));
+    D.setFx(st.fx); D.setDelayTime(60 / bpm * st.fx.delayBeats);
+  }
+  // the mixer: equal-power crossfader, per-deck level / DJ filter / bass kill, master drive and volume
+  const xfGains = x => [Math.cos(x * Math.PI / 2), Math.sin(x * Math.PI / 2)];
+  function applyMix(E, app) {
+    const g = xfGains(app.mix.x);
+    E.decks.forEach((D, i) => { applyPattern(D, app.decks[i], app.bpm); D.setMix(app.mix.decks[i], g[i]); });
+    E.setMaster(app.mix);
   }
 
-  /* ── WAV export: render N bars offline and fold the tail onto the start → a seamless loop ── */
-  async function renderLoop(st, bars) {
-    const sr = 44100, stepDur = 60 / st.bpm / 4, steps = bars * 16, swing = st.swing;
+  /* ── WAV export: render N bars of the mix offline and fold the tail onto the start → a seamless loop ── */
+  async function renderLoop(app, bars) {
+    const sr = 44100, stepDur = 60 / app.bpm / 4, steps = bars * 16;
     const loopLen = steps * stepDur, tail = 4;
     const off = new OfflineAudioContext(2, Math.ceil((loopLen + tail) * sr), sr);
     const E = buildEngine(off, off.destination);
-    applyMix(E, st);
+    applyMix(E, app);
     let s = 1;
     const rnd = () => { s = (s * 16807) % 2147483647; return s / 2147483647; };
-    for (let n = 0; n < steps; n++) playStep(E, st, n, 0.0001 + n * stepDur + (n % 2 ? swing * stepDur * 0.5 : 0), rnd);
+    const g = xfGains(app.mix.x);
+    for (let n = 0; n < steps; n++) {
+      const t = 0.0001 + n * stepDur + (n % 2 ? app.swing * stepDur * 0.5 : 0);
+      app.decks.forEach((st, i) => { if (g[i] > 0.001) playStep(E.decks[i], { ...st, bpm: app.bpm }, n, t, rnd, app.mix.decks[i].mute); });
+    }
     const buf = await off.startRendering();
     const L = Math.round(loopLen * sr), chs = [buf.getChannelData(0), buf.getChannelData(1)];
     const out = chs.map(c => { const o = c.slice(0, L); for (let i = L; i < c.length; i++) o[(i - L) % L] += c[i]; return o; });
     let peak = 0; out.forEach(c => { for (const v of c) peak = Math.max(peak, Math.abs(v)); });
-    const g = peak > 0.98 ? 0.98 / peak : 1;
-    // 16-bit WAV
+    const gain = peak > 0.98 ? 0.98 / peak : 1;
     const bytes = new ArrayBuffer(44 + L * 4), dv = new DataView(bytes);
-    const w = (o, s) => [...s].forEach((c, i) => dv.setUint8(o + i, c.charCodeAt(0)));
+    const w = (o, str) => [...str].forEach((c, i) => dv.setUint8(o + i, c.charCodeAt(0)));
     w(0, 'RIFF'); dv.setUint32(4, 36 + L * 4, true); w(8, 'WAVE'); w(12, 'fmt '); dv.setUint32(16, 16, true); dv.setUint16(20, 1, true); dv.setUint16(22, 2, true);
     dv.setUint32(24, sr, true); dv.setUint32(28, sr * 4, true); dv.setUint16(32, 4, true); dv.setUint16(34, 16, true); w(36, 'data'); dv.setUint32(40, L * 4, true);
-    for (let i = 0, o = 44; i < L; i++) for (let c = 0; c < 2; c++, o += 2) dv.setInt16(o, Math.max(-1, Math.min(1, out[c][i] * g)) * 32767, true);
+    for (let i = 0, o = 44; i < L; i++) for (let c = 0; c < 2; c++, o += 2) dv.setInt16(o, Math.max(-1, Math.min(1, out[c][i] * gain)) * 32767, true);
     return new Blob([bytes], { type: 'audio/wav' });
   }
 
-  window.SyndrusEngine = { buildEngine, playStep, applyMix, renderLoop, euclid, degreeToMidi, noteName, mtof, SCALES, SCALE_NAMES, NOTE_NAMES, DRUMS };
+  window.SyndrusEngine = { buildEngine, playStep, applyPattern, applyMix, xfGains, renderLoop, euclid, degreeToMidi, noteName, mtof, SCALES, SCALE_NAMES, NOTE_NAMES, DRUMS };
 })();
