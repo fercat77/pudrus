@@ -60,11 +60,11 @@ function serve(req, res) {
   if (p === '/') { res.writeHead(302, { Location: '/lab/nodes/?pc' }); res.end(); return; }
   let file = VENDOR[p];
   if (!file) {
-    if (!(p.startsWith('/lab/nodes/') || p === '/favicon.svg')) { res.writeHead(404); res.end('no'); return; }
+    if (!(p.startsWith('/lab/nodes/') || p === '/favicon.svg' || p === '/js/splash.js')) { res.writeHead(404); res.end('no'); return; }
     if (p.endsWith('/')) p += 'index.html';
     file = path.normalize(path.join(WEB, p));
     const root = path.normalize(path.join(WEB, 'lab', 'nodes'));
-    if (!(file.startsWith(root + path.sep) || file === path.join(WEB, 'favicon.svg'))) { res.writeHead(403); res.end(); return; }
+    if (!(file.startsWith(root + path.sep) || file === path.join(WEB, 'favicon.svg') || file === path.join(WEB, 'js', 'splash.js'))) { res.writeHead(403); res.end(); return; }
   }
   fs.stat(file, (err, st) => {
     if (err || !st.isFile()) { res.writeHead(404); res.end('no'); return; }

@@ -52,6 +52,10 @@
       {
         "from": "../favicon.svg",
         "to": "web/favicon.svg"
+      },
+      {
+        "from": "../js/splash.js",
+        "to": "web/js/splash.js"
       }
     ],
     "win": {
