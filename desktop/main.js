@@ -17,6 +17,22 @@ const TEST = process.argv.includes('--nodrus-test');
 // remote screens get the video over the local wifi: offer the real LAN address, not an mDNS «.local» name
 // (TVs and some tablets can't resolve those)
 app.commandLine.appendSwitch('disable-features', 'WebRtcHideLocalIpsWithMdns');
+// laptops with two GPUs (Intel + NVIDIA/AMD): render on the powerful one, not the integrated one.
+// The switch moves Chromium's drawing; the Windows per-app preference (the same as Settings → Display →
+// Graphics → «High performance») also moves Spout's native side, so both share one GPU.
+// It is only written when this exe has no preference yet: a choice made by hand in Windows wins.
+app.commandLine.appendSwitch('force_high_performance_gpu');
+let gpuPref = '';
+if (process.platform === 'win32') {
+  const KEY = 'HKCU\\Software\\Microsoft\\DirectX\\UserGpuPreferences';
+  const cp = require('child_process');
+  try {
+    const q = cp.execFileSync('reg', ['query', KEY, '/v', process.execPath], { encoding: 'utf8', windowsHide: true, timeout: 3000, stdio: ['ignore', 'pipe', 'ignore'] });
+    gpuPref = (q.match(/GpuPreference=(\d)/) || [])[1] || '?';
+  } catch (e) {
+    try { cp.execFileSync('reg', ['add', KEY, '/v', process.execPath, '/t', 'REG_SZ', '/d', 'GpuPreference=2;', '/f'], { windowsHide: true, timeout: 3000, stdio: 'ignore' }); gpuPref = '2 (nueva)'; } catch (e2) { gpuPref = 'error'; }
+  }
+}
 const WEB = app.isPackaged ? path.join(process.resourcesPath, 'web') : path.join(__dirname, '..');
 const VENDOR = {
   '/vendor/qrcode.js': path.join(__dirname, 'node_modules', 'qrcode-generator', 'qrcode.js'),

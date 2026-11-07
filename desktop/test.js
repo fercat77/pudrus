@@ -18,6 +18,8 @@ module.exports = async function run({ app, mainWin, base, port, startSpout, stop
   try {
     await new Promise(r => { if (mainWin.webContents.isLoading()) mainWin.webContents.once('did-finish-load', r); else r(); });
     await wait(2500);
+    out.gpu = { pref: require("electron").app && process.execPath, webgl: await js('(() => { const g = document.createElement("canvas").getContext("webgl2", { powerPreference: "high-performance" }); const x = g && g.getExtension("WEBGL_debug_renderer_info"); return x ? g.getParameter(x.UNMASKED_RENDERER_WEBGL) : ""; })()'),
+      devices: await app.getGPUInfo('complete').then(i => (i.gpuDevice || []).map(d => `${d.vendorId.toString(16)}:${d.deviceId.toString(16)}${d.active ? ' (activa)' : ''}`)).catch(e => String(e)) };
     out.editor = await js('({ editor: !!window.__nodesEditor, desktop: !!window.nodrusDesktop, deskBtn: !document.getElementById("btnDesk").hidden, title: document.title })');
 
     // 1) Spout: start, count frames, receive them back with a Spout receiver

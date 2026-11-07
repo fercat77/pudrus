@@ -82,7 +82,8 @@ vec3 cosPal(float t, vec3 a, vec3 b, vec3 c, vec3 d){ return a + b * cos(6.28318
       return true;
     } catch (e) { return false; }
   })();
-  const glContext = (canvas, attrs) => (ES3 ? canvas.getContext('webgl2', attrs) : null) || canvas.getContext('webgl', attrs);
+  // ask for the dedicated GPU on laptops with two (the browser may still decide; the desktop app forces it)
+  const glContext = (canvas, attrs) => { attrs = { powerPreference: 'high-performance', ...attrs }; return (ES3 ? canvas.getContext('webgl2', attrs) : null) || canvas.getContext('webgl', attrs); };
 
   /* ── Code node (GLSL / Shadertoy) ─────────────────────────── */
   const LIB_NAMES = ['hash21', 'hash22', 'vnoise', 'fbm', 'voronoi', 'rot', 'hsv2rgb', 'rgb2hsv', 'cosPal'];
