@@ -40,6 +40,7 @@
   const saveOpts = () => { try { localStorage.setItem(LIVE_STORE, JSON.stringify(opts)); } catch (e) { /* ignore */ } };
   // what the visuals do on a SYNDRUS drop (see «SYNDRUS link»)
   opts.dropFx = Object.assign({ build: 'none', cut: 'black', flash: true, scene: false, random: false, deck: false }, opts.dropFx || {});
+  if (!['off', 'mic', 'syndrus'].includes(opts.audioSrc)) opts.audioSrc = 'off';   // the microphone needs a click (browser rule): never auto-opened
 
   function load() {
     try { const g = JSON.parse(localStorage.getItem(STORE) || 'null'); return g && Array.isArray(g.nodes) ? g : null; } catch (e) { return null; }
@@ -466,8 +467,9 @@
     closePops();
     pop.hidden = false;
     const r = pop.getBoundingClientRect();
-    pop.style.left = Math.min(x, innerWidth - r.width - 8) + 'px';
-    pop.style.top = Math.min(Math.max(48, y), innerHeight - r.height - 8) + 'px';
+    const vw = document.documentElement.clientWidth || innerWidth, vh = document.documentElement.clientHeight || innerHeight;   // without scrollbars
+    pop.style.left = Math.max(8, Math.min(x, vw - r.width - 8)) + 'px';
+    pop.style.top = Math.max(8, Math.min(Math.max(48, y), vh - r.height - 8)) + 'px';
   }
   const addPop = $('#addMenu'), addSearch = $('#addSearch'), addList = $('#addList');
   let addAt = [0, 0];
@@ -742,7 +744,6 @@
   $('#pmHydra').addEventListener('click', openHydra);
   $('#pmSyndrus').addEventListener('click', openSyndrus);
   $('#syOpen').addEventListener('click', openSyndrus);
-  $('#syLink').addEventListener('change', e => { opts.syLink = e.target.checked; saveOpts(); toast(e.target.checked ? 'Sigue a SYNDRUS cuando suena' : 'Ignora a SYNDRUS: tempo y audio propios'); });
   $('#syDrops').addEventListener('change', e => { opts.syDrops = e.target.checked; saveOpts(); });
   $('#dfBuild').addEventListener('change', e => { opts.dropFx.build = e.target.value; saveOpts(); });
   $('#dfCut').addEventListener('change', e => { opts.dropFx.cut = e.target.value; saveOpts(); });
@@ -1010,18 +1011,16 @@
       devs.forEach((d, i) => { const o = el('option', '', d.label || 'Entrada ' + (i + 1)); o.value = d.deviceId; devSel.append(o); });
     } catch (e) { /* no devices */ }
   }
-  $('#btnAudio').addEventListener('click', async e => {
+  // the 🎤 button opens the sound menu: there you choose the source (off · microphone · SYNDRUS)
+  $('#btnAudio').addEventListener('click', e => {
     e.stopPropagation();
     const r = e.currentTarget.getBoundingClientRect();
-    if (!audio.on) {
-      try { await audio.start(devSel.value || undefined); await listDevices(); $('#btnAudio').classList.add('is-on'); toast('Audio activado'); }
-      catch (err) { toast('No se pudo usar el micrófono / entrada de audio', true); return; }
-    }
-    openPop(audioPop, r.left, r.bottom + 4);
+    paintAudioPop(); openPop(audioPop, r.left, r.bottom + 4);
+    if (audio.on) listDevices();
   });
-  devSel.addEventListener('change', async () => { try { await audio.start(devSel.value); } catch (e) { toast('No se pudo usar esa entrada', true); } });
+  devSel.addEventListener('change', async () => { if (opts.audioSrc !== 'mic') return; try { await audio.start(devSel.value); paintAudioPop(); } catch (e) { toast('No se pudo usar esa entrada', true); } });
   $('#audioGain').addEventListener('input', e => { audio.gain = +e.target.value; $('#audioGainVal').textContent = (+e.target.value).toFixed(1) + '×'; });
-  $('#audioOff').addEventListener('click', () => { audio.stop(); $('#btnAudio').classList.remove('is-on'); closePops(); toast('Audio apagado'); });
+  document.querySelectorAll('#srcSeg [data-src]').forEach(b => b.addEventListener('click', () => setSource(b.dataset.src)));
   const meters = [...document.querySelectorAll('#meter i')];
 
   /* ── Photo / record ────────────────────────────────────── */
@@ -1335,7 +1334,7 @@
   const syCh = 'BroadcastChannel' in window ? new BroadcastChannel('pudrus-syndrus') : null;
   const epochNow = () => performance.timeOrigin + performance.now();
   const syFresh = () => performance.now() - SY.last < 1500;
-  const syLive = () => opts.syLink !== false && syFresh() && SY.playing;   // stopped SYNDRUS → NODRUS keeps its own tempo and microphone
+  const syLive = () => opts.audioSrc === 'syndrus' && syFresh() && SY.playing;   // SYNDRUS chosen as the source, and playing
   function dropBlack(on) { stage.setBlack(on, 0); broadcastMaster(0); $('#btnBlack').classList.toggle('is-rec', on); }
   const syTimers = [];
   if (syCh) {
@@ -1345,18 +1344,19 @@
         const was = syFresh();
         SY.last = performance.now(); SY.bpm = m.bpm; SY.beat = m.beat; SY.epoch = m.epoch; SY.playing = !!m.playing;
         if (Array.isArray(m.bands)) SY.bands = m.bands;
-        if (opts.syLink !== false && Math.abs(bpm - m.bpm) > 0.01) { bpm = m.bpm; $('#bpm').textContent = Math.round(bpm); }
-        if (!was) toast('🎛 SYNDRUS conectado: NODRUS sigue su tempo, su pulso y su sonido');
-      } else if (m.type === 'fx' && syFresh() && opts.syLink !== false && opts.syDrops !== false) {
+        if (opts.audioSrc === 'syndrus' && Math.abs(bpm - m.bpm) > 0.01) { bpm = m.bpm; $('#bpm').textContent = Math.round(bpm); }
+        if (!was) toast(opts.audioSrc === 'syndrus' ? '🎛 SYNDRUS conectado: NODRUS sigue su tempo, su pulso y su sonido' : '🎛 SYNDRUS está abierto: elegilo como fuente en el menú 🎤 para que las visuales lo sigan');
+        if (!audioPop.hidden) paintAudioPop();
+      } else if (m.type === 'fx' && syFresh() && opts.audioSrc === 'syndrus' && opts.syDrops !== false) {
         // the drop: build · cut · the one, as chosen in the audio panel
         const at = Math.max(0, m.delay || 0);
         if (m.kind === 'drop') runDrop(at, m.cut, m.dur);
         else if (m.kind === 'impact') { if (opts.dropFx.flash) flashAt(at, 120); }
         else if (m.kind === 'cancel') resetDrop();
-      } else if (m.type === 'hello-syndrus') syCh.postMessage({ type: 'nodrus', link: opts.syLink !== false });
+      } else if (m.type === 'hello-syndrus') syCh.postMessage({ type: 'nodrus', link: opts.audioSrc === 'syndrus' });
     };
     syCh.postMessage({ type: 'hello-nodrus' });
-    setInterval(() => syCh.postMessage({ type: 'nodrus', link: opts.syLink !== false }), 2000);
+    setInterval(() => syCh.postMessage({ type: 'nodrus', link: opts.audioSrc === 'syndrus' }), 2000);
   }
   /* ── what the visuals do on a SYNDRUS drop: build (while the filter rises) · cut (last beat) · the one ── */
   let timeScale = 1, frozen = false, wasPlaying = true;
@@ -1400,19 +1400,30 @@
     if ($('#dfCut')) $('#dfCut').value = fx.cut;
     ['flash', 'scene', 'random', 'deck'].forEach(k => { const c = $('#df_' + k); if (c) c.checked = !!fx[k]; });
   }
-  // the microphone rests while SYNDRUS plays (it gives the sound), and comes back after
-  let micBack = null;
-  function syMic() {
-    if (syLive() && audio.on) {
-      micBack = devSel.value || '';
-      audio.stop(); $('#btnAudio').classList.remove('is-on');
-      toast('🎤 Micrófono apagado: SYNDRUS da el sonido');
-    } else if (!syLive() && micBack !== null && !audio.on && opts.syLink !== false) {
-      const dev = micBack; micBack = null;
-      audio.start(dev || undefined).then(() => { $('#btnAudio').classList.add('is-on'); toast('🎤 Micrófono de nuevo (SYNDRUS en pausa)'); }).catch(() => {});
-    }
+  /* ── the sound source: off · microphone · SYNDRUS (one at a time, chosen in the 🎤 menu) ── */
+  async function setSource(src) {
+    if (!['off', 'mic', 'syndrus'].includes(src)) src = 'off';
+    if (src === 'mic') {
+      try { await audio.start(devSel.value || undefined); await listDevices(); }
+      catch (err) { toast('No se pudo usar el micrófono / entrada de audio', true); src = 'off'; }
+    } else audio.stop();   // SYNDRUS or off: the microphone is released
+    opts.audioSrc = src; saveOpts();
+    paintAudioPop();
+    toast(src === 'mic' ? '🎤 Micrófono: las visuales reaccionan a lo que escucha' : src === 'syndrus' ? (syFresh() ? '🎛 Siguiendo a SYNDRUS: tempo, pulso, sonido y drops' : '🎛 SYNDRUS elegido: abrilo y dale play') : 'Sonido apagado');
   }
-  setInterval(syMic, 700);
+  function paintAudioPop() {
+    const src = opts.audioSrc;
+    document.querySelectorAll('#srcSeg [data-src]').forEach(b => b.classList.toggle('is-on', b.dataset.src === src));
+    $('#micBox').hidden = src !== 'mic'; $('#syBox').hidden = src !== 'syndrus';
+    const lbl = devSel.options[devSel.selectedIndex] ? devSel.options[devSel.selectedIndex].textContent : 'entrada por defecto';
+    $('#srcState').textContent = src === 'off' ? 'Sin sonido: las visuales no reaccionan al audio.'
+      : src === 'mic' ? (audio.on ? `🎤 Escuchando: ${lbl}` : 'El micrófono no está abierto')
+      : syLive() ? `🎛 Siguiendo a SYNDRUS · ${Math.round(SY.bpm)} BPM · tempo, pulso, sonido${opts.syDrops !== false ? ' y drops' : ''}`
+      : syFresh() ? '🎛 SYNDRUS conectado pero en pausa: dale play allá' : '🎛 Esperando a SYNDRUS: abrilo (botón de abajo) y dale play';
+    $('#srcState').className = 'src-state' + ((src === 'mic' && audio.on) || syLive() ? ' ok' : src === 'off' ? '' : ' wait');
+    $('#btnAudio').classList.toggle('is-on', audio.on || syLive());
+  }
+  setInterval(() => { $('#btnAudio').classList.toggle('is-on', audio.on || syLive()); if (!audioPop.hidden) paintAudioPop(); }, 1000);
   function syBeat() {   // the beat now, extrapolated from the last message
     return SY.playing ? SY.beat + (epochNow() - SY.epoch) / 1000 * SY.bpm / 60 : SY.beat;
   }
@@ -1423,11 +1434,7 @@
     });
     return SY.smooth;
   }
-  function paintSyLink() {
-    const a = $('#syLink'), d = $('#syDrops');
-    if (a) a.checked = opts.syLink !== false;
-    if (d) d.checked = opts.syDrops !== false;
-  }
+  function paintSyLink() { const d = $('#syDrops'); if (d) d.checked = opts.syDrops !== false; }
   const syUrl = () => (DESK ? '/lab/syndrus/' : new URL('../syndrus/', document.baseURI).href);
   function openSyndrus() {
     const w = window.open(syUrl(), 'syndrus');
@@ -1960,7 +1967,7 @@
 
   /* ── Random patches ─────────────────────────────────────── */
   function randomPatch() {
-    graph = window.PudrusGenerate.generate({ audio: audio.on, bpm: !!opts.bpm });
+    graph = window.PudrusGenerate.generate({ audio: audio.on || opts.audioSrc === 'syndrus', bpm: !!opts.bpm });
     selected.clear(); rebuild(); recompile(); save(); remember(); frameAll();
     toast('🎲 ' + (graph.style ? 'Aleatorio · estilo ' + graph.style : 'Patch aleatorio') + (opts.direct ? '' : ' · Enter lo manda al aire') + ' · R otro · Shift+R variar');
   }
@@ -2420,8 +2427,8 @@
     if (nfx) out.push(item(`✨ ${nfx}`, `${nfx} filtro(s) de pantalla activos`));
     if (ov.on && ov.items.length) out.push(item('◧ capa', 'La capa de logo/texto está encendida'));
     out.push(item(`<b class="st-beat">♩</b> ${Math.round(bpm * 10) / 10}`, syLive() ? 'Tempo de SYNDRUS' : 'Tempo (T = tap)'));
-    if (syFresh() && opts.syLink !== false) out.push(item(`🎛 SYNDRUS ${SY.playing ? '▶' : '■'}`, 'NODRUS sigue a SYNDRUS: tempo, pulso, sonido' + (opts.syDrops !== false ? ' y drops' : '')));
-    if (audio.on) { const lv = Math.max(...st.audio); out.push(item(`🎤 <i class="st-lv" style="--v:${Math.min(1, lv).toFixed(2)}"></i>`, 'Nivel del audio que entra')); }
+    if (syFresh() && opts.audioSrc === 'syndrus') out.push(item(`🎛 SYNDRUS ${SY.playing ? '▶' : '■'}`, 'NODRUS sigue a SYNDRUS: tempo, pulso, sonido' + (opts.syDrops !== false ? ' y drops' : '')));
+    if (audio.on || syLive()) { const lv = Math.max(...st.audio); out.push(item(`${syLive() ? '🎛' : '🎤'} <i class="st-lv" style="--v:${Math.min(1, lv).toFixed(2)}"></i>`, syLive() ? 'Nivel del sonido de SYNDRUS' : 'Nivel del audio que entra')); }
     if (conns.size) out.push(item(`📱 ${conns.size}`, `${conns.size} celular(es) conectado(s) como control`));
     if (midi && midi.inputs.size) out.push(item(`🎹 ${midi.inputs.size}`, [...midi.inputs.values()].map(i => i.name).join(', ') || 'MIDI'));
     if (DESK) {
@@ -2490,7 +2497,7 @@
     pvVeil.style.display = show ? 'block' : 'none';
     if (show) { pvVeil.style.background = vl.flash ? '#fff' : '#000'; pvVeil.style.opacity = vl.flash ? 1 : vl.black; }
     drawThumbs(now, a);
-    if (audio.on && (frameN++ & 1) === 0) meters.forEach((m, i) => m.style.setProperty('--v', a[i]));
+    if ((audio.on || syLive()) && (frameN++ & 1) === 0) meters.forEach((m, i) => m.style.setProperty('--v', a[i]));
     broadcast({ type: 'frame', t: time, audio: a, beat: N.clock.beat });
   }
 

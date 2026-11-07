@@ -523,3 +523,14 @@ body.has-status .lab-toast { bottom: 34px; }
 .df-l { font-size: 11px; color: var(--dim); }
 .df-checks { display: grid; grid-template-columns: 1fr 1fr; gap: 2px 8px; }
 .df-checks label { font-size: 11.5px; white-space: nowrap; }
+
+/* sound source (🎤 menu) */
+.src-seg { display: flex; gap: 4px; margin-bottom: 4px; }
+.src-seg button { flex: 1; height: 30px; border-radius: 6px; border: 1px solid var(--line); background: var(--panel2, #16161f); color: var(--dim); cursor: pointer; font: inherit; font-size: 11.5px; white-space: nowrap; }
+.src-seg button:hover { color: var(--text); }
+.src-seg button.is-on { border-color: var(--accent); color: var(--accent); box-shadow: 0 0 10px rgba(102,255,51,0.25); }
+.src-state { max-width: 340px; margin: 2px 0 6px; font-size: 11.5px; color: var(--dim); line-height: 1.4; }
+.src-state.ok { color: var(--accent); }
+.src-state.wait { color: #ffd166; }
+#micBox[hidden], #syBox[hidden] { display: none; }
+#audioPop { width: min(380px, calc(100vw - 16px)); }
