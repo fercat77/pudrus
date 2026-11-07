@@ -110,7 +110,7 @@
       }
       const solved = () => powered().size === n * n && loose() === 0;
       let S = 0;
-      function size() { const w = Math.min(ctx.stage.clientWidth || 480, 520); S = Math.floor(w / n); const dpr = Math.min(2, devicePixelRatio || 1); cv.width = S * n * dpr; cv.height = S * n * dpr; cv.style.width = cv.style.height = S * n + 'px'; g.setTransform(dpr, 0, 0, dpr, 0, 0); }
+      function size() { const st = ctx.stage, w = Math.min(st.clientWidth - 8 || 480, 520, (st.clientHeight || 560) - 52); S = Math.max(24, Math.floor(w / n)); const dpr = Math.min(2, devicePixelRatio || 1); cv.width = S * n * dpr; cv.height = S * n * dpr; cv.style.width = cv.style.height = S * n + 'px'; g.setTransform(dpr, 0, 0, dpr, 0, 0); }
       function draw() {
         const on = powered(), now = performance.now();
         g.fillStyle = '#07070d'; g.fillRect(0, 0, S * n, S * n);
@@ -463,7 +463,7 @@
         msg.textContent = `Tablero ${level + 1} de ${SIZES.length} · ${n}×${n} · del 1 al ${maxNum}`;
       }
       const lastNum = () => path.reduce((m, c) => Math.max(m, nums.get(c) || 0), 0);
-      function size() { const w = Math.min(ctx.stage.clientWidth || 480, 520); S = Math.floor(w / n); const dpr = Math.min(2, devicePixelRatio || 1); cv.width = S * n * dpr; cv.height = S * n * dpr; cv.style.width = cv.style.height = S * n + 'px'; g.setTransform(dpr, 0, 0, dpr, 0, 0); }
+      function size() { const st = ctx.stage, w = Math.min(st.clientWidth - 8 || 480, 520, (st.clientHeight || 560) - 52); S = Math.max(24, Math.floor(w / n)); const dpr = Math.min(2, devicePixelRatio || 1); cv.width = S * n * dpr; cv.height = S * n * dpr; cv.style.width = cv.style.height = S * n + 'px'; g.setTransform(dpr, 0, 0, dpr, 0, 0); }
       const ctr = c => [(c % n + 0.5) * S, (((c / n) | 0) + 0.5) * S];
       function draw() {
         g.fillStyle = '#07070d'; g.fillRect(0, 0, S * n, S * n);
@@ -768,7 +768,8 @@
         const best = gm.better ? store.best[gm.id] : store.count[gm.id];
         line = `<div class="best${best === undefined ? ' none' : ''}">${best === undefined ? 'Sin jugar todavía' : (gm.better ? 'Récord: ' : '') + gm.fmt(best)}</div>`;
       }
-      c.innerHTML = `<div class="art">${ART[gm.id] || ''}</div><div class="tag">${gm.tag}</div><h3>${gm.title}</h3><p>${gm.desc}</p>${line}`;
+      // .ci: the card's content, laid out by the card's OWN size (container queries) so nothing gets cut
+      c.innerHTML = `<div class="ci"><div class="art">${ART[gm.id] || ''}</div><div class="tx"><div class="tag">${gm.tag}</div><h3>${gm.title}</h3><p>${gm.desc}</p>${line}</div></div>`;
       c.addEventListener('click', () => { location.hash = gm.id; });
       grid.append(c);
     });
@@ -780,7 +781,7 @@
   function open(id, daily) {
     const gm = byId(id); if (!gm) { showHub(); return; }
     close(); current = gm; isDaily = !!daily;
-    hub.hidden = true; play.hidden = false; result.hidden = true; document.body.classList.remove('hubmode');
+    hub.hidden = true; play.hidden = false; result.hidden = true; document.body.classList.remove('hubmode'); document.body.classList.add('playmode');
     $('#gTitle').textContent = gm.title + (isDaily ? ' · desafío del día' : '');
     $('#gTag').textContent = gm.tag;
     how.textContent = gm.how; how.hidden = true;
@@ -806,7 +807,7 @@
     }
   }
   function close() { if (cleanup) { try { cleanup(); } catch (e) { /* ignore */ } cleanup = null; } }
-  function showHub() { close(); current = null; play.hidden = true; result.hidden = true; hub.hidden = false; document.body.classList.add('hubmode'); document.title = 'DRUS — PUDRUS.XYZ'; paintHub(); }
+  function showHub() { close(); current = null; play.hidden = true; result.hidden = true; hub.hidden = false; document.body.classList.remove('playmode'); document.body.classList.add('hubmode'); document.title = 'DRUS — PUDRUS.XYZ'; paintHub(); }
   function finish(gm, r) {
     close(); markPlayed();
     let rec = false, prev;

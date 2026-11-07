@@ -207,4 +207,62 @@ body.juegos footer .footer-separator { display: inline; }
 .it-cell svg { width: 100%; height: 100%; display: block; }
 .it-cell:hover { border-color: rgba(255,255,255,0.3); }
 .it-cell.bad { border-color: #ff3355; }
+/* ── v4: cards adapt to their own height (container queries): description, then tag, then one row ── */
+body.juegos .jg-card { container-type: size; padding: 0 !important; }
+body.juegos .jg-card .ci { position: absolute; inset: 0; display: flex; flex-direction: column; gap: clamp(3px, 0.8vh, 8px); padding: clamp(8px, 1.4vh, 16px); min-height: 0; overflow: hidden; }
+body.juegos .jg-card .tx { display: flex; flex-direction: column; gap: inherit; flex: 1; min-height: 0; min-width: 0; }
+body.juegos .jg-card .tx > * { min-width: 0; }
+body.juegos .jg-card .best { position: static !important; margin-top: auto; }
+@container (max-height: 175px) { .ci p { display: none !important; } }
+@container (max-height: 118px) { .ci .tag { display: none !important; } .ci .art { height: 30px !important; } }
+@container (max-height: 104px) {
+  .ci { flex-direction: row !important; align-items: center; gap: 8px !important; padding: 4px 8px !important; }
+  .ci .art { height: min(30px, 70cqh) !important; width: 44px; flex: none; justify-content: center; }
+  .ci .tx { justify-content: center; gap: 1px !important; }
+  .ci h3 { font-size: 13px !important; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .ci .best { margin-top: 0; font-size: 9.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+}
+@container (max-height: 44px) { .ci .best { display: none; } }
+/* the old phone rules (≤600 px) are now handled by the container queries */
+@media (max-width: 600px) { body.juegos .jg-card p, body.juegos .jg-card .tag { display: revert; } body.juegos.hubmode .jg-card { flex-direction: column; } }
+/* tablets in portrait: 2 columns × 5 rows reads better than 3 × 4 */
+@media (max-width: 860px) and (min-width: 601px) and (orientation: portrait) { body.juegos.hubmode .jg-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+/* short screens (phones sideways, small laptops): a compact header */
+@media (max-height: 560px) {
+  body.juegos.hubmode .jg-hub { padding-top: calc(var(--nav-height) + 6px); padding-bottom: 6px; }
+  body.juegos .jg-head { margin-bottom: 6px; }
+  body.juegos .jg-head .section-tag, body.juegos .jg-head .section-desc, body.juegos .jg-streak { display: none; }
+  body.juegos .jg-head .section-title { font-size: 18px; margin: 0; }
+  body.juegos .jg-daily { padding: 6px 12px; margin-bottom: 6px; }
+  body.juegos .jg-daily .ic { font-size: 18px; } body.juegos .jg-daily .tx small { display: none; } body.juegos .jg-daily .tx b { font-size: 13px; }
+  body.juegos.hubmode .jg-grid { gap: 6px; }
+  body.juegos footer { padding: 6px var(--gutter); }
+}
+@media (max-height: 560px) and (orientation: landscape) { body.juegos.hubmode .jg-grid { grid-template-columns: repeat(5, minmax(0, 1fr)); } }
+/* ── v5: a game also fits the window: the stage takes the free height and every board sizes itself to it ── */
+body.juegos.playmode { height: 100vh; height: 100dvh; overflow: hidden; display: flex; flex-direction: column; }
+body.juegos.playmode main { flex: 1; min-height: 0; display: flex; }
+body.juegos.playmode .jg-play { flex: 1; min-height: 0; width: 100%; display: flex !important; flex-direction: column; padding-top: calc(var(--nav-height) + clamp(6px, 1.4vh, 14px)); padding-bottom: clamp(6px, 1.2vh, 12px); }
+body.juegos.playmode .jg-bar { flex: none; }
+body.juegos.playmode .jg-stage { flex: 1; min-height: 0; overflow: auto; justify-content: center; container-type: size; margin-top: clamp(6px, 1.2vh, 12px); padding: clamp(8px, 1.6vh, 20px) 10px; gap: clamp(6px, 1.2vh, 14px); }
+body.juegos.playmode .jg-how:not([hidden]) { position: absolute; z-index: 5; left: var(--gutter); right: var(--gutter); top: calc(var(--nav-height) + 64px); margin: 0 auto; max-width: 720px; }
+body.juegos.playmode .jg-start { padding: 0; }
+body.juegos.playmode .jg-start .big { font-size: clamp(24px, 6cqh, 46px); }
+/* each board: never taller than the stage */
+body.juegos.playmode .eco-pads { width: min(360px, 86cqw, calc(100cqh - 56px)); }
+body.juegos.playmode .ds-grid { width: min(380px, 92cqw, calc(100cqh - 52px)); }
+body.juegos.playmode .it-grid { width: min(440px, 92cqw, calc(100cqh - 52px)); }
+body.juegos.playmode .sd-grid { width: min(460px, 100cqw, calc(100cqh - 120px)); }
+body.juegos.playmode .sd-pad { width: min(460px, 100cqw); }
+body.juegos.playmode .sd-pad .sd-num { width: auto; flex: 1 1 32px; padding: clamp(4px, 1.2cqh, 9px) 0; }
+body.juegos.playmode .gb-wrap { width: min(760px, 100cqw, calc((100cqh - 120px) * 1.5)); }
+body.juegos.playmode .qs-cell { width: clamp(44px, min(92px, calc((100cqh - 160px) / 3)), 92px); height: clamp(44px, min(92px, calc((100cqh - 160px) / 3)), 92px); }
+body.juegos.playmode .qs-cell svg { width: 76%; height: 76%; }
+body.juegos.playmode .st-word { font-size: clamp(32px, min(12vw, 16cqh), 84px); min-height: 0; }
+body.juegos.playmode .st-opts { width: min(520px, 100cqw); }
+body.juegos.playmode .st-opt { aspect-ratio: auto; height: clamp(42px, 16cqh, 84px); }
+body.juegos.playmode .mu-list { max-height: 34cqh; overflow: auto; }
+body.juegos.playmode footer { padding: 6px var(--gutter); }
+@container (max-width: 440px) { .gb-wrap { width: min(100cqw, calc((100cqh - 170px) * 1.5)) !important; } .gb-tools .jg-btn { padding: 6px 9px; } .gb-col { width: 26px; height: 26px; } }
+@media (max-height: 560px) { body.juegos.playmode .jg-play { padding-top: calc(var(--nav-height) + 4px); } body.juegos.playmode .jg-title span { display: none; } body.juegos.playmode footer { display: none; } }
 @media (prefers-reduced-motion: reduce) { .glitch, .flash-ok, .flash-bad, .mu-list span.new { animation: none; } }
