@@ -47,7 +47,8 @@
     let seed = 12345; for (let i = 0; i < nd.length; i++) { seed = (seed * 1103515245 + 12345) & 0x7fffffff; nd[i] = seed / 0x3fffffff - 1; }
     const noise = () => { const s = ctx.createBufferSource(); s.buffer = nb; s.loop = true; return s; };
 
-    /* master: drive → DJ filter → volume → glue compressor → (analyser) → out */
+    /* master: low cut → gate (drop cut) → drive → volume → glue compressor → (analyser) → out.
+       The DJ filter and the bass kill live in each deck, before the crossfader. */
     const masterIn = ctx.createGain();
     const drive = ctx.createWaveShaper(); drive.oversample = '2x';
     const vol = ctx.createGain(); vol.gain.value = 0.8;

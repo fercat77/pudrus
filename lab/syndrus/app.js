@@ -22,7 +22,7 @@
         cutoff: 520, res: 0.6, envAmt: 0.45, fdecay: 0.22, attack: 0.003, decay: 0.25, sustain: 0.3, release: 0.12, glide: 0.07,
         lfoRate: 0.2, lfoDepth: 0, level: 0.7, delay: 0.1, reverb: 0.05, mute: false, chord: 'off', arp: 'off', arpRate: 1, arpOct: 1, latch: false },
       rings: [ring({ sound: 'rim', steps: 16, pulses: 0, level: 0.5, reverb: 0.1, delay: 0.2 }), ring({ steps: 12, deg: 2 }), ring({ steps: 7, deg: 4, octave: 5 }), ring({ sound: 'pluck', steps: 9, deg: 0, octave: 3 })],
-      fx: { drive: 0.12, feedback: 0.42, delayTone: 1800, delayBeats: 0.75, space: 0.45, volume: 0.8, dj: 0 },
+      fx: { feedback: 0.42, delayTone: 1800, delayBeats: 0.75, space: 0.45 },   // drive, volume and the DJ filter live in the mixer (app.mix)
     };
   }
   const pat = s => [...s].map(c => (c === 'x' ? 2 : c === 'o' ? 1 : 0));   // x accent, o hit, . rest
@@ -50,7 +50,7 @@
       d[7].steps = pat('o...o...o...o...'); d[7].level = 0.2;
       line(s, [[1, 0], [2, 0], [3, 0], [5, 0], [6, 0], [7, 0], [9, 0], [10, 0], [11, 1], [13, 0], [14, 0], [15, 0]]);
       Object.assign(s.synth, { wave1: 'sine', wave2: 'triangle', mix1: 0.8, mix2: 0.2, sub: 0.6, cutoff: 220, res: 0.2, envAmt: 0.2, octave: 1, gate: 0.8, reverb: 0.4, delay: 0 });
-      s.fx.space = 0.65; s.fx.drive = 0.3;
+      s.fx.space = 0.65;
       s.rings[0] = ring({ sound: 'rim', steps: 16, pulses: 5, rot: 1, level: 0.35, delay: 0.45, reverb: 0.3 });
       return s;
     },
@@ -61,7 +61,6 @@
       d[3].steps = pat('o.o.o.o.o.o.o.o.'); d[3].level = 0.5; d[4].steps = pat('..o...o...o...o.'); d[4].level = 0.4;
       line(s, [[0, 0, 1], [1, 7, 0, 1], [2, 7], [3, 0], [4, 3, 1], [6, 0, 0, 1], [7, 2], [8, 7, 1], [9, 5], [10, 3, 0, 1], [11, 2], [12, 0, 1], [14, -3, 0, 1], [15, 0]]);
       Object.assign(s.synth, { wave1: 'sawtooth', mix2: 0, sub: 0.15, cutoff: 300, res: 0.86, envAmt: 0.7, fdecay: 0.18, lfoRate: 0.07, lfoDepth: 0.12, delay: 0.25 });
-      s.fx.drive = 0.35;
       return s;
     },
     'Dub techno': () => {
@@ -86,7 +85,7 @@
         ring({ sound: 'pluck', steps: 9, pulses: 2, deg: 2, octave: 3, decay: 0.7, level: 0.35, reverb: 0.7, delay: 0.5 }),
         ring({ sound: 'bell', steps: 16, pulses: 1, deg: -3, octave: 3, decay: 1, level: 0.4, reverb: 0.9 })];
       s.drums[7].steps = pat('o.......o.......'); s.drums[7].level = 0.12; s.drums[7].reverb = 0.6;
-      s.fx = { ...s.fx, space: 0.95, feedback: 0.55, delayTone: 2400, delayBeats: 1.5, drive: 0.02 };
+      s.fx = { ...s.fx, space: 0.95, feedback: 0.55, delayTone: 2400, delayBeats: 1.5 };
       return s;
     },
   };
@@ -113,7 +112,7 @@
     }
     Object.assign(s.synth, { wave1: pick(['sawtooth', 'sawtooth', 'square']), mix2: chance(0.5) ? 0 : R(0.1, 0.4), cutoff: R(220, 900), res: R(0.3, 0.88), envAmt: R(0.2, 0.75), fdecay: R(0.1, 0.35), sub: R(0, 0.5), lfoDepth: chance(0.3) ? R(0.05, 0.2) : 0, delay: chance(0.4) ? R(0.1, 0.4) : 0 });
     if (chance(0.6)) s.rings[0] = ring({ sound: pick(['rim', 'tom', 'clap', 'pluck']), steps: pick([16, 12, 7, 5]), pulses: I(2, 5), rot: I(0, 4), level: 0.35, delay: R(0.2, 0.6), reverb: R(0.1, 0.4), deg: I(0, 4), octave: 4 });
-    s.fx = { ...s.fx, drive: R(0.05, 0.4), feedback: R(0.3, 0.6), delayBeats: pick([0.75, 0.5, 0.375]), space: R(0.25, 0.7) };
+    s.fx = { ...s.fx, feedback: R(0.3, 0.6), delayBeats: pick([0.75, 0.5, 0.375]), space: R(0.25, 0.7) };
     return s;
   }
   function randomAmbient() {
@@ -124,7 +123,7 @@
     Object.assign(s.synth, { wave1: pick(['triangle', 'sine', 'sawtooth']), wave2: 'sine', mix1: 0.5, mix2: 0.4, sub: 0, octave: 3, cutoff: R(700, 2200), res: R(0.05, 0.3), envAmt: 0.1, attack: R(0.4, 1.5), decay: 1, sustain: 0.8, release: R(1.5, 3.5), gate: R(4, 7.5), glide: R(0.2, 0.8), lfoRate: R(0.05, 0.3), lfoDepth: R(0.05, 0.2), level: 0.35, reverb: R(0.7, 0.95), delay: R(0.1, 0.4), mute: chance(0.2) });
     if (chance(0.5)) { s.drums[7].steps = X.euclid(16, I(1, 3), 0); s.drums[7].level = 0.1; s.drums[7].reverb = 0.6; }
     if (chance(0.35)) { s.drums[0].steps = pat('x...............'); s.drums[0].decay = 1; s.drums[0].level = 0.45; s.drums[0].reverb = 0.5; }
-    s.fx = { ...s.fx, drive: 0.02, space: R(0.8, 1), feedback: R(0.4, 0.65), delayTone: R(1500, 3500), delayBeats: pick([1, 1.5, 0.75]) };
+    s.fx = { ...s.fx, space: R(0.8, 1), feedback: R(0.4, 0.65), delayTone: R(1500, 3500), delayBeats: pick([1, 1.5, 0.75]) };
     return s;
   }
 
@@ -294,7 +293,7 @@
     const w = el('label', 'sy-sel'), s = el('select');
     options.forEach(([v, t]) => { const o = el('option', '', t); o.value = v; s.append(o); });
     s.value = String(obj[key]);
-    s.addEventListener('change', () => { obj[key] = isNaN(+s.value) || s.value === '' ? s.value : +s.value; (on || mix)(); });
+    s.addEventListener('change', () => { const v = s.value; obj[key] = v === 'true' ? true : v === 'false' ? false : isNaN(+v) || v === '' ? v : +v; (on || mix)(); });
     w.append(el('span', '', label), s); w.paint = () => { s.value = String(obj[key]); };
     return w;
   }
@@ -329,6 +328,7 @@
     $('#root').value = st.root; $('#scale').value = st.scale;
   }
   function setEdit(i) {
+    if (i !== app.edit) allNotesOff();
     app.edit = i; st = app.decks[i]; save(); rmPush();
     document.body.dataset.deck = ab(i);
     paintAll(); toast(`Editando el deck ${ab(i)}`, 1200);
@@ -346,6 +346,7 @@
     const p = sane(s);
     if (app.lockKey) { p.root = st.root; p.scale = st.scale; }
     if (!app.lockBpm) { app.bpm = p.bpm; app.swing = p.swing; }
+    allNotesOff();
     app.decks[app.edit] = p; st = p;
     paintAll(); mix();
     if (msg) toast(`${msg} → deck ${ab(app.edit)} · ${app.bpm} BPM${app.lockBpm ? ' 🔒' : ''} · ${X.NOTE_NAMES[st.root]} ${X.SCALE_NAMES[st.scale].toLowerCase()}${app.lockKey ? ' 🔒' : ''}`);
@@ -456,7 +457,7 @@
         choice('Arpegio', sy, 'arp', [['off', 'apagado'], ['up', 'arriba'], ['down', 'abajo'], ['updown', 'ida y vuelta'], ['random', 'al azar'], ['played', 'como se toca']], () => { arpSet = heldN.slice(); arpIdx = -1; save(); }),
         choice('Velocidad', sy, 'arpRate', [[4, '1/4'], [2, '1/8'], [1, '1/16'], [0.5, '1/32']], () => save()),
         choice('Octavas', sy, 'arpOct', [[1, '1'], [2, '2'], [3, '3']], () => save()),
-        choice('Mantener', sy, 'latch', [[false, 'no'], [true, 'sí (latch)']], () => { sy.latch = sy.latch === true || sy.latch === 'true'; if (!sy.latch) arpSet = heldN.slice(); save(); })]],
+        choice('Mantener', sy, 'latch', [[false, 'no'], [true, 'sí (latch)']], () => { if (!sy.latch) arpSet = heldN.slice(); save(); })]],
       mix: ['Mezcla', () => [choice('Octava', sy, 'octave', [[1, '1'], [2, '2'], [3, '3'], [4, '4'], [5, '5']], () => { paintSynth(); save(); }),
         param('Volumen', sy, 'level', 0, 1.2), param('→ Delay', sy, 'delay', 0, 1), param('→ Reverb', sy, 'reverb', 0, 1)]],
     };
@@ -468,7 +469,9 @@
   function preview(s) {
     if (playing) return;
     ensureAudio(); const t = ac.currentTime + 0.01;
-    deck().synth.noteOn(t, X.degreeToMidi(st.root, st.scale, s.deg, st.synth.octave), s.acc ? 1.3 : 1, false); deck().synth.noteOff(t + 0.18);
+    const sy = st.synth, vel = s.acc ? 1.3 : 1;
+    if (sy.chord && sy.chord !== 'off') { deck().synth.poly(t, X.chordNotes(st.root, st.scale, s.deg, sy.octave, sy.chord), 0.25, vel); return; }
+    deck().synth.noteOn(t, X.degreeToMidi(st.root, st.scale, s.deg, sy.octave), vel, false); deck().synth.noteOff(t + 0.18);
   }
   $('#mSynth').addEventListener('click', () => { st.synth.mute = !st.synth.mute; $('#mSynth').classList.toggle('on', st.synth.mute); save(); });
   $('#clearSynth').addEventListener('click', () => { st.synth.steps.forEach(s => { s.on = false; s.acc = false; s.slide = false; }); paintSynth(); save(); });
@@ -489,8 +492,9 @@
   }
   const keyMidi = i => 12 * (st.synth.octave + 1 + kbOct) + st.root + i;
   const keyBase = () => 12 * (st.synth.octave + 1 + kbOct) + st.root;
-  function press(i) { noteDown(keyMidi(i), 0.8); const k = document.querySelector(`.sy-key[data-i="${i}"]`); if (k) k.classList.add('on'); }
-  function release(i) { noteUp(keyMidi(i)); const k = document.querySelector(`.sy-key[data-i="${i}"]`); if (k) k.classList.remove('on'); }
+  const keyNote = new Map();   // key → the MIDI note it started
+  function press(i) { if (keyNote.has(i)) return; const m = keyMidi(i); keyNote.set(i, m); noteDown(m, 0.8); const k = document.querySelector(`.sy-key[data-i="${i}"]`); if (k) k.classList.add('on'); }
+  function release(i) { if (!keyNote.has(i)) return; noteUp(keyNote.get(i)); keyNote.delete(i); const k = document.querySelector(`.sy-key[data-i="${i}"]`); if (k) k.classList.remove('on'); }
 
   /* ── playing notes (computer keys, the screen keyboard, MIDI): mono line, chords, or the arpeggiator ── */
   const heldN = [];            // MIDI notes held now, in the order they were played
@@ -511,7 +515,7 @@
       if (!playing) { if (!arpWarned) { toast('El arpegiador sigue el tempo: dale ▶ (Espacio)'); arpWarned = true; } D.synth.noteOn(now, m, acc, false); D.synth.noteOff(now + 0.25); }
       return;
     }
-    if (st.synth.chord && st.synth.chord !== 'off') { chordVoices.set(m, D.synth.polyOn(now, chordOf(m), acc)); return; }
+    if (st.synth.chord && st.synth.chord !== 'off') { chordVoices.set(m, { D, v: D.synth.polyOn(now, chordOf(m), acc) }); return; }
     D.synth.noteOn(now, m, acc, !first);
   }
   function noteUp(m) {
@@ -519,9 +523,17 @@
     const D = E && deck(); if (!D) return;
     const now = ac.currentTime + 0.005;
     if (arpOn()) { if (!st.synth.latch) arpSet = arpSet.filter(x => x !== m); return; }
-    if (chordVoices.has(m)) { D.synth.polyOff(chordVoices.get(m), now); chordVoices.delete(m); return; }
+    if (chordVoices.has(m)) { const c = chordVoices.get(m); c.D.synth.polyOff(c.v, now); chordVoices.delete(m); return; }
     if (heldN.length) D.synth.noteOn(now, heldN[heldN.length - 1], 1, true);
     else D.synth.noteOff(now);
+  }
+  function allNotesOff() {
+    heldN.length = 0; arpSet = []; arpIdx = -1; arpDir = 1; keyNote.clear();
+    document.querySelectorAll('.sy-key.on').forEach(k => k.classList.remove('on'));
+    if (!E) { chordVoices.clear(); return; }
+    const now = ac.currentTime + 0.005;
+    chordVoices.forEach(c => c.D.synth.polyOff(c.v, now)); chordVoices.clear();
+    E.decks.forEach(D => D.synth.noteOff(now));
   }
   // the arpeggiator plays on the clock (tick): which note comes next
   function arpNext() {
@@ -577,7 +589,7 @@
         choice('Sonido', r, 'sound', SOUNDS, () => { redraw(); save(); }),
         param('Nota', r, 'deg', -7, 14, { step: 1, fmt: x => X.noteName(X.degreeToMidi(st.root, st.scale, Math.round(x), r.octave)), on: save }),
         choice('Octava', r, 'octave', [[2, '2'], [3, '3'], [4, '4'], [5, '5'], [6, '6']], save),
-        choice('Melodía', r, 'wander', [[false, 'fija'], [true, 'errante']], () => { r.wander = r.wander === 'true' || r.wander === true; save(); }),
+        choice('Melodía', r, 'wander', [[false, 'fija'], [true, 'errante']], save),
         param('Caída', r, 'decay', 0, 1), param('Afinación', r, 'tune', 0.5, 2, { fmt: x => '×' + x.toFixed(2) }));
       else ps.append(param('Volumen', r, 'level', 0, 1.2), param('→ Delay', r, 'delay', 0, 1), param('→ Reverb', r, 'reverb', 0, 1));
       w.append(top, cvb, ps); box.append(w); ringCanvases.push(cv);
@@ -663,7 +675,7 @@
     const cAB = el('button', 'sy-mini', 'A → B'), cBA = el('button', 'sy-mini', 'B → A'), sw = el('button', 'sy-mini', 'A ⇄ B'); sw.title = 'Intercambiar los decks';
     cAB.addEventListener('click', () => { app.decks[1] = clone(app.decks[0]); st = app.decks[app.edit]; paintAll(); mix(); toast('A copiado en B'); });
     cBA.addEventListener('click', () => { app.decks[0] = clone(app.decks[1]); st = app.decks[app.edit]; paintAll(); mix(); toast('B copiado en A'); });
-    sw.addEventListener('click', () => { app.decks.reverse(); app.mix.decks.reverse(); st = app.decks[app.edit]; paintAll(); mix(); toast('Decks intercambiados'); });
+    sw.addEventListener('click', () => { allNotesOff(); app.decks.reverse(); app.mix.decks.reverse(); pending.reverse(); st = app.decks[app.edit]; paintAll(); mix(); toast('Decks intercambiados'); });
     tools.append(cAB, cBA, sw); box.append(tools);
     // bank
     const bh = el('div', 'sy-subhead'), bs = el('button', 'sy-mini' + (bankSave ? ' on' : ''), bankSave ? 'Elegí un lugar' : 'Guardar');
@@ -778,13 +790,13 @@
   /* ── console: every fader of the edited deck as vertical strips, with live meters; decks + master on the right ── */
   const conEl = $('#console');
   let conMeters = [];   // [{ an, el }]
-  function vfader(obj, key, min, max, cls, onSet, fmtV) {
+  function vfader(obj, key, min, max, cls, onSet, fmtV, learnLabel) {
     const w = el('div', 'sy-vf' + (cls ? ' ' + cls : '')), th = el('div', 'thumb'); w.append(th);
     const def = obj[key], val = el('div', 'val');
     const paint = () => { const p = (obj[key] - min) / (max - min); th.style.top = (8 + (1 - p) * (w.clientHeight - 16)) + 'px'; val.textContent = fmtV ? fmtV(obj[key]) : (obj[key] <= 0.001 ? '−∞' : (20 * Math.log10(obj[key])).toFixed(1) + ' dB'); };
     const set = y => { const r = w.getBoundingClientRect(), p = 1 - (y - r.top - 8) / Math.max(1, r.height - 16); obj[key] = Math.round(Math.max(min, Math.min(max, min + p * (max - min))) * 1000) / 1000; paint(); (onSet || mix)(); };
     let drag = false;
-    w.addEventListener('pointerdown', e => { if (learnMode) { armLearn(obj, key, min, max, 1, 0, key === 'volume' ? 'Volumen master' : 'Fader'); w.classList.add('sy-armed'); return; } drag = true; try { w.setPointerCapture(e.pointerId); } catch (x) { /* synthetic */ } set(e.clientY); });
+    w.addEventListener('pointerdown', e => { if (learnMode) { armLearn(obj, key, min, max, 1, 0, learnLabel || (key === 'volume' ? 'Volumen master' : 'Fader')); w.classList.add('sy-armed'); return; } drag = true; try { w.setPointerCapture(e.pointerId); } catch (x) { /* synthetic */ } set(e.clientY); });
     w.addEventListener('pointermove', e => { if (drag) set(e.clientY); });
     w.addEventListener('pointerup', () => { drag = false; });
     w.addEventListener('dblclick', () => { obj[key] = def; paint(); (onSet || mix)(); });
@@ -793,12 +805,12 @@
     requestAnimationFrame(paint);
     return w;
   }
-  function knob(label, obj, key, min, max, fmt) {
+  function knob(label, obj, key, min, max, fmt, learnLabel) {
     const w = el('div', 'sy-knob'), f = el('div', 'fill'), l = el('span', 'l', label), v = el('span', 'v');
     w.append(f, l, v);
     const paint = () => { f.style.width = ((obj[key] - min) / (max - min)) * 100 + '%'; v.textContent = fmt ? fmt(obj[key]) : Math.round(obj[key] * 100) + '%'; };
     let drag = null;
-    w.addEventListener('pointerdown', e => { if (learnMode) { armLearn(obj, key, min, max, 1, 0, label); w.classList.add('sy-armed'); return; } drag = { x: e.clientX, v: obj[key] }; try { w.setPointerCapture(e.pointerId); } catch (x) { /* synthetic */ } });
+    w.addEventListener('pointerdown', e => { if (learnMode) { armLearn(obj, key, min, max, 1, 0, learnLabel || label); w.classList.add('sy-armed'); return; } drag = { x: e.clientX, v: obj[key] }; try { w.setPointerCapture(e.pointerId); } catch (x) { /* synthetic */ } });
     w.addEventListener('pointermove', e => { if (!drag) return; obj[key] = Math.max(min, Math.min(max, drag.v + (e.clientX - drag.x) / 120 * (max - min))); paint(); mix(); });
     w.addEventListener('pointerup', () => { drag = null; });
     paint(); return w;
@@ -806,13 +818,13 @@
   function strip(name, grp, ch, an, cls, solo) {
     const s = el('div', 'sy-strip' + (cls ? ' ' + cls : ''));
     const fw = el('div', 'sy-faderwrap'), mt = el('div', 'sy-meter'), mi = el('i'); mt.append(mi);
-    const vf = vfader(ch, 'level', 0, 1.2);
+    const vf = vfader(ch, 'level', 0, 1.2, '', null, null, name + ' · volumen');
     fw.append(vf, mt);
     const btns = el('div', 'btns'), m = el('button', 'm' + (ch.mute ? ' on' : ''), 'M');
     m.addEventListener('click', () => { ch.mute = !ch.mute; m.classList.toggle('on', ch.mute); save(); paintDrums(); paintSynth(); paintRings(); });
     btns.append(m);
     if (solo) { const sb = el('button', 's' + (ch.solo ? ' on' : ''), 'S'); sb.addEventListener('click', () => { ch.solo = !ch.solo; sb.classList.toggle('on', ch.solo); save(); paintDrums(); }); btns.append(sb); }
-    s.append(el('div', 'grp', grp), el('div', 'nm', name), knob('Dly', ch, 'delay', 0, 1), knob('Rev', ch, 'reverb', 0, 1), fw, vf.val, btns);
+    s.append(el('div', 'grp', grp), el('div', 'nm', name), knob('Dly', ch, 'delay', 0, 1, null, name + ' → delay'), knob('Rev', ch, 'reverb', 0, 1, null, name + ' → reverb'), fw, vf.val, btns);
     conMeters.push({ an: () => an(), el: mi });
     return s;
   }
@@ -830,11 +842,11 @@
     const mb = $('#conMaster'); mb.innerHTML = '';
     [0, 1].forEach(i => {
       const d = app.mix.decks[i], s = el('div', 'sy-strip'), fw = el('div', 'sy-faderwrap'), mt = el('div', 'sy-meter'), mi = el('i'); mt.append(mi);
-      const vf = vfader(d, 'level', 0, 1.2, 'deck' + ab(i)); fw.append(vf, mt);
-      const kill = el('button', d.kill ? 'on m' : 'm', 'Bajos ✕'); kill.title = 'Cortar los graves del deck'; kill.addEventListener('click', () => { d.kill = !d.kill; kill.classList.toggle('on', d.kill); mix(); paintMixer(); });
+      const vf = vfader(d, 'level', 0, 1.2, 'deck' + ab(i), null, null, 'Deck ' + ab(i) + ' · volumen'); fw.append(vf, mt);
+      const kill = el('button', d.kill ? 'on m' : 'm', 'Graves ✕'); kill.title = 'Cortar los graves del deck'; kill.addEventListener('click', () => { d.kill = !d.kill; kill.classList.toggle('on', d.kill); mix(); paintMixer(); });
       const cue = el('button', d.cue ? 'on s' : 's', '🎧'); cue.title = 'Cue'; cue.addEventListener('click', () => { d.cue = !d.cue; cue.classList.toggle('on', d.cue); if (d.cue && app.mix.cueMode === 'off') { app.mix.cueMode = 'split'; applyCue(); } mix(); paintMixer(); });
       const btns = el('div', 'btns'); btns.append(kill, cue);
-      s.append(el('div', 'grp', 'deck'), el('div', 'nm', ab(i)), knob('Filtro', d, 'dj', -1, 1, x => (Math.abs(x) < 0.02 ? '—' : x < 0 ? 'LP' : 'HP')), fw, vf.val, btns);
+      s.append(el('div', 'grp', 'deck'), el('div', 'nm', ab(i)), knob('Filtro', d, 'dj', -1, 1, x => (Math.abs(x) < 0.02 ? '—' : x < 0 ? 'LP' : 'HP'), 'Deck ' + ab(i) + ' · filtro'), fw, vf.val, btns);
       conMeters.push({ an: () => E && E.decks[i].an, el: mi });
       mb.append(s);
     });
@@ -842,13 +854,13 @@
     lbls.append(el('b', '', 'A'), el('span', 'sy-dim', 'crossfader'), el('b', '', 'B'));
     const paintX = () => { th.style.left = (8 + app.mix.x * (xf.clientWidth - 16)) + 'px'; };
     let dx = false; const setX = cx => { const r = xf.getBoundingClientRect(); app.mix.x = Math.max(0, Math.min(1, (cx - r.left - 8) / Math.max(1, r.width - 16))); paintX(); mix(); };
-    xf.addEventListener('pointerdown', e => { dx = true; try { xf.setPointerCapture(e.pointerId); } catch (x) { /* synthetic */ } setX(e.clientX); });
+    xf.addEventListener('pointerdown', e => { if (learnMode) { armLearn(app.mix, 'x', 0, 1, 1, 0, 'Crossfader'); xf.classList.add('sy-armed'); return; } dx = true; try { xf.setPointerCapture(e.pointerId); } catch (x) { /* synthetic */ } setX(e.clientX); });
     xf.addEventListener('pointermove', e => { if (dx) setX(e.clientX); }); xf.addEventListener('pointerup', () => { dx = false; });
     const qb = el('div', 'sy-xfbtns'); [['A', 0], ['½', 0.5], ['B', 1]].forEach(([l, v]) => { const b = el('button', 'sy-mini', l); b.addEventListener('click', () => { app.mix.x = v; paintX(); mix(); }); qb.append(b); });
     xw.append(lbls, xf, qb); requestAnimationFrame(paintX);
     const ms = el('div', 'sy-strip'), fw = el('div', 'sy-faderwrap'), mt = el('div', 'sy-meter'), mi = el('i'); mt.append(mi);
     const mv = vfader(app.mix, 'volume', 0, 1.2, 'master'); fw.append(mv, mt);
-    ms.append(el('div', 'grp', 'master'), el('div', 'nm', 'Salida'), knob('Satur.', app.mix, 'drive', 0, 1), fw, mv.val);
+    ms.append(el('div', 'grp', 'master'), el('div', 'nm', 'Salida'), knob('Satur.', app.mix, 'drive', 0, 1, null, 'Saturación master'), fw, mv.val);
     conMeters.push({ an: () => E && E.analyser, el: mi, big: true });
     mb.append(xw, ms);
   }
@@ -1175,7 +1187,7 @@
     b.disabled = false; b.textContent = '⤓ WAV';
   });
   $('#share').addEventListener('click', () => {
-    const share = { v: 2, bpm: app.bpm, swing: app.swing, decks: app.decks, mix: app.mix, edit: app.edit };   // the bank stays here
+    const share = { v: 2, bpm: app.bpm, swing: app.swing, decks: app.decks, mix: { ...app.mix, cueMode: 'off', cueSink: '', decks: app.mix.decks.map(d => ({ ...d, cue: false })) }, edit: app.edit };   // the bank stays here
     const url = location.origin + location.pathname + '#s=' + btoa(unescape(encodeURIComponent(JSON.stringify(share))));
     (navigator.clipboard ? navigator.clipboard.writeText(url) : Promise.reject()).then(() => toast('Enlace copiado: quien lo abra escucha esta mezcla (los dos decks)'), () => { prompt('Copiá este enlace:', url); });
   });

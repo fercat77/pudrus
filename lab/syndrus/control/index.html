@@ -255,7 +255,7 @@ DROP</button></div>
       fw.append(vf, mt);
       const flt = el('div', 'hf'); flt.append(el('div', 'center'), el('div', 'th'), el('span', 'lb', 'filtro'));
       hfader(flt, 'dj' + i, () => S.mix.decks[i].dj, -1, 1, v => { const sn = Math.abs(v) < 0.06 ? 0 : v; S.mix.decks[i].dj = sn; send({ t: 'deck', i, k: 'dj', v: +sn.toFixed(3) }); });
-      const btns = el('div', 'btns'), kill = el('button', 'm' + (d.kill ? ' on' : ''), 'Bajos ✕'), cue = el('button', 's' + (d.cue ? ' on' : ''), '🎧 Cue');
+      const btns = el('div', 'btns'), kill = el('button', 'm' + (d.kill ? ' on' : ''), 'Graves ✕'), cue = el('button', 's' + (d.cue ? ' on' : ''), '🎧 Cue');
       kill.addEventListener('click', () => { send({ t: 'deck', i, k: 'kill' }); kill.classList.toggle('on'); });
       cue.addEventListener('click', () => { send({ t: 'deck', i, k: 'cue' }); cue.classList.toggle('on'); });
       btns.append(kill, cue);
