@@ -1,5 +1,5 @@
 /* NODRUS táctil — the same node engine as the desktop editor, built as a chain of cards:
-   Coordenadas → Generar → Color → Efectos de color → Efectos → Salida.
+   Coordenadas → Generar → Color → (Segunda capa, mezclada) → Efectos de color → Efectos → Salida.
    Internally it is a normal node graph, so it opens in the full editor ("Abrir en la compu"). */
 (function () {
   const N = window.PudrusNodes, G = window.PudrusGenerate;
@@ -14,6 +14,9 @@
     coords: { label: 'Coordenadas', hint: 'deforman el espacio antes de dibujar', cat: 'var(--c-uv)', types: ['kaleido', 'polar', 'mirror', 'tile', 'warp', 'swirl', 'pixelate', 'glitch'] },
     gen: { label: 'Generar', hint: 'el dibujo base', cat: 'var(--c-gen)', types: ['pattern', 'noise', 'voronoi', 'stripes', 'waves', 'shape', 'checker', 'gradient', 'scene3d', 'text', 'camera'] },
     color: { label: 'Color', hint: 'convierte el dibujo en colores', cat: 'var(--c-col)', types: ['palette', 'ramp', 'none'] },
+    layer: { label: 'Segunda capa', hint: 'otro dibujo, mezclado con el primero', cat: 'var(--c-gen)', types: ['pattern', 'noise', 'voronoi', 'stripes', 'waves', 'shape', 'checker', 'gradient', 'scene3d'] },
+    lcolor: { label: 'Color de la segunda capa', hint: '', cat: 'var(--c-col)', types: ['palette', 'ramp', 'none'] },
+    mix: { label: 'Mezcla', hint: '', cat: 'var(--c-col)', types: ['mix'] },
     cfx: { label: 'Efectos de color', hint: 'retocan los colores', cat: 'var(--c-col)', types: ['adjust', 'posterize', 'invert'] },
     fx: { label: 'Efectos', hint: 'estelas y memoria', cat: 'var(--c-fx)', types: ['feedback'] },
     out: { label: 'Salida', hint: 'el final: brillo, glitch, viñeta…', cat: 'var(--c-out)', types: ['output'] },
@@ -45,6 +48,7 @@
     adjust: 'Brillo, contraste, saturación y tono.',
     posterize: 'Reduce la cantidad de colores, estilo afiche.',
     invert: 'Invierte los colores (negativo).',
+    mix: 'Mezcla las dos capas: mezcla, sumar, multiplicar, pantalla o diferencia. «Mezcla» = cuánto se ve la segunda capa.',
     feedback: 'Mezcla cada cuadro con el anterior, agrandado o girado: estelas, túneles infinitos, rastros.',
     output: 'El final de la cadena: separación RGB, scanlines, viñeta, grano, brillo (bloom), desenfoque, glitch y flash. «Reacciona a» hace que el audio empuje los efectos.',
   };
@@ -60,7 +64,8 @@
     Object.assign(c.fx[0].v, { amount: 0.9, zoom: 1.04, rotate: 3 });
     return c;
   }
-  const allNodes = c => [c.tr, ...c.coords, c.gen, ...(c.color ? [c.color] : []), ...c.cfx, ...c.fx, c.out];
+  const layerNodes = L => (L && L.gen && L.mix ? [L.gen, ...(L.color ? [L.color] : []), L.mix] : []);
+  const allNodes = c => [c.tr, ...c.coords, c.gen, ...(c.color ? [c.color] : []), ...layerNodes(c.layer), ...c.cfx, ...c.fx, c.out];
   function loadChain() {
     try {
       const c = JSON.parse(localStorage.getItem(STORE) || 'null');
@@ -75,6 +80,7 @@
   // chain -> node graph (same format as the desktop editor)
   function genOut(n) {
     const outs = N.NODES[n.type].outputs;
+    if (n.useOut) { const o = outs.find(x => x[0] === n.useOut); if (o) return o; }   // e.g. 3D: light, depth or normals
     if (N.NODES[n.type].tex) return outs.find(o => o[0] === 'c');   // camera / text: their color, not the alpha
     return (outs.find(o => o[1] === 'float') || outs[0]);
   }
@@ -89,6 +95,17 @@
     if ((N.NODES[chain.gen.type].inputs || []).some(i => i.k === 'uv')) links.push({ a: uv.id, ao: 'uv', b: chain.gen.id, bi: 'uv' });
     let cur = { id: chain.gen.id, out: genOut(chain.gen)[0] };
     if (chain.color) { put(chain.color); links.push({ a: cur.id, ao: cur.out, b: chain.color.id, bi: 'v' }); cur = { id: chain.color.id, out: 'c' }; }
+    // second layer: its own drawing and color, mixed with the first (on the deformed space, or the plain one)
+    const L = chain.layer;
+    if (L && L.gen && L.mix) {
+      put(L.gen);
+      if ((N.NODES[L.gen.type].inputs || []).some(i => i.k === 'uv')) links.push({ a: L.plain ? chain.tr.id : uv.id, ao: 'uv', b: L.gen.id, bi: 'uv' });
+      let lc = { id: L.gen.id, out: genOut(L.gen)[0] };
+      if (L.color) { put(L.color); links.push({ a: lc.id, ao: lc.out, b: L.color.id, bi: 'v' }); lc = { id: L.color.id, out: 'c' }; }
+      put(L.mix);
+      links.push({ a: cur.id, ao: cur.out, b: L.mix.id, bi: 'a' }, { a: lc.id, ao: lc.out, b: L.mix.id, bi: 'b' });
+      cur = { id: L.mix.id, out: 'c' };
+    }
     for (const f of [...chain.cfx, ...chain.fx]) { put(f); links.push({ a: cur.id, ao: cur.out, b: f.id, bi: 'c' }); cur = { id: f.id, out: 'c' }; }
     put(chain.out); links.push({ a: cur.id, ao: cur.out, b: chain.out.id, bi: 'c' });
     return { nodes, links, ctl: [] };
@@ -220,6 +237,16 @@
     if (opts.remove) { const x = el('button', 'm-ic', '✕'); x.title = 'Quitar'; x.addEventListener('click', opts.remove); head.append(x); }
     c.append(head);
     const body = el('div', 'm-card-body');
+    if ((slot === 'gen' || slot === 'layer') && (def.outputs || []).length > 1 && !def.tex) {
+      const row = el('div', 'm-row'); row.append(el('label', '', 'Usar'));
+      const chips = el('div', 'm-chips'), curOut = genOut(n)[0];
+      def.outputs.forEach(([k, , l]) => {
+        const b = el('button', k === curOut ? 'on' : '', l.toLowerCase());
+        b.addEventListener('click', () => { n.useOut = k; structure(); });
+        chips.append(b);
+      });
+      row.append(chips); body.append(row);
+    }
     for (const p of def.params || []) {
       if (!p.options) {
         if (p.kind !== 'text') continue;
@@ -296,13 +323,26 @@
     section('gen'); chainEl.append(card(chain.gen, 'gen', { swap: true }));
     section('color');
     if (chain.color) chainEl.append(card(chain.color, 'color', { swap: true }));
-    else { const n = { id: 0, type: 'none' }; const c = el('section', 'm-card'); c.style.setProperty('--cat', SLOTS.color.cat); const h = el('div', 'm-card-head'); const t = el('button', 'm-card-title'); t.append('Original', el('em', '', 'cambiar ▾')); t.addEventListener('click', () => openPicker('color', n)); const i = el('button', 'm-ic', '?'); i.addEventListener('click', () => openInfo('none')); h.append(t, i); c.append(h); chainEl.append(c); }
+    else chainEl.append(noneCard('color'));
+    section('layer');
+    if (chain.layer) {
+      const L = chain.layer;
+      chainEl.append(card(L.gen, 'layer', { swap: true, remove: () => { chain.layer = null; structure(); } }));
+      chainEl.append(L.color ? card(L.color, 'lcolor', { swap: true }) : noneCard('lcolor'));
+      chainEl.append(card(L.mix, 'mix'));
+    } else addButton('layer', '＋ Segunda capa');
     chain.cfx.forEach((n, i) => chainEl.append(card(n, 'cfx', { swap: true, remove: () => { chain.cfx.splice(i, 1); structure(); } })));
     if (chain.cfx.length < 3) addButton('cfx', '＋ Efecto de color');
     section('fx');
     chain.fx.forEach((n, i) => chainEl.append(card(n, 'fx', { remove: () => { chain.fx.splice(i, 1); structure(); } })));
     if (!chain.fx.length) addButton('fx', '＋ Feedback (estelas)');
     section('out'); chainEl.append(card(chain.out, 'out'));
+  }
+  function noneCard(slot) {   // «Original»: the drawing keeps its own colors
+    const n = { id: 0, type: 'none' }, c = el('section', 'm-card'); c.style.setProperty('--cat', SLOTS[slot].cat);
+    const h = el('div', 'm-card-head'), t = el('button', 'm-card-title'); t.append('Original', el('em', '', 'cambiar ▾')); t.addEventListener('click', () => openPicker(slot, n));
+    const i = el('button', 'm-ic', '?'); i.addEventListener('click', () => openInfo('none')); h.append(t, i); c.append(h);
+    return c;
   }
   function structure() { recompile(); renderCards(); save(); }
 
@@ -325,6 +365,8 @@
       b.addEventListener('click', () => {
         closeSheet();
         if (slot === 'color') { chain.color = t === 'none' ? null : mk(t); }
+        else if (slot === 'layer') { if (chain.layer) chain.layer.gen = mk(t); else chain.layer = newLayer(t); }
+        else if (slot === 'lcolor') { if (chain.layer) chain.layer.color = t === 'none' ? null : mk(t); }
         else if (slot === 'gen') { chain.gen = mk(t); if (t === 'camera' && chain.color && chain.color.type === 'palette') toast('Tip: con «Color: Original» la cámara se ve tal cual'); }
         else if (current) { const list = chain[slot]; list[list.indexOf(current)] = mk(t); }
         else chain[slot].push(mk(t));
@@ -399,19 +441,68 @@
     if (n.type === 'output') n.p.react = audio.on ? pick(['bass', 'level']) : 'none';
     return n;
   }
+  const chance = p => rnd() < p, between = (a, b) => +(a + rnd() * (b - a)).toFixed(3);
+  const shuffle = a => a.slice().sort(() => rnd() - 0.5);
+  const toHex = s => { const c = document.createElement('canvas').getContext('2d'); c.fillStyle = s; return c.fillStyle; };
+  function randomColor() {
+    if (chance(0.78)) return randomize(mk('palette'));
+    const r = mk('ramp'), h = rnd() * 360;
+    r.v.a = toHex(`hsl(${h},80%,6%)`); r.v.b = toHex(`hsl(${(h + pick([60, 120, 180])) % 360},90%,60%)`);
+    return r;
+  }
+  function random3d() {   // a raymarched shape: light (lit), depth (fog) or normals (rainbow surfaces)
+    const s = randomize(mk('scene3d'));
+    s.p.quality = '40';
+    s.p.layout = pick(['single', 'grid', 'grid', 'tunnel', 'tunnel', 'column']);   // grids and tunnels fill the screen
+    s.useOut = pick(['v', 'v', 'v', 'depth', 'depth', 'c']);
+    if (chance(0.5)) s.v.twist = 0;
+    return s;
+  }
+  const randomGen = types => { const t = pick(types); return t === 'scene3d' ? random3d() : randomize(mk(t)); };
+  const coordsFrom = (types, max, min = 0) => shuffle(types).slice(0, min + Math.floor(rnd() * (max - min + 1))).map(t => randomize(mk(t)));
+  function newLayer(t, modes) {
+    const gen = t === 'scene3d' ? random3d() : randomize(mk(t));
+    const mix = mk('mix'); mix.p.mode = pick(modes || ['screen', 'add', 'multiply', 'difference']);
+    mix.v.f = mix.p.mode === 'add' ? between(0.3, 0.6) : mix.p.mode === 'screen' ? between(0.4, 0.75) : between(0.5, 0.95);   // adding layers burns to white quickly
+    return { gen, color: gen.useOut === 'c' ? null : randomColor(), mix, plain: chance(0.45) };
+  }
+  const GEN2D = ['pattern', 'pattern', 'noise', 'voronoi', 'stripes', 'waves', 'shape', 'checker'];
+  // each style is a recipe: which deformations, drawings, layers and trails go together
+  const STYLES = [
+    ['gráfico', 3, () => ({ coords: coordsFrom(SLOTS.coords.types, 2), gen: randomGen(['pattern', 'pattern', 'pattern', 'stripes', 'checker', 'shape', 'waves']),
+      layer: chance(0.25) ? newLayer(pick(['pattern', 'stripes', 'checker']), ['difference', 'multiply', 'screen']) : null, fxP: 0.3 })],
+    ['3D', 3, () => ({ coords: chance(0.4) ? coordsFrom(['kaleido', 'mirror', 'swirl', 'warp'], 1, 1) : [], gen: random3d(),
+      layer: chance(0.35) ? newLayer(pick(['noise', 'voronoi', 'pattern', 'stripes']), ['screen', 'add', 'multiply']) : null, fxP: 0.45, adjP: 0.5 })],
+    ['capas', 2.5, () => { const g = randomGen(GEN2D.concat(chance(0.2) ? ['scene3d'] : [])); return { coords: coordsFrom(SLOTS.coords.types, 2, 1), gen: g,
+      layer: newLayer(pick(GEN2D.filter(t => t !== g.type)), ['multiply', 'screen', 'difference', 'add', 'mix']), fxP: 0.4 }; }],
+    ['túnel', 1.5, () => ({ coords: [randomize(mk('polar')), ...(chance(0.4) ? [randomize(mk('kaleido'))] : [])], gen: randomGen(['stripes', 'pattern', 'checker', 'waves', 'voronoi']),
+      layer: chance(0.25) ? newLayer(pick(['noise', 'stripes']), ['screen', 'add']) : null, fxP: 1, tunnel: true })],
+    ['psicodélico', 1.5, () => ({ coords: [randomize(mk(pick(['warp', 'swirl']))), ...(chance(0.5) ? [randomize(mk('kaleido'))] : [])], gen: randomGen(['noise', 'voronoi', 'pattern', 'waves']),
+      layer: chance(0.4) ? newLayer(pick(['noise', 'voronoi', 'waves']), ['add', 'screen', 'difference']) : null, fxP: 0.8, fast: true, adjP: 0.7 })],
+    ['cristal', 1, () => ({ coords: [randomize(mk('kaleido')), ...(chance(0.35) ? [randomize(mk('tile'))] : [])], gen: randomGen(['voronoi', 'shape', 'pattern', 'scene3d']),
+      layer: chance(0.45) ? newLayer(pick(['voronoi', 'shape', 'stripes']), ['difference', 'screen', 'multiply']) : null, fxP: 0.3, postP: 0.4 })],
+  ];
   function randomChain() {
-    const coords = SLOTS.coords.types.slice().sort(() => rnd() - 0.5).slice(0, Math.floor(rnd() * 3)).map(t => randomize(mk(t)));
-    const gen = randomize(mk(pick(['pattern', 'pattern', 'pattern', 'noise', 'voronoi', 'stripes', 'waves', 'shape', 'checker', 'gradient', rnd() < 0.15 ? 'scene3d' : 'noise'])));
-    if (gen.type === 'scene3d') gen.p.quality = '40';
-    const color = rnd() < 0.75 ? randomize(mk('palette')) : (() => { const r = mk('ramp'); const h = rnd(); r.v.a = `hsl(${h * 360},80%,6%)`; r.v.b = `hsl(${(h * 360 + 120) % 360},90%,60%)`; return r; })();
-    if (color.type === 'ramp') { const toHex = s => { const c = document.createElement('canvas').getContext('2d'); c.fillStyle = s; return c.fillStyle; }; color.v.a = toHex(color.v.a); color.v.b = toHex(color.v.b); }
+    const tot = STYLES.reduce((s, x) => s + x[1], 0);
+    let r = rnd() * tot, st = STYLES[0];
+    for (const x of STYLES) { r -= x[1]; if (r <= 0) { st = x; break; } }
+    const s = st[2]();
+    const color = s.gen.useOut === 'c' ? null : randomColor();   // 3D normals already have their colors
+    if (color && color.type === 'palette' && s.fast) color.v.speed = between(0.1, 0.25) * (chance(0.5) ? -1 : 1);
     const cfx = [];
-    if (rnd() < 0.4) cfx.push(randomize(mk('adjust')));
-    if (rnd() < 0.15) cfx.push(randomize(mk('posterize')));
-    const fx = rnd() < 0.55 ? [randomize(mk('feedback'))] : [];
-    if (fx[0]) fx[0].p.blend = pick(['max', 'max', 'add', 'mix']);
-    chain = { tr: chain.tr, coords, gen, color, cfx, fx, out: randomize(mk('output')) };
+    if (chance(s.adjP || 0.35)) cfx.push(randomize(mk('adjust')));
+    if (chance(s.postP || 0.12)) cfx.push(randomize(mk('posterize')));
+    const fx = chance(s.fxP) ? [randomize(mk('feedback'))] : [];
+    if (fx[0]) {
+      const lit = s.layer && ['add', 'screen'].includes(s.layer.mix.p.mode);
+      fx[0].p.blend = lit ? pick(['max', 'mix']) : pick(s.fast ? ['add', 'max', 'mix'] : ['max', 'max', 'add', 'mix']);   // trails that add on top of an added layer burn out
+      if (fx[0].p.blend === 'add') fx[0].v.amount = Math.min(fx[0].v.amount, between(0.72, 0.85));
+      if (s.tunnel) { fx[0].p.blend = 'mix'; Object.assign(fx[0].v, { amount: between(0.78, 0.9), zoom: between(1.02, 1.05), rotate: between(-3, 3) }); }   // fading trails: «max» would fill the screen
+      if (s.gen.type === 'scene3d') Object.assign(fx[0].v, { amount: between(0.7, 0.88), zoom: between(0.995, 1.015) });   // 3D: soft trails, the shape stays readable
+    }
+    chain = { tr: chain.tr, coords: s.coords, gen: s.gen, color, layer: s.layer || null, cfx, fx, out: randomize(mk('output')) };
     structure(); buzz();
+    toast('🎲 ' + st[0] + (chain.layer && st[0] !== 'capas' ? ' · 2 capas' : '') + (st[0] !== '3D' && allNodes(chain).some(n => n.type === 'scene3d') ? ' · 3D' : ''));
   }
   function vary() { recompile(); G.vary(graph, 0.18); recompile(); renderCards(); save(); buzz(); }
   $('btnRandom').addEventListener('click', randomChain);

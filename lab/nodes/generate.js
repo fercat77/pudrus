@@ -30,6 +30,7 @@
     feedback: { amount: [0.8, 0.94], zoom: [0.985, 1.05], rotate: [-4, 4], drift: [-0.008, 0.008] },
     output: { rgb: [0, 0.3], scan: [0, 0.25], vignette: [0.2, 0.55], grain: [0, 0.07] },
     lfo: { speed: [0.05, 0.4] },
+    scene3d: { size: [0.5, 1.2], twist: [-0.8, 0.8], speed: [0.15, 0.9], spacing: [2, 5] },
   };
   // the values worth playing live, per node (first ones are the best)
   const PLAYABLE = {
