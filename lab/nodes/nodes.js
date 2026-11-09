@@ -490,7 +490,7 @@ vec3 n${id}_march(vec2 uv, float size, float twist, float speed, float sp, out v
       glsl: (I, O) => `vec3 ${O.c} = mix(${I.a}, ${I.b}, clamp(${I.v}, 0.0, 1.0));` },
     mix: { title: 'Mezclar', cat: 'Color',
       inputs: [COL('a', 'A', '#000000'), COL('b', 'B', '#ffffff'), F('f', 'Mezcla', 0.5, 0, 1)],
-      params: [{ k: 'mode', label: 'Modo', v: 'mix', options: [['mix', 'Mezclar'], ['add', 'Sumar'], ['multiply', 'Multiplicar'], ['screen', 'Pantalla'], ['difference', 'Diferencia']] }],
+      params: [{ k: 'mode', label: 'Modo', v: 'mix', options: [['mix', 'mezcla'], ['add', 'sumar'], ['multiply', 'multiplicar'], ['screen', 'pantalla'], ['difference', 'diferencia']] }],
       outputs: [['c', 'color', 'Color']],
       glsl: (I, O, P) => {
         const m = { mix: `${I.b}`, add: `${I.a} + ${I.b}`, multiply: `${I.a} * ${I.b}`, screen: `1.0 - (1.0 - ${I.a}) * (1.0 - ${I.b})`, difference: `abs(${I.a} - ${I.b})` }[P.mode];

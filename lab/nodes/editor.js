@@ -610,7 +610,7 @@
       graph.nodes.push(r); added.push(r.id);
       graph.links = graph.links.filter(x => !(x.b === t.id && x.bi === inp.k));
       graph.links.push({ a: a.id, ao: band, b: r.id, bi: 'v' }, { a: r.id, ao: 'v', b: t.id, bi: inp.k });
-      toast(audio.on ? 'Conectado al audio: el nodo Rango define cuánto se mueve' : 'Conectado al audio · activá «🎤 Audio» para que reaccione');
+      toast(opts.audioSrc !== 'off' ? 'Conectado al audio: el nodo Rango define cuánto se mueve' : 'Conectado al audio · elegí una fuente en «🎤 Audio» (micrófono o SYNDRUS) para que reaccione');
     }
     select(added);
     rebuild(); recompile(); save(); remember();
@@ -1109,6 +1109,7 @@
     try { stage.go(next, sec); } catch (e) { toast('Ese patch no compila; sigue al aire el anterior', true); return; }
     liveGraph = liveByDeck[deckSel] = next; liveKey = contentKey(next);
     liveAt[deckSel] = performance.now();
+    if (liveScene >= 0) { liveScene = -1; paintScenes(); }   // fireScene marks its scene right after
     broadcast({ type: 'live', graph: next, fade: sec, deck: deckSel });
     markPending();
     pushState(); paintControls();
@@ -1168,7 +1169,7 @@
   });
   ['pointerdown', 'wheel'].forEach(t => $('#mixer').addEventListener(t, e => e.stopPropagation()));
 
-  /* ── Scenes: 8 slots, keys 1–8 put them on air ──────────── */
+  /* ── Scenes: 16 slots in two pages, keys 1–8 put the visible page on air ── */
   const SCENES = 'pudrus_nodes_scenes_v1';
   let scenes = (() => { try { const a = JSON.parse(localStorage.getItem(SCENES) || '[]'); return Array.isArray(a) ? a : []; } catch (e) { return []; } })();
   scenes.length = 16;
@@ -1311,6 +1312,7 @@
   let bpm = opts.bpm || 120, beatOrigin = 0, taps = [];
   const beatNow = () => (syLive() ? syBeat() : (time - beatOrigin) * bpm / 60);
   function tap() {
+    if (syLive()) { toast('El tempo lo marca SYNDRUS: para usar el tap, elegí otra fuente en 🎤'); return; }
     const now = performance.now();
     if (taps.length && now - taps[taps.length - 1] > 2000) taps = [];
     taps.push(now); if (taps.length > 8) taps.shift();
@@ -1499,12 +1501,6 @@
     else if (!on && pressed.has(key)) { setAbs(c.id, c.k, c.t, pressed.get(key)); pressed.delete(key); }
   }
   const ctlValue = c => c.kind === 'xy' ? [ctlNorm(c), ctlNorm(c, true)] : c.kind === 'button' ? (pressed.has(ctlKey(c)) ? 1 : 0) : ctlNorm(c);
-  function normOf(id, k, type) {
-    const f = findInput(liveGraph, id, k, type) || findInput(graph, id, k, type);
-    if (!f) return 0;
-    const v = f.n.v && f.n.v[k] !== undefined ? f.n.v[k] : f.inp.v;
-    return Math.min(1, Math.max(0, (v - f.inp.min) / ((f.inp.max - f.inp.min) || 1)));
-  }
   // older versions kept one global list: move it into the current patch once
   (() => {
     const old = readJSON(CTL_STORE, null);
@@ -1565,7 +1561,8 @@
     const c = liveControls().find(x => x.id === id && x.k === k && (x.kind || 'fader') === 'fader');
     if (c) { ctlSet(c, norm); return; }
     const f = findInput(liveGraph, id, k, type) || findInput(graph, id, k, type);
-    if (f) setAbs(id, k, type, f.inp.min + Math.min(1, Math.max(0, +norm || 0)) * (f.inp.max - f.inp.min));
+    const p = Math.min(1, Math.max(0, +norm || 0));
+    if (f) setAbs(id, k, type, f.inp.curve ? N.sliderVal(f.inp, p) : f.inp.min + p * (f.inp.max - f.inp.min));
   }
   function flushLive() {
     if (!liveDirty) return;
@@ -1864,7 +1861,7 @@
     s.pcReady = Promise.resolve();
     stream.getVideoTracks().forEach(t => pc.addTrack(t, stream));
     pc.onicecandidate = e => { if (e.candidate) s.send({ type: 'rtc', cand: e.candidate.toJSON() }); };
-    pc.onconnectionstatechange = () => { if (s.pc !== pc) return; if (pc.connectionState === 'connected') tuneSender(pc); if (pc.connectionState === 'failed') toast(`📺 ${s.name}: no pasó el video · probá «dibuja ella misma»`, true); };
+    pc.onconnectionstatechange = () => { if (s.pc !== pc) return; if (pc.connectionState === 'connected') tuneSender(pc); if (pc.connectionState === 'failed') toast(`📺 ${s.name}: no pasó el video · probá «dibuja en ese aparato»`, true); };
     pc.createOffer().then(o => pc.setLocalDescription(o)).then(() => s.send({ type: 'rtc', sdp: pc.localDescription.toJSON() })).catch(e => toast('Video a la pantalla: ' + (e.message || e), true));
   }
   function screenRtc(s, m) {
@@ -1877,7 +1874,7 @@
     if (s.mode === 'video') startScreenVideo(s);
     else {
       stopScreenVideo(s); sendState(s.send);
-      if (usesMedia(liveByDeck.A) || usesMedia(liveByDeck.B)) toast(`📺 ${s.name} dibuja ella misma: la cámara y los videos no le llegan · pasala a «video»`);
+      if (usesMedia(liveByDeck.A) || usesMedia(liveByDeck.B)) toast(`📺 ${s.name} dibuja en ese aparato: la cámara y los videos no le llegan · pasala a «video de esta compu»`);
     }
     paintScreens();
   }
@@ -1896,7 +1893,7 @@
     if (m.type === 'hello') {
       const first = !s.name;
       s.name = String(m.name || 'Pantalla').slice(0, 40); s.mode = m.mode === 'video' ? 'video' : 'render';
-      if (first) toast(`📺 ${s.name} conectada · ${s.mode === 'video' ? 'video desde esta compu' : 'dibuja ella misma'}`);
+      if (first) toast(`📺 ${s.name} conectada · ${s.mode === 'video' ? 'video de esta compu' : 'dibuja en ese aparato'}`);
       applyScreenMode(s);
     } else if (m.type === 'screenmode') { s.mode = m.mode === 'video' ? 'video' : 'render'; applyScreenMode(s); }
     else if (m.type === 'ostat') { outStats.set('scr-' + s.key, { ...m, at: performance.now(), remote: true, name: s.name }); refreshScreenStats(); }
@@ -1925,7 +1922,7 @@
     screens.forEach(s => {
       const row = el('div', 'rm-scr');
       const sel = el('select'); sel.title = 'Cómo se muestra en esa pantalla';
-      [['render', 'dibuja ella misma'], ['video', 'video de esta compu']].forEach(([v, t]) => { const o = el('option'); o.value = v; o.textContent = t; sel.append(o); });
+      [['render', 'dibuja en ese aparato'], ['video', 'video de esta compu']].forEach(([v, t]) => { const o = el('option'); o.value = v; o.textContent = t; sel.append(o); });
       sel.value = s.mode || 'render'; sel.addEventListener('change', () => setScreenModeFromEditor(s.key, sel.value));
       const info = el('span', 'dim'); info.dataset.scr = s.key;
       row.append(el('span', 'nm', `📺 ${s.name || 'Pantalla'}`), sel, info);
@@ -1940,7 +1937,7 @@
     });
   }
   let rmTab = 'phone';
-  const RM_PHONE_DESC = 'Escaneá el código (mismo wifi = menos demora). Hace falta internet sólo para conectar.';
+  const RM_PHONE_DESC = DESK ? 'Escaneá el código con el celular conectado al mismo wifi que esta compu: no hace falta internet.' : 'Escaneá el código (mismo wifi = menos demora). Hace falta internet sólo para conectar.';
   function setRmTab(t) {
     rmTab = t === 'screen' ? 'screen' : 'phone';
     const scr = rmTab === 'screen';
@@ -2317,7 +2314,7 @@
     else if (cmd === 'bpm' && num >= 40 && num <= 240) { bpm = num; opts.bpm = bpm; saveOpts(); $('#bpm').textContent = Math.round(bpm); pushState(); }
     else if (cmd === 'xf' && Number.isFinite(num)) setXf(num);
     else if (cmd === 'deck') selectDeck(/^(b|1)$/i.test(String(a0)) ? 'B' : 'A');
-    else if (cmd === 'fade' && [0, 0.5, 1, 2, 4].includes(num)) { opts.fade = num; fadeSel.value = String(num); saveOpts(); }
+    else if (cmd === 'fade' && [0, 0.5, 1, 2, 4].includes(num)) { opts.fade = num; fadeSel.value = String(num); saveOpts(); pushState(); }
     else if (cmd === 'random') { randomPatch(); goLive(); }
     else if (cmd === 'vary') { varyPatch(); goLive(); }
     else if (cmd === 'overlay') setOverlayOn(on === null ? !ov.on : on);
@@ -2413,7 +2410,7 @@
     out.push(item(`PRV ${vw}×${vh}`, 'Resolución del PREVIO', 'lo'));
     // output windows
     const outs = [...outStats.values()].filter(o => now - o.at < 3000);
-    if (outs.length) outs.forEach((o, i) => out.push(item(`${o.remote ? '📺' : '🖵'}${outs.length > 1 ? i + 1 : ''} <b class="${fpsCls(o.fps)}">●</b> ${Math.round(o.fps)} fps ${o.w}×${o.h}`, `${o.remote ? `Pantalla remota «${o.name || ''}» · ${o.mode === 'video' ? 'recibe el video' : 'dibuja ella misma'}` : 'Ventana de salida'}: ${o.fps.toFixed(1)} fps · ${o.w}×${o.h} · pantalla ${o.sw}×${o.sh}${o.full ? ' · pantalla completa' : ''}`)));
+    if (outs.length) outs.forEach((o, i) => out.push(item(`${o.remote ? '📺' : '🖵'}${outs.length > 1 ? i + 1 : ''} <b class="${fpsCls(o.fps)}">●</b> ${Math.round(o.fps)} fps ${o.w}×${o.h}`, `${o.remote ? `Pantalla remota «${o.name || ''}» · ${o.mode === 'video' ? 'recibe el video' : 'dibuja en ese aparato'}` : 'Ventana de salida'}: ${o.fps.toFixed(1)} fps · ${o.w}×${o.h} · pantalla ${o.sw}×${o.sh}${o.full ? ' · pantalla completa' : ''}`)));
     else out.push(item('🖵 sin salida', 'No hay ninguna ventana de salida abierta (⧉ Salida)', 'dim'));
     out.push('<span class="st-sep"></span>');
     // the show

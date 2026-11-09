@@ -112,8 +112,8 @@
 </div>
 <video id="vid" muted playsinline autoplay></video>
 <div class="hint" id="hint">Doble clic: pantalla completa · M: ajustar (superficies y máscaras) · esperando al editor…</div>
-<script src="nodes.js?v=43"></script>
-<script src="hydra.js?v=43"></script>
+<script src="nodes.js?v=44"></script>
+<script src="hydra.js?v=44"></script>
 <script>
 (function () {
   // Shows what is ON AIR in the editor (not the preview), with the same cross-fades and overlay.
@@ -151,7 +151,7 @@
       const p = pc = new RTCPeerConnection({ iceServers: REMOTE === 'peer' ? [{ urls: 'stun:stun.l.google.com:19302' }] : [] });
       p.ontrack = e => { if (pc === p) useVideo(e.streams[0] || new MediaStream([e.track])); };
       p.onicecandidate = e => { if (e.candidate) ch.postMessage({ type: 'rtc', cand: e.candidate.toJSON() }); };
-      p.onconnectionstatechange = () => { if (pc === p && p.connectionState === 'failed') setConn('No se pudo recibir el video por el wifi: probá «Dibujar en este aparato»'); };
+      p.onconnectionstatechange = () => { if (pc === p && p.connectionState === 'failed') setConn('No se pudo recibir el video: probá «Dibujar en este aparato»'); };
       pcReady = p.setRemoteDescription(m.sdp).then(() => p.createAnswer()).then(a => p.setLocalDescription(a))
         .then(() => ch.postMessage({ type: 'rtc', sdp: p.localDescription.toJSON() })).catch(() => {});
     } else if (m.cand && pc) { const p = pc; pcReady = pcReady.then(() => p.addIceCandidate(m.cand)).catch(() => {}); }
