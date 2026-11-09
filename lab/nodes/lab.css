@@ -405,6 +405,12 @@ span.ctl-kind { display: inline-flex; align-items: center; color: #ff3fa4; }
 .dk-grid { display: grid; grid-template-columns: 90px 1fr; gap: 6px 10px; align-items: center; margin: 4px 0; }
 .dk-grid > span { color: var(--dim); }
 .dk-grid input, .dk-grid select { width: 100%; height: 26px; border-radius: 4px; border: 1px solid var(--line); background: var(--panel2); padding: 0 6px; }
+.dk-spouts { display: grid; gap: 6px; margin: 4px 0; }
+.dk-sp { display: grid; grid-template-columns: 22px 1fr 1fr 96px; gap: 6px; align-items: center; padding: 6px; border: 1px solid var(--line); border-radius: 6px; background: var(--panel2); }
+.dk-sp.is-on { border-color: var(--accent); }
+.dk-sp input[type=text], .dk-sp select { width: 100%; height: 26px; border-radius: 4px; border: 1px solid var(--line); background: var(--panel); padding: 0 6px; min-width: 0; }
+.dk-sp .st { grid-column: 2 / -1; font-size: 11px; color: var(--dim); }
+.dk-sp .st.ok { color: #7bd88f; } .dk-sp .st.bad { color: #ff7a7a; }
 .dk-pair { display: grid; grid-template-columns: 1fr 80px; gap: 6px; }
 .dk-osc { margin: 6px 2px; color: var(--dim); font-size: 11px; line-height: 1.6; }
 .dk-osc summary { cursor: pointer; color: var(--text); }

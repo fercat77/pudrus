@@ -37,6 +37,44 @@ module.exports = async function run({ app, mainWin, base, port, startSpout, stop
       try { r.stop(); } catch (e) { /* stopped */ }
       out.senders = bridge.listSenders().map(s => s.name || s);
     }
+    stopSpout();
+
+    // 1b) several Spout outputs at once, each with its own source: the mix (black on), layer A, layer B, scene 1
+    if (bridge) {
+      const solid = c => JSON.stringify({ nodes: [{ id: 1, type: 'output', x: 0, y: 0, v: { c, vignette: 0, grain: 0 }, p: {} }], links: [] });
+      await js(`(() => { const E = window.__nodesEditor;
+        E.selectDeck('A'); E.loadGraph(${solid('#ff0000')}); E.goLive(undefined, 0);
+        E.selectDeck('B'); E.loadGraph(${solid('#0000ff')}); E.goLive(undefined, 0);
+        E.selectDeck('A'); E.loadGraph(${solid('#00ff00')}); E.storeScene(0);
+        E.setXf(0); E.setBlack(true); })()`);
+      const plan = [['live', 'T-MIX'], ['A', 'T-A'], ['B', 'T-B'], ['scene:1', 'T-SC1']];
+      out.multiStart = plan.map(([src, name], slot) => startSpout({ slot, name, src, width: 320, height: 180, fps: 30 }).ok);
+      await wait(4500);
+      out.multi = {};
+      for (const [src, name] of plan) {
+        const r = new bridge.TextureReceiver(name);
+        let frame = null;
+        for (let i = 0; i < 80 && !frame; i++) { await wait(40); if (r.hasNewFrame()) frame = r.receiveFrame(); }
+        if (frame) {
+          const s = [0, 0, 0]; let n = 0;
+          for (let i = 0; i < frame.data.length; i += 4 * 53) { s[0] += frame.data[i]; s[1] += frame.data[i + 1]; s[2] += frame.data[i + 2]; n++; }
+          out.multi[src] = s.map(v => Math.round(v / n));
+        } else out.multi[src] = 'sin cuadros';
+        try { r.stop(); } catch (e) { /* stopped */ }
+      }
+      out.multiSenders = bridge.listSenders().map(s => s.name || s).filter(x => /^T-/.test(x));
+      out.multiDup = startSpout({ slot: 3, name: 'T-A', src: 'B' }).ok;   // a second «T-A» is refused
+      await js('window.__nodesEditor.setBlack(false)');
+      stopSpout();
+      // the panel: 4 rows; turning one on from the panel starts that output with its source
+      await js('document.getElementById("btnDesk").click()'); await wait(800);
+      out.deskRows = await js('[...document.querySelectorAll("#dkSpouts .dk-sp")].map(r => r.querySelector("input[type=text]").value + "|" + r.querySelector("select").value)');
+      await js('(() => { const r = document.querySelectorAll("#dkSpouts .dk-sp")[1]; const s = r.querySelector("select"); s.value = "scene:1"; const c = r.querySelector("input[type=checkbox]"); c.checked = true; c.dispatchEvent(new Event("change")); })()');
+      await wait(1500);
+      out.deskOn = spoutStats(1);
+      out.deskStatus = await js('document.getElementById("status").textContent');
+      stopSpout();
+    }
 
     // 2) OSC: listen to what NODRUS sends, then send commands to it
     const got = [];

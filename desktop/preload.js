@@ -8,7 +8,8 @@ contextBridge.exposeInMainWorld('nodrusDesktop', {
   sendRemote: (id, msg) => ipcRenderer.send('remote-send', id, msg),
   spout: {
     start: o => ipcRenderer.invoke('spout-start', o),
-    stop: () => ipcRenderer.invoke('spout-stop'),
+    stop: slot => ipcRenderer.invoke('spout-stop', slot),
+    config: o => ipcRenderer.invoke('spout-config', o),
     stats: () => ipcRenderer.invoke('spout-stats'),
   },
   osc: {

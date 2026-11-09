@@ -2328,24 +2328,49 @@
   async function paintDesk() {
     if (!DESK) return;
     deskInfo = await DESK.info();
-    const sp = deskInfo.spout, sc = sp.cfg || {};
-    $('#dkSpoutOn').checked = !!sp.on;
-    $('#dkSpoutName').value = sc.name || 'NODRUS';
-    $('#dkSpoutSize').value = `${sc.width || 1920}x${sc.height || 1080}`;
-    $('#dkSpoutState').textContent = sp.on ? `Enviando «${sp.name}» ${sp.width}×${sp.height}` + (sp.error ? ' · error: ' + sp.error : '') : sp.available === false ? 'No disponible: ' + sp.error : 'Apagado';
+    paintSpouts();
     $('#dkOscOn').checked = !!deskInfo.osc.running;
     $('#dkOscIn').value = deskInfo.osc.inPort; $('#dkOscHost').value = deskInfo.osc.outHost; $('#dkOscOut').value = deskInfo.osc.outPort;
     const ds = $('#dkDisplay'); ds.textContent = '';
     [{ id: 'auto', label: 'Automático (la otra pantalla)' }, ...deskInfo.displays].forEach(d => { const o = el('option', '', d.label); o.value = d.id; ds.append(o); });
     ds.value = deskInfo.display;
-    $('#btnDesk').classList.toggle('is-on', !!sp.on || !!deskInfo.osc.running);
+    $('#btnDesk').classList.toggle('is-on', (deskInfo.spouts || []).some(s => s.on) || !!deskInfo.osc.running);
   }
-  async function spoutApply() {
-    const [w, h] = $('#dkSpoutSize').value.split('x').map(Number);
-    const r = $('#dkSpoutOn').checked ? await DESK.spout.start({ name: $('#dkSpoutName').value.trim() || 'NODRUS', width: w, height: h, fps: opts.fpsCap || 60 }) : await DESK.spout.stop();
-    if (r && r.ok === false) { toast('Spout: ' + r.error, true); $('#dkSpoutOn').checked = false; }
-    else if ($('#dkSpoutOn').checked) toast(`Spout encendido: buscá «${$('#dkSpoutName').value.trim() || 'NODRUS'}» en Resolume o TouchDesigner`);
-    paintDesk();
+  /* Spout: up to 4 outputs, each one shows the mix on air, one layer, or a saved scene */
+  const SP_SIZES = [['1280x720', '1280×720'], ['1920x1080', '1920×1080'], ['2560x1440', '2560×1440'], ['3840x2160', '3840×2160 (4K)'], ['1080x1920', '1080×1920 vertical']];
+  const spSrcs = () => [['live', 'Al aire (la mezcla)'], ['A', 'Capa A (limpia)'], ['B', 'Capa B (limpia)'], ...Array.from({ length: 16 }, (_, i) => ['scene:' + (i + 1), `Escena ${i + 1}${scenes[i] ? '' : ' (vacía)'}`])];
+  const srcName = v => (spSrcs().find(x => x[0] === v) || [v, v])[1];
+  function paintSpouts() {
+    const box = $('#dkSpouts'); if (!box || !deskInfo) return;
+    box.textContent = '';
+    if (deskInfo.spoutAvailable === false) { $('#dkSpoutState').textContent = 'Spout no está disponible: ' + deskInfo.spoutError; return; }
+    $('#dkSpoutState').textContent = '';
+    (deskInfo.spouts || []).forEach((sp, i) => {
+      const c = sp.cfg || {}, row = el('div', 'dk-sp' + (sp.on ? ' is-on' : ''));
+      const on = el('input'); on.type = 'checkbox'; on.checked = !!sp.on; on.title = 'Enviar esta salida';
+      const nm = el('input'); nm.type = 'text'; nm.maxLength = 60; nm.value = c.name || ''; nm.title = 'Nombre en Resolume / TouchDesigner / OBS';
+      const src = el('select'); src.title = 'Lo que muestra esta salida';
+      spSrcs().forEach(([v, t]) => { const o = el('option', '', t); o.value = v; src.append(o); }); src.value = c.src || 'live';
+      const sz = el('select'); sz.title = 'Tamaño';
+      SP_SIZES.forEach(([v, t]) => { const o = el('option', '', t); o.value = v; sz.append(o); }); sz.value = `${c.width || 1920}x${c.height || 1080}`;
+      if (!sz.value) sz.value = '1920x1080';
+      const st = el('span', 'st' + (sp.on ? (sp.error ? ' bad' : ' ok') : ''));
+      st.dataset.slot = i;
+      st.textContent = sp.on ? `Enviando «${sp.name}» · ${srcName(sp.src)} · ${sp.width}×${sp.height}` + (sp.error ? ' · error: ' + sp.error : '') : 'Apagada';
+      const get = () => { const [w, h] = sz.value.split('x').map(Number); return { slot: i, name: nm.value.trim() || c.name || 'NODRUS-' + (i + 1), src: src.value, width: w, height: h, fps: opts.fpsCap || 60 }; };
+      const apply = async () => {
+        const o = get();
+        if (!on.checked) { await DESK.spout.stop(i); await DESK.spout.config(o); paintDesk(); return; }
+        const r = await DESK.spout.start(o);
+        if (r && r.ok === false) { toast('Spout: ' + r.error, true); on.checked = false; }
+        else toast(`Spout «${o.name}» → ${srcName(o.src)} · buscalo en Resolume o TouchDesigner` + (o.src.startsWith('scene:') && !scenes[+o.src.slice(6) - 1] ? ' (esa escena está vacía: guardala con Shift+número)' : ''));
+        paintDesk();
+      };
+      on.addEventListener('change', apply);
+      [nm, src, sz].forEach(x => x.addEventListener('change', () => { if (on.checked) apply(); else DESK.spout.config(get()); }));
+      row.append(on, nm, src, sz, st);
+      box.append(row);
+    });
   }
   async function oscApply() {
     if ($('#dkOscOn').checked) {
@@ -2361,14 +2386,15 @@
     DESK.osc.on(oscIn);
     DESK.osc.onError(msg => toast('OSC: ' + msg, true));
     $('#btnDesk').addEventListener('click', e => { e.stopPropagation(); const r = e.currentTarget.getBoundingClientRect(); paintDesk(); openPop($('#deskPop'), r.left - 260, r.bottom + 4); });
-    $('#dkSpoutOn').addEventListener('change', spoutApply);
-    $('#dkSpoutSize').addEventListener('change', () => { if ($('#dkSpoutOn').checked) spoutApply(); });
-    $('#dkSpoutName').addEventListener('change', () => { if ($('#dkSpoutOn').checked) spoutApply(); });
     $('#dkOscOn').addEventListener('change', oscApply);
     ['#dkOscIn', '#dkOscHost', '#dkOscOut'].forEach(sel => $(sel).addEventListener('change', () => { if ($('#dkOscOn').checked) oscApply(); }));
     $('#dkDisplay').addEventListener('change', e => DESK.setDisplay(e.target.value));
     $('#dkOut').addEventListener('click', () => $('#btnOut').click());
-    setInterval(async () => { if (!$('#deskPop').hidden) { const st = await DESK.spout.stats(); if (st.on) $('#dkSpoutState').textContent = `Enviando «${st.name}» ${st.width}×${st.height} · ${st.frames} cuadros` + (st.error ? ' · ' + st.error : ''); } }, 1000);
+    setInterval(async () => {
+      if ($('#deskPop').hidden) return;
+      const all = await DESK.spout.stats();
+      all.forEach((s, i) => { const e = document.querySelector(`#dkSpouts .st[data-slot="${i}"]`); if (e && s.on) e.textContent = `Enviando «${s.name}» · ${srcName(s.src)} · ${s.width}×${s.height} · ${s.frames} cuadros` + (s.error ? ' · ' + s.error : ''); });
+    }, 1000);
     paintDesk().then(() => { deskOscOn = !!(deskInfo && deskInfo.osc.running); startRemote(); });   // phones can join right away
   }
 
@@ -2410,7 +2436,7 @@
     out.push(item(`PRV ${vw}×${vh}`, 'Resolución del PREVIO', 'lo'));
     // output windows
     const outs = [...outStats.values()].filter(o => now - o.at < 3000);
-    if (outs.length) outs.forEach((o, i) => out.push(item(`${o.remote ? '📺' : '🖵'}${outs.length > 1 ? i + 1 : ''} <b class="${fpsCls(o.fps)}">●</b> ${Math.round(o.fps)} fps ${o.w}×${o.h}`, `${o.remote ? `Pantalla remota «${o.name || ''}» · ${o.mode === 'video' ? 'recibe el video' : 'dibuja en ese aparato'}` : 'Ventana de salida'}: ${o.fps.toFixed(1)} fps · ${o.w}×${o.h} · pantalla ${o.sw}×${o.sh}${o.full ? ' · pantalla completa' : ''}`)));
+    if (outs.length) outs.forEach((o, i) => out.push(item(o.spout ? `⇉ ${esc(o.spout)} <b class="${fpsCls(o.fps)}">●</b> ${Math.round(o.fps)}` : `${o.remote ? '📺' : '🖵'}${outs.length > 1 ? i + 1 : ''} <b class="${fpsCls(o.fps)}">●</b> ${Math.round(o.fps)} fps ${o.w}×${o.h}`, `${o.spout ? `Spout «${o.spout}» · ${srcName(o.src)}` : o.remote ? `Pantalla remota «${o.name || ''}» · ${o.mode === 'video' ? 'recibe el video' : 'dibuja en ese aparato'}` : 'Ventana de salida'}: ${o.fps.toFixed(1)} fps · ${o.w}×${o.h} · pantalla ${o.sw}×${o.sh}${o.full ? ' · pantalla completa' : ''}`)));
     else out.push(item('🖵 sin salida', 'No hay ninguna ventana de salida abierta (⧉ Salida)', 'dim'));
     out.push('<span class="st-sep"></span>');
     // the show
@@ -2429,7 +2455,7 @@
     if (conns.size) out.push(item(`📱 ${conns.size}`, `${conns.size} celular(es) conectado(s) como control`));
     if (midi && midi.inputs.size) out.push(item(`🎹 ${midi.inputs.size}`, [...midi.inputs.values()].map(i => i.name).join(', ') || 'MIDI'));
     if (DESK) {
-      if (st.desk && st.desk.spout) out.push(item('Spout ✓', 'Enviando a Spout'));
+      if (st.desk && st.desk.spout) out.push(item(`Spout ✓${st.desk.spout > 1 ? ' ×' + st.desk.spout : ''}`, `${st.desk.spout} salida(s) Spout encendida(s)`));
       if (deskOscOn) out.push(item('OSC ✓', 'OSC activo'));
     }
     out.push('<span class="st-sep"></span>');
@@ -2453,6 +2479,7 @@
     opts.fpsCap = N.FPS_CAPS.includes(f) ? f : 0; saveOpts();
     broadcast({ type: 'fpscap', fps: opts.fpsCap });
     paintFpsMenu(); paintStatus();
+    if (DESK) DESK.info().then(inf => (inf.spouts || []).forEach((s, i) => { if (s.on) DESK.spout.start({ slot: i, name: s.name, src: s.src, width: s.width, height: s.height, fps: opts.fpsCap || 60 }); })).catch(() => {});
     toast(opts.fpsCap ? `Límite: ${opts.fpsCap} fps (editor, salida y Spout)` : 'fps automático: sigue la frecuencia de la pantalla');
   }
   function paintFpsMenu() { const pi = $('#pmFps'); if (pi) pi.firstChild.textContent = '　Límite de fps: ' + (opts.fpsCap ? opts.fpsCap : 'auto'); }

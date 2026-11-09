@@ -128,6 +128,10 @@
      screen — the desktop app over the wifi (?ws) or the internet relay (?remote#room) ── */
   const Q = new URLSearchParams(location.search);
   const REMOTE = Q.has('ws') ? 'ws' : (Q.has('remote') && location.hash.length > 1 ? 'peer' : '');
+  // what this window shows (the desktop app's Spout outputs pick one): the mix on air, one layer clean, or a saved scene
+  const SRC = /^(A|B|scene:(1[0-6]|[1-9]))$/.test(Q.get('src') || '') ? Q.get('src') : 'live';
+  const LAYER = SRC === 'A' || SRC === 'B' ? SRC : '', SCENE = SRC.startsWith('scene:') ? +SRC.slice(6) - 1 : -1;
+  const CLEAN_SRC = SRC !== 'live';   // a layer or a scene goes out clean: no logo layer, screen filters, black or strobe
   const MODE_KEY = 'pudrus_screen_mode';
   let screenMode = (() => { try { return localStorage.getItem(MODE_KEY) || ''; } catch (e) { return ''; } })();
   const vid = $('vid');
@@ -235,6 +239,20 @@
     setConn('Conectando con el editor…');
   }
 
+  if (LAYER) { stage.x = LAYER === 'B' ? 1 : 0; stage.mode = 'mix'; }
+  // a scene: read it from this browser's saved scenes (the editor writes them), and follow its changes
+  let sceneKey = '';
+  function loadScene() {
+    if (SCENE < 0) return;
+    let g = null;
+    try { const a = JSON.parse(localStorage.getItem('pudrus_nodes_scenes_v1') || '[]'); g = Array.isArray(a) && a[SCENE] ? a[SCENE].graph : null; } catch (e) { g = null; }
+    const k = JSON.stringify(g);
+    if (k === sceneKey) return;
+    sceneKey = k;
+    try { stage.go(g && Array.isArray(g.nodes) ? g : { nodes: [], links: [] }, 0, 'A'); } catch (e) { /* keep the last one */ }
+    stage.x = 0; stage.mode = 'mix';
+  }
+  if (SCENE >= 0) { loadScene(); addEventListener('storage', e => { if (!e.key || e.key === 'pudrus_nodes_scenes_v1') loadScene(); }); setInterval(loadScene, 2000); }
   function size() { stage.resize(Math.min(2560, innerWidth * devicePixelRatio), Math.min(1440, innerHeight * devicePixelRatio)); }
   size();
 
@@ -242,9 +260,12 @@
     const m = e.data || {};
     lastMsg = performance.now();
     try {
+      if (SCENE >= 0 && (m.type === 'live' || m.type === 'direct' || m.type === 'mix' || m.type === 'transition')) return;   // a scene ignores what goes on air
+      if (CLEAN_SRC && (m.type === 'master' || m.type === 'overlay' || m.type === 'screenfx')) return;
+      if (LAYER && (m.type === 'live' || m.type === 'direct') && (m.deck || 'A') !== LAYER) return;   // only its own layer
       if (m.type === 'live') { stage.go(m.graph, m.fade || 0, m.deck); $('hint').textContent = 'Doble clic: pantalla completa · M: ajustar (superficies y máscaras)'; }
       else if (m.type === 'direct') stage.direct(m.graph, m.deck);
-      else if (m.type === 'mix') { stage.x = m.x; stage.mode = m.mode; }
+      else if (m.type === 'mix') { if (!LAYER) { stage.x = m.x; stage.mode = m.mode; } }
       else if (m.type === 'frame') { time = m.t; audio = m.audio; if (typeof m.beat === 'number') N.clock.beat = m.beat; }
       else if (m.type === 'fpscap') fpsCap = N.FPS_CAPS.includes(m.fps) ? m.fps : 0;
       else if (m.type === 'master') { stage.setBlack(!!m.black, m.fade || 0); stage.setStrobe(!!m.strobe); }
@@ -345,7 +366,7 @@
   setInterval(() => {
     const n = performance.now(), fps = oFrames / ((n - oT0) / 1000); oFrames = 0; oT0 = n;
     const c = srcEl();
-    ch.postMessage({ type: 'ostat', id: oId, fps, w: c.videoWidth || c.width, h: c.videoHeight || c.height, mode: REMOTE ? (videoOn ? 'video' : 'render') : '', sw: Math.round(screen.width * devicePixelRatio), sh: Math.round(screen.height * devicePixelRatio), full: !!document.fullscreenElement });
+    ch.postMessage({ type: 'ostat', id: oId, fps, w: c.videoWidth || c.width, h: c.videoHeight || c.height, mode: REMOTE ? (videoOn ? 'video' : 'render') : '', spout: Q.get('spout') || '', src: SRC, sw: Math.round(screen.width * devicePixelRatio), sh: Math.round(screen.height * devicePixelRatio), full: !!document.fullscreenElement });
   }, 1000);
   const limit = N.fpsLimiter();
   function loop(now) {

@@ -14,6 +14,8 @@ let bridge = null, bridgeError = '';
 try { bridge = require('@napolab/texture-bridge-core'); } catch (e) { bridgeError = String(e.message || e); }
 
 const TEST = process.argv.includes('--nodrus-test');
+// the automatic test runs in its own profile: it never touches your patches, scenes or settings
+if (TEST) app.setPath('userData', path.join(app.getPath('temp'), 'nodrus-test-profile'));
 // remote screens get the video over the local wifi: offer the real LAN address, not an mDNS «.local» name
 // (TVs and some tablets can't resolve those)
 app.commandLine.appendSwitch('disable-features', 'WebRtcHideLocalIpsWithMdns');
@@ -42,8 +44,12 @@ const MIME = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; cha
 
 /* ── Settings (remembered between runs) ── */
 const CFG_FILE = path.join(app.getPath('userData'), 'nodrus-config.json');
-const cfg = Object.assign({ display: 'auto', spout: { on: false, name: 'NODRUS', width: 1920, height: 1080, fps: 60 }, osc: { on: false, inPort: 9000, outHost: '127.0.0.1', outPort: 9001 } },
+const cfg = Object.assign({ display: 'auto', osc: { on: false, inPort: 9000, outHost: '127.0.0.1', outPort: 9001 } },
   (() => { try { return JSON.parse(fs.readFileSync(CFG_FILE, 'utf8')); } catch (e) { return {}; } })());
+// Spout outputs: one list of 4 (older versions kept a single «spout» entry: it becomes the first one)
+const SPOUT_DEFAULTS = [['NODRUS', 'live'], ['NODRUS-A', 'A'], ['NODRUS-B', 'B'], ['NODRUS-Esc1', 'scene:1']].map(([name, src]) => ({ on: false, name, src, width: 1920, height: 1080, fps: 60 }));
+cfg.spouts = SPOUT_DEFAULTS.map((d, i) => Object.assign({}, d, (Array.isArray(cfg.spouts) && cfg.spouts[i]) || (!Array.isArray(cfg.spouts) && i === 0 && cfg.spout) || {}));
+delete cfg.spout;
 const saveCfg = () => { if (TEST) return; try { fs.writeFileSync(CFG_FILE, JSON.stringify(cfg, null, 1)); } catch (e) { /* ignore */ } };
 
 /* ── Local server: the editor for the app, the phone controller for the wifi ── */
@@ -117,37 +123,47 @@ ipcMain.on('remote-send', (e, id, msg) => {
   ws.send(JSON.stringify(msg));
 });
 
-/* ── Spout: an invisible, clean copy of the output window, shared on the GPU ── */
-let spout = null;
-function stopSpout() {
-  if (!spout) return;
-  try { spout.sender.stop(); } catch (e) { /* stopped */ }
-  if (spout.win && !spout.win.isDestroyed()) spout.win.destroy();
-  spout = null;
+/* ── Spout: up to 4 senders. Each one is an invisible, clean copy of the output window that shows
+   one source — what is on air (the mix), layer A, layer B, or a saved scene — shared on the GPU ── */
+const SPOUT_MAX = 4;
+const SPOUT_SRC = /^(live|A|B|scene:(1[0-6]|[1-9]))$/;
+const spouts = new Map();   // slot → { sender, win, name, width, height, fps, src, frames, defects, error }
+function stopSpout(slot) {
+  if (slot === undefined) { [...spouts.keys()].forEach(k => stopSpout(k)); return; }
+  const sp = spouts.get(slot); if (!sp) return;
+  try { sp.sender.stop(); } catch (e) { /* stopped */ }
+  if (sp.win && !sp.win.isDestroyed()) sp.win.destroy();
+  spouts.delete(slot);
 }
 function startSpout(o = {}) {
-  stopSpout();
+  const slot = Math.max(0, Math.min(SPOUT_MAX - 1, o.slot | 0));
+  stopSpout(slot);
   if (!bridge) return { ok: false, error: 'Spout no está disponible: ' + bridgeError };
-  const name = String(o.name || 'NODRUS').slice(0, 60), width = Math.max(64, Math.min(4096, o.width | 0 || 1920)), height = Math.max(64, Math.min(4096, o.height | 0 || 1080)), fps = Math.max(10, Math.min(120, o.fps | 0 || 60));
+  const name = String(o.name || (slot ? 'NODRUS-' + (slot + 1) : 'NODRUS')).slice(0, 60), width = Math.max(64, Math.min(4096, o.width | 0 || 1920)), height = Math.max(64, Math.min(4096, o.height | 0 || 1080)), fps = Math.max(10, Math.min(120, o.fps | 0 || 60));
+  const src = SPOUT_SRC.test(String(o.src || '')) ? String(o.src) : 'live';
+  if ([...spouts.values()].some(s => s.name === name)) return { ok: false, error: `Ya hay otra salida Spout llamada «${name}»: cada una necesita su nombre` };
   let sender;
   try { sender = new bridge.TextureSender(name, width, height); } catch (e) { return { ok: false, error: String(e.message || e) }; }
   const win = new BrowserWindow({ width, height, show: false, frame: false, useContentSize: true,
     webPreferences: { offscreen: { useSharedTexture: true, deviceScaleFactor: 1 }, backgroundThrottling: false } });
-  spout = { sender, win, name, width, height, fps, frames: 0, defects: 0, error: '' };
+  const sp = { sender, win, name, width, height, fps, src, frames: 0, defects: 0, error: '' };
+  spouts.set(slot, sp);
   win.webContents.on('paint', (details, dirty, image, legacyTexture) => {
     const tex = (details && details.texture) || legacyTexture;
     if (!tex) return;
     try {
       const defect = bridge.sendTextureFromPaintEvent(sender, tex.textureInfo);
-      if (defect) spout.defects++; else spout.frames++;
-    } catch (e) { spout.error = String(e.message || e); }
+      if (defect) sp.defects++; else sp.frames++;
+    } catch (e) { sp.error = String(e.message || e); }
     finally { try { tex.release(); } catch (e) { /* released */ } }
   });
   win.webContents.setFrameRate(fps);
-  win.loadURL(`${base}/lab/nodes/output.html?clean=1`);
-  return { ok: true, name, width, height, fps };
+  win.loadURL(`${base}/lab/nodes/output.html?clean=1&src=${encodeURIComponent(src)}&spout=${encodeURIComponent(name)}`);
+  return { ok: true, slot, name, width, height, fps, src };
 }
-const spoutStats = () => (spout ? { on: true, name: spout.name, width: spout.width, height: spout.height, fps: spout.fps, frames: spout.frames, defects: spout.defects, error: spout.error } : { on: false, available: !!bridge, error: bridge ? '' : bridgeError });
+const statOf = sp => ({ on: true, name: sp.name, width: sp.width, height: sp.height, fps: sp.fps, src: sp.src, frames: sp.frames, defects: sp.defects, error: sp.error });
+const spoutStats = (slot = 0) => (spouts.has(slot) ? statOf(spouts.get(slot)) : { on: false, available: !!bridge, error: bridge ? '' : bridgeError });
+const spoutAll = () => Array.from({ length: SPOUT_MAX }, (_, i) => spoutStats(i));
 
 /* ── OSC in / out ── */
 let oscIn = null, oscOut = null;
@@ -214,11 +230,13 @@ function createMain() {
 ipcMain.handle('info', () => ({
   version: app.getVersion(), port, lanUrl: `http://${lanAddress()}:${port}`, phones: phones.size,
   displays: screen.getAllDisplays().map((d, i) => ({ id: String(d.id), label: `${i + 1}: ${d.size.width}×${d.size.height}${d.id === screen.getPrimaryDisplay().id ? ' (principal)' : ''}` })),
-  display: String(cfg.display), spout: Object.assign(spoutStats(), { cfg: cfg.spout }), osc: Object.assign({ running: !!oscIn }, cfg.osc),
+  display: String(cfg.display), spouts: spoutAll().map((s, i) => Object.assign(s, { cfg: cfg.spouts[i] })), spoutAvailable: !!bridge, spoutError: bridge ? '' : bridgeError, osc: Object.assign({ running: !!oscIn }, cfg.osc),
 }));
-ipcMain.handle('spout-start', (e, o) => { const r = startSpout(o); if (r.ok) { cfg.spout = { ...cfg.spout, ...o, on: true }; saveCfg(); } return r; });
-ipcMain.handle('spout-stop', () => { stopSpout(); cfg.spout.on = false; saveCfg(); return { ok: true }; });
-ipcMain.handle('spout-stats', () => spoutStats());
+ipcMain.handle('spout-start', (e, o) => { const r = startSpout(o); const i = Math.max(0, Math.min(SPOUT_MAX - 1, (o && o.slot) | 0)); if (r.ok) { cfg.spouts[i] = { ...cfg.spouts[i], name: r.name, width: r.width, height: r.height, fps: r.fps, src: r.src, on: true }; saveCfg(); } return r; });
+ipcMain.handle('spout-stop', (e, slot) => { const i = Math.max(0, Math.min(SPOUT_MAX - 1, slot | 0)); stopSpout(i); cfg.spouts[i].on = false; saveCfg(); return { ok: true }; });
+// a slot that is off still remembers its name, source and size
+ipcMain.handle('spout-config', (e, o) => { const i = Math.max(0, Math.min(SPOUT_MAX - 1, (o && o.slot) | 0)); const c = { ...cfg.spouts[i] }; if (o.name) c.name = String(o.name).slice(0, 60); if (SPOUT_SRC.test(String(o.src || ''))) c.src = String(o.src); if (o.width) c.width = o.width | 0; if (o.height) c.height = o.height | 0; cfg.spouts[i] = c; saveCfg(); return { ok: true }; });
+ipcMain.handle('spout-stats', () => spoutAll());
 ipcMain.handle('osc-start', (e, o) => { const r = startOsc(o); if (r.ok) { cfg.osc = { ...cfg.osc, ...o, on: true }; saveCfg(); } return r; });
 ipcMain.handle('osc-stop', () => { stopOsc(); cfg.osc.on = false; saveCfg(); return { ok: true }; });
 // CPU (share of the whole machine) and memory of every NODRUS process, plus Spout state
@@ -227,7 +245,7 @@ ipcMain.handle('metrics', () => {
   const cores = require('os').cpus().length || 1;
   const cpu = ms.reduce((s, m) => s + (m.cpu ? m.cpu.percentCPUUsage : 0), 0) / cores;
   const mem = ms.reduce((s, m) => s + (m.memory ? m.memory.workingSetSize : 0), 0) / 1024;
-  let spout = false; try { spout = !!spoutStats().on; } catch (e) { /* no spout */ }
+  let spout = 0; try { spout = spouts.size; } catch (e) { /* no spout */ }
   return { cpu, mem, spout };
 });
 ipcMain.handle('set-display', (e, id) => { cfg.display = id || 'auto'; saveCfg(); return { ok: true }; });
@@ -238,7 +256,7 @@ app.whenReady().then(async () => {
   startPhones();
   createMain();
   if (!TEST) {
-    if (cfg.spout.on) startSpout(cfg.spout);
+    cfg.spouts.forEach((c, i) => { if (c.on) { const r = startSpout({ ...c, slot: i }); if (!r.ok) console.error('Spout', i + 1, r.error); } });
     if (cfg.osc.on) startOsc(cfg.osc);
   } else require('./test.js')({ app, mainWin, base, port, startSpout, stopSpout, spoutStats, startOsc, stopOsc, bridge });
 });
