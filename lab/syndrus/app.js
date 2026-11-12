@@ -555,6 +555,7 @@
   /* ── ARPEGIO: its own panel. A progression of up to 4 chords of the scale (saved in the pattern, plays with ▶,
      goes into the bank, the decks and the WAV), its own sound and channel; the keys can drive it live ── */
   const ROMAN = ['I', 'II', 'III', 'IV', 'V', 'VI', 'VII'];
+  const KIND_SHORT = { off: '1 nota', triad: 'tríada', seventh: '7ª', sus2: 'sus2', sus4: 'sus4', add9: 'add9', power: '5ª', oct: '8va' };
   const KIND_SUFFIX = { triad: '', seventh: '7', sus2: 'sus2', sus4: 'sus4', add9: 'add9', power: '5', oct: ' 8va', off: ' (nota)' };
   function chordLabel(c) {
     if (!c || !Number.isFinite(c.deg)) return '—';
@@ -566,7 +567,6 @@
     const a = st.arp, box = $('#arpBody'); if (!box) return;
     const on = $('#arpOn'); on.classList.toggle('on', a.on); on.textContent = a.on ? '● Encendido' : '○ Apagado';
     $('#mArp').classList.toggle('on', !!a.mute);
-    document.querySelectorAll('.sy-lowsw [data-low="arp"]').forEach(b => b.classList.toggle('live', a.on));
     box.innerHTML = '';
     const prog = el('div', 'sy-prog'), names = [];
     const scaleLen = (X.SCALES[st.scale] || X.SCALES.minor).length;
@@ -574,10 +574,10 @@
       const slot = el('div', 'sy-chord' + (Number.isFinite(c.deg) ? '' : ' empty')); slot.dataset.i = i;
       const nm = el('b', '', chordLabel(c)); names.push(nm);
       const dg = el('select'); dg.title = 'Grado de la escala';
-      [['', '—'], ...Array.from({ length: scaleLen }, (_, d) => [d, `${ROMAN[d] || d + 1} · ${X.NOTE_NAMES[X.degreeToMidi(st.root, st.scale, d, 4) % 12]}`])].forEach(([v, t]) => { const o = el('option', '', t); o.value = v; dg.append(o); });
+      [['', '—'], ...Array.from({ length: scaleLen }, (_, d) => [d, ROMAN[d] || String(d + 1)])].forEach(([v, t]) => { const o = el('option', '', t); o.value = v; dg.append(o); });
       dg.value = Number.isFinite(c.deg) ? String(c.deg) : '';
       const kd = el('select'); kd.title = 'Tipo de acorde';
-      X.CHORD_NAMES.forEach(([v, t]) => { const o = el('option', '', t); o.value = v; kd.append(o); }); kd.value = c.kind || 'triad';
+      X.CHORD_NAMES.forEach(([v, t]) => { const o = el('option', '', KIND_SHORT[v] || t); o.value = v; o.title = t; kd.append(o); }); kd.value = c.kind || 'triad';
       const upd = () => { nm.textContent = chordLabel(c); slot.classList.toggle('empty', !Number.isFinite(c.deg)); save(); };
       dg.addEventListener('change', () => { c.deg = dg.value === '' ? null : +dg.value; upd(); });
       kd.addEventListener('change', () => { c.kind = kd.value; upd(); });
@@ -595,8 +595,8 @@
       param('Probab.', a, 'prob', 0, 1, { fmt: x => Math.round(x * 100) + '%' }),
       param('Tono', a, 'tone', 0, 1), param('Caída', a, 'decay', 0, 1),
       param('Volumen', a, 'level', 0, 1.2), param('→ Delay', a, 'delay', 0, 1), param('→ Reverb', a, 'reverb', 0, 1),
-      choice('Teclado', a, 'keys', [['synth', 'toca el synth'], ['arp', 'maneja el arpegio']], () => { allNotesOff(); save(); toast(a.keys === 'arp' ? 'Las teclas y el MIDI manejan el arpegio (mientras las tocás, reemplazan a los acordes)' : 'Las teclas tocan el synth'); }),
-      choice('Acorde al tocar', a, 'keyChord', X.CHORD_NAMES, save),
+      choice('Teclado', a, 'keys', [['synth', 'synth'], ['arp', 'arpegio']], () => { allNotesOff(); save(); toast(a.keys === 'arp' ? 'Las teclas y el MIDI manejan el arpegio (mientras las tocás, reemplazan a los acordes)' : 'Las teclas tocan el synth'); }),
+      choice('Acorde tecla', a, 'keyChord', X.CHORD_NAMES, save),
       choice('Mantener', a, 'latch', [[false, 'no'], [true, 'sí (latch)']], () => { if (!a.latch) arpSet = heldN.slice(); save(); }));
     box.append(p);
     paintArpNow(arpNowStep);
@@ -609,14 +609,6 @@
   }
   $('#arpOn').addEventListener('click', () => { st.arp.on = !st.arp.on; if (!st.arp.on) allNotesOff(); paintArp(); mix(); toast(st.arp.on ? (playing ? 'Arpegio encendido' : 'Arpegio encendido: dale ▶ (Espacio)') : 'Arpegio apagado'); });
   $('#mArp').addEventListener('click', () => { st.arp.mute = !st.arp.mute; $('#mArp').classList.toggle('on', st.arp.mute); save(); });
-  // desktop: the euclidean rings and the arpeggio share the lower left space (one at a time; both keep playing)
-  function setLow(v) {
-    document.body.dataset.low = v === 'arp' ? 'arp' : 'rings';
-    document.querySelectorAll('.sy-lowsw [data-low]').forEach(b => b.classList.toggle('on', b.dataset.low === document.body.dataset.low));
-    try { localStorage.setItem('syndrus_low', document.body.dataset.low); } catch (e) { /* ignore */ }
-    if (document.body.dataset.low === 'rings') st.rings.forEach((_, i) => drawRing(i, playing ? curStep : -1));
-  }
-  document.querySelectorAll('.sy-lowsw [data-low]').forEach(b => b.addEventListener('click', () => setLow(b.dataset.low)));
 
   /* ── rings: canvas + parameters in tabs (Ritmo · Tono · Mezcla); one at a time on the phone ── */
   const ringCanvases = [], ringTab = ['ritmo', 'ritmo', 'ritmo', 'ritmo'];
@@ -1263,9 +1255,9 @@
 
   function paintAll() { paintTop(); paintDrums(); paintSynth(); paintArp(); paintRings(); paintFx(); paintConsole(); }
   document.body.dataset.deck = ab(app.edit);
-  try { setLow(localStorage.getItem('syndrus_low') || 'rings'); } catch (e) { setLow('rings'); }
+  try { localStorage.removeItem('syndrus_low'); } catch (e) { /* ignore */ }
   paintAll();
   try { setTab(sessionStorage.getItem('syndrus_tab') || 'drums'); } catch (e) { setTab('drums'); }
   paintStatus();
-  window.__syndrus = { midiTest: { onMidi, setLearn: v => { learnMode = v; learnArmed = null; }, get map() { return midiO.map; }, opts: midiO, noteDown, noteUp, get arpSet() { return arpSet; } }, paintArp, setLow, perform, get roll() { return roll; }, set roll(v) { roll = v; }, get app() { return app; }, get state() { return st; }, setEdit, get pending() { return pending; }, get engine() { return E; }, get ctx() { return ac; }, setPlay, load, PRESETS, randomTechno, randomAmbient };
+  window.__syndrus = { midiTest: { onMidi, setLearn: v => { learnMode = v; learnArmed = null; }, get map() { return midiO.map; }, opts: midiO, noteDown, noteUp, get arpSet() { return arpSet; } }, paintArp, perform, get roll() { return roll; }, set roll(v) { roll = v; }, get app() { return app; }, get state() { return st; }, setEdit, get pending() { return pending; }, get engine() { return E; }, get ctx() { return ac; }, setPlay, load, PRESETS, randomTechno, randomAmbient };
 })();
