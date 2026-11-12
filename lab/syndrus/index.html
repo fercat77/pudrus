@@ -21,7 +21,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600;700&display=swap">
-  <link rel="stylesheet" href="syndrus.css?v=13">
+  <link rel="stylesheet" href="syndrus.css?v=15">
 </head>
 <body data-tab="drums">
 <script src="/js/splash.js?v=3" data-splash="syndrus"></script>
@@ -39,8 +39,8 @@
     </div>
     <div class="sy-group">
       <select id="preset" title="Empezar desde un preset"><option value="">Presets…</option></select>
-      <button class="sy-btn" id="rndTechno" title="Un patrón techno al azar">🎲 Techno</button>
-      <button class="sy-btn" id="rndAmbient" title="Un paisaje ambient al azar">🎲 Ambient</button>
+      <button class="sy-btn" id="rndTechno" title="Un patrón techno al azar"><span class="sy-ico">🎲 </span>Techno</button>
+      <button class="sy-btn" id="rndAmbient" title="Un paisaje ambient al azar"><span class="sy-ico">🎲 </span>Ambient</button>
     </div>
     <span class="sy-sp"></span>
     <div class="sy-group">
@@ -49,8 +49,8 @@
       <button class="sy-btn" id="share" title="Copiar un enlace con este patrón">🔗</button>
       <button class="sy-btn" id="midiBtn" title="MIDI: tu teclado, tus perillas y el reloj">🎹</button>
       <button class="sy-btn" id="remoteBtn" title="Manejar la consola, la mezcla y los FX desde el celular">📱</button>
-      <button class="sy-btn" id="consoleBtn" title="Consola: todos los faders del deck en una vista (C)">🎚 Consola</button>
-      <button class="sy-btn" id="nodrus" title="Abrir NODRUS: las visuales siguen el tempo, el pulso, el sonido y los drops de SYNDRUS">◈ NODRUS</button>
+      <button class="sy-btn" id="consoleBtn" title="Consola: todos los faders del deck en una vista (C)">🎚<span class="sy-lbl"> Consola</span></button>
+      <button class="sy-btn" id="nodrus" title="Abrir NODRUS: las visuales siguen el tempo, el pulso, el sonido y los drops de SYNDRUS">◈<span class="sy-lbl"> NODRUS</span></button>
       <button class="sy-btn" id="help" title="Ayuda y atajos">?</button>
     </div>
   </div>
@@ -139,6 +139,6 @@
 <div class="sy-toast" id="toast"></div>
 
 <script src="engine.js?v=9"></script>
-<script src="app.js?v=21"></script>
+<script src="app.js?v=22"></script>
 </body>
 </html>

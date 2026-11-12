@@ -626,7 +626,7 @@
       const mute = el('button', 'sy-mini' + (r.mute ? ' on' : ''), 'M'); mute.title = 'Silenciar';
       mute.addEventListener('click', () => { r.mute = !r.mute; mute.classList.toggle('on', r.mute); drawRing(i, -1); save(); });
       const tabs = el('div', 'tabs');
-      [['ritmo', 'Ritmo'], ['tono', 'Tono'], ['mezcla', 'Mezcla']].forEach(([k, l]) => { const b = el('button', ringTab[i] === k ? 'on' : '', l); b.addEventListener('click', () => { ringTab[i] = k; paintRings(); }); tabs.append(b); });
+      [['ritmo', 'Ritmo', 'Rit'], ['tono', 'Tono', 'Tono'], ['mezcla', 'Mezcla', 'Mez']].forEach(([k, l, sh]) => { const b = el('button', ringTab[i] === k ? 'on' : ''); b.title = l; b.append(el('span', 'lg', l), el('span', 'sh', sh)); b.addEventListener('click', () => { ringTab[i] = k; paintRings(); }); tabs.append(b); });
       top.append(el('b', '', '◎ ' + (i + 1)), tabs, el('span', 'sy-sp'), mute);
       const ps = el('div', 'sy-params'), redraw = () => drawRing(i, -1);
       const SOUNDS = [['bell', 'Campana'], ['pluck', 'Pluck'], ...X.DRUMS.map(([k, n]) => [k, n])];

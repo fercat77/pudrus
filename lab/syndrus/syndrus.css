@@ -41,8 +41,8 @@ select { height: 30px; background: var(--bg2); border: 1px solid var(--line); bo
 .sy-param .v { position: absolute; left: 6px; bottom: 2px; font-size: 12px; color: #fff; font-variant-numeric: tabular-nums; white-space: nowrap; }
 .sy-param:hover { border-color: rgba(102,255,51,0.5); }
 .sy-param.wide { grid-column: span 2; }
-.sy-sel { display: flex; flex-direction: column; justify-content: center; gap: 1px; height: var(--ph); border-radius: 6px; background: var(--bg3); border: 1px solid var(--line); padding: 1px 6px; min-width: 0; }
-.sy-sel span { font-size: 9px; color: var(--dim); text-transform: uppercase; letter-spacing: .05em; }
+.sy-sel { display: flex; flex-direction: column; justify-content: center; gap: 1px; height: var(--ph); overflow: hidden; border-radius: 6px; background: var(--bg3); border: 1px solid var(--line); padding: 1px 6px; min-width: 0; }
+.sy-sel span { font-size: 9px; line-height: 10px; color: var(--dim); text-transform: uppercase; letter-spacing: .05em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .sy-sel select, .sy-sel b { height: 16px; border: 0; padding: 0; background: transparent; color: #fff; font-size: 12px; font-weight: 400; }
 .sy-tabs-in { display: flex; gap: 4px; }
 .sy-tabs-in button { height: 22px; padding: 0 10px; border-radius: 5px; border: 1px solid var(--line); background: var(--bg3); cursor: pointer; font-size: 11px; color: var(--dim); }
@@ -92,6 +92,7 @@ select { height: 30px; background: var(--bg2); border: 1px solid var(--line); bo
 .sy-ring .tabs { display: flex; gap: 3px; }
 .sy-ring .tabs button { height: 18px; padding: 0 6px; font-size: 9.5px; border-radius: 4px; border: 1px solid var(--line); background: var(--bg2); color: var(--dim); cursor: pointer; }
 .sy-ring .tabs button.on { color: var(--g); border-color: var(--g); }
+.sy-ring .tabs .sh { display: none; }
 .sy-ring .cvbox { flex: 1; min-height: 50px; display: flex; align-items: center; justify-content: center; }
 .sy-ring canvas { height: 100%; max-height: 100%; aspect-ratio: 1; max-width: 100%; display: block; }
 .sy-ring .sy-params { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 4px; }
@@ -100,11 +101,11 @@ select { height: 30px; background: var(--bg2); border: 1px solid var(--line); bo
 /* arpeggio: progression of 4 chords + parameters; shares the lower left space with the rings on the desktop */
 .sy-arpbody { display: flex; flex-direction: column; gap: 5px; flex: 1 1 auto; min-height: 0; overflow-y: auto; overflow-x: hidden; }
 .sy-prog { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; align-items: stretch; }
-.sy-chord { display: grid; grid-template-columns: minmax(30px, 1fr) minmax(0, auto) minmax(0, auto); gap: 4px; align-items: center; padding: 3px 6px; border: 1px solid var(--line); border-radius: 7px; background: var(--bg3); min-width: 0; }
+.sy-chord { display: grid; grid-template-columns: auto minmax(0, 1fr) minmax(0, 1.4fr); gap: 4px; align-items: center; padding: 3px 6px; border: 1px solid var(--line); border-radius: 7px; background: var(--bg3); min-width: 0; }
 .sy-chord b { font-size: 13px; color: var(--y); text-align: center; white-space: nowrap; }
 .sy-chord.empty b { color: var(--dim); }
 .sy-chord.now { border-color: var(--y); box-shadow: 0 0 10px rgba(255,210,63,0.35); }
-.sy-chord select { min-width: 0; width: 100%; max-width: 78px; padding: 0 2px; height: 22px; font-size: 10.5px; border-radius: 4px; border: 1px solid var(--line); background: var(--bg2); color: var(--text); }
+.sy-chord select { min-width: 0; width: 100%; padding: 0 3px; appearance: none; -webkit-appearance: none; text-align: center; cursor: pointer; height: 22px; font-size: 10.5px; border-radius: 4px; border: 1px solid var(--line); background: var(--bg2); color: var(--text); }
 .sy-strip.grp-arp { border-color: rgba(255,210,63,0.4); }
 
 /* deck A/B and locks in the top bar */
@@ -136,7 +137,8 @@ body[data-deck="B"] .sy-drums .sy-head b::after, body[data-deck="B"] .sy-synth .
 .sy-deckhead .sy-dim { font-size: 10px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .sy-deckcol .sy-params { grid-template-columns: 1fr 1fr; gap: 3px; }
 .sy-mutes { display: flex; gap: 3px; }
-.sy-mutes .sy-mini { flex: 1; padding: 0 2px; font-size: 10px; }
+.sy-mutes { flex-wrap: wrap; }
+.sy-mutes .sy-mini { flex: 1 1 58px; min-width: 0; padding: 0 2px; font-size: 10px; overflow: hidden; text-overflow: clip; }
 .sy-mutes .sy-mini.on, .sy-deckcol > .sy-mini.on { background: var(--m); border-color: var(--m); color: #000; }
 .sy-subhead { display: flex; align-items: center; gap: 6px; margin-top: 2px; }
 .sy-subhead b { color: var(--g); letter-spacing: .12em; font-size: 10.5px; }
@@ -194,7 +196,7 @@ body[data-deck="B"] .sy-drums .sy-head b::after, body[data-deck="B"] .sy-synth .
 /* ── DESKTOP: one screen, no page scroll ── */
 @media (min-width: 761px) {
   html, body { height: 100%; overflow: hidden; }
-  body { display: grid; grid-template-rows: auto minmax(0, 1fr) auto; height: 100vh; height: 100dvh; }
+  body { display: grid; grid-template-columns: minmax(0, 1fr); grid-template-rows: auto minmax(0, 1fr) auto; height: 100vh; height: 100dvh; }
   .sy-main { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) clamp(270px, 25vw, 350px); grid-template-rows: auto auto minmax(0, 1fr); grid-template-areas: "drums drums master" "synth synth master" "rings arp fx"; gap: 8px; padding: 8px 12px; min-height: 0; }
   .sy-arp { grid-area: arp; overflow: hidden; }
   /* the euclidean rings and the arpeggio side by side: the rings in a 2×2 grid, each one with its circle on the left */
@@ -207,11 +209,30 @@ body[data-deck="B"] .sy-drums .sy-head b::after, body[data-deck="B"] .sy-synth .
   .sy-ring .top b { white-space: nowrap; }
   .sy-ring .tabs button { padding: 0 4px; }
   .sy-ring .sy-params { grid-area: ps; align-content: start; min-height: 0; overflow-y: auto; --ph: clamp(22px, 2.9vh, 34px); }
-  .sy-arp .sy-params.sy-row { grid-template-columns: repeat(auto-fill, minmax(84px, 1fr)); gap: 4px; }
+  .sy-arp .sy-params.sy-row { grid-template-columns: repeat(auto-fill, minmax(76px, 1fr)); gap: 4px; flex: none; }
+  /* spare room goes to what you play live: the chord cards, the FX pads and the bank slots grow */
+  .sy-prog { container-type: size; flex: 1 1 32px; min-height: 32px; max-height: 150px; }
+  @container (min-height: 64px) {
+    .sy-chord { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); grid-template-rows: minmax(0, 1fr) auto; padding: 5px 6px; }
+    .sy-chord b { grid-column: 1 / -1; align-self: center; font-size: clamp(15px, 24cqh, 34px); }
+  }
+  .sy-fxbody { flex: 1 1 auto; }
+  .sy-perf { flex: 3 1 auto; max-height: 230px; grid-auto-rows: minmax(clamp(36px, 6vh, 56px), 1fr); }
+  .sy-perf button { height: auto; font-size: clamp(12px, 1.6vh, 16px); }
+  .sy-rolls { flex: 2 1 auto; max-height: 130px; align-items: stretch; }
+  .sy-rolls > span { align-self: center; }
+  .sy-rolls button { height: auto; min-height: clamp(28px, 4.5vh, 44px); }
+  .sy-mixer { flex: 1 1 auto; min-height: 0; }
+  .sy-bank { flex: 1 1 auto; max-height: 150px; grid-auto-rows: minmax(24px, 1fr); }
+  .sy-bank .sy-slot { height: auto; }
   .sy-drums { grid-area: drums; } .sy-synth { grid-area: synth; } .sy-rings { grid-area: rings; } .sy-master { grid-area: master; overflow: auto; } .sy-fx { grid-area: fx; overflow: auto; }
 }
 /* narrow desktop: the rings stack their header and scroll inside their card */
 @media (min-width: 761px) and (max-width: 1240px) { .sy-ring .top { flex-wrap: wrap; row-gap: 3px; } .sy-ring { overflow-y: auto; } .sy-ring .tabs button { font-size: 9px; padding: 0 3px; } }
+/* the top bar fits up to ~1600px: icons only for Consola and NODRUS, narrower faders and preset menu */
+@media (min-width: 761px) and (max-width: 1599px) { .sy-bar .sy-lbl, .sy-bar .sy-ico { display: none; } .sy-bar .sy-group .sy-param { width: 84px; } #preset { max-width: 118px; } #scale { max-width: 94px; } .sy-bar { gap: 6px; } .sy-bar .sy-group { gap: 4px; } }
+@media (min-width: 761px) and (max-width: 1500px) { .sy-ring .top { gap: 3px; } .sy-ring .top b { font-size: 9.5px; } .sy-ring .tabs { gap: 2px; } .sy-ring .tabs button { font-size: 9px; padding: 0 3px; } .sy-ring { --cv: max(28px, min(calc((100cqh - 6px) / 2 - 12px), 24cqw, calc(50cqw - 172px))); } .sy-ring .tabs .lg { display: none; } .sy-ring .tabs .sh { display: inline; } .sy-seg button { white-space: nowrap; overflow: hidden; padding: 0 2px; } .sy-arp .sy-params.sy-row { grid-template-columns: repeat(auto-fill, minmax(68px, 1fr)); } }
+@media (min-width: 761px) and (max-width: 1320px) { .sy-bar .sy-logo { display: none; } .sy-arp .sy-params.sy-row { grid-template-columns: repeat(auto-fill, minmax(62px, 1fr)); } }
 @media (min-width: 761px) and (max-width: 1180px) { .sy-hint { display: none; } .sy-bar { flex-wrap: wrap; } }
 @media (min-width: 761px) and (max-height: 720px) { :root { --ph: 26px; } .sy-ring .sy-params { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
 
