@@ -97,6 +97,20 @@ select { height: 30px; background: var(--bg2); border: 1px solid var(--line); bo
 .sy-ring .sy-params { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 4px; }
 .sy-ringchips { display: none; }
 
+/* arpeggio: progression of 4 chords + parameters; shares the lower left space with the rings on the desktop */
+.sy-arpbody { display: flex; flex-direction: column; gap: 5px; flex: 1 1 auto; min-height: 0; overflow-y: auto; overflow-x: hidden; }
+.sy-prog { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; align-items: stretch; }
+.sy-chord { display: grid; grid-template-columns: minmax(42px, auto) minmax(0, 1fr) minmax(0, 1fr); gap: 4px; align-items: center; padding: 3px 6px; border: 1px solid var(--line); border-radius: 7px; background: var(--bg3); min-width: 0; }
+.sy-chord b { font-size: 13px; color: var(--y); text-align: center; white-space: nowrap; }
+.sy-chord.empty b { color: var(--dim); }
+.sy-chord.now { border-color: var(--y); box-shadow: 0 0 10px rgba(255,210,63,0.35); }
+.sy-chord select { min-width: 0; width: 100%; height: 22px; font-size: 10.5px; border-radius: 4px; border: 1px solid var(--line); background: var(--bg2); color: var(--text); }
+.sy-lowsw { display: inline-flex; border: 1px solid var(--line); border-radius: 6px; overflow: hidden; margin-right: 4px; }
+.sy-lowsw button { height: 20px; padding: 0 7px; border: 0; background: var(--bg2); color: var(--dim); font-size: 10px; cursor: pointer; white-space: nowrap; }
+.sy-lowsw button.on { background: var(--bg3); color: var(--g); }
+.sy-lowsw button.live::after { content: ' ●'; color: var(--y); }
+.sy-strip.grp-arp { border-color: rgba(255,210,63,0.4); }
+
 /* deck A/B and locks in the top bar */
 .sy-deck { display: flex; border: 1px solid var(--line); border-radius: 7px; overflow: hidden; }
 .sy-deck button { height: 30px; width: 34px; border: 0; background: var(--bg2); cursor: pointer; font-weight: 700; color: var(--dim); }
@@ -186,6 +200,8 @@ body[data-deck="B"] .sy-drums .sy-head b::after, body[data-deck="B"] .sy-synth .
   html, body { height: 100%; overflow: hidden; }
   body { display: grid; grid-template-rows: auto minmax(0, 1fr) auto; height: 100vh; height: 100dvh; }
   .sy-main { display: grid; grid-template-columns: minmax(0, 1fr) clamp(270px, 25vw, 350px); grid-template-rows: auto auto minmax(0, 1fr); grid-template-areas: "drums master" "synth master" "rings fx"; gap: 8px; padding: 8px 12px; min-height: 0; }
+  .sy-arp { grid-area: rings; overflow: hidden; }
+  body:not([data-low="arp"]) .sy-arp, body[data-low="arp"] .sy-rings { display: none; }
   .sy-drums { grid-area: drums; } .sy-synth { grid-area: synth; } .sy-rings { grid-area: rings; } .sy-master { grid-area: master; overflow: auto; } .sy-fx { grid-area: fx; overflow: auto; }
 }
 @media (min-width: 761px) and (max-width: 1180px) { .sy-hint { display: none; } .sy-bar { flex-wrap: wrap; } }
@@ -207,7 +223,9 @@ body[data-deck="B"] .sy-drums .sy-head b::after, body[data-deck="B"] .sy-synth .
   .sy-more .sy-sp { display: none; }
   .sy-main { display: block; padding: 8px; }
   .sy-panel { display: none; }
-  body[data-tab="drums"] .sy-drums, body[data-tab="synth"] .sy-synth, body[data-tab="rings"] .sy-rings, body[data-tab="master"] .sy-master, body[data-tab="fx"] .sy-fx { display: flex; }
+  body[data-tab="drums"] .sy-drums, body[data-tab="synth"] .sy-synth, body[data-tab="arp"] .sy-arp, body[data-tab="rings"] .sy-rings, body[data-tab="master"] .sy-master, body[data-tab="fx"] .sy-fx { display: flex; }
+  .sy-lowsw { display: none; }
+  .sy-prog { grid-template-columns: 1fr 1fr; }
   .sy-perf button { height: 54px; }
   .sy-rolls button { height: 50px; }
   .sy-hint { display: none; }
@@ -244,7 +262,7 @@ body[data-deck="B"] .sy-drums .sy-head b::after, body[data-deck="B"] .sy-synth .
   .sy-tabbar { display: flex; position: fixed; left: 0; right: 0; bottom: 0; z-index: 25; height: 56px; padding-bottom: env(safe-area-inset-bottom); background: rgba(7,7,12,0.98); border-top: 1px solid var(--line); }
   .sy-tabbar button { flex: 1; border: 0; background: transparent; color: var(--dim); font-size: 12px; cursor: pointer; }
   .sy-tabbar button { font-size: 11px; }
-  body[data-tab="drums"] .sy-tabbar [data-tab="drums"], body[data-tab="synth"] .sy-tabbar [data-tab="synth"], body[data-tab="rings"] .sy-tabbar [data-tab="rings"], body[data-tab="master"] .sy-tabbar [data-tab="master"], body[data-tab="fx"] .sy-tabbar [data-tab="fx"] { color: var(--g); box-shadow: inset 0 2px 0 var(--g); }
+  body[data-tab="drums"] .sy-tabbar [data-tab="drums"], body[data-tab="synth"] .sy-tabbar [data-tab="synth"], body[data-tab="arp"] .sy-tabbar [data-tab="arp"], body[data-tab="rings"] .sy-tabbar [data-tab="rings"], body[data-tab="master"] .sy-tabbar [data-tab="master"], body[data-tab="fx"] .sy-tabbar [data-tab="fx"] { color: var(--g); box-shadow: inset 0 2px 0 var(--g); }
 }
 
 /* dark native controls (dropdown lists, scrollbars): no white text on white */

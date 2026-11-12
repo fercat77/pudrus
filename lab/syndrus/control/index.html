@@ -31,7 +31,7 @@
     /* faders */
     .strips { flex: 1; min-height: 0; display: flex; gap: 6px; overflow-x: auto; padding-bottom: 4px; scroll-snap-type: x proximity; }
     .strip { flex: 0 0 74px; display: flex; flex-direction: column; gap: 6px; padding: 6px; border-radius: 10px; background: var(--bg2); border: 1px solid var(--line); scroll-snap-align: start; }
-    .strip.synth { border-color: rgba(0,212,255,0.45); } .strip.anillo { border-color: rgba(255,63,164,0.4); }
+    .strip.synth { border-color: rgba(0,212,255,0.45); } .strip.arp { border-color: rgba(255,210,63,0.45); } .strip.anillo { border-color: rgba(255,63,164,0.4); }
     .strip .nm { font-size: 10.5px; text-align: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     .strip .grp { font-size: 8.5px; text-align: center; color: var(--dim); text-transform: uppercase; letter-spacing: .1em; }
     .fw { flex: 1; min-height: 80px; display: flex; gap: 5px; justify-content: center; }
@@ -225,7 +225,7 @@ DROP</button></div>
 
   /* ── render ── */
   let faders = [], meterEls = [];
-  const SHORT = { Redoblante: 'Redob.', 'Hat cerrado': 'Hat C', 'Hat abierto': 'Hat A', 'Anillo 1': '◎1', 'Anillo 2': '◎2', 'Anillo 3': '◎3', 'Anillo 4': '◎4' };   // sideways the strips are narrow
+  const SHORT = { Arpegio: 'Arp', Redoblante: 'Redob.', 'Hat cerrado': 'Hat C', 'Hat abierto': 'Hat A', 'Anillo 1': '◎1', 'Anillo 2': '◎2', 'Anillo 3': '◎3', 'Anillo 4': '◎4' };   // sideways the strips are narrow
   function render() {
     if (!S) return;
     faders = []; meterEls = [];

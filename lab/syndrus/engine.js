@@ -181,6 +181,7 @@
     D.drumStrips = DRUMS.map(() => strip());
     D.synthStrip = strip();
     D.ringStrips = [0, 1, 2, 3].map(() => strip());
+    D.arpStrip = strip();   // the arpeggiator's own channel
 
     /* ── the synth: one mono voice that is always running (so slides glide, like a bassline box) ── */
     const S = {};
@@ -248,6 +249,37 @@
     };
     S.poly = (t, midis, dur, vel) => S.polyOff(S.polyOn(t, midis, vel), t + dur);
     D.synth = S;
+
+    /* ── the arpeggiator's own voice: one short note at a time, notes may overlap (pluck, pad, bell, glass),
+       or «synth»: through the synth's voice and channel (as it worked before it had its own) ── */
+    D.arpNote = (t, m, dur, vel, a) => {
+      if (a.sound === 'synth') { if (P) { S.noteOn(t, m, vel, false); S.noteOff(t + dur); } return; }
+      const dest = D.arpStrip.input, f = mtof(m), dec = Math.max(0, Math.min(1, a.decay)), cut = 200 * Math.pow(60, Math.max(0, Math.min(1, a.tone)));
+      if (a.sound === 'bell') { V.bell(dest, t, { note: m, decay: dec * 0.6, vel: vel * 1.1 }); return; }
+      const g = ctx.createGain(), lp = ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.connect(g); g.connect(dest);
+      const osc = (type, fr, det, lvl) => { const o = ctx.createOscillator(), og = ctx.createGain(); o.type = type; o.frequency.value = fr; o.detune.value = det; og.gain.value = lvl; o.connect(og); og.connect(lp); return o; };
+      let os, end;
+      if (a.sound === 'pad') {   // soft, a little attack, holds for the note length
+        os = [osc('sawtooth', f, -9, 0.5), osc('sawtooth', f, 9, 0.5), osc('triangle', f / 2, 0, 0.4)];
+        lp.Q.value = 0.8; lp.frequency.value = cut;
+        const att = Math.min(0.08, dur * 0.4), hold = Math.max(att, dur), rel = 0.15 + dec * 1.4, peak = 0.16 * vel;
+        g.gain.setValueAtTime(0.0001, t); g.gain.linearRampToValueAtTime(peak, t + att); g.gain.setValueAtTime(peak, t + hold); g.gain.setTargetAtTime(0.0001, t + hold, rel / 4);
+        end = t + hold + rel * 1.6;
+      } else if (a.sound === 'glass') {   // sine partials: clear, bell-ish, no filter sweep
+        os = [osc('sine', f, 0, 0.6), osc('sine', f * 2, 3, 0.25), osc('triangle', f * 3, 0, 0.08)];
+        lp.frequency.value = Math.max(cut, 2000);
+        const d2 = 0.15 + dec * 1.2;
+        g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(0.3 * vel, t + 0.003); g.gain.exponentialRampToValueAtTime(0.0001, t + 0.003 + d2);
+        end = t + d2 + 0.05;
+      } else {   // pluck: a bright attack that closes fast
+        os = [osc('sawtooth', f, -4, 0.5), osc('square', f, 4, 0.25)];
+        lp.Q.value = 3; lp.frequency.setValueAtTime(Math.min(16000, cut * 3), t); lp.frequency.exponentialRampToValueAtTime(Math.max(80, cut * 0.4), t + 0.04 + dec * 0.35);
+        const d2 = 0.06 + dec * 0.5 + dur * 0.5;
+        g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(0.28 * vel, t + 0.002); g.gain.exponentialRampToValueAtTime(0.0001, t + 0.002 + d2);
+        end = t + d2 + 0.05;
+      }
+      os.forEach(o => { o.start(t); o.stop(end); });
+    };
 
     D.setFx = fx => {
       fb.gain.value = fx.feedback; dF.frequency.value = fx.delayTone;
@@ -353,8 +385,43 @@
     for (let i = 0; i < steps; i++) if ((i * pulses) % steps < pulses) out[(i + rot) % steps] = 1;
     return out;
   }
-  // one deck, one 16th step: drums, synth line and rings of pattern `st` (mute = groups silenced by the mixer)
-  function playStep(D, st, n, t, rnd = Math.random, mute = {}) {
+  /* ── the arpeggiator: which notes it walks through on step n — the notes held live, or the chord of the
+     progression saved in the pattern (it changes every `hold` bars) — and which one it plays ── */
+  const ARP_MODES = [['up', 'arriba'], ['down', 'abajo'], ['updown', 'ida y vuelta'], ['converge', 'de afuera hacia adentro'], ['random', 'al azar'], ['played', 'como se toca']];
+  const ARP_SOUNDS = [['pluck', 'pluck'], ['pad', 'pad'], ['bell', 'campana'], ['glass', 'vidrio'], ['synth', 'el synth (su voz)']];
+  function arpChordAt(st, n) {   // the slot of the progression that sounds on step n (-1: none)
+    const a = st.arp, slots = [];
+    (a.chords || []).forEach((c, i) => { if (c && Number.isFinite(c.deg)) slots.push(i); });
+    return slots.length ? slots[Math.floor(n / (16 * (a.hold || 1))) % slots.length] : -1;
+  }
+  function arpNotes(st, n, live) {
+    const a = st.arp, oc = a.octave || 4;
+    let base = [];
+    if (live && live.length) base = [].concat(...live.map(m => (a.keyChord && a.keyChord !== 'off' ? chordNotes(st.root, st.scale, midiToDegree(st.root, st.scale, m, oc), oc, a.keyChord) : [m])));
+    else {
+      const i = arpChordAt(st, n);
+      if (i >= 0) {   // the upper degrees (V, VI, VII) sit just below the tonic: the arpeggio moves little from chord to chord
+        const c = a.chords[i], L = (SCALES[st.scale] || SCALES.minor).length, deg = c.deg > L / 2 ? c.deg - L : c.deg;
+        base = chordNotes(st.root, st.scale, deg, oc, c.kind || 'triad');
+      }
+    }
+    let out = [];
+    for (let o = 0; o < (a.oct || 1); o++) base.forEach(m => out.push(m + 12 * o));
+    if (a.mode !== 'played') out = [...new Set(out)].sort((x, y) => x - y);
+    return out;
+  }
+  function arpPick(notes, mode, k, rnd) {
+    const L = notes.length;
+    if (L === 1) return notes[0];
+    if (mode === 'down') return notes[L - 1 - (k % L)];
+    if (mode === 'updown') { const P = 2 * L - 2, i = k % P; return notes[i < L ? i : P - i]; }
+    if (mode === 'converge') { const i = k % L, h = Math.floor(i / 2); return notes[i % 2 ? L - 1 - h : h]; }
+    if (mode === 'random') return notes[Math.floor(rnd() * L)];
+    return notes[k % L];   // up · played
+  }
+  // one deck, one 16th step: drums, synth line, rings and arpeggio of pattern `st`
+  // (mute = groups silenced by the mixer · live = notes held on the keys for the arpeggiator, edited deck only)
+  function playStep(D, st, n, t, rnd = Math.random, mute = {}, live = null) {
     const stepDur = 60 / st.bpm / 4;
     if (!mute.drums) st.drums.forEach((tr, i) => {
       if (tr.mute || (st.drums.some(x => x.solo) && !tr.solo)) return;
@@ -378,12 +445,25 @@
       const deg = r.wander ? r.deg + Math.floor(rnd() * 5) - 1 : r.deg;
       D.hit(r.sound, D.ringStrips[i].input, t, { tune: r.tune, decay: r.decay, vel: 0.85, note: degreeToMidi(st.root, st.scale, deg, r.octave) });
     });
+    const a = st.arp;
+    if (a && a.on && !a.mute && !mute.arp && D.arpNote) {
+      const r = a.rate || 1;   // in 16ths: 4 = quarter … 0.5 = 32nd
+      const fire = (k, tt, len) => {
+        if (a.prob < 1 && rnd() > a.prob) return;
+        const notes = arpNotes(st, n, live); if (!notes.length) return;
+        const acc = a.accent === 'rnd' ? rnd() < 0.3 : (+a.accent > 0 ? k % +a.accent === 0 : false);
+        D.arpNote(tt, arpPick(notes, a.mode, k, rnd), Math.max(0.03, len * (a.gate || 0.6)), acc ? 1.3 : 0.9, a);
+      };
+      if (r < 1) { fire(n * 2, t, stepDur / 2); fire(n * 2 + 1, t + stepDur / 2, stepDur / 2); }
+      else if (n % r === 0) fire(n / r, t, stepDur * r);
+    }
   }
   // a pattern's own sound settings into its deck (bpm = the shared tempo)
   function applyPattern(D, st, bpm) {
     st.drums.forEach((tr, i) => D.drumStrips[i].set(tr));
     D.synthStrip.set(st.synth); D.synth.set(st.synth);
     st.rings.forEach((r, i) => D.ringStrips[i].set(r));
+    if (st.arp) D.arpStrip.set(st.arp);
     D.setFx(st.fx); D.setDelayTime(60 / bpm * st.fx.delayBeats);
   }
   // the mixer: equal-power crossfader, per-deck level / DJ filter / bass kill, master drive and volume
@@ -421,5 +501,5 @@
     return new Blob([bytes], { type: 'audio/wav' });
   }
 
-  window.SyndrusEngine = { chordNotes, midiToDegree, CHORD_NAMES, buildEngine, playStep, applyPattern, applyMix, xfGains, renderLoop, euclid, degreeToMidi, noteName, mtof, SCALES, SCALE_NAMES, NOTE_NAMES, DRUMS };
+  window.SyndrusEngine = { ARP_MODES, ARP_SOUNDS, arpNotes, arpChordAt, arpPick, chordNotes, midiToDegree, CHORD_NAMES, buildEngine, playStep, applyPattern, applyMix, xfGains, renderLoop, euclid, degreeToMidi, noteName, mtof, SCALES, SCALE_NAMES, NOTE_NAMES, DRUMS };
 })();

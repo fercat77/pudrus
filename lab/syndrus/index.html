@@ -10,7 +10,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600;700&display=swap">
-  <link rel="stylesheet" href="syndrus.css?v=11">
+  <link rel="stylesheet" href="syndrus.css?v=12">
 </head>
 <body data-tab="drums">
 <script src="/js/splash.js?v=3" data-splash="syndrus"></script>
@@ -62,8 +62,13 @@
   </section>
 
   <section class="sy-panel sy-rings" data-sec="rings">
-    <div class="sy-head"><b>EUCLÍDEO</b><span class="sy-hint">golpes repartidos en un círculo de pasos: polirritmos y melodías generativas</span><span class="sy-sp"></span><span class="sy-chips sy-ringchips" id="ringChips"></span></div>
+    <div class="sy-head"><b>EUCLÍDEO</b><span class="sy-hint">golpes repartidos en un círculo de pasos: polirritmos y melodías generativas</span><span class="sy-sp"></span><span class="sy-lowsw" title="Euclídeo y Arpegio comparten este lugar: los dos siguen sonando"><button data-low="rings">◎ Euclídeo</button><button data-low="arp">⋰ Arpegio</button></span><span class="sy-chips sy-ringchips" id="ringChips"></span></div>
     <div class="sy-ringrow" id="rings"></div>
+  </section>
+
+  <section class="sy-panel sy-arp" data-sec="arp">
+    <div class="sy-head"><b>ARPEGIO</b><span class="sy-hint">su propia voz y su canal · los acordes quedan en el patrón y suenan solos con ▶</span><span class="sy-sp"></span><span class="sy-lowsw" title="Euclídeo y Arpegio comparten este lugar: los dos siguen sonando"><button data-low="rings">◎ Euclídeo</button><button data-low="arp">⋰ Arpegio</button></span><button class="sy-mini" id="arpOn" title="Prender o apagar el arpegio">○ Apagado</button><button class="sy-mini" id="mArp" title="Silenciar">M</button></div>
+    <div class="sy-arpbody" id="arpBody"></div>
   </section>
 
   <aside class="sy-panel sy-master" data-sec="master">
@@ -103,6 +108,7 @@
 <nav class="sy-tabbar" id="tabbar">
   <button data-tab="drums">◼ Ritmo</button>
   <button data-tab="synth">∿ Synth</button>
+  <button data-tab="arp">⋰ Arp</button>
   <button data-tab="rings">◎ Anillos</button>
   <button data-tab="master">⇄ Mezcla</button>
   <button data-tab="fx">✦ FX</button>
@@ -115,12 +121,13 @@
   <b>⤓ WAV</b> exporta el loop listo para repetirse sin cortes, con la cola del delay y la reverb doblada al principio.<br>
   <b>🔗</b> copia un enlace con los dos decks y la mezcla (el banco y tu salida de auriculares quedan acá). Todo se guarda solo en este navegador.<br>
   <b>Mezcla</b>: dos decks sincronizados, crossfader, filtro y graves ✕ por deck, 🎧 cue y un banco de 8 patrones que entran en el próximo compás. <b>FX</b>: subida, bajada, impacto, drop y roll. <b>🎚 Consola</b> y <b>📱</b> celular para los faders; <b>◈ NODRUS</b> abre las visuales que siguen esta música.<br>
-  <b>🎹 MIDI</b>: las notas de tu teclado tocan el synth; «Aprender» asigna perillas y faders; el reloj sigue o manda el tempo. En Synth → <b>Acordes · arpegio</b>: acordes de la escala y arpegiador a tempo.
+  <b>🎹 MIDI</b>: las notas de tu teclado tocan el synth; «Aprender» asigna perillas y faders; el reloj sigue o manda el tempo. En Synth → <b>Acordes</b>: acordes de la escala.<br>
+  <b>⋰ Arpegio</b> (comparte lugar con el Euclídeo): su propia voz (pluck, pad, campana, vidrio o el synth) y su canal en la consola. Elegís hasta 4 acordes de la escala que cambian cada 1, 2 o 4 compases: suenan solos con ▶, se guardan en el patrón y salen en el WAV. Con «Teclado: maneja el arpegio», tus teclas o tu MIDI lo tocan en vivo.
   <div style="margin-top:10px"><button class="sy-btn" id="helpClose">Cerrar</button></div>
 </div>
 <div class="sy-toast" id="toast"></div>
 
-<script src="engine.js?v=8"></script>
-<script src="app.js?v=19"></script>
+<script src="engine.js?v=9"></script>
+<script src="app.js?v=20"></script>
 </body>
 </html>
