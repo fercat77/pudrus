@@ -857,7 +857,7 @@
   const SIZES = { s: [320, 180], m: [480, 270], l: [720, 405] };
   // Export format (aspect, resolution, fps…): the monitors take its shape, recordings and renders use its size
   const FORMATS = { '16:9': [16, 9, 'Horizontal'], '9:16': [9, 16, 'Vertical'], '4:5': [4, 5, 'Retrato'], '1:1': [1, 1, 'Cuadrado'] };
-  const ex = opts.exp = Object.assign({ fmt: '16:9', res: 1080, fps: 60, q: 'alta', dur: 15, loop: true, guides: false }, opts.exp || {});
+  const ex = opts.exp = Object.assign({ fmt: '16:9', res: 1080, fps: 60, q: 'alta', dur: 15, loop: true, guides: false, cut: 0, cutSrc: 'random' }, opts.exp || {});
   if (!FORMATS[ex.fmt]) ex.fmt = '16:9';
   const AR = () => { const f = FORMATS[ex.fmt]; return f[0] / f[1]; };
   const even = x => Math.max(2, Math.round(x / 2) * 2);
@@ -990,6 +990,7 @@
       this.on = false; this.stream = this.ctx = this.an = null; this.bands = [0, 0, 0, 0];
     },
     read() {
+      const rb = reelLiveBands(); if (rb) { this.bands = rb; return rb; }   // ▶ Escuchar in the export panel
       if (syLive()) { this.bands = syBands(); return this.bands; }   // SYNDRUS replaces the microphone while it plays
       if (!this.on) return this.bands;
       this.an.getByteFrequencyData(this.data);
@@ -2193,10 +2194,11 @@
     $('#expRec').textContent = rec ? '■ Detener grabación' : '● Grabar en vivo';
     $('#expRec').classList.toggle('is-rec', !!rec);
     $('#btnExport').classList.toggle('is-on', ex.fmt !== '16:9' || !!rendering);
+    paintReel();
   }
   $('#exportPop').querySelectorAll('[data-exp]').forEach(b => b.addEventListener('click', () => {
     const k = b.dataset.exp, v = b.dataset.v;
-    setExp(k, k === 'fmt' || k === 'q' ? v : +v);
+    setExp(k, isNaN(+v) ? v : +v);
   }));
   $('#expGuides').addEventListener('change', e => setExp('guides', e.target.checked));
   $('#expLoop').addEventListener('change', e => setExp('loop', e.target.checked));
@@ -2212,37 +2214,240 @@
     openPop($('#exportPop'), r.left - 220, r.bottom + 4);
   });
 
+  /* ── Reel con música: a song drives the render — the frames react to it like the microphone,
+     the beat clock follows its tempo, cuts land on the bar and the audio goes inside the MP4 ── */
+  const REEL_HZ = 60;   // analysis rate, like the live loop
+  let reel = null;      // { name, buf, n, bands (n×4), loud, onset, bpm, phase, from }
+  const yieldUI = () => new Promise(r => setTimeout(r, 0));
+  function fft(re, im) {   // in-place radix-2
+    const n = re.length;
+    for (let i = 1, j = 0; i < n; i++) {
+      let bit = n >> 1; for (; j & bit; bit >>= 1) j ^= bit; j ^= bit;
+      if (i < j) { let t = re[i]; re[i] = re[j]; re[j] = t; t = im[i]; im[i] = im[j]; im[j] = t; }
+    }
+    for (let len = 2; len <= n; len <<= 1) {
+      const a = -2 * Math.PI / len, wr = Math.cos(a), wi = Math.sin(a), h = len >> 1;
+      for (let i = 0; i < n; i += len) {
+        let cr = 1, ci = 0;
+        for (let k = 0; k < h; k++) {
+          const p = i + k, q = p + h, xr = re[q] * cr - im[q] * ci, xi = re[q] * ci + im[q] * cr;
+          re[q] = re[p] - xr; im[q] = im[p] - xi; re[p] += xr; im[p] += xi;
+          const t = cr * wr - ci * wi; ci = cr * wi + ci * wr; cr = t;
+        }
+      }
+    }
+  }
+  // the same bands the live analyser gives (Blackman window, 2048 bins, smoothing 0.55, −100…−30 dB, same shaping)
+  async function analyzeSong(buf, prog) {
+    const NF = 2048, sr = buf.sampleRate, hz = sr / NF, len = buf.length, half = NF / 2;
+    const ch = Array.from({ length: Math.min(2, buf.numberOfChannels) }, (_, c) => buf.getChannelData(c));
+    const n = Math.ceil(len / sr * REEL_HZ), bands = new Float32Array(n * 4), loud = new Float32Array(n), onset = new Float32Array(n);
+    const win = Float32Array.from({ length: NF }, (_, i) => 0.42 - 0.5 * Math.cos(2 * Math.PI * i / NF) + 0.08 * Math.cos(4 * Math.PI * i / NF));
+    const re = new Float32Array(NF), im = new Float32Array(NF), sm = new Float32Array(half), by = new Float32Array(half), prev = new Float32Array(half);
+    const rng = (lo, hi) => [Math.max(1, Math.floor(lo / hz)), Math.min(half - 1, Math.ceil(hi / hz))];
+    const B = [rng(20, 12000), rng(20, 150), rng(150, 2000), rng(2000, 12000)], lowTop = Math.ceil(200 / hz);
+    const cur = [0, 0, 0, 0];
+    for (let f = 0; f < n; f++) {
+      const end = Math.round(f / REEL_HZ * sr);   // the window ends at this instant, like the analyser
+      for (let i = 0; i < NF; i++) {
+        const s = end - NF + i; let v = 0;
+        if (s >= 0 && s < len) { for (const c of ch) v += c[s]; v /= ch.length; }
+        re[i] = v * win[i]; im[i] = 0;
+      }
+      fft(re, im);
+      let fl = 0, fh = 0;
+      for (let k = 0; k < half; k++) {
+        const m = Math.hypot(re[k], im[k]) / NF;
+        sm[k] = 0.55 * sm[k] + 0.45 * m;
+        by[k] = Math.min(255, Math.max(0, 255 * (20 * Math.log10(sm[k] || 1e-12) + 100) / 70));
+        const raw = Math.min(255, Math.max(0, 255 * (20 * Math.log10(m || 1e-12) + 100) / 70));   // unsmoothed, for the hits
+        const d = raw - prev[k]; if (d > 0) { if (k <= lowTop) fl += d; else fh += d; }
+        prev[k] = raw;
+      }
+      onset[f] = 3 * fl / lowTop + fh / (half - lowTop);   // averages: the kick leads, a broadband hi-hat doesn't outweigh it
+      for (let j = 0; j < 4; j++) {
+        const [lo, hi] = B[j]; let s = 0; for (let k = lo; k <= hi; k++) s += by[k];
+        const raw = s / (hi - lo + 1) / 255, v = Math.min(1, Math.pow(raw * audio.gain * 1.8, 1.3));
+        cur[j] = v > cur[j] ? cur[j] + (v - cur[j]) * 0.6 : cur[j] + (v - cur[j]) * 0.12;
+        bands[f * 4 + j] = cur[j];
+        if (j === 0) loud[f] = raw;
+      }
+      if (f % 300 === 0) { if (prog) prog(f / n); await yieldUI(); }
+    }
+    return { n, bands, loud, onset };
+  }
+  // tempo: comb of the hits over 1–4 beats, leaning to 125 BPM; phase: where the hits fall; bar: the strongest of the 4 beats
+  function songTempo(onset, loud) {
+    const n = onset.length; let mean = 0; for (const v of onset) mean += v; mean /= n || 1;
+    const o = Float32Array.from(onset, v => Math.max(0, v - mean));
+    const at = x => { const i = Math.floor(x), f = x - i; return i + 1 < n ? o[i] * (1 - f) + o[i + 1] * f : 0; };
+    const score = b => {
+      const lag = REEL_HZ * 60 / b; let s = 0;
+      for (let k = 1; k <= 8; k *= 2) for (let i = 0; i + lag * k + 1 < n; i++) s += o[i] * at(i + lag * k);
+      return s * Math.exp(-0.5 * Math.pow(Math.log2(b / 125) / 0.6, 2));
+    };
+    let best = -1, bpm = 120;
+    for (let b = 70; b <= 180; b += 0.5) { const s = score(b); if (s > best) { best = s; bpm = b; } }
+    for (let b = bpm - 0.45; b <= bpm + 0.45; b += 0.05) { const s = score(b); if (s > best) { best = s; bpm = b; } }
+    const whole = Math.round(bpm);   // dance music is almost always a whole number
+    bpm = score(whole) >= best * 0.9 ? whole : Math.round(bpm * 10) / 10;
+    return { bpm, ...songPhase(o, bpm, loud) };
+  }
+  // beat phase from the hits; the bar's «1» from where the sections change (volume jumps land on the 1) plus the strongest hits
+  function songPhase(o, bpm, loud) {
+    const n = o.length, P = REEL_HZ * 60 / bpm;
+    const comb = (a, ph, step) => { let s = 0; for (let x = ph; x < n; x += step) s += a[Math.round(x)] || 0; return s; };
+    let ph = 0, best = -1;
+    for (let p = 0; p < P; p += 0.5) { const s = comb(o, p, P); if (s > best) { best = s; ph = p; } }
+    const cs = new Float64Array(n + 1); for (let i = 0; i < n; i++) cs[i + 1] = cs[i] + loud[i];
+    const avg = (a, z) => { a = Math.max(0, Math.round(a)); z = Math.min(n, Math.round(z)); return z > a ? (cs[z] - cs[a]) / (z - a) : 0; };
+    const nov = Float32Array.from({ length: n }, (_, f) => Math.max(0, avg(f, f + 2 * P) - avg(f - 2 * P, f)));
+    const hits = [0, 1, 2, 3].map(j => comb(o, ph + j * P, 4 * P)), jumps = [0, 1, 2, 3].map(j => comb(nov, ph + j * P, 4 * P));
+    const hm = Math.max(...hits) || 1, jm = Math.max(...jumps) || 1;
+    let bar = 0; best = -1;
+    for (let j = 0; j < 4; j++) { const s = hits[j] / hm + 2 * jumps[j] / jm; if (s > best) { best = s; bar = j; } }
+    const t = (ph + bar * P - 1) / REEL_HZ;   // a hit shows up one analysis frame late: start right on its attack
+    return { phase: t < 0 ? t + 4 * P / REEL_HZ : t };   // seconds of a downbeat
+  }
+  const barSec = () => 240 / reel.bpm;
+  const reelBars = () => Math.max(1, Math.min(Math.round(ex.dur / barSec()), Math.floor((reel.buf.duration - reel.phase % barSec()) / barSec() + 0.01)));   // never longer than the song
+  const reelDur = () => reelBars() * barSec();
+  const snapBar = t => { const b = barSec(), k = Math.round((t - reel.phase) / b); return Math.max(0, reel.phase + k * b); };
+  // the loudest stretch, starting on a bar, with a bonus when it starts on a jump (the drop): it hooks from the first second
+  function loudestFrom() {
+    const D = reelDur(), b = barSec(), L = reel.loud, total = reel.buf.duration;
+    const mean = (a, z) => { const i0 = Math.max(0, Math.round(a * REEL_HZ)), i1 = Math.min(L.length, Math.round(z * REEL_HZ)); let s = 0; for (let i = i0; i < i1; i++) s += L[i]; return i1 > i0 ? s / (i1 - i0) : 0; };
+    let best = -1, from = reel.phase % b;
+    for (let s = reel.phase % b; s + D <= total + 0.01; s += b) {
+      const score = mean(s, s + D) + 0.5 * Math.max(0, mean(s, s + b) - mean(s - b, s));
+      if (score > best) { best = score; from = s; }
+    }
+    return from;
+  }
+  function reelBandsAt(t) { const i = Math.min(reel.n - 1, Math.max(0, Math.round(t * REEL_HZ))); return Array.from(reel.bands.subarray(i * 4, i * 4 + 4)); }
+  // ▶ Escuchar: plays the stretch and the live visuals take its bands while it sounds
+  const reelPlay = { ctx: null, src: null, t0: 0, from: 0 };
+  function reelLiveBands() { return reel && reelPlay.src ? reelBandsAt(reelPlay.from + reelPlay.ctx.currentTime - reelPlay.t0) : null; }
+  function stopReelPlay() {
+    if (reelPlay.src) { try { reelPlay.src.stop(); } catch (e) { /* stopped */ } reelPlay.src = null; }
+    const b = $('#reelPlay'); if (b) b.textContent = '▶ Escuchar';
+  }
+  function startReelPlay() {
+    stopReelPlay();
+    reelPlay.ctx = reelPlay.ctx || new (window.AudioContext || window.webkitAudioContext)();
+    reelPlay.ctx.resume();
+    const s = reelPlay.ctx.createBufferSource(); s.buffer = reel.buf; s.connect(reelPlay.ctx.destination);
+    reelPlay.from = reel.from; reelPlay.t0 = reelPlay.ctx.currentTime;
+    s.start(0, reel.from, reelDur()); s.onended = () => { if (reelPlay.src === s) stopReelPlay(); };
+    reelPlay.src = s; $('#reelPlay').textContent = '■ Parar';
+  }
+  async function loadSong(ab, name) {
+    stopReelPlay();
+    const nm = $('#reelName'); nm.textContent = 'Leyendo ' + name + '…'; nm.classList.add('has');
+    try {
+      const buf = await new OfflineAudioContext(2, 1, 48000).decodeAudioData(ab);
+      const a = await analyzeSong(buf, k => { nm.textContent = `Escuchando ${name}… ${Math.round(k * 100)}%`; });
+      reel = { name, buf, ...a, ...songTempo(a.onset, a.loud), from: 0 };
+      reel.from = loudestFrom();
+      toast(`🎵 ${name} · ${reel.bpm} BPM · arranca en lo más fuerte (${fmtSec(reel.from)})`);
+    } catch (e) { console.error(e); reel = null; toast('No se pudo leer ese audio', true); }
+    paintReel();
+  }
+  const fmtSec = s => `${Math.floor(s / 60)}:${(s % 60).toFixed(1).padStart(4, '0')}`;
+  function paintReel() {
+    const nm = $('#reelName');
+    $('#reelOpts').hidden = $('#reelDrop').hidden = !reel;
+    nm.classList.toggle('has', !!reel);
+    if (reel) {
+      nm.textContent = `🎵 ${reel.name} · ${fmtSec(reel.buf.duration)}`;
+      if (document.activeElement !== $('#reelBpm')) $('#reelBpm').value = reel.bpm;
+      if (document.activeElement !== $('#reelFrom')) $('#reelFrom').value = reel.from.toFixed(1);
+    } else nm.textContent = 'Opcional: el video reacciona a la canción, sigue su ritmo y la lleva adentro.';
+    $('#cutSrcSeg').classList.toggle('is-off', !ex.cut);
+    const bpmC = reel ? reel.bpm : bpm, D = reel ? reelDur() : ex.dur;
+    const cuts = ex.cut ? Math.max(0, Math.ceil(D * bpmC / 60 / (4 * ex.cut) - 1e-6) - 1) : 0;
+    const parts = [];
+    if (reel) parts.push(`${reelBars()} compases = ${D.toFixed(2).replace('.', ',')} s desde ${fmtSec(reel.from)}`);
+    if (ex.cut) parts.push(`${cuts} corte${cuts === 1 ? '' : 's'} al ritmo (${Math.round(bpmC)} BPM)` + (ex.cutSrc === 'scenes' && !scenes.some(Boolean) ? ' · no hay escenas guardadas: van aleatorios' : ''));
+    $('#reelInfo').textContent = parts.join(' · ');
+  }
+  $('#reelPick').addEventListener('click', () => $('#reelFile').click());
+  $('#reelFile').addEventListener('change', async e => { const f = e.target.files[0]; e.target.value = ''; if (f) loadSong(await f.arrayBuffer(), f.name); });
+  $('#reelDrop').addEventListener('click', () => { stopReelPlay(); reel = null; paintReel(); });
+  $('#reelBpm').addEventListener('change', e => {
+    const v = +e.target.value; if (!reel || !(v >= 60 && v <= 200)) { paintReel(); return; }
+    let mean = 0; for (const x of reel.onset) mean += x; mean /= reel.n;
+    reel.bpm = Math.round(v * 10) / 10; Object.assign(reel, songPhase(Float32Array.from(reel.onset, x => Math.max(0, x - mean)), reel.bpm, reel.loud));
+    reel.from = snapBar(reel.from); paintReel();
+  });
+  $('#reelFrom').addEventListener('change', e => { if (!reel) return; reel.from = Math.min(Math.max(0, reel.buf.duration - reelDur()), snapBar(+e.target.value || 0)); paintReel(); });
+  $('#reelLoud').addEventListener('click', () => { if (!reel) return; reel.from = loudestFrom(); paintReel(); if (reelPlay.src) startReelPlay(); });
+  $('#reelPlay').addEventListener('click', () => { if (!reel) return; if (reelPlay.src) stopReelPlay(); else startReelPlay(); });
+
   // Frame-by-frame render to MP4 (WebCodecs): exact fps at any size, no dropped frames.
   // "Loop perfecto": a second copy of the patch starts again from the beginning and the last
   // second fades into it, so the end flows into the start when the video repeats.
+  // With a song: bands and beat come from it, the cuts fall on its bars and its audio is muxed in (AAC).
   let rendering = null;
   const MP4MUX = DESK ? '/vendor/mp4-muxer.js' : 'https://cdn.jsdelivr.net/npm/mp4-muxer@5.1.3/build/mp4-muxer.min.js';
   async function renderVideo() {
     if (rendering) return;
     if (!('VideoEncoder' in window) || !('VideoFrame' in window)) { toast('Este navegador no puede renderizar MP4: usá Chrome o Edge', true); return; }
     try { if (!window.Mp4Muxer) await loadScript(MP4MUX); } catch (e) { toast('No se pudo cargar el armador de MP4 (¿hay internet?)', true); return; }
-    const [W, H] = expSize(), fps = ex.fps, D = ex.dur, F = ex.loop ? Math.min(1, D * 0.2) : 0;
-    const total = Math.round(D * fps), warm = Math.round(F * fps), bitrate = bitrateFor([W, H], fps);
+    stopReelPlay();
+    const R = reel, [W, H] = expSize(), fps = ex.fps;
+    const total = Math.max(1, Math.round((R ? reelDur() : ex.dur) * fps)), D = total / fps, F = ex.loop ? Math.min(1, D * 0.2) : 0;
+    const warm = Math.round(F * fps), bitrate = bitrateFor([W, H], fps);
     let config = null;
     for (const codec of ['avc1.640034', 'avc1.640033', 'avc1.64002A', 'avc1.4D0034', 'avc1.42E034', 'avc1.42001F']) {
       const c = { codec, width: W, height: H, bitrate, framerate: fps, latencyMode: 'quality', avc: { format: 'avc' } };
       try { if ((await VideoEncoder.isConfigSupported(c)).supported) { config = c; break; } } catch (e) { /* next */ }
     }
     if (!config) { toast(`Este equipo no puede codificar H.264 a ${W}×${H}: probá una resolución menor`, true); return; }
+    // the song's audio: AAC (what Instagram and TikTok expect), Opus as a last resort
+    let aCfg = null;
+    const nch = R ? Math.min(2, R.buf.numberOfChannels) : 0, sr = R ? R.buf.sampleRate : 0;
+    if (R && 'AudioEncoder' in window) {
+      for (const [codec, mux] of [['mp4a.40.2', 'aac'], ['opus', 'opus']]) {
+        const c = { codec, sampleRate: sr, numberOfChannels: nch, bitrate: 192000 };
+        try { if ((await AudioEncoder.isConfigSupported(c)).supported) { aCfg = { c, mux }; break; } } catch (e) { /* next */ }
+      }
+    }
+    if (R && !aCfg) toast('Este navegador no puede codificar audio: el video sale mudo (reacciona igual a la música)', true);
     liveByDeck[deckSel] = liveGraph;
     const snap = { A: clone(liveByDeck.A), B: clone(liveByDeck.B), x: stage.x, mode: stage.mode, ov: clone(ov), fx: clone(sfx), tr: opts.trans ? clone(opts.trans) : null, t0: time, bpm, origin: beatOrigin };
-    const beatAt = t => (t - snap.origin) * snap.bpm / 60;
+    // video frame k (negative = the warm-up before the first frame) → audio time, beat and bands
+    const songT = k => (R ? R.from : 0) + k / fps;
+    const beatOf = k => (R ? (songT(k) - R.phase) * R.bpm / 60 : (snap.t0 + F + k / fps - snap.origin) * snap.bpm / 60);
+    const zero = [0, 0, 0, 0], bandsOf = k => (R ? reelBandsAt(Math.max(0, songT(k))) : zero);
+    // cuts on the bar: segment of each frame (the warm-up and the loop copy use the first one)
+    let cutList = null;
+    const beat0 = Math.round(beatOf(0) / 4) * 4, cutBeats = 4 * (ex.cut || 1);
+    if (ex.cut) {
+      const segs = Math.ceil((beatOf(total) - beat0) / cutBeats) + 1;
+      if (ex.cutSrc === 'scenes') cutList = scenes.filter(Boolean).map(s => s.graph);
+      if (!cutList || !cutList.length) {
+        cutList = [clone(liveGraph)];
+        while (cutList.length < segs) cutList.push(window.PudrusGenerate.generate({ audio: true, bpm: true }));
+      }
+    }
+    const segOf = k => Math.max(0, Math.floor((beatOf(k) - beat0 + 1e-6) / cutBeats));
+    const setSeg = (m, s) => { if (!cutList || m.seg === s) return; m.seg = s; try { m.go(cutList[s % cutList.length], 0, 'A'); } catch (e) { /* keeps the previous one */ } };
     const target = new window.Mp4Muxer.ArrayBufferTarget();
-    const muxer = new window.Mp4Muxer.Muxer({ target, video: { codec: 'avc', width: W, height: H, frameRate: fps }, fastStart: 'in-memory' });
+    const muxer = new window.Mp4Muxer.Muxer({ target, video: { codec: 'avc', width: W, height: H, frameRate: fps }, audio: aCfg ? { codec: aCfg.mux, numberOfChannels: nch, sampleRate: sr } : undefined, fastStart: 'in-memory', firstTimestampBehavior: 'offset' });
     let encErr = null;
     const enc = new VideoEncoder({ output: (chunk, meta) => muxer.addVideoChunk(chunk, meta), error: e => { encErr = e; } });
     enc.configure(config);
     const host = document.createElement('div');
-    const mk = () => { const m = N.createMixer(host); m.resize(W, H); m.x = snap.x; m.mode = snap.mode; m.setOverlay(snap.ov); m.setFx(snap.fx); m.setTransition(snap.tr); m.go(snap.A, 0, 'A'); m.go(snap.B, 0, 'B'); return m; };
+    const mk = () => {
+      const m = N.createMixer(host); m.resize(W, H); m.x = cutList ? 0 : snap.x; m.mode = snap.mode; m.setOverlay(snap.ov); m.setFx(snap.fx); m.setTransition(snap.tr);
+      m.seg = -1;
+      if (cutList) setSeg(m, 0); else { m.go(snap.A, 0, 'A'); m.go(snap.B, 0, 'B'); }
+      return m;
+    };
     let m1 = null, m2 = null;
     const mixCanvas = document.createElement('canvas'); mixCanvas.width = W; mixCanvas.height = H;
     const mctx = mixCanvas.getContext('2d');
-    const zero = [0, 0, 0, 0], tick = () => new Promise(r => setTimeout(r, 0));
     rendering = { cancel: false };
     const bar = $('#expBar'), lbl = $('#expProg');
     $('#expRenderBox').classList.add('is-busy'); paintExport();
@@ -2253,17 +2458,39 @@
       lbl.textContent = `Renderizando ${Math.round(k * 100)}%` + (left ? ` · faltan ~${Math.ceil(left)} s` : '');
     };
     try {
+      if (aCfg) {   // the stretch of the song, with 4 ms edges so it never clicks
+        lbl.textContent = 'Preparando el audio…';
+        let aErr = null;
+        const ae = new AudioEncoder({ output: (chunk, meta) => muxer.addAudioChunk(chunk, meta), error: e => { aErr = e; } });
+        ae.configure(aCfg.c);
+        const chs = Array.from({ length: nch }, (_, c) => R.buf.getChannelData(c));
+        const s0 = Math.round(R.from * sr), ns = Math.round(D * sr), edge = Math.round(sr * 0.004), STEP = 4800;
+        for (let o = 0; o < ns; o += STEP) {
+          const k = Math.min(STEP, ns - o), data = new Float32Array(k * nch);
+          for (let c = 0; c < nch; c++) for (let i = 0; i < k; i++) {
+            const p = o + i, s = s0 + p; let v = s < chs[c].length ? chs[c][s] : 0;
+            if (p < edge) v *= p / edge; else if (ns - p < edge) v *= (ns - p) / edge;
+            data[c * k + i] = v;
+          }
+          const ad = new AudioData({ format: 'f32-planar', sampleRate: sr, numberOfFrames: k, numberOfChannels: nch, timestamp: Math.round(o / sr * 1e6), data });
+          ae.encode(ad); ad.close();
+          if (aErr) throw aErr;
+          if (ae.encodeQueueSize > 20) await new Promise(r => setTimeout(r, 2));
+        }
+        await ae.flush(); ae.close();
+        if (aErr) throw aErr;
+      }
       m1 = mk(); if (warm) m2 = mk();
-      // warm-up: the main copy plays the first second (its feedback builds up) without being recorded
-      for (let i = 0; i < warm; i++) { const t = snap.t0 + i / fps; N.clock.beat = beatAt(t); m1.render(t, zero); if (i % 8 === 0) await tick(); }
+      // warm-up: the main copy plays the second before the first frame (its feedback builds up) without being recorded
+      for (let i = 0; i < warm; i++) { const k = i - warm; N.clock.beat = beatOf(k); m1.render(snap.t0 + i / fps, bandsOf(k)); if (i % 8 === 0) await yieldUI(); }
       for (let i = 0; i < total; i++) {
         if (rendering.cancel) throw new Error('cancel');
-        const t = snap.t0 + F + i / fps;
-        N.clock.beat = beatAt(t); m1.render(t, zero);
+        setSeg(m1, segOf(i));
+        N.clock.beat = beatOf(i); m1.render(snap.t0 + F + i / fps, bandsOf(i));
         let src = m1.canvas;
         const tail = i - (total - warm);
-        if (m2 && tail >= 0) {
-          const t2 = snap.t0 + tail / fps; N.clock.beat = beatAt(t2); m2.render(t2, zero);
+        if (m2 && tail >= 0) {   // the loop copy plays what comes right before the first frame
+          const k = tail - warm; N.clock.beat = beatOf(k); m2.render(snap.t0 + tail / fps, bandsOf(k));
           mctx.globalAlpha = 1; mctx.drawImage(m1.canvas, 0, 0);
           mctx.globalAlpha = (tail + 1) / warm; mctx.drawImage(m2.canvas, 0, 0); mctx.globalAlpha = 1;
           src = mixCanvas;
@@ -2272,12 +2499,13 @@
         enc.encode(vf, { keyFrame: i % (fps * 2) === 0 }); vf.close();
         if (encErr) throw encErr;
         while (enc.encodeQueueSize > 6) await new Promise(r => setTimeout(r, 4));
-        if (i % 2 === 0) { progress((i + 1) / total); await tick(); }
+        if (i % 2 === 0) { progress((i + 1) / total); await yieldUI(); }
       }
       lbl.textContent = 'Terminando el archivo…';
       await enc.flush(); muxer.finalize();
-      saveBlob(new Blob([target.buffer], { type: 'video/mp4' }), `${fileTag()}_${D}s${ex.loop ? '_loop' : ''}.mp4`, 30000);
-      toast(`Video listo · ${W}×${H} · ${D} s · ${fps} fps` + (ex.loop ? ' · loop perfecto' : ''));
+      const secs = Math.round(D * 10) / 10;
+      saveBlob(new Blob([target.buffer], { type: 'video/mp4' }), `${fileTag()}_${secs}s${R ? '_musica' : ''}${ex.loop ? '_loop' : ''}.mp4`, 30000);
+      toast(`Video listo · ${W}×${H} · ${String(secs).replace('.', ',')} s · ${fps} fps` + (aCfg ? ' · con música' : '') + (cutList ? ' · cortes al ritmo' : '') + (ex.loop ? ' · loop perfecto' : ''));
     } catch (e) {
       if (e && e.message === 'cancel') toast('Render cancelado');
       else { console.error(e); toast('No se pudo renderizar: ' + String((e && e.message) || e).slice(0, 120), true); }
@@ -2577,7 +2805,7 @@
   if (!DESK && opts.screenAuto) setTimeout(startRemote, 500);   // remote screens used before reconnect by themselves
   // fonts change node sizes -> redraw links once they are in
   if (document.fonts) document.fonts.ready.then(() => drawLinks());
-  window.__nodesEditor = { get micOn() { return audio.on; }, get timeScale() { return timeScale; }, get isPlaying() { return playing; }, get audioBands() { return audio.bands.slice(); }, remoteScreens: screens, get peer() { return peer; }, get graph() { return graph; }, get compiled() { return compiled; }, get liveGraph() { return liveGraph; }, stage, addNode, connect, removeNodes, undo, redo, goLive, modulate, set valueTarget(v) { valueTarget = v; }, setDirect, storeScene, fireScene, openScene, setThumbs, get scenes() { return scenes; }, get controls() { return ctlList(graph); }, setTransition, get transition() { return opts.trans; }, addScreenFilter, get sfx() { return sfx; }, setFxOn, paintFx,
+  window.__nodesEditor = { loadSong, get reel() { return reel; }, renderVideo, setExp, get rendering() { return rendering; }, get micOn() { return audio.on; }, get timeScale() { return timeScale; }, get isPlaying() { return playing; }, get audioBands() { return audio.bands.slice(); }, remoteScreens: screens, get peer() { return peer; }, get graph() { return graph; }, get compiled() { return compiled; }, get liveGraph() { return liveGraph; }, stage, addNode, connect, removeNodes, undo, redo, goLive, modulate, set valueTarget(v) { valueTarget = v; }, setDirect, storeScene, fireScene, openScene, setThumbs, get scenes() { return scenes; }, get controls() { return ctlList(graph); }, setTransition, get transition() { return opts.trans; }, addScreenFilter, get sfx() { return sfx; }, setFxOn, paintFx,
     loadGraph(g, msg) { graph = ensureControls(g); selected.clear(); rebuild(); recompile(); save(); remember(); frameAll(); if (msg) toast(msg); },
     selectedGlsl() { const ids = [...selected]; const n = ids.length === 1 && graph.nodes.find(m => m.id === ids[0]); return n && n.type === 'glsl' ? n : null; },
     setGlsl(n, code, src) { n.p = { ...(n.p || {}), code, src }; rebuild(); recompile(); save(); remember(); },

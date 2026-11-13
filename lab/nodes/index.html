@@ -32,7 +32,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600;700&display=swap">
-  <link rel="stylesheet" href="lab.css?v=45">
+  <link rel="stylesheet" href="lab.css?v=46">
 </head>
 <body>
 <script src="/js/splash.js?v=3" data-splash="nodrus"></script>
@@ -238,7 +238,7 @@
       <dt>Ventanas</dt><dd>PREVIEW y EN VIVO se mueven arrastrando su barra de arriba y cambian de tamaño desde la esquina de abajo a la derecha. Doble clic en la barra: volver a su lugar. Queda guardado en este navegador.</dd>
       <dt>Ver</dt><dd>S / M / L, ▣ fondo (<kbd>B</kbd>) y ⛶ pantalla completa (<kbd>F</kbd>) actúan sobre lo que está EN VIVO (en Directo, sobre la vista del editor).</dd>
       <dt>Foto · Grabar</dt><dd>Siempre graban lo que está al aire, con capa, fundidos, negro y strobe, en el formato elegido en ⤓ Exportar.</dd>
-      <dt>⤓ Exportar</dt><dd>Formato para redes (16:9, 9:16 Reels/TikTok, 4:5 feed, 1:1), resolución hasta 4K, 30/60 fps y calidad. Los monitores toman esa forma; las guías marcan dónde tapa la app. «Renderizar MP4» lo genera cuadro por cuadro (siempre fluido) y «Loop perfecto» funde el final con el principio para que se repita sin corte.</dd>
+      <dt>⤓ Exportar</dt><dd>Formato para redes (16:9, 9:16 Reels/TikTok, 4:5 feed, 1:1), resolución hasta 4K, 30/60 fps y calidad. Los monitores toman esa forma; las guías marcan dónde tapa la app. «Renderizar MP4» lo genera cuadro por cuadro (siempre fluido) y «Loop perfecto» funde el final con el principio para que se repita sin corte. <b>🎵 Música</b>: elegí un tema (por ejemplo un WAV de SYNDRUS) y el render reacciona a él, sigue su BPM (lo detecta solo), arranca en lo más fuerte y lleva el audio adentro. <b>Cortes</b>: cambia de patch cada 1, 2 o 4 compases, con tus escenas o aleatorios.</dd>
     </dl>
   </section>
 
@@ -378,7 +378,22 @@ Imagen ─── Color ─▶ Encima ├ Superponer ─▶ Salida
   <p class="dim">Lo que tocás en el momento, con audio reactivo, celular y escenas. Depende de la fluidez de tu equipo.</p>
   <div class="exp-row2"><button class="lab-mini" id="expRec">● Grabar en vivo</button><button class="lab-mini" id="expPhoto">◉ Foto en este formato</button></div>
   <h4>Renderizar MP4 <span class="dim">(calidad máxima)</span></h4>
-  <p class="dim">Cuadro por cuadro: siempre fluido y en el tamaño elegido, aunque el patch sea pesado. Usa lo que está al aire (capas, capa superior); sin audio en vivo.</p>
+  <p class="dim">Cuadro por cuadro: siempre fluido y en el tamaño elegido, aunque el patch sea pesado. Usa lo que está al aire (capas, capa superior). El audio en vivo no entra, pero podés sumar una canción.</p>
+  <div class="exp-reel">
+    <div class="exp-row2"><button class="lab-mini" id="reelPick" title="WAV, MP3, M4A… (por ejemplo un WAV de SYNDRUS)">🎵 Música…</button><span class="exp-reelname" id="reelName">Opcional: el video reacciona a la canción, sigue su ritmo y la lleva adentro.</span><button class="lab-mini" id="reelDrop" title="Quitar la música" hidden>✕</button></div>
+    <input type="file" id="reelFile" accept="audio/*,.wav,.mp3,.m4a,.aac,.ogg,.flac" hidden>
+    <div class="exp-row2" id="reelOpts" hidden>
+      <label title="Lo detecta solo; corregilo si hace falta">BPM <input type="number" id="reelBpm" min="60" max="200" step="0.1"></label>
+      <label title="Segundo del tema donde arranca el video">Desde <input type="number" id="reelFrom" min="0" step="0.1"> s</label>
+      <button class="lab-mini" id="reelLoud" title="Busca la parte más fuerte (el drop): arrancar ahí engancha desde el primer segundo">⚡ Lo más fuerte</button>
+      <button class="lab-mini" id="reelPlay" title="Escuchar ese pedazo; los visuales reaccionan mientras suena">▶ Escuchar</button>
+    </div>
+  </div>
+  <div class="exp-grid">
+    <span>Cortes</span><div class="exp-seg"><button data-exp="cut" data-v="0">no</button><button data-exp="cut" data-v="1">cada compás</button><button data-exp="cut" data-v="2">cada 2</button><button data-exp="cut" data-v="4">cada 4</button></div>
+    <span>Con</span><div class="exp-seg" id="cutSrcSeg"><button data-exp="cutSrc" data-v="scenes" title="Las escenas guardadas, en orden">mis escenas</button><button data-exp="cutSrc" data-v="random" title="Arranca con lo que está al aire y sigue con patches aleatorios">aleatorios</button></div>
+  </div>
+  <p class="exp-size" id="reelInfo"></p>
   <div class="exp-row2" id="expRenderBox">
     <label>Duración <input type="number" id="expDur" min="1" max="300" step="1"> s</label>
     <div class="exp-seg exp-durs"><button data-exp="dur" data-v="8">8</button><button data-exp="dur" data-v="15">15</button><button data-exp="dur" data-v="30">30</button><button data-exp="dur" data-v="60">60</button></div>
@@ -460,6 +475,6 @@ Imagen ─── Color ─▶ Encima ├ Superponer ─▶ Salida
 <script src="presets.js?v=44"></script>
 <script src="generate.js?v=45"></script>
 <script src="library.js?v=44" defer></script>
-<script src="editor.js?v=45"></script>
+<script src="editor.js?v=46"></script>
 </body>
 </html>
