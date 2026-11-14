@@ -69,7 +69,7 @@
       const m = e.data || {};
       if (m.type === 'sync') { SY.last = performance.now(); if (run.on && m.epoch < run.since) return; SY.bpm = m.bpm; SY.beat = m.beat; SY.epoch = m.epoch; SY.playing = !!m.playing; }
       else if (m.type === 'show-syndrus') {
-        SY.last = performance.now(); SY.infoAt = performance.now(); SY.audio = m.audio;
+        SY.last = performance.now(); SY.infoAt = performance.now(); SY.audio = m.audio; SY.vol = Number.isFinite(m.vol) ? m.vol : 1;
         const nb = JSON.stringify(m.bank); if (nb !== JSON.stringify(SY.bank)) { SY.bank = m.bank; readBank(); paint(); }
       } else if (m.type === 'nodrus') nodSeen = performance.now();
     };
@@ -153,6 +153,7 @@
     SY.beat = 0; SY.epoch = epochNow(); SY.playing = true;   // until the first sync arrives
     if (!noAlive()) toast('▶ Show en marcha · NODRUS no está abierto: sólo suena la música');
     setTimeout(() => {
+      if (run.on && SY.vol <= 0.02) { toast('SYNDRUS tiene el volumen master en 0: subí el fader «master» en su Mezcla', true); return; }
       if (!run.on || SY.audio !== 'suspended') return;
       toast('SYNDRUS no suena todavía: andá a su ventana y hacé un clic en cualquier lado (el navegador lo pide una vez)', true);
       try { if (wins.sy && !wins.sy.closed) wins.sy.focus(); } catch (e) { /* other window */ }
@@ -332,8 +333,9 @@
   function paintBar() {
     $('#play').classList.toggle('on', run.on); $('#play').textContent = run.on ? '■' : '▶';
     const sy = $('#lnkSy'), no = $('#lnkNo');
-    sy.className = 'se-link' + (syAlive() ? (SY.audio === 'suspended' ? ' warn' : ' ok') : '');
-    sy.title = syAlive() ? `SYNDRUS conectado · ${Math.round(SY.bpm)} BPM` + (SY.audio === 'suspended' ? ' · necesita un clic en su ventana para sonar' : '') : 'SYNDRUS no está abierto (clic: abrir). Es el reloj del show.';
+    const syMute = SY.audio === 'suspended' || SY.vol <= 0.02;
+    sy.className = 'se-link' + (syAlive() ? (syMute ? ' warn' : ' ok') : '');
+    sy.title = syAlive() ? `SYNDRUS conectado · ${Math.round(SY.bpm)} BPM` + (SY.vol <= 0.02 ? ' · volumen master en 0' : SY.audio === 'suspended' ? ' · necesita un clic en su ventana para sonar' : '') : 'SYNDRUS no está abierto (clic: abrir). Es el reloj del show.';
     no.className = 'se-link' + (noAlive() ? ' ok' : '');
     no.title = noAlive() ? 'NODRUS conectado' : 'NODRUS no está abierto (clic: abrir)';
   }

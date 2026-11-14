@@ -251,6 +251,7 @@
   function setPlay(on) {
     ensureAudio();
     playing = on; $('#play').classList.toggle('on', on); $('#play').textContent = on ? '■' : '▶'; rmPush(); paintUnlock();
+    if (on && !(app.mix.volume > 0.02)) toast('🔇 El volumen master está en 0: subí el fader «master» en Mezcla', 6000);
     clearInterval(timer);
     if (on) { step = 0; nextTime = ac.currentTime + 0.06; if (midiO.clockOut) midiSend([0xFA], performance.now() + (nextTime - ac.currentTime + latency()) * 1000); tick(); timer = setInterval(tick, 25); }
     else {
@@ -345,7 +346,7 @@
   }
   function showInfo() {
     if (!linkCh) return;
-    linkCh.postMessage({ type: 'show-syndrus', bank: app.bank.map(b => (b ? b.name : null)), bpm: app.bpm, playing, x: app.mix.x, audio: ac ? ac.state : 'none' });
+    linkCh.postMessage({ type: 'show-syndrus', bank: app.bank.map(b => (b ? b.name : null)), bpm: app.bpm, playing, x: app.mix.x, audio: ac ? ac.state : 'none', vol: app.mix.volume });
   }
   function showMsg(m) {
     if (m.type === 'show-hello') showInfo();
