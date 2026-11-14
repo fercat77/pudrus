@@ -838,6 +838,7 @@
     else if (k === 'enter' && !mod) { e.preventDefault(); goLive(); }
     else if (k === 'p' && !mod) { e.preventDefault(); setThumbs(!opts.thumbs); }
     else if (k === 'n' && !mod) { e.preventDefault(); setBlack(!stage.black); }
+    else if (k === 'l' && !mod && lights) { e.preventDefault(); lights.toggle(); }
     else if (k === 's' && !mod) { e.preventDefault(); if (!e.repeat) setStrobe(true); }
     else if (k === 't' && !mod) { e.preventDefault(); if (!e.repeat) tap(); }
     else if (/^Digit[1-8]$/.test(e.code) && !mod) {
@@ -1086,6 +1087,12 @@
   /* ── Live: preview (editor) / on air (program) ──────────── */
   const liveBox = $('#live');
   const stage = N.createMixer(liveBox);   // two decks (A / B) + crossfader, overlay, black/strobe
+  // 💡 Luces (DMX): PARs y beams que siguen a la visual y a la música (dmx.js; nothing runs until you open or turn it on)
+  const lights = window.NodrusDMX ? window.NodrusDMX({
+    desk: DESK, toast: (m, err) => toast(m, err), canvas: () => stage.canvas, veil: () => stage.veil,
+    beat: () => N.clock.beat, bpm: () => (syLive() ? SY.bpm : bpm), scenes: () => scenes,
+    onToggle: on => { const b = document.getElementById('btnDmx'); if (b) b.classList.toggle('is-on', on); },
+  }) : null;
   stage.resize(1280, 720);
   let liveGraph = clone(graph);
   const liveByDeck = { A: liveGraph, B: { nodes: [], links: [] } };
@@ -1224,6 +1231,7 @@
     if (opts.direct) { graph = clone(sc.graph); selected.clear(); rebuild(); recompile(); save(); remember(); }
     goLive(opts.direct ? graph : sc.graph, fade);
     liveScene = i; paintScenes();
+    if (lights) lights.scene(i);
     oscSend('/nodrus/scene', i + 1);
   }
   // next / previous filled scene (phone, MIDI)
@@ -1303,6 +1311,7 @@
   function setStrobe(on) {
     if (stage.strobe === !!on) return;
     stage.setStrobe(on);
+    if (lights) lights.strobe(on);
     broadcastMaster(0);
     $('#btnStrobe').classList.toggle('is-on', !!on);
   }
@@ -1397,12 +1406,14 @@
   function flashAt(ms, len) { later(() => setStrobe(true), ms); later(() => setStrobe(false), ms + len); }
   function resetDrop() {
     syTimers.splice(0).forEach(clearTimeout);
+    if (lights) lights.dropCancel();
     timeScale = 1;
     if (frozen) { frozen = false; playing = wasPlaying; }
     dropBlack(false); setStrobe(false);
   }
   function runDrop(at, cut, dur) {
     resetDrop();
+    if (lights) lights.drop(at, cut, dur);
     const fx = opts.dropFx, beat = 60000 / Math.max(40, bpm);
     // build
     if (fx.build === 'fade') later(() => { stage.setBlack(true, cut / 1000); broadcastMaster(cut / 1000); }, at);
@@ -2768,6 +2779,7 @@
     renderer.render(time, a, N.postValues(graph, a));
     grabShot();
     stage.render(time, a);   // on air (also what Foto/Grabar capture)
+    if (lights) lights.frame(now, a);   // right after the stage: the lights read its picture
     // in Directo the preview IS what is on air: show black / strobe on it too
     if (opts.direct && ov.on && ov.items.length) {
       const pw = Math.round(preview.clientWidth * Math.min(2, devicePixelRatio)), ph = Math.round(preview.clientHeight * Math.min(2, devicePixelRatio));
@@ -2799,7 +2811,7 @@
     if (opts.labels) {
       // always one row: tighten step by step; then drop names one at a time, the most obvious icons first
       const fits = () => barEl.scrollWidth <= barEl.clientWidth + 1;
-      const order = ['btnPlay', 'btnPhoto', 'btnRec', 'btnAudio', 'btnDesk', 'btnOut', 'btnLib', 'btnRemote', 'btnStrobe', 'btnBlack', 'btnOverlay', 'btnFx', 'btnExport', 'btnTrans', 'btnAdd'];
+      const order = ['btnPlay', 'btnPhoto', 'btnRec', 'btnAudio', 'btnDesk', 'btnOut', 'btnLib', 'btnDmx', 'btnRemote', 'btnStrobe', 'btnBlack', 'btnOverlay', 'btnFx', 'btnExport', 'btnTrans', 'btnAdd'];
       for (const c of lsteps.slice(0, 3)) { if (fits()) break; barEl.classList.add(c); }
       for (const id of order) { if (fits()) break; const b = document.getElementById(id); if (b && !b.hidden) b.classList.add('nl'); }
       if (!fits()) barEl.classList.add('lf-6');
@@ -2835,7 +2847,8 @@
   if (!DESK && opts.screenAuto) setTimeout(startRemote, 500);   // remote screens used before reconnect by themselves
   // fonts change node sizes -> redraw links once they are in
   if (document.fonts) document.fonts.ready.then(() => drawLinks());
-  window.__nodesEditor = { loadSong, get reel() { return reel; }, renderVideo, setExp, get rendering() { return rendering; }, get micOn() { return audio.on; }, get timeScale() { return timeScale; }, get isPlaying() { return playing; }, get audioBands() { return audio.bands.slice(); }, remoteScreens: screens, get peer() { return peer; }, get graph() { return graph; }, get compiled() { return compiled; }, get liveGraph() { return liveGraph; }, stage, addNode, connect, removeNodes, undo, redo, goLive, modulate, set valueTarget(v) { valueTarget = v; }, setDirect, storeScene, fireScene, openScene, setThumbs, get scenes() { return scenes; }, get controls() { return ctlList(graph); }, setTransition, get transition() { return opts.trans; }, addScreenFilter, get sfx() { return sfx; }, setFxOn, paintFx,
+  { const b = document.getElementById('btnDmx'); if (b) b.addEventListener('click', () => lights && lights.toggle()); }
+  window.__nodesEditor = { lights, loadSong, get reel() { return reel; }, renderVideo, setExp, get rendering() { return rendering; }, get micOn() { return audio.on; }, get timeScale() { return timeScale; }, get isPlaying() { return playing; }, get audioBands() { return audio.bands.slice(); }, remoteScreens: screens, get peer() { return peer; }, get graph() { return graph; }, get compiled() { return compiled; }, get liveGraph() { return liveGraph; }, stage, addNode, connect, removeNodes, undo, redo, goLive, modulate, set valueTarget(v) { valueTarget = v; }, setDirect, storeScene, fireScene, openScene, setThumbs, get scenes() { return scenes; }, get controls() { return ctlList(graph); }, setTransition, get transition() { return opts.trans; }, addScreenFilter, get sfx() { return sfx; }, setFxOn, paintFx,
     loadGraph(g, msg) { graph = ensureControls(g); selected.clear(); rebuild(); recompile(); save(); remember(); frameAll(); if (msg) toast(msg); },
     selectedGlsl() { const ids = [...selected]; const n = ids.length === 1 && graph.nodes.find(m => m.id === ids[0]); return n && n.type === 'glsl' ? n : null; },
     setGlsl(n, code, src) { n.p = { ...(n.p || {}), code, src }; rebuild(); recompile(); save(); remember(); },

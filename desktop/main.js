@@ -189,6 +189,15 @@ ipcMain.on('osc-send', (e, addr, args) => {
   oscOut.send(addr, ...a, () => {});
 });
 
+/* ── DMX lights over Art-Net (NODRUS → a node such as WIDMX). Only runs when the editor turns lights on. ── */
+const artnet = require('./artnet.js');
+let dmxOut = null;
+const dmx = () => dmxOut || (dmxOut = artnet.createSender(n => toEditor('dmx-nodes', n), err => toEditor('dmx-error', err)));
+ipcMain.handle('dmx-config', (e, o) => { try { dmx().config(o || {}); return { ok: true, broadcasts: artnet.broadcasts() }; } catch (x) { return { ok: false, error: String(x.message || x) }; } });
+ipcMain.on('dmx-send', (e, data) => { if (dmxOut && data && data.length) dmxOut.send(data); });
+ipcMain.handle('dmx-poll', async () => { dmx().poll(); await new Promise(r => setTimeout(r, 1500)); return dmx().nodes; });
+ipcMain.handle('dmx-stop', () => { if (dmxOut) dmxOut.close(); dmxOut = null; return { ok: true }; });
+
 /* ── Windows ── */
 function outputDisplay() {
   const all = screen.getAllDisplays(), prim = screen.getPrimaryDisplay();
@@ -262,7 +271,7 @@ app.whenReady().then(async () => {
   if (!TEST) {
     cfg.spouts.forEach((c, i) => { if (c.on) { const r = startSpout({ ...c, slot: i }); if (!r.ok) console.error('Spout', i + 1, r.error); } });
     if (cfg.osc.on) startOsc(cfg.osc);
-  } else require('./test.js')({ app, mainWin, base, port, startSpout, stopSpout, spoutStats, startOsc, stopOsc, bridge });
+  } else require('./test.js')({ app, mainWin, base, port, startSpout, stopSpout, spoutStats, startOsc, stopOsc, bridge, artnet });
 });
 app.on('window-all-closed', () => app.quit());
-app.on('before-quit', () => { stopSpout(); stopOsc(); });
+app.on('before-quit', () => { stopSpout(); stopOsc(); if (dmxOut) dmxOut.close(); });

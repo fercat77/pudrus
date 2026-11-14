@@ -19,6 +19,14 @@ contextBridge.exposeInMainWorld('nodrusDesktop', {
     on: cb => { ipcRenderer.on('osc', (e, m) => cb(m)); },
     onError: cb => { ipcRenderer.on('osc-error', (e, m) => cb(m)); },
   },
+  dmx: {
+    config: o => ipcRenderer.invoke('dmx-config', o),
+    send: data => ipcRenderer.send('dmx-send', data),
+    poll: () => ipcRenderer.invoke('dmx-poll'),
+    stop: () => ipcRenderer.invoke('dmx-stop'),
+    onNodes: cb => { ipcRenderer.on('dmx-nodes', (e, m) => cb(m)); },
+    onError: cb => { ipcRenderer.on('dmx-error', (e, m) => cb(m)); },
+  },
   setDisplay: id => ipcRenderer.invoke('set-display', id),
   metrics: () => ipcRenderer.invoke('metrics'),
 });

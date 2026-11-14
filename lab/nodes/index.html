@@ -33,6 +33,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600;700&display=swap">
   <link rel="stylesheet" href="lab.css?v=46">
+  <link rel="stylesheet" href="dmx.css?v=1">
 </head>
 <body>
 <script src="/js/splash.js?v=3" data-splash="nodrus"></script>
@@ -59,6 +60,7 @@
   <button class="lab-btn" id="btnTap" title="Tap tempo: tocá al ritmo (T)">Tap <b id="bpm">120</b></button>
   <button class="lab-btn" id="btnFx" title="Filtros de pantalla: efectos sobre todo lo que sale al aire (E)">✨<span class="t t1"> Filtros</span></button>
   <button class="lab-btn" id="btnOverlay" title="Capa superior: logos y textos arriba de todo (O)">▤<span class="t t1"> Capa</span></button>
+  <button class="lab-btn" id="btnDmx" title="Luces DMX: PARs y cabezales beam que siguen a la visual y a la música (L)">💡<span class="t t1"> Luces</span></button>
   <button class="lab-btn" id="btnRemote" title="Usar el celular como controlador">📱<span class="t t1"> Control</span></button>
   <span class="lab-sep"></span>
   <button class="lab-btn" id="btnAudio" title="Audio reactivo">🎤<span class="t"> Audio</span> <span class="lab-meter" id="meter"><i></i><i></i><i></i><i></i></span></button>
@@ -233,6 +235,7 @@
       <dt>✨ Filtros</dt><dd>Efectos sobre todo lo que sale al aire (como los de composición de Resolume): agregalos desde la librería (#filtro, «＋ Pantalla»), cada uno con su mezcla y sus controles; <kbd>E</kbd> los prende y apaga. La colección ISF de VIDVOX trae 199 (MIT).</dd>
       <dt>Escenas</dt><dd>16, en dos páginas (botón 1–8 / 9–16). <kbd>Shift</kbd>+<kbd>1</kbd>…<kbd>8</kbd> guarda · <kbd>1</kbd>…<kbd>8</kbd> al aire · clic: abrir en el editor · clic derecho: opciones. Cada escena guarda también sus controles.</dd>
       <dt>Negro · Strobe</dt><dd><kbd>N</kbd> fundido a negro · <kbd>S</kbd> strobe mientras lo mantenés.</dd>
+      <dt>💡 Luces</dt><dd><kbd>L</kbd> abre el panel de luces DMX: PARs, barras, strobos y cabezales beam que toman el color de la pantalla y siguen la música, con un look por escena. Negro, Strobe, los drops de SYNDRUS y SETRUS también las mueven. Simulador en pantalla; la salida a las luces (Art-Net, p. ej. una interfaz WiFi) es desde la app de escritorio.</dd>
       <dt>Tap tempo</dt><dd><kbd>T</kbd> al ritmo de la música: sincroniza el LFO («Ritmo»), «Pulso», el flash al pulso y los efectos de la capa. Con SYNDRUS como fuente, el tempo lo marca SYNDRUS.</dd>
       <dt>Audio</dt><dd>«🎤 Audio»: elegí la fuente: apagado, 🎤 micrófono (con su entrada) o 🎛 <b>SYNDRUS</b> (tempo, pulso y sonido de la música que suena ahí, y qué hacen las visuales en sus drops). La ganancia vale para los dos. Lo usan los nodos Audio y «Reacciona a».</dd>
       <dt>fps</dt><dd>Clic en los fps de la barra de estado (o «Patch ▾ → Límite de fps»): automático, 60, 50, 30, 25 o 24. Un límite fijo es más parejo si la máquina no llega a la frecuencia de la pantalla.</dd>
@@ -292,6 +295,7 @@ Imagen ─── Color ─▶ Encima ├ Superponer ─▶ Salida
       <p><kbd>1</kbd>…<kbd>8</kbd><span>escena al aire</span></p>
       <p><kbd>Shift</kbd>+<kbd>1</kbd>…<kbd>8</kbd><span>guardar escena</span></p>
       <p><kbd>N</kbd><span>negro</span></p>
+      <p><kbd>L</kbd><span>luces</span></p>
       <p><kbd>S</kbd> mantener<span>strobe</span></p>
       <p><kbd>T</kbd><span>tap tempo</span></p>
       <p><kbd>O</kbd><span>capa superior</span></p>
@@ -476,6 +480,7 @@ Imagen ─── Color ─▶ Encima ├ Superponer ─▶ Salida
 <script src="presets.js?v=44"></script>
 <script src="generate.js?v=45"></script>
 <script src="library.js?v=44" defer></script>
-<script src="editor.js?v=47"></script>
+<script src="dmx.js?v=1"></script>
+<script src="editor.js?v=48"></script>
 </body>
 </html>

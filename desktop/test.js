@@ -90,6 +90,20 @@ module.exports = async function run({ app, mainWin, base, port, startSpout, stop
     out.oscOut = { count: got.length, addresses: [...new Set(got)].slice(0, 6) };
     await cli.close(); listen.close();
 
+    // 2b) lights: NODRUS → Art-Net → a fake node on 127.0.0.1:6465 (like a WIDMX on the wifi)
+    {
+      const dgram = require('dgram'), artnet = require('./artnet.js');
+      const frames = []; const node = dgram.createSocket('udp4');
+      node.on('message', m => { const p = artnet.parsePacket(m); if (p && p.op === 'dmx') frames.push({ u: p.universe, n: p.data.length, d: Array.from(p.data.subarray(0, 8)) }); });
+      await new Promise(r => node.bind(6465, '127.0.0.1', r));
+      await js('__dmx.S.net = { host: "127.0.0.1", universe: 1, port: 6465 }; __dmx.setOn(true); __nodesEditor.lights.toggle(true)');
+      await wait(1500);
+      const raf = await js('new Promise(r => { let n = 0; const t = performance.now(); (function f() { n++; if (performance.now() - t < 1000) requestAnimationFrame(f); else r(n); })(); })');
+      out.dmx = { raf, frames: frames.length, last: frames[frames.length - 1] || null, status: await js('document.querySelector(".dmx-status") && document.querySelector(".dmx-status").textContent') };
+      await js('__dmx.setOn(false); __nodesEditor.lights.toggle(false)');
+      await wait(300); node.close();
+    }
+
     // 3) a phone over the wifi (WebSocket)
     const ws = new WebSocket(`ws://127.0.0.1:${port}/ws`);
     const msgs = [];
