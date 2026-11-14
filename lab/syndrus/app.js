@@ -205,6 +205,7 @@
   function tick() {
     const stepDur = 60 / app.bpm / 4, g = X.xfGains(app.mix.x);
     while (nextTime < ac.currentTime + 0.12) {
+      if (showQ.length || xfRamp) showTick(nextTime);   // SETRUS: its cues, exact to the step
       if (step % 16 === 0 && (pending[0] || pending[1])) applyPending();
       const t = nextTime + (step % 2 ? app.swing * stepDur * 0.5 : 0);
       const n = roll ? roll.start + ((step - roll.start) % roll.len) : step;   // Roll: repeat a slice of the bar
@@ -239,6 +240,7 @@
     clearInterval(timer);
     if (on) { step = 0; nextTime = ac.currentTime + 0.06; if (midiO.clockOut) midiSend([0xFA], performance.now() + (nextTime - ac.currentTime + latency()) * 1000); tick(); timer = setInterval(tick, 25); }
     else {
+      showQ.length = 0; xfRamp = null;
       if (midiO.clockOut) midiSend([0xFC]); E.decks.forEach(D => D.synth.noteOff(ac.currentTime)); queue.length = 0; paintNow(-1); if (pending[0] || pending[1]) applyPending(); }
   }
   $('#play').addEventListener('click', () => setPlay(!playing));
@@ -282,6 +284,7 @@
       const m = e.data || {};
       if (m.type === 'nodrus') { const was = performance.now() - nodrusSeen < 4000; nodrusSeen = performance.now(); nodrusLink = m.link !== false; if (!was) toast('◈ NODRUS conectado: las visuales siguen esta música'); }
       else if (m.type === 'hello-nodrus') { nodrusSeen = performance.now(); sendSync(); }
+      else if (m.type && m.type.startsWith('show')) showMsg(m);
     };
     linkCh.postMessage({ type: 'hello-syndrus' });
     setInterval(sendSync, 40);
@@ -289,6 +292,58 @@
   function linkFx(kind, t, dur, cut) {   // times on the audio clock → milliseconds from now, as heard
     if (!linkCh || !ac) return;
     linkCh.postMessage({ type: 'fx', kind, delay: Math.max(0, (t - ac.currentTime + latency()) * 1000), dur: (dur || 0) * 1000, cut: (cut || 0) * 1000 });
+  }
+
+  /* ── SETRUS (the show timeline, another window) drives the decks: at a given bar it loads bank patterns,
+     moves the crossfader (at once or over bars) and fires a riser / drop / impact — on this audio clock.
+     Nothing here runs unless SETRUS sends something. ── */
+  const showQ = [];   // { step, cmd } waiting for their step
+  let xfRamp = null;  // { s0, s1, from, to } crossfade over bars
+  let showPaint = 0;
+  function showRun(cmd, t) {
+    if (cmd.stop) { setTimeout(() => { if (playing) setPlay(false); showInfo(); }, Math.max(0, (t - ac.currentTime) * 1000)); return; }
+    if (Array.isArray(cmd.load)) cmd.load.forEach(([d, k]) => {
+      const slot = app.bank[k]; if (!slot || (d !== 0 && d !== 1)) return;
+      pending[d] = null; app.decks[d] = sane(clone(slot.p)); if (d === app.edit) st = app.decks[d];
+    });
+    if (cmd.xf && Number.isFinite(cmd.xf.to)) {
+      const to = Math.min(1, Math.max(0, cmd.xf.to));
+      if (cmd.xf.bars > 0) xfRamp = { s0: step, s1: step + cmd.xf.bars * 16, from: app.mix.x, to };
+      else { xfRamp = null; app.mix.x = to; }
+    }
+    if (ac && E) X.applyMix(E, app);
+    if (cmd.fx && ['up', 'down', 'impact', 'drop'].includes(cmd.fx.kind) && E) {
+      const bar = 60 / app.bpm * 4, beat = 60 / app.bpm, dur = Math.max(1, cmd.fx.bars || 4) * bar, k = cmd.fx.kind;
+      if (k === 'up') E.riser(t, dur); else if (k === 'down') E.downer(t, Math.min(dur, bar * 2)); else if (k === 'impact') E.impact(t); else E.drop(t, dur, beat);
+      linkFx(k, t, k === 'down' ? Math.min(dur, bar * 2) : dur, dur - beat);
+    }
+    save(); setTimeout(() => { paintAll(); paintMixer(); }, 0);
+  }
+  function showTick(t) {
+    for (let i = 0; i < showQ.length; i++) if (showQ[i].step <= step) { const q = showQ.splice(i--, 1)[0]; showRun(q.cmd, t); }
+    if (xfRamp) {
+      const k = Math.min(1, Math.max(0, (step - xfRamp.s0) / Math.max(1, xfRamp.s1 - xfRamp.s0)));
+      app.mix.x = xfRamp.from + (xfRamp.to - xfRamp.from) * k;
+      const g = X.xfGains(app.mix.x); E.decks.forEach((D, i) => D.setMix(app.mix.decks[i], g[i]));
+      if (k >= 1) { xfRamp = null; save(); }
+      if (performance.now() - showPaint > 150 || !xfRamp) { showPaint = performance.now(); setTimeout(paintMixer, 0); }
+    }
+  }
+  function showInfo() {
+    linkCh.postMessage({ type: 'show-syndrus', bank: app.bank.map(b => (b ? b.name : null)), bpm: app.bpm, playing, x: app.mix.x, audio: ac ? ac.state : 'none' });
+  }
+  function showMsg(m) {
+    if (m.type === 'show-hello') showInfo();
+    else if (m.type === 'show-cue' && m.cmd && Number.isFinite(m.bar)) {   // at the start of bar m.bar (counted from play)
+      if (!playing) return;
+      showQ.push({ step: Math.max(0, m.bar) * 16, cmd: m.cmd });
+    } else if (m.type === 'show-clear') { showQ.length = 0; if (m.ramp) xfRamp = null; }
+    else if (m.type === 'show-play') {   // the first section, then play from bar 0
+      ensureAudio(); showQ.length = 0; xfRamp = null;
+      if (playing) setPlay(false);
+      if (m.cmd) showRun(m.cmd, ac.currentTime + 0.06);
+      setPlay(true); showInfo();
+    } else if (m.type === 'show-stop') { if (playing) setPlay(false); showInfo(); }
   }
 
   /* ── drag parameter widget (like NODRUS) ── */

@@ -743,6 +743,7 @@
   });
   $('#pmHydra').addEventListener('click', openHydra);
   $('#pmSyndrus').addEventListener('click', openSyndrus);
+  $('#pmSetrus').addEventListener('click', () => { const w = window.open(DESK ? '/lab/setrus/' : new URL('../setrus/', document.baseURI).href, 'setrus'); if (!w) toast('El navegador bloqueó la ventana: permití las ventanas emergentes', true); });
   $('#syOpen').addEventListener('click', openSyndrus);
   $('#syDrops').addEventListener('change', e => { opts.syDrops = e.target.checked; saveOpts(); });
   $('#dfBuild').addEventListener('change', e => { opts.dropFx.build = e.target.value; saveOpts(); });
@@ -1216,12 +1217,12 @@
     rebuild(); recompile(); save(); remember(); frameAll();
     toast(`Escena ${i + 1} en el editor` + (opts.direct ? '' : ' · Enter para mandarla al aire'));
   }
-  function fireScene(i) {
+  function fireScene(i, fade) {
     const sc = scenes[i];
     if (!sc) { toast(`La escena ${i + 1} está vacía (Shift+${i % 8 + 1} para guardar)`); return; }
     if (Math.floor(i / 8) !== scenePage) scenePage = Math.floor(i / 8);
     if (opts.direct) { graph = clone(sc.graph); selected.clear(); rebuild(); recompile(); save(); remember(); }
-    goLive(opts.direct ? graph : sc.graph);
+    goLive(opts.direct ? graph : sc.graph, fade);
     liveScene = i; paintScenes();
     oscSend('/nodrus/scene', i + 1);
   }
@@ -1347,6 +1348,7 @@
         const was = syFresh();
         SY.last = performance.now(); SY.bpm = m.bpm; SY.beat = m.beat; SY.epoch = m.epoch; SY.playing = !!m.playing;
         if (Array.isArray(m.bands)) SY.bands = m.bands;
+        if (showWait.length) showArm();
         if (opts.audioSrc === 'syndrus' && Math.abs(bpm - m.bpm) > 0.01) { bpm = m.bpm; $('#bpm').textContent = Math.round(bpm); }
         if (!was) toast(opts.audioSrc === 'syndrus' ? '🎛 SYNDRUS conectado: NODRUS sigue su tempo, su pulso y su sonido' : '🎛 SYNDRUS está abierto: elegilo como fuente en el menú 🎤 para que las visuales lo sigan');
         if (!audioPop.hidden) paintAudioPop();
@@ -1357,9 +1359,37 @@
         else if (m.kind === 'impact') { if (opts.dropFx.flash) flashAt(at, 120); }
         else if (m.kind === 'cancel') resetDrop();
       } else if (m.type === 'hello-syndrus') syCh.postMessage({ type: 'nodrus', link: opts.audioSrc === 'syndrus' });
+      else if (m.type === 'show-look') showLook(m);
+      else if (m.type === 'show-clear') { showTimers.splice(0).forEach(clearTimeout); showWait.length = 0; }
+      else if (m.type === 'show-hello') syCh.postMessage({ type: 'nodrus', link: opts.audioSrc === 'syndrus' });
     };
     syCh.postMessage({ type: 'hello-nodrus' });
     setInterval(() => syCh.postMessage({ type: 'nodrus', link: opts.audioSrc === 'syndrus' }), 2000);
+  }
+  /* ── SETRUS (the show timeline) asks for a look on a given beat of SYNDRUS' clock (as heard):
+     a scene or a random patch, with its fade, a flash on the one, black on/off. Only runs when SETRUS sends it. ── */
+  const showTimers = [], showWait = [];   // looks waiting for their beat
+  function showFire(m) {
+    const fade = Number.isFinite(m.fade) ? Math.max(0, m.fade) : undefined;
+    if (Number.isInteger(m.scene) && m.scene >= 0 && m.scene < 16 && scenes[m.scene]) fireScene(m.scene, fade);
+    else if (m.scene === 'random') { randomPatch(); goLive(undefined, fade); }
+    if (m.black === true || m.black === false) { stage.setBlack(m.black, m.blackFade || 0); broadcastMaster(m.blackFade || 0); $('#btnBlack').classList.toggle('is-rec', m.black); }
+    if (m.flash) { setStrobe(true); setTimeout(() => setStrobe(false), 140); }
+  }
+  function showLook(m) {
+    if (!Number.isFinite(m.beat)) { showFire(m); return; }
+    showWait.push(m); showArm();
+  }
+  // on every SYNDRUS sync: a look less than ~half a second away gets an exact timer (only with a clock newer than the cue)
+  function showArm() {
+    if (!showWait.length || !SY.playing || !syFresh()) return;
+    const per = 60000 / Math.max(40, SY.bpm || bpm);
+    for (let i = 0; i < showWait.length; i++) {
+      const m = showWait[i];
+      if (Number.isFinite(m.since) && SY.epoch < m.since) continue;   // a beat from before the show (re)started
+      const ms = (m.beat - syBeat()) * per;
+      if (ms < 450) { showWait.splice(i--, 1); showTimers.push(setTimeout(() => showFire(m), Math.max(0, ms))); }
+    }
   }
   /* ── what the visuals do on a SYNDRUS drop: build (while the filter rises) · cut (last beat) · the one ── */
   let timeScale = 1, frozen = false, wasPlaying = true;

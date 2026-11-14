@@ -126,7 +126,7 @@ module.exports = async function run({ app, mainWin, base, port, startSpout, stop
 
     // 4) the phone page and libraries are served locally
     const get = p => new Promise(res => require('http').get(base + p, r => { let n = 0; r.on('data', c => { n += c.length; }); r.on('end', () => res({ status: r.statusCode, bytes: n })); }).on('error', e => res({ error: e.message })));
-    out.served = { syndrus: await get('/lab/syndrus/'), syndrusEngine: await get('/lab/syndrus/engine.js'), control: await get('/lab/nodes/control/?ws'), qrcode: await get('/vendor/qrcode.js'), mp4: await get('/vendor/mp4-muxer.js'), outside: await get('/../../desktop/main.js'), secret: await get('/desktop/main.js') };
+    out.served = { syndrus: await get('/lab/syndrus/'), setrus: await get('/lab/setrus/'), setrusJs: await get('/lab/setrus/setrus.js'), syndrusEngine: await get('/lab/syndrus/engine.js'), control: await get('/lab/nodes/control/?ws'), qrcode: await get('/vendor/qrcode.js'), mp4: await get('/vendor/mp4-muxer.js'), outside: await get('/../../desktop/main.js'), secret: await get('/desktop/main.js') };
     out.remoteUrl = await js('document.getElementById("rmUrl") ? (window.__nodesEditor && "ok") : "?"');
     // SYNDRUS opens as a window of the app and NODRUS hears it
     {

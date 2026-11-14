@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="robots" content="noindex, nofollow">
+  <meta name="theme-color" content="#050508">
+  <title>SETRUS — PUDRUS Lab</title>
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600;700&display=swap">
+  <link rel="stylesheet" href="setrus.css?v=1">
+</head>
+<body>
+<header class="se-bar">
+  <a class="se-logo" href="/" title="PUDRUS.XYZ">SET<span>RUS</span></a>
+  <button class="se-btn se-play" id="play" title="Play / stop desde la sección elegida (Espacio)">▶</button>
+  <button class="se-btn se-next" id="next" title="Pasar a la siguiente sección (→ o N). Entra en el próximo compás o frase, con la subida o el drop si la sección lo tiene">⏭<span class="se-lbl"> Siguiente</span></button>
+  <div class="se-pos" id="pos">—</div>
+  <span class="se-sp"></span>
+  <label class="se-field" title="Cuándo entra «Siguiente» o un salto a otra sección">Entra en
+    <select id="nextAt"><option value="bar">el próximo compás</option><option value="phrase">la próxima frase (4)</option></select></label>
+  <label class="se-field" title="Qué pasa cuando termina la última sección">Al final
+    <select id="endMode"><option value="hold">sigue la última</option><option value="loop">vuelve al principio</option><option value="stop">para (a negro)</option></select></label>
+  <button class="se-link" id="lnkSy" title="SYNDRUS: la música y el reloj del show (clic: abrir)">🎛 SYNDRUS</button>
+  <button class="se-link" id="lnkNo" title="NODRUS: las visuales (clic: abrir)">◈ NODRUS</button>
+  <button class="se-btn" id="fileBtn" title="Guardar o abrir el show como archivo">⤓⤒</button>
+  <button class="se-btn" id="helpBtn" title="Cómo funciona">?</button>
+</header>
+
+<main class="se-main">
+  <section class="se-timeline">
+    <div class="se-tlhead">
+      <input class="se-name" id="showName" maxlength="40" spellcheck="false" title="Nombre del show">
+      <span class="se-dim" id="showLen"></span>
+      <span class="se-sp"></span>
+      <button class="se-mini" id="addSec" title="Agregar una sección después de la elegida">＋ Sección</button>
+      <button class="se-mini" id="dupSec" title="Duplicar la sección elegida">⧉ Duplicar</button>
+      <button class="se-mini" id="leftSec" title="Mover a la izquierda">←</button>
+      <button class="se-mini" id="rightSec" title="Mover a la derecha">→</button>
+      <button class="se-mini se-del" id="delSec" title="Borrar la sección elegida">✕</button>
+    </div>
+    <div class="se-track" id="track"></div>
+  </section>
+
+  <section class="se-edit" id="edit"></section>
+</main>
+
+<div class="se-toast" id="toast"></div>
+
+<div class="se-pop" id="filePop" hidden>
+  <button class="se-mini" id="fileSave">⤓ Guardar archivo (.json)</button>
+  <button class="se-mini" id="fileOpen">⤒ Abrir archivo</button>
+  <button class="se-mini" id="fileNew">✦ Show nuevo (de ejemplo)</button>
+  <input type="file" id="fileIn" accept=".json,application/json" hidden>
+</div>
+
+<div class="se-pop se-help" id="helpPop" hidden>
+  <h3>SETRUS — el show en una línea de tiempo</h3>
+  <p>Armás el set por secciones (intro, subida, drop…). Cada una dice qué suena en <b>SYNDRUS</b> y qué se ve en <b>NODRUS</b>, y cuántos compases dura. Con ▶ el show corre solo y los cambios caen justo en el compás.</p>
+  <dl>
+    <dt>Antes</dt><dd>Abrí SYNDRUS y NODRUS (botones de arriba). Guardá tus patrones en el <b>banco</b> de SYNDRUS y tus visuales en las <b>escenas</b> de NODRUS: acá los elegís por nombre e imagen. En NODRUS elegí «SYNDRUS» como fuente de sonido (🎤) para que las visuales sigan la música.</dd>
+    <dt>Música</dt><dd>Qué patrón del banco entra en el deck A y en el B al empezar la sección, y hacia dónde va el crossfader (de golpe o en 1–8 compases).</dd>
+    <dt>Final</dt><dd>Una subida, un drop o una bajada en los últimos compases: el drop corta en el último tiempo y la sección siguiente entra en el uno.</dd>
+    <dt>Visuales</dt><dd>Qué escena va al aire (o un patch aleatorio), con qué fundido, un flash en el uno y negro sí/no.</dd>
+    <dt>⏸ Esperar</dt><dd>La sección se repite hasta que tocás <b>Siguiente</b> (→). Así seguís al público: el plan está, pero el momento lo elegís vos.</dd>
+    <dt>En vivo</dt><dd>Clic en cualquier sección = saltar ahí (entra en el próximo compás o frase). Teclas: Espacio play/stop · → o N siguiente · 1–9 saltar a esa sección.</dd>
+    <dt>Ensayar</dt><dd>Elegí una sección y tocá ▶: el show arranca desde ahí.</dd>
+  </dl>
+  <p class="se-dim">Todo se guarda solo en este navegador. «⤓⤒» guarda el show en un archivo para llevarlo a otra compu (los patrones y escenas viven en SYNDRUS y NODRUS).</p>
+</div>
+
+<script src="setrus.js?v=1"></script>
+</body>
+</html>

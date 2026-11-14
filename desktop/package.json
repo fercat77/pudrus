@@ -50,6 +50,13 @@
         ]
       },
       {
+        "from": "../lab/setrus",
+        "to": "web/lab/setrus",
+        "filter": [
+          "**/*"
+        ]
+      },
+      {
         "from": "../favicon.svg",
         "to": "web/favicon.svg"
       },
