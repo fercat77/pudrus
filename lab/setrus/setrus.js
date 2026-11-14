@@ -76,9 +76,11 @@
     send({ type: 'show-hello' });
     setInterval(() => send({ type: 'show-hello' }), 2500);
   }
+  const wins = {};
   function openWin(which) {
     const url = new URL(which === 'sy' ? '../syndrus/' : '../nodes/' + (/Mobi|Android/i.test(navigator.userAgent) ? '' : '?pc'), location.href).href;
     const w = window.open(url, which === 'sy' ? 'syndrus' : 'nodrus');
+    if (w) wins[which] = w;
     if (!w) toast('El navegador bloqueó la ventana: permití las ventanas emergentes', true);
   }
   $('#lnkSy').addEventListener('click', () => openWin('sy'));
@@ -150,7 +152,11 @@
     sendPlan(run.plan, 1);
     SY.beat = 0; SY.epoch = epochNow(); SY.playing = true;   // until the first sync arrives
     if (!noAlive()) toast('▶ Show en marcha · NODRUS no está abierto: sólo suena la música');
-    setTimeout(() => { if (run.on && SY.audio === 'suspended') toast('SYNDRUS no suena todavía: hacé un clic en su ventana (el navegador lo pide una vez)', true); }, 1200);
+    setTimeout(() => {
+      if (!run.on || SY.audio !== 'suspended') return;
+      toast('SYNDRUS no suena todavía: andá a su ventana y hacé un clic en cualquier lado (el navegador lo pide una vez)', true);
+      try { if (wins.sy && !wins.sy.closed) wins.sy.focus(); } catch (e) { /* other window */ }
+    }, 1200);
     paint();
   }
   function stop() {

@@ -195,9 +195,23 @@
   let ac = null, E = null, playing = false, nextTime = 0, step = 0, timer = 0;
   const queue = [];
   function ensureAudio() {
-    if (!ac) { ac = new (window.AudioContext || window.webkitAudioContext)({ latencyHint: 'interactive' }); E = X.buildEngine(ac, ac.destination); X.applyMix(E, app); applyCue(); }
-    if (ac.state === 'suspended') ac.resume();
+    if (!ac) { ac = new (window.AudioContext || window.webkitAudioContext)({ latencyHint: 'interactive' }); E = X.buildEngine(ac, ac.destination); X.applyMix(E, app); applyCue(); ac.onstatechange = () => { paintUnlock(); showInfo(); }; }
+    if (ac.state === 'suspended') ac.resume().catch(() => {});
+    paintUnlock();
   }
+  // the browser keeps audio mute until a click / key in THIS window (e.g. when SETRUS starts the show):
+  // any click or key wakes it, and a big notice says so while it's playing silent
+  function paintUnlock() {
+    const silent = !!ac && ac.state !== 'running' && playing;
+    let u = document.getElementById('syUnlock');
+    if (!silent) { if (u) u.remove(); return; }
+    if (u) return;
+    u = el('button', 'sy-unlock'); u.id = 'syUnlock'; u.type = 'button';
+    u.innerHTML = '<b>🔊 Hacé clic para activar el sonido</b><span>El navegador no deja sonar a SYNDRUS hasta que tocás su ventana (una sola vez).</span>';
+    u.addEventListener('click', () => ensureAudio());
+    document.body.append(u);
+  }
+  ['pointerdown', 'keydown', 'touchend'].forEach(ev => addEventListener(ev, () => { if (!ac || ac.state !== 'running') ensureAudio(); }, { capture: true }));
   const mix = () => { if (E) X.applyMix(E, app); save(); };
   const deck = () => E.decks[app.edit];
   const pending = [null, null];   // bank patterns waiting for the next bar, per deck
@@ -236,7 +250,7 @@
   }
   function setPlay(on) {
     ensureAudio();
-    playing = on; $('#play').classList.toggle('on', on); $('#play').textContent = on ? '■' : '▶'; rmPush();
+    playing = on; $('#play').classList.toggle('on', on); $('#play').textContent = on ? '■' : '▶'; rmPush(); paintUnlock();
     clearInterval(timer);
     if (on) { step = 0; nextTime = ac.currentTime + 0.06; if (midiO.clockOut) midiSend([0xFA], performance.now() + (nextTime - ac.currentTime + latency()) * 1000); tick(); timer = setInterval(tick, 25); }
     else {
@@ -330,6 +344,7 @@
     }
   }
   function showInfo() {
+    if (!linkCh) return;
     linkCh.postMessage({ type: 'show-syndrus', bank: app.bank.map(b => (b ? b.name : null)), bpm: app.bpm, playing, x: app.mix.x, audio: ac ? ac.state : 'none' });
   }
   function showMsg(m) {
