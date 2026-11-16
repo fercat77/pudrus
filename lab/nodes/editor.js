@@ -23,8 +23,8 @@
   if (location.hash.startsWith('#patch=')) {
     try {
       const b64 = location.hash.slice(7).replace(/-/g, '+').replace(/_/g, '/');
-      const g = JSON.parse(decodeURIComponent(escape(atob(b64))));
-      if (Array.isArray(g.nodes) && Array.isArray(g.links) && g.nodes.every(n => N.NODES[n.type])) { graph = ensureControls(g); fromPhone = true; }
+      const g = saneGraph(JSON.parse(decodeURIComponent(escape(atob(b64)))));
+      if (g) { graph = ensureControls(g); fromPhone = true; }
     } catch (e) { /* not a valid sketch */ }
     history.replaceState(null, '', location.pathname + location.search);
   }
@@ -42,8 +42,26 @@
   opts.dropFx = Object.assign({ build: 'none', cut: 'black', flash: true, scene: false, random: false, deck: false }, opts.dropFx || {});
   if (!['off', 'mic', 'syndrus'].includes(opts.audioSrc)) opts.audioSrc = 'off';   // the microphone needs a click (browser rule): never auto-opened
 
+  // A patch from storage, a file or a link is data from outside: only a well-formed one gets in (known nodes, whole ids,
+  // links between nodes that exist). A damaged one must never reach the editor — saved, it would break every next start.
+  function saneGraph(g) {
+    if (!g || typeof g !== 'object' || !Array.isArray(g.nodes) || !Array.isArray(g.links) || !g.nodes.length || g.nodes.length > 400) return null;
+    const plain = x => (x && typeof x === 'object' && !Array.isArray(x) ? x : {}), ids = new Set();
+    for (const n of g.nodes) {
+      if (!n || typeof n !== 'object' || typeof n.type !== 'string' || !Object.prototype.hasOwnProperty.call(N.NODES, n.type)) return null;
+      if (!Number.isInteger(n.id) || n.id < 1 || ids.has(n.id)) return null;
+      ids.add(n.id);
+      n.x = Number.isFinite(n.x) ? Math.max(-1e5, Math.min(1e5, n.x)) : 0; n.y = Number.isFinite(n.y) ? Math.max(-1e5, Math.min(1e5, n.y)) : 0;
+      n.v = plain(n.v); n.p = plain(n.p);
+    }
+    const key = k => typeof k === 'string' || Number.isInteger(k);
+    g.links = g.links.filter(l => l && typeof l === 'object' && ids.has(l.a) && ids.has(l.b) && l.a !== l.b && key(l.ao) && key(l.bi));
+    if (g.ctl !== undefined && !Array.isArray(g.ctl)) delete g.ctl;
+    if (Array.isArray(g.ctl)) g.ctl = g.ctl.filter(c => c && typeof c === 'object');
+    return g;
+  }
   function load() {
-    try { const g = JSON.parse(localStorage.getItem(STORE) || 'null'); return g && Array.isArray(g.nodes) ? g : null; } catch (e) { return null; }
+    try { return saneGraph(JSON.parse(localStorage.getItem(STORE) || 'null')); } catch (e) { return null; }
   }
   let saveTimer;
   function save() {
@@ -567,17 +585,22 @@
   $('#fileOpen').addEventListener('change', async e => {
     const f = e.target.files[0]; e.target.value = '';
     if (!f) return;
+    const before = graph;
     try {
       const data = JSON.parse(await f.text());
-      const g = data.graph || data;
-      if (!Array.isArray(g.nodes) || !Array.isArray(g.links) || g.nodes.some(n => !N.NODES[n.type])) throw new Error('formato');
+      const g = saneGraph(data && typeof data === 'object' ? (data.graph || data) : null);
+      if (!g) throw new Error('formato');
       for (const [id, d] of Object.entries(data.assets || {})) {
         if (!/^img-[a-z0-9]+$/.test(id) || typeof d !== 'string' || !/^data:image\/(png|jpeg|webp|gif);base64,/.test(d)) continue;
         await N.assets.put(id, await (await fetch(d)).blob());
       }
       graph = ensureControls(g); selected.clear(); rebuild(); recompile(); save(); remember(); frameAll();
       toast('Patch cargado');
-    } catch (err) { toast('Ese archivo no es un patch válido', true); }
+    } catch (err) {
+      // whatever it was, the patch you had stays (a half-loaded one would be saved over it)
+      if (graph !== before) { graph = before; try { selected.clear(); rebuild(); recompile(); } catch (e) { /* keep going */ } }
+      toast('Ese archivo no es un patch válido', true);
+    }
   });
   $('#btnOpen').addEventListener('click', () => $('#fileOpen').click());
 
@@ -2850,7 +2873,7 @@
   // fonts change node sizes -> redraw links once they are in
   if (document.fonts) document.fonts.ready.then(() => drawLinks());
   { const b = document.getElementById('btnDmx'); if (b) b.addEventListener('click', () => lights && lights.toggle()); }
-  window.__nodesEditor = { lights, loadSong, get reel() { return reel; }, renderVideo, setExp, get rendering() { return rendering; }, get micOn() { return audio.on; }, get timeScale() { return timeScale; }, get isPlaying() { return playing; }, get audioBands() { return audio.bands.slice(); }, remoteScreens: screens, get peer() { return peer; }, get graph() { return graph; }, get compiled() { return compiled; }, get liveGraph() { return liveGraph; }, stage, addNode, connect, removeNodes, undo, redo, goLive, modulate, set valueTarget(v) { valueTarget = v; }, setDirect, storeScene, fireScene, openScene, setThumbs, get scenes() { return scenes; }, get controls() { return ctlList(graph); }, setTransition, get transition() { return opts.trans; }, addScreenFilter, get sfx() { return sfx; }, setFxOn, paintFx,
+  window.__nodesEditor = { lights, saneGraph, loadSong, get reel() { return reel; }, renderVideo, setExp, get rendering() { return rendering; }, get micOn() { return audio.on; }, get timeScale() { return timeScale; }, get isPlaying() { return playing; }, get audioBands() { return audio.bands.slice(); }, remoteScreens: screens, get peer() { return peer; }, get graph() { return graph; }, get compiled() { return compiled; }, get liveGraph() { return liveGraph; }, stage, addNode, connect, removeNodes, undo, redo, goLive, modulate, set valueTarget(v) { valueTarget = v; }, setDirect, storeScene, fireScene, openScene, setThumbs, get scenes() { return scenes; }, get controls() { return ctlList(graph); }, setTransition, get transition() { return opts.trans; }, addScreenFilter, get sfx() { return sfx; }, setFxOn, paintFx,
     loadGraph(g, msg) { graph = ensureControls(g); selected.clear(); rebuild(); recompile(); save(); remember(); frameAll(); if (msg) toast(msg); },
     selectedGlsl() { const ids = [...selected]; const n = ids.length === 1 && graph.nodes.find(m => m.id === ids[0]); return n && n.type === 'glsl' ? n : null; },
     setGlsl(n, code, src) { n.p = { ...(n.p || {}), code, src }; rebuild(); recompile(); save(); remember(); },

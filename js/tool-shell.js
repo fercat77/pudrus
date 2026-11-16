@@ -727,6 +727,7 @@
         catch (err) { console.error(err); setDisabled(false); status(t('shell.exportError', 'Could not render, try a smaller image')); return; }
         out.toBlob(blob => {
           setDisabled(false);
+          if (!blob) { status(t('shell.exportError', 'Could not render, try a smaller image')); return; }   // the browser refused a canvas that big
           deliver(blob, `pudrus_${cfg.id}_${Date.now()}.png`, t('shell.savedSize', 'Saved {w} × {h}px', { w: out.width, h: out.height }));
         }, 'image/png');
       }, 30);

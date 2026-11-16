@@ -392,7 +392,7 @@
           </div>
           <h5>Look por escena</h5>
           <p class="dmx-note">Guardá este look en una escena de NODRUS: cuando la escena sale al aire (a mano, por MIDI o desde SETRUS), las luces cambian con ella. Las escenas sin look dejan las luces como están.</p>
-          <div class="dmx-scenes">${Array.from({ length: 16 }, (_, i) => `<button data-a="look:${i}" class="${S.looks[i] ? 'has' : ''}${sc[i] ? '' : ' empty'}" title="${sc[i] ? `Escena ${i + 1}: clic = guardar este look · clic derecho = quitarlo` : `Escena ${i + 1} vacía`}" style="${sc[i] && sc[i].thumb ? `background-image:url(${sc[i].thumb})` : ''}"><span>${i + 1}</span>${S.looks[i] ? '<i>💡</i>' : ''}</button>`).join('')}</div>
+          <div class="dmx-scenes">${Array.from({ length: 16 }, (_, i) => `<button data-a="look:${i}" class="${S.looks[i] ? 'has' : ''}${sc[i] ? '' : ' empty'}" title="${sc[i] ? `Escena ${i + 1}: clic = guardar este look · clic derecho = quitarlo` : `Escena ${i + 1} vacía`}" style="${sc[i] && typeof sc[i].thumb === 'string' && /^data:image\/[a-z]+;base64,[A-Za-z0-9+/=]+$/.test(sc[i].thumb) ? `background-image:url(${sc[i].thumb})` : ''}"><span>${i + 1}</span>${S.looks[i] ? '<i>💡</i>' : ''}</button>`).join('')}</div>
           <div class="dmx-actions"><button class="dmx-b" data-a="lookReset">Look inicial</button></div>`;
         body.querySelectorAll('.dmx-scenes button').forEach(b => b.addEventListener('contextmenu', e => {
           e.preventDefault(); const i = +b.dataset.a.split(':')[1]; if (S.looks[i]) { delete S.looks[i]; save(); paintTab(); api.toast(`Escena ${i + 1}: sin look de luces`); }

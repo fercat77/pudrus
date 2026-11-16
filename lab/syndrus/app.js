@@ -143,43 +143,79 @@
   /* ── load / save / share ── */
   const KEY = 'syndrus_v2', OLD_KEY = 'syndrus_v1';
   const deckMix = () => ({ level: 0.9, dj: 0, kill: false, cue: false, mute: { drums: false, synth: false, rings: false, arp: false } });
+  // A pattern or a session read from storage, a file or a shared link is data from outside: every field gets the type and
+  // the range the interface gives it — a link can't carry markup, absurd gains, or shapes that break the page.
+  const num = (v, d, lo, hi) => { const n = typeof v === 'string' && v.trim() !== '' ? +v : v; return typeof n === 'number' && Number.isFinite(n) ? Math.min(hi, Math.max(lo, n)) : d; };
+  const int = (v, d, lo, hi) => Math.round(num(v, d, lo, hi));
+  const unit = (v, d) => num(v, d, 0, 1), lvl = (v, d) => num(v, d, 0, 1.2);
+  const bool = (v, d) => (typeof v === 'boolean' ? v : v === 'true' ? true : v === 'false' ? false : d);
+  const oneOf = (v, d, list) => { if (typeof v !== 'string' && typeof v !== 'number') return d; const hit = list.find(x => x === v || String(x) === String(v)); return hit === undefined ? d : hit; };
+  const obj = x => (x && typeof x === 'object' && !Array.isArray(x) ? x : {});
+  const arr = x => (Array.isArray(x) ? x : []);
+  const WAVES = ['sawtooth', 'square', 'triangle', 'sine'], RING_SOUNDS = ['bell', 'pluck', ...X.DRUMS.map(d => d[0])];
+  const CHORDS = X.CHORD_NAMES.map(c => c[0]), ARP_MODES = X.ARP_MODES.map(c => c[0]), ARP_SOUNDS = X.ARP_SOUNDS.map(c => c[0]);
   function sane(s) {   // a pattern: fill anything missing from an old or shared one
-    const b = blank();
-    if (!s || typeof s !== 'object') return b;
-    const out = { ...b, ...s, fx: { ...b.fx, ...(s.fx || {}) }, synth: { ...b.synth, ...(s.synth || {}) } };
-    out.drums = b.drums.map((t, i) => ({ ...t, ...((s.drums || [])[i] || {}) }));
-    out.rings = b.rings.map((r, i) => ({ ...r, ...((s.rings || [])[i] || {}) }));
-    out.synth.steps = b.synth.steps.map((x, i) => ({ ...x, ...((s.synth && s.synth.steps || [])[i] || {}) }));
-    const sa = s.arp && typeof s.arp === 'object' ? s.arp : null;
-    out.arp = { ...b.arp, ...(sa || {}) };
-    out.arp.chords = b.arp.chords.map((c, i) => { const x = ((sa && Array.isArray(sa.chords) ? sa.chords : [])[i]) || {}; return { deg: Number.isFinite(x.deg) ? x.deg : x.deg === null ? null : c.deg, kind: typeof x.kind === 'string' ? x.kind : c.kind }; });
+    const b = blank(); s = obj(s);
+    const out = { v: 1, bpm: num(s.bpm, b.bpm, 40, 300), swing: num(s.swing, b.swing, 0, 0.6), root: int(s.root, b.root, 0, 11),
+      scale: typeof s.scale === 'string' && Object.prototype.hasOwnProperty.call(X.SCALES, s.scale) ? s.scale : b.scale };
+    out.drums = b.drums.map((t, i) => { const d = obj(arr(s.drums)[i]); return {
+      steps: t.steps.map((_, n) => int(arr(d.steps)[n], 0, 0, 2)), level: lvl(d.level, t.level), tune: num(d.tune, t.tune, 0.5, 2), decay: unit(d.decay, t.decay),
+      delay: unit(d.delay, t.delay), reverb: unit(d.reverb, t.reverb), prob: unit(d.prob, t.prob), mute: bool(d.mute, false), solo: bool(d.solo, false) }; });
+    const y = obj(s.synth), by = b.synth;
+    out.synth = {
+      steps: by.steps.map((_, n) => { const q = obj(arr(y.steps)[n]); return { on: bool(q.on, false), deg: int(q.deg, 0, -24, 36), acc: bool(q.acc, false), slide: bool(q.slide, false) }; }),
+      octave: int(y.octave, by.octave, 1, 5), gate: num(y.gate, by.gate, 0.1, 8), wave1: oneOf(y.wave1, by.wave1, WAVES), wave2: oneOf(y.wave2, by.wave2, WAVES),
+      detune: num(y.detune, by.detune, 0, 50), oct2: int(y.oct2, by.oct2, -1, 1), mix1: unit(y.mix1, by.mix1), mix2: unit(y.mix2, by.mix2), sub: unit(y.sub, by.sub), noise: unit(y.noise, by.noise),
+      cutoff: num(y.cutoff, by.cutoff, 60, 12000), res: unit(y.res, by.res), envAmt: unit(y.envAmt, by.envAmt), fdecay: num(y.fdecay, by.fdecay, 0.02, 1.5),
+      attack: num(y.attack, by.attack, 0.001, 2), decay: num(y.decay, by.decay, 0.02, 2), sustain: unit(y.sustain, by.sustain), release: num(y.release, by.release, 0.01, 4), glide: num(y.glide, by.glide, 0.005, 1),
+      lfoRate: num(y.lfoRate, by.lfoRate, 0.02, 12), lfoDepth: unit(y.lfoDepth, by.lfoDepth), level: lvl(y.level, by.level), delay: unit(y.delay, by.delay), reverb: unit(y.reverb, by.reverb),
+      mute: bool(y.mute, false), chord: oneOf(y.chord, by.chord, CHORDS) };
+    out.rings = b.rings.map((r, i) => { const q = obj(arr(s.rings)[i]); return {
+      steps: int(q.steps, r.steps, 2, 32), pulses: int(q.pulses, r.pulses, 0, 32), rot: int(q.rot, r.rot, 0, 31), sound: oneOf(q.sound, r.sound, RING_SOUNDS), deg: int(q.deg, r.deg, -7, 14),
+      octave: int(q.octave, r.octave, 2, 6), wander: bool(q.wander, r.wander), tune: num(q.tune, r.tune, 0.5, 2), decay: unit(q.decay, r.decay), level: lvl(q.level, r.level),
+      delay: unit(q.delay, r.delay), reverb: unit(q.reverb, r.reverb), mute: bool(q.mute, r.mute) }; });
+    const f = obj(s.fx);
+    out.fx = { feedback: num(f.feedback, b.fx.feedback, 0, 0.92), delayTone: num(f.delayTone, b.fx.delayTone, 300, 6000), delayBeats: num(f.delayBeats, b.fx.delayBeats, 0.0625, 4), space: unit(f.space, b.fx.space) };
+    const sa = s.arp && typeof s.arp === 'object' && !Array.isArray(s.arp) ? s.arp : null, a = sa || {}, ba = b.arp;
+    out.arp = { on: bool(a.on, ba.on), mute: bool(a.mute, ba.mute), sound: oneOf(a.sound, ba.sound, ARP_SOUNDS), mode: oneOf(a.mode, ba.mode, ARP_MODES), rate: oneOf(a.rate, ba.rate, [4, 2, 1, 0.5]),
+      oct: int(a.oct, ba.oct, 1, 3), octave: int(a.octave, ba.octave, 2, 6), gate: num(a.gate, ba.gate, 0.1, 1.5), prob: unit(a.prob, ba.prob), accent: oneOf(a.accent, ba.accent, ['off', 'rnd', '3', '4']), hold: oneOf(a.hold, ba.hold, [1, 2, 4]),
+      chords: ba.chords.map((c, i) => { const x = obj(arr(a.chords)[i]); return { deg: x.deg === null ? null : int(x.deg, c.deg, -7, 14), kind: oneOf(x.kind, c.kind, CHORDS) }; }),
+      keys: oneOf(a.keys, ba.keys, ['synth', 'arp']), keyChord: oneOf(a.keyChord, ba.keyChord, CHORDS), latch: bool(a.latch, ba.latch),
+      tone: unit(a.tone, ba.tone), decay: unit(a.decay, ba.decay), level: lvl(a.level, ba.level), delay: unit(a.delay, ba.delay), reverb: unit(a.reverb, ba.reverb) };
     // older patterns: the arpeggiator lived inside the synth and only played the held keys, with the synth's voice
-    const sy0 = s.synth || {};
-    if (!sa && sy0.arp && sy0.arp !== 'off') Object.assign(out.arp, { on: true, sound: 'synth', keys: 'arp', mode: sy0.arp, rate: sy0.arpRate || 1, oct: sy0.arpOct || 1,
-      latch: sy0.latch === true || sy0.latch === 'true', keyChord: sy0.chord && sy0.chord !== 'off' ? sy0.chord : 'off', octave: Number.isFinite(sy0.octave) ? sy0.octave : 2, chords: b.arp.chords.map(c => ({ ...c, deg: null })) });
-    ['arp', 'arpRate', 'arpOct', 'latch'].forEach(k => { delete out.synth[k]; });
+    if (!sa && typeof y.arp === 'string' && y.arp !== 'off') Object.assign(out.arp, { on: true, sound: 'synth', keys: 'arp', mode: oneOf(y.arp, 'up', ARP_MODES), rate: oneOf(y.arpRate, 1, [4, 2, 1, 0.5]), oct: int(y.arpOct, 1, 1, 3),
+      latch: bool(y.latch, false), keyChord: oneOf(y.chord, 'off', CHORDS), octave: int(y.octave, 2, 2, 6), chords: ba.chords.map(c => ({ ...c, deg: null })) });
     return out;
   }
   // the whole session: shared tempo, locks, the two decks (A, B), the mixer and a bank of 8 patterns
   function saneApp(a) {
-    if (a && !a.decks) {   // an old single pattern (v1) or a shared pattern: it goes to deck A, a copy to B
-      const p = sane(a); a = { bpm: p.bpm, swing: p.swing, decks: [p, clone(p)], mix: { drive: (a.fx || {}).drive, volume: (a.fx || {}).volume } };
+    a = obj(a);
+    if (!Array.isArray(a.decks)) {   // an old single pattern (v1) or a shared pattern: it goes to deck A, a copy to B
+      const had = Object.keys(a).length > 0, p = sane(a), f = obj(a.fx);
+      a = had ? { bpm: p.bpm, swing: p.swing, decks: [p, clone(p)], mix: { drive: f.drive, volume: f.volume } } : {};
     }
-    a = a && typeof a === 'object' ? a : {};
-    const decks = [0, 1].map(i => sane((a.decks || [])[i] || (i ? clone((a.decks || [])[0] || PRESETS['Techno 4×4']()) : PRESETS['Techno 4×4']())));
-    const m = a.mix || {};
+    const dk = arr(a.decks), isObj = x => !!x && typeof x === 'object';
+    const decks = [0, 1].map(i => sane(isObj(dk[i]) ? dk[i] : (i && isObj(dk[0]) ? clone(dk[0]) : PRESETS['Techno 4×4']())));
+    const m = obj(a.mix), md = arr(m.decks);
     return {
-      v: 2, bpm: a.bpm || decks[0].bpm || 128, swing: a.swing || 0, lockBpm: !!a.lockBpm, lockKey: !!a.lockKey, edit: a.edit === 1 ? 1 : 0, decks,
-      mix: { x: Number.isFinite(m.x) ? m.x : 0, drive: Number.isFinite(m.drive) ? m.drive : 0.12, volume: Number.isFinite(m.volume) ? m.volume : 0.8,
-        cueMode: ['off', 'split', 'device'].includes(m.cueMode) ? m.cueMode : 'off', cueBlend: Number.isFinite(m.cueBlend) ? m.cueBlend : 0.25, cueSink: typeof m.cueSink === 'string' ? m.cueSink : '',
-        decks: [0, 1].map(i => ({ ...deckMix(), ...((m.decks || [])[i] || {}), mute: { ...deckMix().mute, ...(((m.decks || [])[i] || {}).mute || {}) } })) },
-      bank: Array.from({ length: 8 }, (_, i) => ((a.bank || [])[i] ? { name: String(a.bank[i].name || 'Patrón').slice(0, 24), p: sane(a.bank[i].p) } : null)),
+      v: 2, bpm: num(a.bpm, decks[0].bpm, 40, 300), swing: num(a.swing, 0, 0, 0.6), lockBpm: bool(a.lockBpm, false), lockKey: bool(a.lockKey, false), edit: a.edit === 1 ? 1 : 0, decks,
+      mix: { x: unit(m.x, 0), drive: unit(m.drive, 0.12), volume: lvl(m.volume, 0.8),
+        cueMode: oneOf(m.cueMode, 'off', ['off', 'split', 'device']), cueBlend: unit(m.cueBlend, 0.25), cueSink: typeof m.cueSink === 'string' ? m.cueSink.slice(0, 200) : '',
+        decks: [0, 1].map(i => { const d = obj(md[i]), mu = obj(d.mute), b0 = deckMix(); return { level: lvl(d.level, b0.level), dj: num(d.dj, 0, -1, 1), kill: bool(d.kill, false), cue: bool(d.cue, false),
+          mute: { drums: bool(mu.drums, false), synth: bool(mu.synth, false), rings: bool(mu.rings, false), arp: bool(mu.arp, false) } }; }) },
+      bank: Array.from({ length: 8 }, (_, i) => { const e = arr(a.bank)[i]; return e && typeof e === 'object' ? { name: String(typeof e.name === 'string' && e.name ? e.name : 'Patrón').slice(0, 24), p: sane(e.p) } : null; }),
     };
   }
-  let app;
+  let app, fromLink = false;
   try {
     const h = location.hash.match(/^#s=(.+)$/);
-    if (h) app = saneApp(JSON.parse(decodeURIComponent(escape(atob(h[1])))));
+    if (h) {
+      app = saneApp(JSON.parse(decodeURIComponent(escape(atob(h[1])))));
+      // a link brings a mix (the two decks): your bank of patterns and your headphones routing stay yours
+      let mine = null; try { const raw = localStorage.getItem(KEY); mine = raw ? saneApp(JSON.parse(raw)) : null; } catch (e) { mine = null; }
+      if (mine) { app.bank = mine.bank; app.mix.cueMode = mine.mix.cueMode; app.mix.cueSink = mine.mix.cueSink; app.mix.cueBlend = mine.mix.cueBlend; }
+      fromLink = true;
+    }
   } catch (e) { app = null; }
   if (!app) {
     try { const raw = localStorage.getItem(KEY) || localStorage.getItem(OLD_KEY); app = saneApp(raw ? JSON.parse(raw) : null); }
@@ -1323,6 +1359,7 @@
   });
   $('#helpClose').addEventListener('click', () => { $('#helpPop').hidden = true; });
   if (location.hash.startsWith('#s=')) history.replaceState(null, '', location.pathname);
+  if (fromLink) setTimeout(() => toast('🔗 Mezcla del enlace abierta en los dos decks · tu banco de patrones sigue acá', 5000), 400);
 
   function paintAll() { paintTop(); paintDrums(); paintSynth(); paintArp(); paintRings(); paintFx(); paintConsole(); }
   document.body.dataset.deck = ab(app.edit);
