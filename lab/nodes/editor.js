@@ -2652,6 +2652,8 @@
   if (DESK) {
     document.documentElement.classList.add('is-desktop');
     $('#btnDesk').hidden = false; setTimeout(() => window.dispatchEvent(new Event('resize')), 0);
+    // the saved patches, scenes and settings belong to the app's usual port: on another one (the usual one taken by another program) they look empty
+    DESK.info().then(inf => { if (inf.port && inf.port !== 47110) setTimeout(() => toast('⚠ Otro programa está usando el puerto de NODRUS: tus patches y escenas guardados no aparecen en esta sesión. Cerralo (o reiniciá la compu) y abrí NODRUS de nuevo', true), 1500); }).catch(() => {});
     DESK.osc.on(oscIn);
     DESK.osc.onError(msg => toast('OSC: ' + msg, true));
     $('#btnDesk').addEventListener('click', e => { e.stopPropagation(); const r = e.currentTarget.getBoundingClientRect(); paintDesk(); openPop($('#deskPop'), r.left - 260, r.bottom + 4); });

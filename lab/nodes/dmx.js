@@ -148,7 +148,7 @@
         if (dropK) { p = Math.max(p, dropK * 0.8); }
         let I = L.base + (1 - L.base) * p * (1 - L.react + L.react * bass);
         if (P.kind === 'strobe') I = 0;                       // a strobe only fires on flashes
-        if (strobing) { I = flashOn ? 1 : 0; c = [1, 1, 1]; }
+        if (strobing) { I = P.kind === 'strobe' ? 1 : (flashOn ? 1 : 0); c = [1, 1, 1]; }   // (a strobe flashes by itself: its speed channel)
         if (dropHit) { I = 1; c = [1, 1, 1]; }                 // the one after the drop: one white hit
         if (dropCut || blackout) I = 0;
         I *= (1 - black) * clamp(S.master);
@@ -195,7 +195,7 @@
           const ad = a0 + j; if (ad > 511) return;
           let v = 0;
           switch (c.t) {
-            case 'dim': v = P.kind === 'strobe' ? (strobeOn ? 255 : 0) : st.i * 255; if (P.mono) v = st.i * 255; break;
+            case 'dim': v = st.i * 255; break;
             case 'r': v = (hasW ? r - w : r) * k * 255; break;
             case 'g': v = (hasW ? g - w : g) * k * 255; break;
             case 'b': v = (hasW ? b - w : b) * k * 255; break;
@@ -204,7 +204,7 @@
             case 'uv': v = 0; break;
             case 'strobe': {
               const sp = P.strobe || { off: 0, min: 10, max: 255 };
-              if (P.kind === 'strobe' && strobeOn) v = sp.min + (sp.max - sp.min) * clamp((S.safe.strobeHz - 1) / 24); else v = sp.off;
+              if (P.kind === 'strobe' && strobeOn && st.i > 0.01) v = sp.min + (sp.max - sp.min) * clamp((S.safe.strobeHz - 1) / 24); else v = sp.off;
               break;
             }
             case 'pan': v = pan16 >> 8; break;

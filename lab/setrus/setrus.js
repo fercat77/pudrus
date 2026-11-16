@@ -148,7 +148,8 @@
     run.on = true; run.startedAt = performance.now(); run.queued = -1; run.since = epochNow();
     run.plan = buildPlan(i, 0);
     send({ type: 'show-play', cmd: musicCmd(sec) });
-    send({ type: 'show-look', ...lookOf(sec) });   // now
+    const first = lookOf(sec); if (!('black' in first)) { first.black = false; first.blackFade = 0; }   // a show that ended in black starts with the picture again
+    send({ type: 'show-look', ...first });   // now
     sendPlan(run.plan, 1);
     SY.beat = 0; SY.epoch = epochNow(); SY.playing = true;   // until the first sync arrives
     if (!noAlive()) toast('▶ Show en marcha · NODRUS no está abierto: sólo suena la música');
@@ -173,6 +174,12 @@
     const sec = show.sections[cur.i], mb = minBar();
     let E = mb + (sec.end !== 'none' ? sec.endBars : 0);
     if (show.next === 'phrase') E = cur.start + Math.ceil((E - cur.start) / 4) * 4;
+    // the section's own riser / drop is already sounding: the change lands where that ending lands (not a second one after it)
+    const nx0 = run.plan[run.plan.indexOf(cur) + 1];
+    if (nx0 && sec.end !== 'none' && barNow() >= nx0.start - Math.min(sec.endBars, nx0.start - cur.start)) {
+      if (nx0.start < mb) { toast('Ya está entrando la sección siguiente'); return; }
+      E = nx0.start;
+    }
     send({ type: 'show-clear' });
     run.plan = [{ i: cur.i, start: cur.start }, ...(k === 'stop' ? [{ i: 'stop', start: E }] : buildPlan(k, E))];
     run.queued = k === 'stop' ? -1 : k;
@@ -200,14 +207,16 @@
       let plan;
       if (nx && run.queued >= 0) plan = [cur, ...buildPlan(nx.i === 'stop' ? cur.i : nx.i, nx.start)];   // a jump the user asked for stays
       else plan = buildPlan(cur.i, cur.start);
+      const mb = minBar();
+      if (plan[1] && plan[1].start < mb) { const d = mb - plan[1].start; plan = plan.map((e, k) => (k ? { i: e.i, start: e.start + d } : e)); }
       send({ type: 'show-clear' });
-      run.plan = plan; sendPlan(run.plan, minBar());
+      run.plan = plan; sendPlan(run.plan, mb);
     }, 300);
   }
   // keeps going: SYNDRUS stopped by hand, the plan running out on a loop, the queued jump landing
   function conduct() {
     if (!run.on) return;
-    if (performance.now() - run.startedAt > 1500 && (!syAlive() || !SY.playing)) { run.on = false; toast('SYNDRUS se detuvo: show en pausa'); paint(); return; }
+    if (performance.now() - run.startedAt > 1500 && (!syAlive() || !SY.playing)) { run.on = false; send({ type: 'show-clear', ramp: true }); toast('SYNDRUS se detuvo: show en pausa'); paint(); return; }
     const cur = curEntry(); if (!cur) return;
     if (cur.i === 'stop') { run.on = false; paint(); return; }
     const idx = run.plan.indexOf(cur);
@@ -382,8 +391,9 @@
   $('#nextAt').addEventListener('change', e => { show.next = e.target.value; save(); });
   $('#endMode').addEventListener('change', e => { show.end = e.target.value; save(); replan(); paintTrack(); });
   $('#showName').addEventListener('input', e => { show.name = e.target.value.slice(0, 40) || 'Mi show'; save(); });
-  $('#addSec').addEventListener('click', () => { show.sections.splice(sel + 1, 0, SEC({ name: 'Sección ' + (show.sections.length + 1), color: (show.sections[sel] ? show.sections[sel].color + 1 : 0) % COLORS.length })); sel++; save(); paint(); replan(); });
-  $('#dupSec').addEventListener('click', () => { const s = show.sections[sel]; if (!s) return; show.sections.splice(sel + 1, 0, { ...s, id: uid() }); sel++; save(); paint(); replan(); });
+  const shiftPlan = at => { if (!run.on) return; run.plan.forEach(e => { if (typeof e.i === 'number' && e.i >= at) e.i++; }); if (run.queued >= at) run.queued++; };
+  $('#addSec').addEventListener('click', () => { shiftPlan(sel + 1); show.sections.splice(sel + 1, 0, SEC({ name: 'Sección ' + (show.sections.length + 1), color: (show.sections[sel] ? show.sections[sel].color + 1 : 0) % COLORS.length })); sel++; save(); paint(); replan(); });
+  $('#dupSec').addEventListener('click', () => { const s = show.sections[sel]; if (!s) return; shiftPlan(sel + 1); show.sections.splice(sel + 1, 0, { ...s, id: uid() }); sel++; save(); paint(); replan(); });
   $('#delSec').addEventListener('click', () => {
     if (show.sections.length <= 1) { toast('El show necesita al menos una sección'); return; }
     if (run.on) { toast('Pará el show para borrar secciones'); return; }

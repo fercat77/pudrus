@@ -14,6 +14,10 @@ let bridge = null, bridgeError = '';
 try { bridge = require('@napolab/texture-bridge-core'); } catch (e) { bridgeError = String(e.message || e); }
 
 const TEST = process.argv.includes('--nodrus-test');
+// One NODRUS at a time: a second copy would run on another port, and the browser storage goes by port —
+// patches, scenes, SYNDRUS' bank and the lights patch would look empty there (and edits would be saved apart).
+if (!app.requestSingleInstanceLock()) { app.quit(); process.exit(0); }   // (the test has its own profile, so its own lock)
+app.on('second-instance', () => { const w = mainWin && !mainWin.isDestroyed() ? mainWin : BrowserWindow.getAllWindows()[0]; if (w) { if (w.isMinimized()) w.restore(); w.focus(); } });
 // the automatic test runs in its own profile: it never touches your patches, scenes or settings
 if (TEST) app.setPath('userData', path.join(app.getPath('temp'), 'nodrus-test-profile'));
 // remote screens get the video over the local wifi: offer the real LAN address, not an mDNS «.local» name
@@ -274,4 +278,13 @@ app.whenReady().then(async () => {
   } else require('./test.js')({ app, mainWin, base, port, startSpout, stopSpout, spoutStats, startOsc, stopOsc, bridge, artnet });
 });
 app.on('window-all-closed', () => app.quit());
-app.on('before-quit', () => { stopSpout(); stopOsc(); if (dmxOut) dmxOut.close(); });
+let darkDone = false;
+app.on('before-quit', e => {
+  stopSpout(); stopOsc();
+  if (dmxOut && !darkDone) {   // lights out first (one last frame of zeros), then quit
+    darkDone = true; e.preventDefault();
+    const bye = () => { try { if (dmxOut) dmxOut.close(); } catch (x) { /* closed */ } dmxOut = null; app.quit(); };
+    try { dmxOut.dark(bye); } catch (x) { bye(); }
+    setTimeout(bye, 400);
+  }
+});

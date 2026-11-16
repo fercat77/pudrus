@@ -64,7 +64,12 @@ function createSender(onNodes, onError) {
   function open() {
     if (sock) return;
     sock = dgram.createSocket({ type: 'udp4', reuseAddr: true });
-    sock.on('error', e => { if (onError) onError(String(e.message || e)); });
+    let rebound = false;
+    sock.on('error', e => {
+      // another lighting program already owns the Art-Net port: we can still send (from any port), we just can't hear the nodes' replies
+      if (e && (e.code === 'EADDRINUSE' || e.code === 'EACCES') && !rebound) { rebound = true; try { sock.bind(0, () => { try { sock.setBroadcast(true); } catch (x) { /* ignore */ } }); } catch (x) { /* ignore */ } return; }
+      if (onError) onError(String(e.message || e));
+    });
     sock.on('message', (msg, rinfo) => {
       const p = parsePacket(msg); if (!p || p.op !== 'reply') return;
       p.ip = p.ip === '0.0.0.0' ? rinfo.address : p.ip;
@@ -72,8 +77,7 @@ function createSender(onNodes, onError) {
       if (onNodes) onNodes([...nodes.values()]);
     });
     // listen on the Art-Net port to hear the replies; if another program has it, we can still send
-    try { sock.bind(PORT, () => { try { sock.setBroadcast(true); } catch (e) { /* ignore */ } }); }
-    catch (e) { try { sock.bind(0, () => sock.setBroadcast(true)); } catch (x) { /* ignore */ } }
+    sock.bind(PORT, () => { try { sock.setBroadcast(true); } catch (e) { /* ignore */ } });
     keep = setInterval(() => { if (last) send(last); }, 1000);
   }
   function targets() { if (cfg.host) return [cfg.host]; const b = broadcasts().filter(x => x !== '255.255.255.255'); return b.length ? b : ['255.255.255.255']; }
@@ -93,12 +97,19 @@ function createSender(onNodes, onError) {
     cfg = { host: typeof o.host === 'string' ? o.host.trim() : '', universe: Number.isInteger(o.universe) ? Math.max(0, Math.min(32767, o.universe)) : 0, port: Number.isInteger(o.port) ? o.port : PORT };
     open();
   }
+  // everything to 0, then done (closing the app must not leave the rig lit and the heads pointing somewhere)
+  function dark(done) {
+    if (!sock || !last) { if (done) done(); return; }
+    const pkt = dmxPacket(seq = seq % 255 + 1, cfg.universe, new Uint8Array(last.length)), hs = targets();
+    let left = hs.length; last = null;
+    for (const h of hs) sock.send(pkt, cfg.port || PORT, h, () => { if (--left === 0 && done) done(); });
+  }
   function close() {
     clearInterval(keep); keep = null; last = null;
     try { if (sock) sock.close(); } catch (e) { /* closed */ }
     sock = null;
   }
-  return { send, poll, config, close, get nodes() { return [...nodes.values()]; }, get open() { return !!sock; } };
+  return { send, poll, config, close, dark, get nodes() { return [...nodes.values()]; }, get open() { return !!sock; } };
 }
 
 module.exports = { createSender, dmxPacket, pollPacket, parsePacket, broadcasts, PORT };
