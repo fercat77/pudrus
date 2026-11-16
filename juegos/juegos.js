@@ -11,6 +11,7 @@
 
   /* ── seeded random (the daily challenge is the same for everyone) ── */
   function hashStr(s) { let h = 2166136261; for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 16777619); } return h >>> 0; }
+  function shuffle(a, rnd) { for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(rnd() * (i + 1)); const t = a[i]; a[i] = a[j]; a[j] = t; } return a; }   // the same in every browser (sort() with a random comparator is not)
   function mulberry(seed) { let a = seed >>> 0; return () => { a = a + 0x6D2B79F5 | 0; let t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
 
   /* ── what this browser remembers ── */
@@ -170,7 +171,7 @@
         sides: { lo: 3, hi: 8, steps: [1, -1] }, rot: { steps: [45, -45, 30, -30] }, dots: { lo: 0, hi: 6, steps: [1, -1] },
         fill: { mod: 3, steps: [1] }, color: { mod: 4, steps: [1, -1] },
       };
-      let round = 0, score = 0, timer = 0, left = 0, locked = false;
+      let round = 0, score = 0, timer = 0, nextT = 0, left = 0, locked = false;
       const ROUNDS = 10, TIME = 20;
       const row = el('div', 'qs-row'), opts = el('div', 'qs-row qs-opts'), bar = el('div', 'qs-bar'), fillBar = el('i'), msg = el('p', 'jg-msg');
       bar.append(fillBar); ctx.stage.append(row, bar, opts, msg);
@@ -188,7 +189,7 @@
       const keyOf = t => { const sym = 360 / t.sides; return [t.sides, Math.round((((t.rot % sym) + sym) % sym) * 10), t.dots, t.fill, t.color].join('|'); };
       function series() {
         const nChange = round < 4 ? 1 : round < 8 ? 2 : 3;
-        const names = Object.keys(PROPS).sort(() => ctx.rnd() - 0.5).slice(0, nChange);
+        const names = shuffle(Object.keys(PROPS), ctx.rnd).slice(0, nChange);
         const step = {}; names.forEach(k => { step[k] = pick(PROPS[k].steps); });
         const base = { sides: R(3, 8), rot: pick([0, 15, 30, 45]), dots: R(0, 4), fill: R(0, 2), color: R(0, 3) };
         // keep 5 terms inside the ranges
@@ -209,7 +210,7 @@
           if (k === 'dots' && (t.dots < 0 || t.dots > 7)) continue;
           if (!seen.has(keyOf(t))) { seen.add(keyOf(t)); opts.push(t); }
         }
-        return { seq, ans, opts: opts.sort(() => ctx.rnd() - 0.5) };
+        return { seq, ans, opts: shuffle(opts, ctx.rnd) };
       }
       function next() {
         if (round >= ROUNDS) { clearInterval(timer); ctx.done({ score, text: `${score} puntos en ${ROUNDS} rondas`, better: 'high' }); return; }
@@ -236,12 +237,12 @@
         if (ok) okSound(); else badSound();
         msg.textContent = ok ? `¡Bien! +${gain}` : (btn ? 'No era esa' : 'Se acabó el tiempo');
         ctx.hud(`Puntos<b>${score}</b>`);
-        round++; setTimeout(next, ok ? 650 : 1200);
+        round++; nextT = setTimeout(next, ok ? 650 : 1200);
       }
       const key = e => { const i = +e.key - 1; if (i >= 0 && i < 4 && opts.children[i]) opts.children[i].click(); };
       addEventListener('keydown', key);
       next();
-      return () => { clearInterval(timer); removeEventListener('keydown', key); };
+      return () => { clearInterval(timer); clearTimeout(nextT); removeEventListener('keydown', key); };
     } });
 
   /* ── ECO: repeat the sequence of lights and sounds ── */
@@ -367,7 +368,7 @@
       cv.addEventListener('pointermove', e => { if (!cur) return; cur.pts.push(pos(e)); draw(); });
       const up = () => { cur = null; }; cv.addEventListener('pointerup', up); cv.addEventListener('pointercancel', up);
       function end() {
-        if (over) return; over = true; clearInterval(tick);
+        if (over) return; over = true; cur = null; clearInterval(tick);
         g.fillStyle = 'rgba(102,255,51,0.85)'; g.font = '600 22px "IBM Plex Mono", monospace'; g.textAlign = 'right';
         g.fillText(`PUDRUS · garabato · ${dayKey()}`, W - 20, H - 20);
         const url = cv.toDataURL('image/png');
@@ -567,12 +568,12 @@
     const ok = (i, d) => { const r = (i / 9) | 0, c = i % 9, br = r - r % 3, bc = c - c % 3; for (let k = 0; k < 9; k++) { if (g[r * 9 + k] === d || g[k * 9 + c] === d || g[(br + ((k / 3) | 0)) * 9 + bc + k % 3] === d) return false; } return true; };
     (function fill(i) {
       if (i === 81) return true;
-      const ds = [1, 2, 3, 4, 5, 6, 7, 8, 9].sort(() => rnd() - 0.5);
+      const ds = shuffle([1, 2, 3, 4, 5, 6, 7, 8, 9], rnd);
       for (const d of ds) if (ok(i, d)) { g[i] = d; if (fill(i + 1)) return true; g[i] = 0; }
       return false;
     })(0);
     const solution = g.slice(), puzzle = g.slice();
-    const order = [...Array(81).keys()].sort(() => rnd() - 0.5);
+    const order = shuffle([...Array(81).keys()], rnd);
     let left = 81;
     for (const i of order) {
       if (left <= clues) break;
@@ -776,7 +777,7 @@
   }
   $('#daily').addEventListener('click', () => { location.hash = dailyGame().id + '/hoy'; });
 
-  let cleanup = null, current = null, isDaily = false, testHook = {}, option = null;
+  let cleanup = null, current = null, isDaily = false, testHook = {}, option = null, run = null;
   const bestKey = gm => gm.id + (gm.options && option ? ':' + option : '');
   function open(id, daily) {
     const gm = byId(id); if (!gm) { showHub(); return; }
@@ -803,10 +804,11 @@
       stage.innerHTML = '';
       const rnd = isDaily ? mulberry(hashStr(dayKey() + ':' + gm.id)) : Math.random;
       testHook = {};
-      cleanup = gm.start({ test: testHook, option, stage, rnd, daily: isDaily, hud: h => { hud.innerHTML = h; }, done: r => finish(gm, r) });
+      const mine = run = {};   // this play: a game that was left can't report a result later
+      cleanup = gm.start({ test: testHook, option, stage, rnd, daily: isDaily, hud: h => { if (run === mine) hud.innerHTML = h; }, done: r => { if (run === mine) finish(gm, r); } });
     }
   }
-  function close() { if (cleanup) { try { cleanup(); } catch (e) { /* ignore */ } cleanup = null; } }
+  function close() { run = null; if (cleanup) { try { cleanup(); } catch (e) { /* ignore */ } cleanup = null; } }
   function showHub() { close(); current = null; play.hidden = true; result.hidden = true; hub.hidden = false; document.body.classList.remove('playmode'); document.body.classList.add('hubmode'); document.title = 'DRUS — PUDRUS.XYZ'; paintHub(); }
   function finish(gm, r) {
     close(); markPlayed();
@@ -838,7 +840,8 @@
   $('#helpBtn').addEventListener('click', () => { how.hidden = !how.hidden; });
   addEventListener('keydown', e => { if (e.key === 'Escape') { if (!result.hidden) result.hidden = true; else if (!play.hidden) location.hash = ''; } });
   function route() {
-    const h = decodeURIComponent(location.hash.slice(1)), [id, flag] = h.split('/');
+    let h = ''; try { h = decodeURIComponent(location.hash.slice(1)); } catch (e) { h = ''; }
+    const [id, flag] = h.split('/');
     if (id && byId(id)) open(id, flag === 'hoy'); else showHub();
   }
   addEventListener('hashchange', route);

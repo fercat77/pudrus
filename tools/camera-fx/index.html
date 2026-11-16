@@ -559,8 +559,15 @@
     if (state.stream) state.stream.getTracks().forEach(tr => tr.stop());
     state.stream = null;
   }
+  // a file you loaded stays in memory through its address: free the previous one when another source takes over
+  function freeUrl(next) {
+    if (state.url && state.url !== next) { try { URL.revokeObjectURL(state.url); } catch (e) { /* ignore */ } }
+    state.url = typeof next === 'string' && next.startsWith('blob:') ? next : null;
+  }
   function goLive(kind, source) {
     if (state.recorder) stopRecording(true);
+    if (kind !== 'camera') state.camTurn = (state.camTurn || 0) + 1;   // a camera that was still starting must not take over
+    freeUrl(kind === 'camera' ? null : (source.currentSrc || source.src || null));
     state.kind = kind; state.source = source;
     stage.classList.add('is-live');
     [recBtn, shotBtn].forEach(b => { b.disabled = false; });
@@ -584,8 +591,12 @@
     stopStream();
     status(t('camera.starting', 'Starting camera…'));
     const ideal = state.quality === 1080 ? { width: { ideal: 1920 }, height: { ideal: 1080 } } : { width: { ideal: 1280 }, height: { ideal: 720 } };
+    const turn = state.camTurn = (state.camTurn || 0) + 1;
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: state.facing, ...ideal }, audio: false });
+      // asked again meanwhile (quality and flip in a row): this camera is not the one wanted any more — turn it off
+      if (turn !== state.camTurn) { stream.getTracks().forEach(tr => tr.stop()); return; }
+      stopStream();
       state.stream = stream;
       const v = document.createElement('video');
       v.muted = true; v.playsInline = true; v.setAttribute('playsinline', ''); v.autoplay = true;
@@ -596,6 +607,7 @@
       goLive('camera', v);
       status('');
     } catch (err) {
+      if (turn !== state.camTurn) return;   // a newer request is in charge of the messages
       const denied = err && (err.name === 'NotAllowedError' || err.name === 'SecurityError');
       status(denied ? t('camera.denied', 'Camera permission denied. Allow it in the browser settings, or use a video.')
                     : t('camera.failed', 'Could not start the camera. Try a video or the sample.'));
@@ -791,10 +803,12 @@
     v.play().catch(() => { stopRecording(true); status(t('camera.videoError', 'Could not play that video')); });
   }
 
-  recBtn.addEventListener('click', () => {
-    if (!state.source) return;
+  recBtn.addEventListener('click', async () => {
+    if (!state.source || state.starting) return;   // (starting: waiting for the microphone or the video's length — a second tap must not start another one)
     if (state.recorder) { stopRecording(state.exporting); return; }   // during an export the button cancels
-    if (state.kind === 'video') exportVideo(); else startRecording();
+    state.starting = true;
+    try { if (state.kind === 'video') await exportVideo(); else await startRecording(); }
+    finally { state.starting = false; }
   });
   function setLabel(b, key, fb, icon) {
     b.querySelector('.ts-btn-icon').textContent = icon;
@@ -821,6 +835,8 @@
     if (document.hidden && state.recorder) stopRecording();   // phones kill the camera in background anyway
   });
   window.addEventListener('pagehide', stopStream);
+  // back from another page with the browser's «back»: the camera was turned off on leaving, start it again
+  window.addEventListener('pageshow', e => { if (e.persisted && state.kind === 'camera' && !state.stream) startCamera(); });
 
   [recBtn, shotBtn].forEach(b => { b.disabled = true; });
   state.mirrorRow = document.getElementById('opt-mirror') && document.getElementById('opt-mirror').closest('.ts-row');
