@@ -136,6 +136,9 @@ body[data-deck="B"] .sy-drums .sy-head b::after, body[data-deck="B"] .sy-synth .
 .sy-deckcol:last-child .sy-deckhead b { color: var(--m); }
 .sy-deckhead .sy-dim { font-size: 10px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .sy-deckcol .sy-params { grid-template-columns: 1fr 1fr; gap: 3px; }
+.sy-eq { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 3px; }
+.sy-eq .sy-param { height: 24px; } .sy-eq .sy-param .l { left: 4px; top: 1px; font-size: 8px; letter-spacing: 0; } .sy-eq .sy-param .v { left: 4px; bottom: 0; font-size: 10.5px; }
+.sy-eq .sy-param .fill { background: linear-gradient(90deg, rgba(0,212,255,0.08), rgba(0,212,255,0.24)); border-right-color: var(--c); }
 .sy-mutes { display: flex; gap: 3px; }
 .sy-mutes { flex-wrap: wrap; }
 .sy-mutes .sy-mini { flex: 1 1 58px; min-width: 0; padding: 0 2px; font-size: 10px; overflow: hidden; text-overflow: clip; }
@@ -371,3 +374,6 @@ body.sy-learning .sy-param, body.sy-learning .sy-knob, body.sy-learning .sy-vf {
 .sy-unlock b { font-size: 22px; color: #66ff33; text-shadow: 0 0 18px rgba(102,255,51,0.6); animation: sy-unl 1s ease-in-out infinite alternate; }
 .sy-unlock span { color: rgba(208,239,255,0.7); max-width: 420px; }
 @keyframes sy-unl { to { opacity: .55; } }
+/* the EQ row of each deck takes its height from the scope, so the panels below keep theirs */
+@media (min-width: 761px) { #scope { height: clamp(22px, calc(7vh - 27px), 170px); } }
+@media (max-width: 760px) { .sy-eq .sy-param { height: 40px; } .sy-eq .sy-param .l { font-size: 9px; top: 2px; } .sy-eq .sy-param .v { font-size: 12px; bottom: 2px; } }

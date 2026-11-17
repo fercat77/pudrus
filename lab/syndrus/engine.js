@@ -48,8 +48,8 @@
     let seed = 12345; for (let i = 0; i < nd.length; i++) { seed = (seed * 1103515245 + 12345) & 0x7fffffff; nd[i] = seed / 0x3fffffff - 1; }
     const noise = () => { const s = ctx.createBufferSource(); s.buffer = nb; s.loop = true; return s; };
 
-    /* master: low cut → gate (drop cut) → drive → volume → glue compressor → (analyser) → out.
-       The DJ filter and the bass kill live in each deck, before the crossfader. */
+    /* master: low cut → gate (drop cut) → drive → volume → glue compressor → limiter → ceiling → (analyser) → out.
+       The DJ filter, the EQ and the bass kill live in each deck, before the crossfader. */
     const masterIn = ctx.createGain();
     const drive = ctx.createWaveShaper(); drive.oversample = '2x';
     const vol = ctx.createGain(); vol.gain.value = 0.8;
@@ -57,8 +57,17 @@
     const analyser = ctx.createAnalyser(); analyser.fftSize = 2048; analyser.smoothingTimeConstant = 0.75;
     const masterHP = ctx.createBiquadFilter(); masterHP.type = 'highpass'; masterHP.frequency.value = 10; masterHP.Q.value = 1.4;
     const gate = ctx.createGain();
-    masterIn.connect(masterHP); masterHP.connect(gate); gate.connect(drive); drive.connect(vol); vol.connect(comp); comp.connect(analyser); analyser.connect(out);
+    // The limiter is the last thing before the output: a fast, hard compressor holds whatever goes over −1 dB, and the soft
+    // clip after it is a ceiling nothing crosses (−0.3 dBFS) — two decks, a drop and an impact together can't overload a PA.
+    const lim = ctx.createDynamicsCompressor(); lim.threshold.value = -1; lim.knee.value = 0; lim.ratio.value = 20; lim.attack.value = 0.001; lim.release.value = 0.06;
+    const limTrim = ctx.createGain(); limTrim.gain.value = Math.pow(10, -0.6 * (1 - 1 / 20) / 20);   // takes back the node's own make-up gain: below the threshold nothing changes
+    const ceil = ctx.createWaveShaper();
+    { const n = 2049, c = new Float32Array(n), T = 0.9, C = 0.98;
+      for (let i = 0; i < n; i++) { const x = i / (n - 1) * 2 - 1, a = Math.abs(x); c[i] = Math.sign(x) * (a <= T ? a : T + (C - T) * Math.tanh((a - T) / (C - T))); }
+      ceil.curve = c; }
+    masterIn.connect(masterHP); masterHP.connect(gate); gate.connect(drive); drive.connect(vol); vol.connect(comp); comp.connect(lim); lim.connect(limTrim); limTrim.connect(ceil); ceil.connect(analyser); analyser.connect(out);
     E.analyser = analyser;
+    E.limiting = () => lim.reduction;   // dB the limiter is taking off right now (0 = it is not working)
     // performance FX bus (risers, impacts): after the master filter, with its own long reverb
     const fxIn = ctx.createGain(), fxConv = ctx.createConvolver(), fxWet = ctx.createGain(); fxWet.gain.value = 0.6;
     fxIn.connect(vol); fxIn.connect(fxConv); fxConv.connect(fxWet); fxWet.connect(vol);
@@ -154,9 +163,14 @@
     const djLP = ctx.createBiquadFilter(); djLP.type = 'lowpass'; djLP.frequency.value = 20000; djLP.Q.value = 0.9;
     const djHP = ctx.createBiquadFilter(); djHP.type = 'highpass'; djHP.frequency.value = 10; djHP.Q.value = 0.9;
     const kill = ctx.createBiquadFilter(); kill.type = 'lowshelf'; kill.frequency.value = 220; kill.gain.value = 0;
+    // 3-band EQ, like a DJ mixer: each band from a full cut (−30 dB) to +6 dB
+    const eqLo = ctx.createBiquadFilter(); eqLo.type = 'lowshelf'; eqLo.frequency.value = 200;
+    const eqMid = ctx.createBiquadFilter(); eqMid.type = 'peaking'; eqMid.frequency.value = 1000; eqMid.Q.value = 0.6;
+    const eqHi = ctx.createBiquadFilter(); eqHi.type = 'highshelf'; eqHi.frequency.value = 3500;
+    const eqDb = v => { v = Math.max(-1, Math.min(1, +v || 0)); return v < 0 ? v * 30 : v * 6; };
     const xf = ctx.createGain(), lvl = ctx.createGain();
     const cue = ctx.createGain(); cue.gain.value = 0;
-    deckIn.connect(djLP); djLP.connect(djHP); djHP.connect(kill); kill.connect(lvl); lvl.connect(xf); xf.connect(masterIn); lvl.connect(cue); cue.connect(cueBus);
+    deckIn.connect(djLP); djLP.connect(djHP); djHP.connect(eqLo); eqLo.connect(eqMid); eqMid.connect(eqHi); eqHi.connect(kill); kill.connect(lvl); lvl.connect(xf); xf.connect(masterIn); lvl.connect(cue); cue.connect(cueBus);
     D.an = ctx.createAnalyser(); D.an.fftSize = 256; xf.connect(D.an);   // what this deck sends to the master (console meter)
     function setDJ(v) {   // -1 = low-pass closed … 0 open … +1 = high-pass
       const now = ctx.currentTime;
@@ -177,19 +191,26 @@
     }
     setReverb(3.2);
 
+    /* sidechain: every kick pushes the bass down for an instant (duckB), or everything that is not drums (duckB + duckR) */
+    const duckB = ctx.createGain(), duckR = ctx.createGain(); duckB.connect(deckIn); duckR.connect(deckIn);
+    D.duck = (t, amt, all, stepDur) => {
+      const lo = 1 - 0.9 * Math.max(0, Math.min(1, amt)), rel = Math.max(0.02, stepDur * 0.8);
+      for (const g of all ? [duckB, duckR] : [duckB]) { g.gain.setTargetAtTime(lo, t, 0.003); g.gain.setTargetAtTime(1, t + 0.025, rel); }
+    };
+
     /* channel strips: level + two sends */
-    function strip() {
+    function strip(dest = deckIn) {
       const input = ctx.createGain(), lv = ctx.createGain(), sd = ctx.createGain(), sr = ctx.createGain(), an = ctx.createAnalyser();
       sd.gain.value = 0; sr.gain.value = 0; an.fftSize = 256;
-      input.connect(lv); lv.connect(deckIn); lv.connect(sd); lv.connect(sr); sd.connect(dIn); sr.connect(rIn); lv.connect(an);
+      input.connect(lv); lv.connect(dest); lv.connect(sd); lv.connect(sr); sd.connect(dIn); sr.connect(rIn); lv.connect(an);
       // smooth changes (no zipper clicks while a fader moves)
       const to = (prm, v) => { if (Math.abs(prm.value - v) > 1e-4) prm.setTargetAtTime(v, ctx.currentTime, 0.015); };
       return { input, lv, sd, sr, an, set(p) { to(lv.gain, p.level); to(sd.gain, p.delay); to(sr.gain, p.reverb); } };
     }
     D.drumStrips = DRUMS.map(() => strip());
-    D.synthStrip = strip();
-    D.ringStrips = [0, 1, 2, 3].map(() => strip());
-    D.arpStrip = strip();   // the arpeggiator's own channel
+    D.synthStrip = strip(duckB);
+    D.ringStrips = [0, 1, 2, 3].map(() => strip(duckR));
+    D.arpStrip = strip(duckR);   // the arpeggiator's own channel
 
     /* ── the synth: one mono voice that is always running (so slides glide, like a bassline box) ── */
     const S = {};
@@ -300,11 +321,12 @@
       const rk = Math.round(fx.space * 20); if (D._rev !== rk) { D._rev = rk; setReverb(0.6 + rk / 20 * 7); }   // rebuilt in 5 % steps
     };
     D.setDelayTime = sec => { delay.delayTime.setTargetAtTime(Math.min(3.9, sec), ctx.currentTime, 0.05); };
-    // mixer: level, DJ filter (-1…1), bass kill, crossfader gain
+    // mixer: level, DJ filter (-1…1), EQ (-1…1 per band), bass kill, crossfader gain
     D.setMix = (m, gain) => {
       const now = ctx.currentTime;
       lvl.gain.setTargetAtTime(m.level, now, 0.02); xf.gain.setTargetAtTime(gain, now, 0.02);
-      setDJ(m.dj); kill.gain.setTargetAtTime(m.kill ? -40 : 0, now, 0.03); cue.gain.setTargetAtTime(m.cue ? 1 : 0, now, 0.02);
+      setDJ(m.dj); kill.gain.setTargetAtTime(m.kill ? -40 : 0, now, 0.03);
+      eqLo.gain.setTargetAtTime(eqDb(m.eqLo), now, 0.02); eqMid.gain.setTargetAtTime(eqDb(m.eqMid), now, 0.02); eqHi.gain.setTargetAtTime(eqDb(m.eqHi), now, 0.02); cue.gain.setTargetAtTime(m.cue ? 1 : 0, now, 0.02);
     };
     return D;
     }
@@ -442,6 +464,7 @@
       const s = tr.steps[n % 16];
       if (!s || (tr.prob < 1 && rnd() > tr.prob)) return;
       D.hit(DRUMS[i][0], D.drumStrips[i].input, t, { tune: tr.tune, decay: tr.decay, punch: tr.punch, vel: s === 2 ? 1 : 0.7 });
+      if (i === 0 && D.duck && st.fx && st.fx.duck > 0) D.duck(t, st.fx.duck, st.fx.duckAll, stepDur);   // the kick ducks the bass
     });
     const sy = st.synth, cur = sy.steps[n % 16], prev = sy.steps[(n + 15) % 16];
     if (!mute.synth && !sy.mute && cur && cur.on && sy.chord && sy.chord !== 'off') {   // chord stabs (polyphonic)

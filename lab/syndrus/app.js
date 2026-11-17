@@ -22,7 +22,7 @@
         cutoff: 520, res: 0.6, envAmt: 0.45, fdecay: 0.22, attack: 0.003, decay: 0.25, sustain: 0.3, release: 0.12, glide: 0.07,
         lfoRate: 0.2, lfoDepth: 0, level: 0.7, delay: 0.1, reverb: 0.05, mute: false, chord: 'off' },
       rings: [ring({ sound: 'rim', steps: 16, pulses: 0, level: 0.5, reverb: 0.1, delay: 0.2 }), ring({ steps: 12, deg: 2 }), ring({ steps: 7, deg: 4, octave: 5 }), ring({ sound: 'pluck', steps: 9, deg: 0, octave: 3 })],
-      fx: { feedback: 0.42, delayTone: 1800, delayBeats: 0.75, space: 0.45 },   // drive, volume and the DJ filter live in the mixer (app.mix)
+      fx: { feedback: 0.42, delayTone: 1800, delayBeats: 0.75, space: 0.45, duck: 0, duckAll: false },   // duck: sidechain from the kick · drive, volume, EQ and the DJ filter live in the mixer (app.mix)
       // the arpeggiator: its own voice and channel; its chords live in the pattern (they play by themselves with ▶)
       arp: { on: false, mute: false, sound: 'pluck', mode: 'up', rate: 1, oct: 1, octave: 4, gate: 0.6, prob: 1, accent: 'off', hold: 1,
         chords: [{ deg: 0, kind: 'triad' }, { deg: 5, kind: 'triad' }, { deg: 2, kind: 'triad' }, { deg: 6, kind: 'triad' }],
@@ -88,7 +88,7 @@
       psyLead(s, { mode: 'updown', accent: '3', tone: 0.6, decay: 0.35 }, [[0, 'seventh'], [0, 'sus4'], [1, 'triad'], [0, 'seventh']]);
       s.rings[0] = ring({ sound: 'zap', steps: 16, pulses: 2, rot: 6, deg: 4, octave: 5, wander: true, decay: 0.35, level: 0.3, delay: 0.45, reverb: 0.3 });
       s.rings[1] = ring({ sound: 'rim', steps: 16, pulses: 5, rot: 3, level: 0.3, delay: 0.3, reverb: 0.1 });
-      s.fx = { ...s.fx, feedback: 0.55, delayBeats: 0.75, delayTone: 2400, space: 0.4 };
+      s.fx = { ...s.fx, feedback: 0.55, delayBeats: 0.75, delayTone: 2400, space: 0.4, duck: 0.45 };
       return s;
     },
     'Psy progresivo': () => {
@@ -100,7 +100,7 @@
       psyLead(s, { sound: 'pluck', mode: 'up', accent: 'off', tone: 0.4, decay: 0.3, gate: 0.5, delay: 0.5, reverb: 0.35, hold: 4 }, [[0, 'add9'], [5, 'add9']]);
       s.rings[0] = ring({ sound: 'rim', steps: 16, pulses: 3, rot: 2, level: 0.3, delay: 0.5, reverb: 0.2 });
       s.rings[1] = ring({ sound: 'bell', steps: 32, pulses: 3, rot: 5, deg: 4, octave: 5, wander: true, decay: 0.5, level: 0.28, delay: 0.5, reverb: 0.7 });
-      s.fx = { ...s.fx, feedback: 0.6, delayBeats: 0.75, delayTone: 1800, space: 0.65 };
+      s.fx = { ...s.fx, feedback: 0.6, delayBeats: 0.75, delayTone: 1800, space: 0.65, duck: 0.55 };
       return s;
     },
     'Psy oscuro': () => {
@@ -111,7 +111,7 @@
       s.rings[0] = ring({ sound: 'zap', steps: 11, pulses: 3, deg: 0, octave: 5, wander: true, decay: 0.3, level: 0.3, delay: 0.55, reverb: 0.4 });
       s.rings[1] = ring({ sound: 'tom', steps: 7, pulses: 2, tune: 1.4, level: 0.32, delay: 0.5, reverb: 0.3 });
       s.rings[2] = ring({ sound: 'zap', steps: 13, pulses: 2, rot: 4, deg: 2, octave: 6, wander: true, decay: 0.15, level: 0.22, delay: 0.6, reverb: 0.5 });
-      s.fx = { ...s.fx, feedback: 0.68, delayBeats: 0.75, delayTone: 1500, space: 0.7 };
+      s.fx = { ...s.fx, feedback: 0.68, delayBeats: 0.75, delayTone: 1500, space: 0.7, duck: 0.4 };
       return s;
     },
     'Goa': () => {
@@ -122,7 +122,7 @@
       psyLead(s, { mode: 'up', oct: 3, octave: 3, accent: '3', tone: 0.65, decay: 0.5, gate: 0.7, delay: 0.5, reverb: 0.25 }, [[0, 'seventh'], [0, 'add9'], [1, 'seventh'], [6, 'triad']]);
       s.rings[0] = ring({ sound: 'bell', steps: 12, pulses: 5, rot: 2, deg: 0, octave: 5, wander: true, decay: 0.3, level: 0.28, delay: 0.5, reverb: 0.5 });
       s.rings[1] = ring({ sound: 'pluck', steps: 7, pulses: 3, deg: 4, octave: 4, wander: true, decay: 0.4, level: 0.3, delay: 0.55, reverb: 0.3 });
-      s.fx = { ...s.fx, feedback: 0.64, delayBeats: 0.75, delayTone: 2600, space: 0.55 };
+      s.fx = { ...s.fx, feedback: 0.64, delayBeats: 0.75, delayTone: 2600, space: 0.55, duck: 0.3 };
       return s;
     },
   };
@@ -168,7 +168,7 @@
         level: R(0.36, 0.42), delay: R(0.3, 0.5), reverb: R(0.1, 0.25), hold: pick([2, 4]), prob: pick([1, 1, 0.85]) }, [[0], [0, 0, 1, 0], [0, 1], [0, 0, 0, 6], [0, 5]]);
       s.rings[0] = ring({ sound: 'zap', steps: pick([16, 32]), pulses: I(1, 3), rot: I(0, 15), deg: pick([0, 2, 4]), octave: 5, wander: true, decay: R(0.2, 0.5), level: 0.3, delay: R(0.35, 0.5), reverb: 0.3 });
       if (chance(0.7)) s.rings[1] = ring({ sound: pick(['rim', 'tom', 'rim']), steps: 16, pulses: pick([3, 5, 7]), rot: I(0, 4), tune: R(0.9, 1.4), level: 0.3, delay: R(0.2, 0.4), reverb: 0.1 });
-      s.fx = { ...s.fx, feedback: R(0.45, 0.6), delayBeats: 0.75, delayTone: R(1800, 3000), space: R(0.3, 0.5) };
+      s.fx = { ...s.fx, feedback: R(0.45, 0.6), delayBeats: 0.75, delayTone: R(1800, 3000), space: R(0.3, 0.5), duck: R(0.35, 0.55) };
     } else if (k === 'prog') {
       s.bpm = I(134, 140); s.scale = pick(['minor', 'dorian', 'phrygian', 'minor']);
       const off = chance(0.5);
@@ -182,7 +182,7 @@
         level: R(0.34, 0.42), delay: R(0.4, 0.55), reverb: R(0.25, 0.45), hold: 4 }, [[0, 5], [0], [0, 2], [0, 0, 5, 3]]);
       s.rings[0] = ring({ sound: pick(['rim', 'tom']), steps: 16, pulses: pick([3, 5]), rot: I(0, 4), level: 0.3, delay: R(0.4, 0.55), reverb: 0.2 });
       if (chance(0.7)) s.rings[1] = ring({ sound: 'bell', steps: pick([24, 32]), pulses: I(2, 3), rot: I(0, 12), deg: pick([0, 2, 4]), octave: 5, wander: true, decay: R(0.4, 0.6), level: 0.28, delay: 0.5, reverb: R(0.55, 0.75) });
-      s.fx = { ...s.fx, feedback: R(0.5, 0.65), delayBeats: 0.75, delayTone: R(1400, 2200), space: R(0.5, 0.75) };
+      s.fx = { ...s.fx, feedback: R(0.5, 0.65), delayBeats: 0.75, delayTone: R(1400, 2200), space: R(0.5, 0.75), duck: R(0.45, 0.65) };
     } else if (k === 'dark') {
       s.bpm = I(148, 158); s.scale = pick(['phrygian', 'hijaz', 'phrygian']);
       psyGroove(s, { shape: 'roll', punch: R(0.7, 1), kdecay: R(0, 0.1), tune: R(1.02, 1.15), acc: pick([0, 1, 3]),
@@ -194,7 +194,7 @@
       s.rings[0] = ring({ sound: 'zap', steps: pick([7, 9, 11, 13]), pulses: I(2, 4), rot: I(0, 6), deg: pick([0, 1, 4]), octave: pick([4, 5, 6]), wander: true, decay: R(0.15, 0.4), level: 0.3, delay: R(0.45, 0.6), reverb: 0.4 });
       s.rings[1] = ring({ sound: 'tom', steps: pick([5, 7, 12]), pulses: I(1, 3), rot: I(0, 4), tune: R(0.8, 1.6), level: 0.32, delay: 0.5, reverb: 0.3 });
       if (chance(0.6)) s.rings[2] = ring({ sound: pick(['zap', 'pluck']), steps: pick([9, 13, 15]), pulses: 2, rot: I(0, 8), deg: pick([2, 4, 6]), octave: pick([5, 6]), wander: true, decay: R(0.1, 0.3), level: 0.22, delay: 0.6, reverb: 0.5 });
-      s.fx = { ...s.fx, feedback: R(0.55, 0.72), delayBeats: pick([0.75, 0.75, 0.5]), delayTone: R(1200, 2500), space: R(0.5, 0.8) };
+      s.fx = { ...s.fx, feedback: R(0.55, 0.72), delayBeats: pick([0.75, 0.75, 0.5]), delayTone: R(1200, 2500), space: R(0.5, 0.8), duck: R(0.3, 0.5) };
     } else {   // goa: the bass jumps an octave, the lead is melodic and long, three against four
       s.bpm = I(138, 146); s.scale = pick(['hijaz', 'phrygian', 'harmonic', 'hijaz']);
       psyGroove(s, { shape: 'roll', degs: pick([[0, 0, 7], [0, 7, 0], [0, 7, 7], [0, 0, 0]]), punch: R(0.4, 0.7), kdecay: R(0.1, 0.25), tune: R(0.98, 1.1), acc: pick([0, 3]),
@@ -205,7 +205,7 @@
         level: R(0.36, 0.42), delay: R(0.4, 0.55), reverb: R(0.2, 0.35), hold: 2 }, [[0, 0, 1, 0], [0, 0, 1, 6], [0, 5, 6, 0], [0, 1]]);
       s.rings[0] = ring({ sound: 'bell', steps: pick([9, 12, 16]), pulses: I(3, 5), rot: I(0, 5), deg: pick([0, 2, 4]), octave: 5, wander: true, decay: R(0.2, 0.4), level: 0.28, delay: 0.5, reverb: 0.5 });
       if (chance(0.7)) s.rings[1] = ring({ sound: pick(['pluck', 'zap']), steps: pick([7, 11, 12]), pulses: I(2, 3), rot: I(0, 5), deg: pick([0, 4]), octave: pick([4, 5]), wander: true, decay: R(0.3, 0.5), level: 0.3, delay: 0.55, reverb: 0.3 });
-      s.fx = { ...s.fx, feedback: R(0.55, 0.68), delayBeats: 0.75, delayTone: R(2000, 3200), space: R(0.45, 0.7) };
+      s.fx = { ...s.fx, feedback: R(0.55, 0.68), delayBeats: 0.75, delayTone: R(2000, 3200), space: R(0.45, 0.7), duck: R(0.2, 0.4) };
     }
     return s;
   }
@@ -244,7 +244,7 @@
 
   /* ── load / save / share ── */
   const KEY = 'syndrus_v2', OLD_KEY = 'syndrus_v1';
-  const deckMix = () => ({ level: 0.9, dj: 0, kill: false, cue: false, mute: { drums: false, synth: false, rings: false, arp: false } });
+  const deckMix = () => ({ level: 0.9, dj: 0, eqLo: 0, eqMid: 0, eqHi: 0, kill: false, cue: false, mute: { drums: false, synth: false, rings: false, arp: false } });
   // A pattern or a session read from storage, a file or a shared link is data from outside: every field gets the type and
   // the range the interface gives it — a link can't carry markup, absurd gains, or shapes that break the page.
   const num = (v, d, lo, hi) => { const n = typeof v === 'string' && v.trim() !== '' ? +v : v; return typeof n === 'number' && Number.isFinite(n) ? Math.min(hi, Math.max(lo, n)) : d; };
@@ -277,7 +277,8 @@
       octave: int(q.octave, r.octave, 2, 6), wander: bool(q.wander, r.wander), tune: num(q.tune, r.tune, 0.5, 2), decay: unit(q.decay, r.decay), level: lvl(q.level, r.level),
       delay: unit(q.delay, r.delay), reverb: unit(q.reverb, r.reverb), mute: bool(q.mute, r.mute) }; });
     const f = obj(s.fx);
-    out.fx = { feedback: num(f.feedback, b.fx.feedback, 0, 0.92), delayTone: num(f.delayTone, b.fx.delayTone, 300, 6000), delayBeats: num(f.delayBeats, b.fx.delayBeats, 0.0625, 4), space: unit(f.space, b.fx.space) };
+    out.fx = { feedback: num(f.feedback, b.fx.feedback, 0, 0.92), delayTone: num(f.delayTone, b.fx.delayTone, 300, 6000), delayBeats: num(f.delayBeats, b.fx.delayBeats, 0.0625, 4), space: unit(f.space, b.fx.space),
+      duck: unit(f.duck, b.fx.duck), duckAll: bool(f.duckAll, b.fx.duckAll) };
     const sa = s.arp && typeof s.arp === 'object' && !Array.isArray(s.arp) ? s.arp : null, a = sa || {}, ba = b.arp;
     out.arp = { on: bool(a.on, ba.on), mute: bool(a.mute, ba.mute), sound: oneOf(a.sound, ba.sound, ARP_SOUNDS), mode: oneOf(a.mode, ba.mode, ARP_MODES), rate: oneOf(a.rate, ba.rate, [4, 2, 1, 0.5]),
       oct: int(a.oct, ba.oct, 1, 3), octave: int(a.octave, ba.octave, 2, 6), gate: num(a.gate, ba.gate, 0.1, 1.5), prob: unit(a.prob, ba.prob), accent: oneOf(a.accent, ba.accent, ['off', 'rnd', '3', '4']), hold: oneOf(a.hold, ba.hold, [1, 2, 4]),
@@ -303,7 +304,7 @@
       v: 2, bpm: num(a.bpm, decks[0].bpm, 40, 300), swing: num(a.swing, 0, 0, 0.6), lockBpm: bool(a.lockBpm, false), lockKey: bool(a.lockKey, false), edit: a.edit === 1 ? 1 : 0, decks,
       mix: { x: unit(m.x, 0), drive: unit(m.drive, 0.12), volume: lvl(m.volume, 0.8),
         cueMode: oneOf(m.cueMode, 'off', ['off', 'split', 'device']), cueBlend: unit(m.cueBlend, 0.25), cueSink: typeof m.cueSink === 'string' ? m.cueSink.slice(0, 200) : '',
-        decks: [0, 1].map(i => { const d = obj(md[i]), mu = obj(d.mute), b0 = deckMix(); return { level: lvl(d.level, b0.level), dj: num(d.dj, 0, -1, 1), kill: bool(d.kill, false), cue: bool(d.cue, false),
+        decks: [0, 1].map(i => { const d = obj(md[i]), mu = obj(d.mute), b0 = deckMix(); return { level: lvl(d.level, b0.level), dj: num(d.dj, 0, -1, 1), eqLo: num(d.eqLo, 0, -1, 1), eqMid: num(d.eqMid, 0, -1, 1), eqHi: num(d.eqHi, 0, -1, 1), kill: bool(d.kill, false), cue: bool(d.cue, false),
           mute: { drums: bool(mu.drums, false), synth: bool(mu.synth, false), rings: bool(mu.rings, false), arp: bool(mu.arp, false) } }; }) },
       bank: Array.from({ length: 8 }, (_, i) => { const e = arr(a.bank)[i]; return e && typeof e === 'object' ? { name: String(typeof e.name === 'string' && e.name ? e.name : 'Patrón').slice(0, 24), p: sane(e.p) } : null; }),
     };
@@ -504,7 +505,7 @@
   function param(label, obj, key, min, max, opts = {}) {
     const w = el('div', 'sy-param' + (opts.wide ? ' wide' : '')), fill = el('div', 'fill'), l = el('span', 'l', label), v = el('span', 'v');
     w.append(fill, l, v);
-    const curve = opts.curve || 1, step = opts.step || 0, def = obj[key];
+    const curve = opts.curve || 1, step = opts.step || 0, def = opts.def !== undefined ? opts.def : obj[key];
     const toPos = x => Math.pow(Math.max(0, Math.min(1, (x - min) / (max - min))), 1 / curve), toVal = p => min + Math.pow(Math.max(0, Math.min(1, p)), curve) * (max - min);
     const fmt = opts.fmt || (x => (step >= 1 ? String(Math.round(x)) : Math.abs(x) >= 100 ? Math.round(x) : x.toFixed(2)));
     const paint = () => { v.textContent = fmt(obj[key]); fill.style.width = toPos(obj[key]) * 100 + '%'; };
@@ -905,8 +906,11 @@
         if (d.cue && app.mix.cueMode === 'off') { app.mix.cueMode = 'split'; applyCue(); paintMixer(); toast('Cue en «mitad y mitad»: auricular izquierdo = cue, derecho = master. Si tenés otra salida, elegila en «Cue»', 5000); }
         mix();
       });
+      const eq = el('div', 'sy-eq'), eqFmt = x => (Math.abs(x) < 0.02 ? '0' : x < 0 ? '−' + Math.round(-x * 30) : '+' + Math.round(x * 6));
+      [['Grav', 'eqLo', 'graves'], ['Med', 'eqMid', 'medios'], ['Agu', 'eqHi', 'agudos']].forEach(([l, k, full]) => {
+        const p = param(l, d, k, -1, 1, { def: 0, fmt: eqFmt }); p.title = `EQ del deck ${ab(i)} · ${full}: de corte total (−30 dB) a +6 dB · doble clic: plano`; eq.append(p); });
       const row2 = el('div', 'sy-mutes'); row2.append(kill, cueB);
-      c.append(h, ps, row2, mutes); cols.append(c);
+      c.append(h, ps, eq, row2, mutes); cols.append(c);
     });
     box.append(cols);
     // where the cue goes
@@ -1037,7 +1041,9 @@
     } else if (fxTab === 'deck') {
       const fx = st.fx, p = el('div', 'sy-params');
       p.append(choice('Delay', fx, 'delayBeats', [[0.25, '1/16'], [0.375, '1/16 ·'], [0.5, '1/8'], [0.75, '1/8 ·'], [1, '1/4'], [1.5, '1/4 ·']]),
-        param('Repeticiones', fx, 'feedback', 0, 0.92), param('Tono delay', fx, 'delayTone', 300, 6000, { curve: 2, fmt: x => Math.round(x) + ' Hz' }), param('Espacio', fx, 'space', 0, 1));
+        param('Repeticiones', fx, 'feedback', 0, 0.92), param('Tono delay', fx, 'delayTone', 300, 6000, { curve: 2, fmt: x => Math.round(x) + ' Hz' }), param('Espacio', fx, 'space', 0, 1),
+        param('Sidechain', fx, 'duck', 0, 1, { def: 0, fmt: x => (x < 0.01 ? 'no' : Math.round(x * 100) + '%') }), choice('El bombo baja', fx, 'duckAll', [[false, 'el synth'], [true, 'todo menos el ritmo']]));
+      p.lastChild.previousSibling.title = 'Sidechain: cada bombo baja un instante el volumen del synth (el bajo), para que el bombo se escuche limpio';
       body.append(p);
     } else {
       const p = el('div', 'sy-params');
@@ -1107,7 +1113,9 @@
       const kill = el('button', d.kill ? 'on m' : 'm', 'Graves ✕'); kill.title = 'Cortar los graves del deck'; kill.addEventListener('click', () => { d.kill = !d.kill; kill.classList.toggle('on', d.kill); mix(); paintMixer(); });
       const cue = el('button', d.cue ? 'on s' : 's', '🎧'); cue.title = 'Cue'; cue.addEventListener('click', () => { d.cue = !d.cue; cue.classList.toggle('on', d.cue); if (d.cue && app.mix.cueMode === 'off') { app.mix.cueMode = 'split'; applyCue(); } mix(); paintMixer(); });
       const btns = el('div', 'btns'); btns.append(kill, cue);
-      s.append(el('div', 'grp', 'deck'), el('div', 'nm', ab(i)), knob('Filtro', d, 'dj', -1, 1, x => (Math.abs(x) < 0.02 ? '—' : x < 0 ? 'LP' : 'HP'), 'Deck ' + ab(i) + ' · filtro'), fw, vf.val, btns);
+      const eqFmt = x => (Math.abs(x) < 0.02 ? '0' : x < 0 ? '−' + Math.round(-x * 30) : '+' + Math.round(x * 6)), onEq = () => paintMixer();
+      const eqK = [['Agu', 'eqHi', 'agudos'], ['Med', 'eqMid', 'medios'], ['Grav', 'eqLo', 'graves']].map(([l, k, full]) => { const kn = knob(l, d, k, -1, 1, eqFmt, 'Deck ' + ab(i) + ' · EQ ' + full); kn.addEventListener('pointerup', onEq); kn.addEventListener('dblclick', () => { d[k] = 0; mix(); paintConsole(); paintMixer(); }); kn.title = 'EQ · ' + full + ' · doble clic: plano'; return kn; });
+      s.append(el('div', 'grp', 'deck'), el('div', 'nm', ab(i)), ...eqK, knob('Filtro', d, 'dj', -1, 1, x => (Math.abs(x) < 0.02 ? '—' : x < 0 ? 'LP' : 'HP'), 'Deck ' + ab(i) + ' · filtro'), fw, vf.val, btns);
       conMeters.push({ an: () => E && E.decks[i].an, el: mi });
       mb.append(s);
     });
@@ -1357,7 +1365,7 @@
 
   /* ── status bar ── */
   const gcd = (a, b) => (b ? gcd(b, a % b) : a), lcm = (a, b) => a / gcd(a, b) * b;
-  let peakHold = 0, clipAt = -1e9, savedAt = 0;
+  let peakHold = 0, clipAt = -1e9, limDb = 0, savedAt = 0;   // clipAt: the last time the limiter had to work
   function paintStatus() {
     const pos = curStep >= 0 && playing ? `${Math.floor(curStep / 16) + 1}.${Math.floor(curStep % 16 / 4) + 1}.${curStep % 4 + 1}` : '—';
     const active = st.rings.filter(r => !r.mute && r.pulses > 0).map(r => r.steps);
@@ -1371,14 +1379,14 @@
       `editás <b>${ab(app.edit)}</b> · mezcla ${app.mix.x < 0.02 ? 'A' : app.mix.x > 0.98 ? 'B' : `A${Math.round((1 - app.mix.x) * 100)}/B${Math.round(app.mix.x * 100)}`}${pending.some(Boolean) ? ' · <span class="warn">cambio en espera</span>' : ''}`,
       `<span class="lo">${X.NOTE_NAMES[st.root]} ${X.SCALE_NAMES[st.scale].toLowerCase()}</span>`,
       `<span class="lo">ciclo de los anillos <b>${cycTxt}</b></span>`,
-      `<span class="meter" title="Pico de salida"><i style="width:${Math.max(0, Math.min(1, (db + 48) / 48)) * 100}%"></i></span> ${isFinite(db) ? db.toFixed(1) + ' dB' : '−∞'}${clip ? ' <span class="clip">CLIP</span>' : ''}`,
+      `<span class="meter" title="Pico de salida"><i style="width:${Math.max(0, Math.min(1, (db + 48) / 48)) * 100}%"></i></span> ${isFinite(db) ? db.toFixed(1) + ' dB' : '−∞'}${clip ? ` <span class="clip" title="El limitador está frenando la salida: no se rompe nada, pero bajá un poco el master o los decks">LÍMITE −${Math.round(-limDb)} dB</span>` : ''}`,
       performance.now() - nodrusSeen < 4000 ? `<span class="ok">◈ NODRUS ${nodrusLink ? 'sigue esta música' : 'conectado (sin seguir)'}</span>` : '<span class="lo">◈ NODRUS sin abrir</span>',
       `<span class="lo">${ac ? `${(ac.sampleRate / 1000).toFixed(1)} kHz · latencia ${lat} ms` : 'audio apagado (tocá ▶)'}</span>`,
       `<span class="lo ${Date.now() - savedAt < 2500 ? 'ok' : ''}">${Date.now() - savedAt < 2500 ? 'guardado ✓' : 'guardado en este navegador'}</span>`,
     ];
     // each item carries its own separator, so hidden ones (phone) leave no stray dots
     $('#status').innerHTML = out.map(x => (x.startsWith('<span class="lo') ? x.replace('<span class="lo', '<span class="it lo') : `<span class="it">${x}</span>`)).join('');
-    peakHold *= 0.6;
+    peakHold *= 0.6; if (!clip) limDb = 0;
   }
   setInterval(paintStatus, 250);
 
@@ -1415,7 +1423,7 @@
       sg.fillRect(x + 1, Hd - h, Wd / bars - 2, h);
     }
     an.getFloatTimeDomainData(wave);
-    { let mx = 0; for (let i = 0; i < wave.length; i += 2) mx = Math.max(mx, Math.abs(wave[i])); peakHold = Math.max(peakHold, mx); if (mx >= 0.99) clipAt = performance.now(); }
+    { let mx = 0; for (let i = 0; i < wave.length; i += 2) mx = Math.max(mx, Math.abs(wave[i])); peakHold = Math.max(peakHold, mx); const gr = E.limiting ? E.limiting() : 0; if (gr < -1) { clipAt = performance.now(); limDb = Math.min(limDb, gr); } }
     sg.strokeStyle = '#66ff33'; sg.lineWidth = 2; sg.shadowColor = '#66ff33'; sg.shadowBlur = 8; sg.beginPath();
     for (let i = 0; i < 512; i++) { const x = i / 511 * Wd, y = Hd / 2 - wave[i * 2] * Hd * 0.42; i ? sg.lineTo(x, y) : sg.moveTo(x, y); }
     sg.stroke(); sg.shadowBlur = 0;
