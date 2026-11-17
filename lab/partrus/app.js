@@ -218,6 +218,14 @@
         row.append(ta); body.append(row);
         continue;
       }
+      if (q.kind === 'code') {
+        const row = el('div', 'nd-row'), b = el('button', 'nd-file nd-code', '✎ Editar código GLSL');
+        b.title = 'Escribí tu propio GLSL (Ctrl+Enter aplica)';
+        b.addEventListener('pointerdown', e => e.stopPropagation());
+        b.addEventListener('click', () => openCode(n, q));
+        row.append(b); body.append(row);
+        continue;
+      }
       if (q.kind === 'image') {
         const row = el('div', 'nd-row'), b = el('button', 'nd-file', n.p[q.k] ? '🖼 Cambiar imagen…' : '🖼 Elegir imagen…');
         b.title = 'PNG con transparencia (un logo) o una foto: las partículas nacen sobre ella';
@@ -232,13 +240,16 @@
       sel.addEventListener('pointerdown', e => e.stopPropagation());
       sel.addEventListener('change', () => {
         n.p[q.k] = sel.value;
-        if ((def.params || []).some(x => x.when && x.when[q.k] !== undefined)) rebuildNode(n.id);   // other rows depend on this one
+        if ((def.params || []).some(x => x.when && x.when[q.k] !== undefined) || def.inputs.some(x => x.labels && x.labels.by === q.k)) rebuildNode(n.id);   // other rows depend on this one
         changed('struct');
         if (n.type === 'form' && q.k === 'src' && sel.value === 'camera') toast('📷 El navegador te va a pedir permiso para usar la cámara');
       });
       row.append(sel); body.append(row);
     }
-    for (const inp of def.inputs) {
+    for (const inp0 of def.inputs) {
+      const lbl = PP.labelOf(n, inp0);
+      if (lbl === null) continue;   // this figure doesn't use that knob
+      const inp = lbl === inp0.label ? inp0 : { ...inp0, label: lbl };
       const row = el('div', 'nd-row in');
       if (!inp.nl) {
         const s = el('i', 'sock t-' + inp.t); s.dataset.node = n.id; s.dataset.in = inp.k; s.dataset.t = inp.t;
@@ -417,6 +428,36 @@
     };
     im.onerror = () => { URL.revokeObjectURL(url); toast('No se pudo leer esa imagen', true); };
     im.src = url;
+  });
+
+  /* the GLSL editor (a dialog): the node's code, Ctrl+Enter applies, errors in your own line numbers */
+  const codeDlg = el('div', 'pa-modal'); codeDlg.hidden = true;
+  codeDlg.innerHTML = '<div class="pa-card pa-code"><h2 id="codeTitle">Código GLSL</h2><textarea id="codeArea" spellcheck="false"></textarea><p class="pa-codemsg" id="codeMsg"></p><div class="row"><button class="pa-btn" id="codeApply">Aplicar (Ctrl+Enter)</button><button class="pa-btn" id="codeReset">Volver al ejemplo</button><button class="pa-btn" id="codeClose">Cerrar</button></div></div>';
+  document.body.append(codeDlg);
+  let codeFor = null;
+  function openCode(n, q) {
+    codeFor = { n, q };
+    $('#codeTitle').textContent = 'Código GLSL · ' + DEFS[n.type].title;
+    $('#codeArea').value = PP.paramOf(n, q.k);
+    $('#codeMsg').textContent = ''; $('#codeMsg').className = 'pa-codemsg';
+    codeDlg.hidden = false; $('#codeArea').focus();
+  }
+  function applyCode() {
+    if (!codeFor) return;
+    codeFor.n.p[codeFor.q.k] = $('#codeArea').value;
+    changed('struct');
+    const m = $('#codeMsg');
+    m.textContent = sim.err ? '⚠ ' + sim.err : '✓ Compila: ya se ve en la vista';
+    m.className = 'pa-codemsg' + (sim.err ? ' bad' : ' ok');
+  }
+  $('#codeApply').addEventListener('click', applyCode);
+  $('#codeClose').addEventListener('click', () => { codeDlg.hidden = true; });
+  $('#codeReset').addEventListener('click', () => { if (codeFor) { $('#codeArea').value = codeFor.q.v; applyCode(); } });
+  $('#codeArea').addEventListener('keydown', e => {
+    e.stopPropagation();
+    if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) { e.preventDefault(); applyCode(); }
+    if (e.key === 'Tab') { e.preventDefault(); const t = e.target, a = t.selectionStart; t.setRangeText('  ', a, t.selectionEnd, 'end'); }
+    if (e.key === 'Escape') codeDlg.hidden = true;
   });
 
   /* adding and removing: forces and Aspecto slip into the chain on their own */

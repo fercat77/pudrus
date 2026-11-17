@@ -30,6 +30,27 @@
   const COUNTS = [['16384', '16 mil'], ['65536', '65 mil'], ['262144', '262 mil'], ['1048576', '1 millón']];
   const BURSTS = [['cont', 'continua'], ['beat', 'ráfaga cada tiempo'], ['2', 'ráfaga cada 2 tiempos'], ['bar', 'ráfaga cada compás'], ['bass', 'ráfaga con los graves']];
   const FONT_OPTS = [['sans', 'sans negrita'], ['display', 'display'], ['serif', 'serif'], ['mono', 'mono'], ['hand', 'manuscrita']];
+  // what «Forma A» / «Forma B» mean for each figure (missing = that knob is hidden)
+  const GEO_A = { by: 'kind', polygon: 'Lados', star: 'Puntas', spiral: 'Vueltas', rose: 'Pétalos', lissa: 'Frecuencia X', grid: 'Divisiones', knot: 'Vueltas (p)', fibs: 'Puntos',
+    sierp: 'Triángulo ↔ tetraedro', fern: 'Curva', tree: 'Ángulo', clifford: 'a', dejong: 'a', glsl: 'Perilla A' };
+  const GEO_B = { by: 'kind', polygon: 'Relleno', star: 'Cintura', spiral: 'Brazos', rose: 'Divisor', lissa: 'Frecuencia Y', grid: 'Líneas', knot: 'Vueltas (q)', fibs: 'Grosor',
+    clifford: 'b', dejong: 'b', glsl: 'Perilla B' };
+  const CODE_SHAPE = `// Dónde nace cada partícula. r = 4 números al azar (0–1), t = tiempo, a y b = las perillas (0–1).
+// Devolvé una posición: la pantalla va de -1 a 1 en alto (z = profundidad).
+vec3 shape(vec4 r, float t, float a, float b) {
+  float ang = r.x * 6.2831853;
+  float rad = 0.6 + 0.3 * sin(ang * floor(3.0 + a * 9.0) + t);
+  return vec3(cos(ang), sin(ang), 0.0) * rad;
+}`;
+  const CODE_FORCE = `// Tu fuerza: devolvé la aceleración de cada partícula.
+// p = posición, v = velocidad, t = tiempo, k1..k4 = las perillas del nodo (0–1).
+// Podés usar vnoised(vec3) (ruido con gradiente) y hsv(h, s, v).
+vec3 force(vec3 p, vec3 v, float t, float k1, float k2, float k3, float k4) {
+  vec3 swirl = vec3(-p.y, p.x, 0.0) * (k1 * 4.0 - 2.0);   // gira
+  vec3 pull = -p * k2 * 3.0;                               // vuelve al centro
+  vec3 wave = vec3(0.0, sin(p.x * (2.0 + k3 * 12.0) + t * 2.0), 0.0) * k4;
+  return swirl + pull + wave;
+}`;
   const DEFS = {
     emit: { title: 'Emisor', cat: 'emit', unique: true, outputs: [POUT],
       help: 'De dónde nacen las partículas, hacia dónde salen y cuánto viven',
@@ -37,6 +58,19 @@
                F('chaos', 'Azar', 0.5, 0, 1), F('life', 'Vida (s)', 3, 0.2, 15), F('lifeVar', 'Vida variable', 0.5, 0, 1)],
       params: [{ k: 'shape', label: 'Forma', v: 'point', options: [['point', 'punto'], ['ring', 'anillo'], ['disc', 'disco'], ['line', 'línea'], ['box', 'rectángulo'], ['screen', 'toda la pantalla'], ['sphere', 'esfera 3D']] },
                { k: 'dir', label: 'Salen', v: 'out', options: DIRS },
+               { k: 'count', label: 'Cantidad', v: '65536', options: COUNTS },
+               { k: 'burst', label: 'Emisión', v: 'cont', options: BURSTS }] },
+    // particles born on a geometric figure or a fractal (the fractals are drawn by the chaos game, a few dozen steps per particle)
+    geo: { title: 'Emisor geométrico', cat: 'emit', unique: true, outputs: [POUT],
+      help: 'Las partículas nacen sobre una figura geométrica o un fractal',
+      inputs: [F('x', 'Posición X', 0, -2, 2), F('y', 'Posición Y', 0, -1.5, 1.5), F('z', 'Profundidad', 0, -6, 1), F('size', 'Tamaño', 0.8, 0.05, 3),
+               F('a', 'Forma A', 0.5, 0, 1, { labels: GEO_A }), F('b', 'Forma B', 0.5, 0, 1, { labels: GEO_B }), F('rot', 'Giro (°)', 0, -180, 180), F('turn', 'Gira sola (°/s)', 0, -180, 180),
+               F('speed', 'Velocidad', 0, 0, 3), F('chaos', 'Azar', 0.2, 0, 1), F('life', 'Vida (s)', 8, 0.2, 30), F('lifeVar', 'Vida variable', 0.3, 0, 1)],
+      params: [{ k: 'kind', label: 'Figura', v: 'rose', options: [['polygon', 'polígono'], ['star', 'estrella'], ['spiral', 'espiral'], ['rose', 'rosa'], ['lissa', 'Lissajous'], ['grid', 'grilla'],
+                 ['knot', 'nudo 3D'], ['fibs', 'esfera de puntos 3D'], ['cube', 'cubo 3D'], ['sierp', 'fractal: Sierpinski'], ['carpet', 'fractal: alfombra'], ['fern', 'fractal: helecho'],
+                 ['dragon', 'fractal: dragón'], ['tree', 'fractal: árbol'], ['clifford', 'atractor de Clifford'], ['dejong', 'atractor de De Jong'], ['glsl', 'código GLSL']] },
+               { k: 'code', label: 'Código', kind: 'code', v: CODE_SHAPE, when: { kind: 'glsl' } },
+               { k: 'dir', label: 'Salen', v: 'still', options: DIRS },
                { k: 'count', label: 'Cantidad', v: '65536', options: COUNTS },
                { k: 'burst', label: 'Emisión', v: 'cont', options: BURSTS }] },
     // particles born on a text, a picture or what the camera sees (params with `when` only show for that source)
@@ -68,6 +102,12 @@
     explode: { title: 'Explosión', cat: 'force', inputs: [PIN, F('x', 'X', 0, -2, 2), F('y', 'Y', 0, -1.5, 1.5), F('str', 'Fuerza', 1.5, 0, 8)], outputs: [POUT],
       params: [{ k: 'trig', label: 'Golpe', v: 'beat', options: TRIG }],
       help: 'Un empujón desde un punto con el ritmo o los graves' },
+    strange: { title: 'Atractor extraño', cat: 'force', inputs: [PIN, F('x', 'X', 0, -2, 2), F('y', 'Y', 0, -1.5, 1.5), F('size', 'Tamaño', 0.8, 0.1, 3), F('speed', 'Velocidad', 1, 0, 5), F('str', 'Fuerza', 0.8, 0, 1)], outputs: [POUT],
+      params: [{ k: 'kind', label: 'Atractor', v: 'lorenz', options: [['lorenz', 'Lorenz (mariposa)'], ['aizawa', 'Aizawa'], ['thomas', 'Thomas'], ['halvorsen', 'Halvorsen']] }],
+      help: 'Las partículas fluyen por un atractor caótico en 3D (girá la cámara para verlo)' },
+    code: { title: 'Código GLSL', cat: 'force', inputs: [PIN, F('k1', 'Perilla 1', 0.5, 0, 1), F('k2', 'Perilla 2', 0.2, 0, 1), F('k3', 'Perilla 3', 0.3, 0, 1), F('k4', 'Perilla 4', 0, 0, 1)], outputs: [POUT],
+      params: [{ k: 'code', label: 'Código', kind: 'code', v: CODE_FORCE }],
+      help: 'Tu propia fuerza escrita en GLSL, con 4 perillas' },
     home: { title: 'Formar', cat: 'force', inputs: [PIN, F('str', 'Fuerza', 8, 0, 40), F('damp', 'Amortiguar', 3.5, 0, 15)], outputs: [POUT],
       help: 'Cada partícula vuelve a donde nació: el texto o la imagen se vuelve a armar' },
     cam: { title: 'Cámara', cat: 'force', inputs: [PIN, F('str', 'Fuerza', 2, -8, 8)], outputs: [POUT],
@@ -85,6 +125,10 @@
                { k: 'life', label: 'Vida', v: 'fade', options: [['fade', 'aparece y se va'], ['shrink', 'se achica'], ['grow', 'crece'], ['twinkle', 'titila'], ['const', 'constante']] }],
       help: 'Tamaño, forma y color de cada partícula' },
 
+    sym: { title: 'Simetría', cat: 'look', unique: true, inputs: [PIN, F('rot', 'Giro (°)', 0, -180, 180), F('turn', 'Gira sola (°/s)', 0, -180, 180)], outputs: [POUT],
+      params: [{ k: 'n', label: 'Copias', v: '6', options: [['2', '2'], ['3', '3'], ['4', '4'], ['5', '5'], ['6', '6'], ['8', '8'], ['10', '10'], ['12', '12']] },
+               { k: 'mirror', label: 'Espejo', v: 'yes', options: [['yes', 'sí (caleidoscopio)'], ['no', 'no (sólo gira)']] }],
+      help: 'Copias girando alrededor del centro: mandalas y caleidoscopios' },
     out: { title: 'Salida', cat: 'out', unique: true, inputs: [PIN, F('trail', 'Estela', 0, 0, 0.99, { nl: true }), F('gain', 'Brillo', 1, 0, 4),
       F('yaw', 'Cámara: giro', 0, -180, 180), F('pitch', 'Cámara: inclinación', 0, -89, 89), F('dist', 'Cámara: distancia', 1, 0.3, 4), F('spin', 'Cámara: gira sola', 0, -90, 90)], outputs: [],
       params: [{ k: 'blend', label: 'Mezcla', v: 'add', options: [['add', 'suman luz'], ['normal', 'normal (tapan)']] }],
@@ -122,6 +166,7 @@
       for (const q of d.params || []) {
         const x = np[q.k];
         if (q.kind === 'text') { if (typeof x === 'string') p[q.k] = x.slice(0, 300); }
+        else if (q.kind === 'code') { if (typeof x === 'string') p[q.k] = x.slice(0, 8000); }
         else if (q.kind === 'image') { if (typeof x === 'string' && x.length <= 900000 && /^data:image\/(png|jpeg|webp);base64,[A-Za-z0-9+/=]+$/.test(x)) p[q.k] = x; }
         else if (q.options.some(o => o[0] === x)) p[q.k] = x;
       }
@@ -155,7 +200,9 @@
   };
   // what needs a recompile (types, options, links, count) — values only change uniforms
   // (a text or a picture only changes the points the particles are born on, not the shaders)
-  const structP = n => { const o = {}; (DEFS[n.type].params || []).forEach(q => { if (!q.kind && n.p && n.p[q.k] !== undefined) o[q.k] = n.p[q.k]; }); return o; };
+  const structP = n => { const o = {}; (DEFS[n.type].params || []).forEach(q => { if (q.kind !== 'text' && q.kind !== 'image' && n.p && n.p[q.k] !== undefined) o[q.k] = n.p[q.k]; }); return o; };
+  // the label of an input on this node (null = not used by the chosen figure, hidden)
+  const labelOf = (n, inp) => { if (!inp.labels) return inp.label; const v = paramOf(n, inp.labels.by); return Object.prototype.hasOwnProperty.call(inp.labels, v) ? inp.labels[v] : null; };
   const structureKey = s => JSON.stringify([s.nodes.map(n => [n.id, n.type, structP(n)]), s.links.map(l => [l.a, l.ao, l.b, l.bi])]);
 
   /* ── GLSL ── */
@@ -261,11 +308,67 @@ vec3 hsv(float h, float s, float v) { vec3 k = clamp(abs(fract(h + vec3(0.0, 2.0
     o = normalize(o + vec3(0.0, 0.0001, 0.0));
     hw = floor(puv.x * 4095.0) * 4096.0 + floor(puv.y * 4095.0);
     ok = u_npts > 0.5;`;
+    const rotz = `float ra = radians(${EI.rot || '0.0'} + ${EI.turn || '0.0'} * u_time); g.xy = mat2(cos(ra), sin(ra), -sin(ra), cos(ra)) * g.xy;`;
+    const it = (n, body) => `for (int i = 0; i < ${n}; i++) { float h = rnd4(idu, fr, 40u + uint(i)).x; ${body} }`;
+    const GEO = {
+      polygon: `float N = floor(3.0 + GA * 9.0), k = floor(r.x * N); float a0 = 6.2831853 * k / N + 1.5707963, a1 = a0 + 6.2831853 / N;
+    vec2 q = mix(vec2(cos(a0), sin(a0)), vec2(cos(a1), sin(a1)), r.y); if (r.z < GB) q *= sqrt(r.w); g = vec3(q, 0.0);`,
+      star: `float N = floor(3.0 + GA * 9.0), k = floor(r.x * N * 2.0); float a0 = 3.14159265 * k / N + 1.5707963, a1 = a0 + 3.14159265 / N, ri = 0.2 + GB * 0.6;
+    float rA = mod(k, 2.0) < 0.5 ? 1.0 : ri, rB = mod(k, 2.0) < 0.5 ? ri : 1.0; g = vec3(mix(vec2(cos(a0), sin(a0)) * rA, vec2(cos(a1), sin(a1)) * rB, r.y), 0.0);`,
+      spiral: `float arms = floor(1.0 + GB * 5.0), turns = 1.0 + GA * 6.0, ang = r.x * turns * 6.2831853 + floor(r.y * arms) * 6.2831853 / arms; g = vec3(vec2(cos(ang), sin(ang)) * r.x, 0.0);`,
+      rose: `float kn = 1.0 + floor(GA * 8.0), kd = 1.0 + floor(GB * 4.0), th = r.x * 6.2831853 * kd; g = vec3(vec2(cos(th), sin(th)) * cos(kn / kd * th), 0.0);`,
+      lissa: `float fa = 1.0 + floor(GA * 6.0), fb = 1.0 + floor(GB * 6.0); if (fb == fa) fb += 1.0; float th = r.x * 6.2831853; g = vec3(sin(fa * th + 0.7853982), sin(fb * th), 0.0);`,
+      grid: `float N = floor(2.0 + GA * 30.0); vec2 q = r.xy;
+    if (r.z < GB) { if (r.w < 0.5) q.x = (floor(q.x * N) + 0.5) / N; else q.y = (floor(q.y * N) + 0.5) / N; } else q = (floor(q * N) + 0.5) / N; g = vec3(q * 2.0 - 1.0, 0.0);`,
+      knot: `float kp = 2.0 + floor(GA * 4.0), kq = 3.0 + floor(GB * 4.0); if (mod(kq, kp) < 0.5) kq += 1.0; float th = r.x * 6.2831853, rr = 2.0 + cos(kq * th);
+    g = vec3(rr * cos(kp * th), rr * sin(kp * th), -sin(kq * th)) * 0.33 + (r.yzw - 0.5) * 0.04;`,
+      fibs: `float Np = floor(40.0 + GA * 1960.0), k = floor(r.x * Np), zz = 1.0 - (2.0 * k + 1.0) / Np, rr = sqrt(max(0.0, 1.0 - zz * zz)), ang = k * 2.39996323;
+    g = vec3(rr * cos(ang), zz, rr * sin(ang)) * (1.0 + (r.y - 0.5) * GB * 0.06);`,
+      cube: `float e = floor(r.x * 12.0), t0 = r.y * 2.0 - 1.0, ax = floor(e / 4.0), s1 = mod(e, 2.0) < 0.5 ? -1.0 : 1.0, s2 = mod(floor(e / 2.0), 2.0) < 0.5 ? -1.0 : 1.0;
+    g = (ax < 0.5 ? vec3(t0, s1, s2) : ax < 1.5 ? vec3(s1, t0, s2) : vec3(s1, s2, t0)) * 0.6;`,
+      sierp: `vec3 q = vec3(r.xyz * 2.0 - 1.0); bool tet = GA > 0.5;
+    ${it(18, "vec3 v = tet ? (h < 0.25 ? vec3(0.0, 1.0, 0.0) : h < 0.5 ? vec3(-0.943, -0.333, 0.0) : h < 0.75 ? vec3(0.471, -0.333, 0.816) : vec3(0.471, -0.333, -0.816)) : (h < 0.3333 ? vec3(0.0, 1.0, 0.0) : h < 0.6667 ? vec3(-0.866, -0.5, 0.0) : vec3(0.866, -0.5, 0.0)); q = (q + v) * 0.5;")}
+    g = tet ? q : vec3(q.xy, 0.0);`,
+      carpet: `vec2 q = r.xy * 2.0 - 1.0;
+    ${it(10, "float cc = floor(h * 8.0); cc += cc > 3.5 ? 1.0 : 0.0; q = q / 3.0 + vec2(mod(cc, 3.0) - 1.0, floor(cc / 3.0) - 1.0) * (2.0 / 3.0);")}
+    g = vec3(q, 0.0);`,
+      fern: `vec2 q = vec2(0.0); float bend = 0.04 + (GA - 0.5) * 0.12;
+    ${it(26, "if (h < 0.01) q = vec2(0.0, 0.16 * q.y); else if (h < 0.86) q = vec2(0.85 * q.x + bend * q.y, -bend * q.x + 0.85 * q.y + 1.6); else if (h < 0.93) q = vec2(0.2 * q.x - 0.26 * q.y, 0.23 * q.x + 0.22 * q.y + 1.6); else q = vec2(-0.15 * q.x + 0.28 * q.y, 0.26 * q.x + 0.24 * q.y + 0.44);")}
+    g = vec3(q.x * 0.19, q.y * 0.19 - 0.95, 0.0);`,
+      dragon: `vec2 q = r.xy;
+    ${it(24, "q = h < 0.5 ? mat2(0.5, 0.5, -0.5, 0.5) * q : mat2(-0.5, 0.5, -0.5, -0.5) * q + vec2(1.0, 0.0);")}
+    g = vec3((q - vec2(0.33, 0.1)) * 1.45, 0.0);`,
+      tree: `vec2 q = r.xy; float th = 0.25 + GA * 0.7; mat2 rl = mat2(cos(th), sin(th), -sin(th), cos(th)), rr2 = mat2(cos(th), -sin(th), sin(th), cos(th));
+    ${it(24, "q = h < 0.16 ? vec2(0.02 * q.x, 0.4 * q.y) : h < 0.58 ? rl * (q * 0.62) + vec2(0.0, 1.0) : rr2 * (q * 0.62) + vec2(0.0, 1.0);")}
+    g = vec3(q.x * 0.5, q.y * 0.5 - 0.95, 0.0);`,
+      clifford: `vec2 q = r.xy * 2.0 - 1.0; float ca = -1.4 + (GA - 0.5) * 3.0, cb = 1.6 + (GB - 0.5) * 3.0;
+    for (int i = 0; i < 40; i++) q = vec2(sin(ca * q.y) + cos(ca * q.x), sin(cb * q.x) + 0.7 * cos(cb * q.y));
+    g = vec3(q / 2.0, 0.0);`,
+      dejong: `vec2 q = r.xy * 2.0 - 1.0; float da = 1.4 + (GA - 0.5) * 3.0, db = -2.3 + (GB - 0.5) * 3.0;
+    for (int i = 0; i < 40; i++) q = vec2(sin(da * q.y) - cos(db * q.x), sin(2.4 * q.x) - cos(-2.1 * q.y));
+    g = vec3(q / 2.1, 0.0);`,
+    };
     const dir = { out: 'o', up: 'vec3(0.0, 1.0, 0.0)', down: 'vec3(0.0, -1.0, 0.0)', left: 'vec3(-1.0, 0.0, 0.0)', right: 'vec3(1.0, 0.0, 0.0)',
                   random: 'vec3(cos(r2.x * 6.2831853), sin(r2.x * 6.2831853), 0.0)', spin: 'vec3(-o.y, o.x, 0.0)', front: 'vec3(0.0, 0.0, 1.0)', back: 'vec3(0.0, 0.0, -1.0)', still: 'vec3(0.0)' }[EP.dir];
+    const globals = [], codeMarks = [];
+    const userCode = (id, src, fn) => {   // the node's GLSL, with its function renamed to this node
+      const code = String(src || '').replace(/^[ \t]*#[ \t]*(version|extension)\b.*$/gm, '').replace(new RegExp('\\b' + fn + '\\b', 'g'), `f${id}_${fn}`);
+      globals.push({ id, code });
+    };
+    let geoShape = '';
+    if (emit.type === 'geo') {
+      const GA = `clamp(${EI.a}, 0.0, 1.0)`, GB = `clamp(${EI.b}, 0.0, 1.0)`;
+      let body;
+      if (EP.kind === 'glsl') { userCode(emit.id, EP.code, 'shape'); body = `g = f${emit.id}_shape(r, u_time, ${GA}, ${GB});`; }
+      else body = (GEO[EP.kind] || GEO.rose).replace(/\bGA\b/g, GA).replace(/\bGB\b/g, GB);
+      geoShape = `vec3 g = vec3(0.0);
+    ${body}
+    ${rotz}
+    o = normalize(g + vec3(0.0001, 0.0, 0.0)); pos = c + g * S;`;
+    }
     const EMIT = `
     vec3 c = vec3(${EI.x}, ${EI.y}, ${EI.z}), o; float S = ${EI.size};
-    ${emit.type === 'form' ? formShape : shape}
+    ${emit.type === 'form' ? formShape : emit.type === 'geo' ? geoShape : shape}
     vec3 d0 = ${dir};
     vel = d0 * ${EI.speed} * (1.0 + (r2.z - 0.5) * ${EI.chaos} * 1.5)
         + vec3(cos(r2.y * 6.2831853), sin(r2.y * 6.2831853), (r.w - 0.5) * 0.6) * ${EI.speed} * ${EI.chaos} * 0.6;
@@ -275,7 +378,7 @@ vec3 hsv(float h, float s, float v) { vec3 k = clamp(abs(fract(h + vec3(0.0, 2.0
     const pre = [], post = [], triggers = [];
     let usesCam = emit.type === 'form' && EP.src === 'camera';
     if (EP.burst !== 'cont') triggers.push({ u: 'u_burst', mode: EP.burst });
-    let look = null;
+    let look = null, sym = null;
     for (const n of chain.slice(1)) {
       const I = inputsOf(n), Q = P(n), id = n.id;
       if (n.type === 'gravity') pre.push(`{ float ga = radians(${I.angle}); vel.xy += vec2(sin(ga), -cos(ga)) * ${I.str} * dt; }`);
@@ -291,7 +394,23 @@ vec3 hsv(float h, float s, float v) { vec3 k = clamp(abs(fract(h + vec3(0.0, 2.0
         uniforms.push({ name: hu, t: 'float', trig: true });
         triggers.push({ u: hu, mode: Q.trig });
         pre.push(`if (${hu} > 0.5) { vec3 d = pos - vec3(${I.x}, ${I.y}, 0.0); vel += normalize(d + vec3(1e-4, 0.0, 0.0)) * ${I.str} / (1.0 + length(d) * 1.5); }`);
-      } else if (n.type === 'home') pre.push(`{ vec3 d = home.xyz - pos; vel += d * ${I.str} * dt; vel *= exp(-max(0.0, ${I.damp}) * dt); }`);
+      } else if (n.type === 'strange') {
+        // the attractor's own coordinates: screen y is its z (so Lorenz shows the butterfly); K = its size, O = its centre, TS = its time scale
+        const A2 = {
+          lorenz: { K: '25.0', O: 'vec3(0.0, 0.0, 24.6)', TS: '0.12', f: 'vec3(10.0 * (a.y - a.x), a.x * (28.0 - a.z) - a.y, a.x * a.y - 2.6666667 * a.z)' },
+          aizawa: { K: '1.5', O: 'vec3(0.0, 0.0, 0.7)', TS: '0.6', f: 'vec3((a.z - 0.7) * a.x - 3.5 * a.y, 3.5 * a.x + (a.z - 0.7) * a.y, 0.6 + 0.95 * a.z - a.z * a.z * a.z / 3.0 - (a.x * a.x + a.y * a.y) * (1.0 + 0.25 * a.z) + 0.1 * a.z * a.x * a.x * a.x)' },
+          thomas: { K: '4.0', O: 'vec3(0.0)', TS: '3.0', f: 'vec3(sin(a.y) - 0.208186 * a.x, sin(a.z) - 0.208186 * a.y, sin(a.x) - 0.208186 * a.z)' },
+          halvorsen: { K: '11.0', O: 'vec3(-2.9)', TS: '0.25', f: 'vec3(-1.89 * a.x - 4.0 * a.y - 4.0 * a.z - a.y * a.y, -1.89 * a.y - 4.0 * a.z - 4.0 * a.x - a.z * a.z, -1.89 * a.z - 4.0 * a.x - 4.0 * a.y - a.x * a.x)' },
+        }[Q.kind] || null;
+        if (A2) pre.push(`{ float sS = max(${I.size}, 0.01); vec3 w = (pos - vec3(${I.x}, ${I.y}, 0.0)) / sS; vec3 a = vec3(w.x, w.z, w.y) * ${A2.K} + ${A2.O};
+      vec3 d = ${A2.f}; vec3 tv = vec3(d.x, d.z, d.y) / ${A2.K} * sS * ${I.speed} * ${A2.TS} * 2.0;
+      float tl = length(tv); if (tl > 4.0 * sS) tv *= 4.0 * sS / tl;
+      vel += (tv - vel) * clamp(${I.str} * dt * 60.0, 0.0, 1.0); }`);
+      } else if (n.type === 'code') {
+        userCode(id, Q.code, 'force');
+        pre.push(`vel += f${id}_force(pos, vel, u_time, ${I.k1}, ${I.k2}, ${I.k3}, ${I.k4}) * dt;`);
+      } else if (n.type === 'sym') sym = { I, P: Q };
+      else if (n.type === 'home') pre.push(`{ vec3 d = home.xyz - pos; vel += d * ${I.str} * dt; vel *= exp(-max(0.0, ${I.damp}) * dt); }`);
       else if (n.type === 'cam') {
         usesCam = true;
         const ch = Q.mode === 'bright' ? 'g' : 'r';
@@ -324,8 +443,12 @@ uniform vec4 u_audio;
 ${uniforms.map(u => `uniform ${u.t === 'color' ? 'vec3' : 'float'} ${u.name};`).join('\n')}
 ${LIB}`;
     const VALUES = vals.join('\n  ');
+    // user GLSL goes after the head; its first line is remembered so errors can say «line N of your code»
+    let G = '';
+    const headLines = head.split('\n').length;
+    globals.forEach(g => { codeMarks.push({ id: g.id, line: headLines + G.split('\n').length }); G += `// código del nodo ${g.id}\n${g.code}\n`; });
     const sim = `${head}
-layout(location = 0) out vec4 oPos;
+${G}layout(location = 0) out vec4 oPos;
 layout(location = 1) out vec4 oVel;
 layout(location = 2) out vec4 oHome;
 void main() {
@@ -367,15 +490,22 @@ void main() {
       twinkle: 'al *= (0.25 + 0.75 * step(0.5, fract(rs.y * 7.0 + u_time * (1.5 + rs.z * 5.0)))) * smoothstep(0.0, 0.08, t) * (1.0 - smoothstep(0.7, 1.0, t));',
       const: 'al *= smoothstep(0.0, 0.03, t) * (1.0 - smoothstep(0.97, 1.0, t));',
     }[LP.life];
+    // «Simetría»: every particle drawn n times, turned around the centre (and mirrored)
+    const cop = sym ? (+sym.P.n || 6) * (sym.P.mirror === 'no' ? 1 : 2) : 1;
+    const symGLSL = !sym ? '' : `
+  { int cp = gl_VertexID % ${cop}; bool mir = ${sym.P.mirror === 'no' ? 'false' : 'cp % 2 == 1'}; float kk = float(${sym.P.mirror === 'no' ? 'cp' : 'cp / 2'});
+    vec2 q = pos.xy; if (mir) q.x = -q.x;
+    float an = kk * 6.2831853 / ${fl(+sym.P.n || 6)} + radians(${sym.I.rot} + ${sym.I.turn} * u_rtime);
+    pos.xy = mat2(cos(an), sin(an), -sin(an), cos(an)) * q; }`;
     const drawVS = `${head}
 out vec4 vCol;
 void main() {
-  int i = gl_VertexID, side = textureSize(u_pos, 0).x;
+  int i = gl_VertexID${cop > 1 ? ' / ' + cop : ''}, side = textureSize(u_pos, 0).x;
   ivec2 ij = ivec2(i % side, i / side);
   vec4 P = texelFetch(u_pos, ij, 0), V = texelFetch(u_vel, ij, 0);
   float age = P.w, life = V.w;
   if (age < 0.0 || age >= life) { gl_Position = vec4(2.0, 2.0, 2.0, 1.0); gl_PointSize = 0.0; vCol = vec4(0.0); return; }
-  float t = age / life; vec3 pos = P.xyz;
+  float t = age / life; vec3 pos = P.xyz;${symGLSL}
   vec4 rs = rnd4(uint(i), 0u, 9u);${LP.color === 'image' ? '\n  vec4 HH = texelFetch(u_home, ij, 0);' : ''}
   ${VALUES}
   // the 3D camera: turns around the centre, tilts, moves away (2.5 = the default distance)
@@ -416,7 +546,7 @@ void main() {
 }`;
     return {
       sim, drawVS, drawFS, uniforms, triggers, burst,
-      count: +EP.count, side: Math.round(Math.sqrt(+EP.count)),
+      count: +EP.count, side: Math.round(Math.sqrt(+EP.count)), copies: cop, codeMarks,
       blend: OP.blend, outId: out.id, emitId: emit.id, form: emit.type === 'form', usesCam, imgColor: LP.color === 'image',
     };
   }
@@ -642,6 +772,17 @@ void main() {
   }
 
   /* one running system */
+  // a GLSL compiler message about the user's code → «Código GLSL, línea N: …»
+  function friendlyError(msg, comp) {
+    const marks = comp && comp.codeMarks;
+    if (!marks || !marks.length) return msg;
+    const m = /ERROR:\s*\d+:(\d+):\s*([^\n]*)/.exec(msg);
+    if (!m) return msg;
+    const L = +m[1];
+    let mk = null;
+    marks.forEach(x => { if (L >= x.line && (!mk || x.line > mk.line)) mk = x; });
+    return mk ? `Código GLSL (nodo ${mk.id}), línea ${L - mk.line}: ${m[2]}` : 'Error de GLSL: ' + m[2];
+  }
   const NOMODS = {};
   const kicks = new Map();   // node key (or '*' for all) → count: «Explotar» from NODRUS or a SYNDRUS drop
   function kick(key) { kicks.set(key, (kicks.get(key) || 0) + 1); }
@@ -676,13 +817,14 @@ void main() {
       S.spec = sys;
       const key = structureKey(sys);
       if (key !== S.key) {
+        let comp = null;
         try {
-          const comp = compile(sys);
+          comp = compile(sys);
           if (maxCount && comp.count > maxCount) { comp.count = maxCount; comp.side = Math.round(Math.sqrt(maxCount)); }
           const progs = programsFor(comp, key);
           if (!S.state || S.state.side !== comp.side || (S.comp && S.comp.burst !== comp.burst)) { S.comp = comp; alloc(comp.side); }
           S.comp = comp; S.progs = progs; S.key = key; S.err = '';
-        } catch (e) { S.err = String(e && e.message || e); S.key = key; return false; }
+        } catch (e) { S.err = friendlyError(String(e && e.message || e), comp); S.key = key; return false; }
       }
       // uniform values
       const v = {};
@@ -862,7 +1004,7 @@ void main() {
       gl.enable(gl.BLEND);
       if (S.comp.blend === 'normal') gl.blendFunc(gl.ONE, gl.ONE_MINUS_SRC_ALPHA); else gl.blendFunc(gl.ONE, gl.ONE);
       gl.bindVertexArray(P.empty);
-      gl.drawArrays(gl.POINTS, 0, S.comp.count);
+      gl.drawArrays(gl.POINTS, 0, S.comp.count * (S.comp.copies || 1));
       gl.disable(gl.BLEND);
       C.cur = dst;
     }
@@ -1045,6 +1187,47 @@ void main() {
       ['home', { str: 2.5, damp: 2 }],
       ['look', { size: 2, opacity: 0.7 }, { shape: 'soft', color: 'angle', life: 'const' }],
       ['out', { trail: 0.35, gain: 1 }, { blend: 'add' }]]) },
+    { name: 'Mandala', sys: build('Mandala', [
+      ['geo', { x: 0.25, size: 0.45, a: 0.3, b: 0, turn: 12, speed: 0.06, chaos: 0.15, life: 5, lifeVar: 0.4 }, { kind: 'rose', dir: 'out', count: '65536' }],
+      ['sym', { turn: -5 }, { n: '8', mirror: 'yes' }],
+      ['look', { size: 1.4, opacity: 0.5 }, { shape: 'soft', color: 'angle', life: 'fade' }],
+      ['out', { trail: 0.35, gain: 1 }, { blend: 'add' }]]) },
+    { name: 'Lorenz (mariposa)', sys: build('Lorenz (mariposa)', [
+      ['emit', { size: 0.6, speed: 0, chaos: 0, life: 14, lifeVar: 0.4 }, { shape: 'sphere', dir: 'still', count: '262144' }],
+      ['strange', { size: 0.85, speed: 1, str: 0.85 }, { kind: 'lorenz' }],
+      ['look', { size: 1.3, opacity: 0.45, a: '#ff3fa4', b: '#ffd23f' }, { shape: 'soft', color: 'speed', life: 'fade' }],
+      ['out', { trail: 0.5, gain: 1, spin: 12, pitch: 10 }, { blend: 'add' }]]) },
+    { name: 'Aizawa', sys: build('Aizawa', [
+      ['emit', { size: 0.6, speed: 0, chaos: 0, life: 12, lifeVar: 0.4 }, { shape: 'sphere', dir: 'still', count: '262144' }],
+      ['strange', { size: 0.75, speed: 1.2, str: 0.85 }, { kind: 'aizawa' }],
+      ['look', { size: 1.3, opacity: 0.45 }, { shape: 'soft', color: 'angle', life: 'fade' }],
+      ['out', { trail: 0.55, gain: 1, spin: 15, pitch: 20 }, { blend: 'add' }]]) },
+    { name: 'Sierpinski 3D', sys: build('Sierpinski 3D', [
+      ['geo', { size: 0.95, a: 1, b: 0.5, speed: 0, chaos: 0, life: 30, lifeVar: 0 }, { kind: 'sierp', dir: 'still', count: '262144' }],
+      ['home', { str: 9, damp: 3.5 }],
+      ['explode', { str: 1.6 }, { trig: 'bar' }],
+      ['look', { size: 1.2, opacity: 0.55, a: '#00d4ff', b: '#ff3fa4' }, { shape: 'soft', color: 'speed', life: 'const' }],
+      ['out', { trail: 0.3, gain: 1, spin: 20, pitch: 15 }, { blend: 'add' }]]) },
+    { name: 'Helecho al viento', sys: build('Helecho al viento', [
+      ['geo', { size: 1, a: 0.5, speed: 0, chaos: 0, life: 20, lifeVar: 0.2 }, { kind: 'fern', dir: 'still', count: '262144' }],
+      ['wave', { str: 0.12, freq: 1.5, speed: 1.2 }, { dir: 'v' }],
+      ['home', { str: 4, damp: 3 }],
+      ['look', { size: 1.1, opacity: 0.6, a: '#66ff33', b: '#d8ff66' }, { shape: 'soft', color: 'rand', life: 'const' }],
+      ['out', { trail: 0.4, gain: 1 }, { blend: 'add' }]]) },
+    { name: 'Nudo 3D', sys: build('Nudo 3D', [
+      ['geo', { size: 0.85, a: 0.25, b: 0.25, speed: 0.01, chaos: 0.2, life: 10, lifeVar: 0.4 }, { kind: 'knot', dir: 'random', count: '262144' }],
+      ['look', { size: 1.4, opacity: 0.5 }, { shape: 'soft', color: 'angle', life: 'fade' }],
+      ['out', { trail: 0.5, gain: 1, spin: 25, pitch: 25 }, { blend: 'add' }]]) },
+    { name: 'Atractor de Clifford', sys: build('Atractor de Clifford', [
+      ['geo', { size: 0.9, a: 0.5, b: 0.5, speed: 0, chaos: 0, life: 10, lifeVar: 0.5 }, { kind: 'clifford', dir: 'still', count: '262144' }],
+      ['look', { size: 1.1, opacity: 0.3, a: '#00d4ff', b: '#ff3fa4' }, { shape: 'soft', color: 'angle', life: 'fade' }],
+      ['out', { trail: 0.2, gain: 1 }, { blend: 'add' }]]) },
+    { name: 'Código GLSL (remolino)', sys: build('Código GLSL (remolino)', [
+      ['emit', { size: 0.9, speed: 0.1, chaos: 1, life: 8, lifeVar: 0.5 }, { shape: 'disc', dir: 'random', count: '65536' }],
+      ['code', { k1: 0.7, k2: 0.25, k3: 0.3, k4: 0.4 }],
+      ['drag', { amt: 1.2 }],
+      ['look', { size: 1.8, opacity: 0.6 }, { shape: 'soft', color: 'speed', life: 'fade' }],
+      ['out', { trail: 0.5, gain: 1 }, { blend: 'add' }]]) },
   ];
   const blank = () => build('Nuevo sistema', [
     ['emit', {}, { shape: 'point', dir: 'out', count: '65536' }],
@@ -1097,7 +1280,7 @@ void main() {
   }
 
   window.PudrusParticles = {
-    DEFS, CATS, PRESETS, blank, sane, isEmitter, FONTS, get cameraState() { return pool && pool.cam ? pool.cam.st : 'off'; }, compile, structureKey, valueOf, paramOf, isChain,
+    DEFS, CATS, PRESETS, blank, sane, isEmitter, labelOf, FONTS, get cameraState() { return pool && pool.cam ? pool.cam.st : 'off'; }, compile, structureKey, valueOf, paramOf, isChain,
     createSim, source, resolve, kick, publishedInputs, library, saveLibrary, LIB_KEY,
     get ok() { return getPool().ok; }, get error() { return getPool().err; }, get canvas() { return getPool().canvas; },
     channel: 'pudrus-partrus',

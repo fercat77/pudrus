@@ -232,6 +232,37 @@ vec2 n${id}_pat(vec2 p, float sc, float w, float amt, float sp, float seed){
 }`;
   }
 
+  /* «Fractal»: Mandelbrot / Julia / Burning Ship (escape time, smooth colouring) and folding fractals
+     (Sierpinski, kaleidoscopic IFS, Apollonian gasket). zexp = zoom in powers of 2 (an LFO on it = an endless dive). */
+  const FRACTAL_KINDS = {
+    mandel: `vec2 c0 = p + vec2(px, py) + vec2(-0.7436439, 0.1318259); vec2 z = vec2(0.0); ESCAPE`,
+    julia: `float ang = morph * 6.2831853 + t * 0.3; vec2 c0 = 0.7885 * vec2(cos(ang), sin(ang)); vec2 z = p + vec2(px, py); ESCAPE`,
+    ship: `vec2 c0 = vec2(p.x, -p.y) + vec2(px, py) + vec2(-0.45, -0.55); vec2 z = vec2(0.0); SHIP`,
+    sierp: `vec2 z = rot(t * 0.2) * (p + vec2(px, py)); float k = 1.6 + morph * 0.8, s = 1.0, N = floor(4.0 + det * 10.0);
+    vec2 A = vec2(0.0, 1.0), B = vec2(-0.866, -0.5), C = vec2(0.866, -0.5);
+    for (int i = 0; i < 14; i++) { if (float(i) >= N) break; vec2 nn = A; float d = length(z - A), d2 = length(z - B); if (d2 < d) { nn = B; d = d2; } d2 = length(z - C); if (d2 < d) nn = C; z = z * k - nn * (k - 1.0); s *= k; }
+    float dd = (length(z) - 1.0) / s; v = 1.0 - smoothstep(0.0, aa * 1.5, dd); col = pal(length(z) * 0.25 + t * 0.1) * v;`,
+    kifs: `vec2 z = rot(t * 0.15) * (p + vec2(px, py)) * 0.7; vec2 cc = vec2(0.55 + morph * 0.45, 0.45 + 0.15 * sin(t * 0.3)); float N = floor(4.0 + det * 14.0), mn = 1e9, acc = 0.0;
+    for (int i = 0; i < 18; i++) { if (float(i) >= N) break; z = abs(z) / max(dot(z, z), 1e-4) - cc; float q = min(abs(z.x), abs(z.y)); mn = min(mn, q); acc += exp(-q * 12.0); }
+    v = clamp(exp(-mn * 18.0) * 0.8 + acc / N * 0.6, 0.0, 1.0); col = pal(mn * 3.0 + acc * 0.05 + t * 0.1) * v;`,
+    apollo: `vec2 z = (p + vec2(px, py)) * 0.8; float s = 1.0, N = floor(4.0 + det * 8.0), kk = 1.0 + morph * 0.4 + 0.08 * sin(t);
+    for (int i = 0; i < 12; i++) { if (float(i) >= N) break; z = -1.0 + 2.0 * fract(0.5 * z + 0.5); float r2 = dot(z, z); float k = kk / max(r2, 1e-4); z *= k; s *= k; }
+    float dd = 0.25 * abs(z.y) / s; v = clamp(aa * 1.2 / max(dd, 1e-5), 0.0, 1.0); col = pal(log(s) * 0.15 + t * 0.1) * v;`,
+  };
+  const ESCAPE_LOOP = ship => `float n = 0.0, r2 = 0.0, N = floor(32.0 + det * 224.0);
+    for (int i = 0; i < 256; i++) { if (float(i) >= N) break; ${ship ? 'z = abs(z); ' : ''}z = vec2(z.x * z.x - z.y * z.y, 2.0 * z.x * z.y) + c0; r2 = dot(z, z); if (r2 > 256.0) break; n += 1.0; }
+    if (n < N) { float sn = max(0.0, n + 1.0 - log2(max(0.5 * log(r2), 1e-6))); v = clamp(sqrt(sn / N), 0.0, 1.0); col = pal(sn * 0.04 + t * 0.1 + morph) * smoothstep(0.0, 0.7, v); }`;
+  function fractalGlobals(P, id) {
+    const body = (FRACTAL_KINDS[P.kind] || FRACTAL_KINDS.julia).replace('ESCAPE', ESCAPE_LOOP(false)).replace('SHIP', ESCAPE_LOOP(true));
+    return `vec3 n${id}_pal(float x) { return 0.5 + 0.5 * cos(6.2831853 * (x + vec3(0.0, 0.33, 0.67))); }
+mat2 n${id}_rot(float a) { return mat2(cos(a), sin(a), -sin(a), cos(a)); }
+vec4 n${id}_frac(vec2 uv, float zexp, float px, float py, float det, float sp, float morph) {
+  float t = u_time * sp, sc = 3.0 / exp2(clamp(zexp, -2.0, 18.0)); vec2 p = uv * sc; float aa = sc / u_res.y; float v = 0.0; vec3 col = vec3(0.0);
+  ${body.replace(/\bpal\(/g, `n${id}_pal(`).replace(/\brot\(/g, `n${id}_rot(`)}
+  return vec4(col, v);
+}`;
+  }
+
   function scene3dGlobals(P, id) {
     const shape = {
       sphere: 'length(p) - size',
@@ -240,7 +271,29 @@ vec2 n${id}_pat(vec2 p, float sc, float w, float amt, float sp, float seed){
       octa: '(abs(p.x) + abs(p.y) + abs(p.z) - size * 1.3) * 0.57735',
       blob: 'length(p) - size + 0.09 * size * sin(p.x * 7.0 / size + u_time * 2.0) * sin(p.y * 7.0 / size + u_time * 1.3) * sin(p.z * 7.0 / size)',
       gem: 'max(length(p) - size, (abs(p.x) + abs(p.y) + abs(p.z) - size * 1.15) * 0.57735)',
+      menger: `n${id}_menger(p, size)`,
+      bulb: `n${id}_bulb(p, size)`,
     }[P.shape] || 'length(p) - size';
+    // the two fractal solids: a Menger sponge (a cube with crosses cut out, 4 levels) and a Mandelbulb that breathes
+    const helpers = P.shape === 'menger' ? `float n${id}_menger(vec3 p, float s) {
+  p /= s; vec3 q = abs(p) - vec3(1.0); float d = length(max(q, 0.0)) + min(max(q.x, max(q.y, q.z)), 0.0), k = 1.0;
+  for (int m = 0; m < 4; m++) {
+    vec3 a = mod(p * k, 2.0) - 1.0; k *= 3.0;
+    vec3 r = abs(1.0 - 3.0 * abs(a));
+    float c = (min(max(r.x, r.y), min(max(r.y, r.z), max(r.z, r.x))) - 1.0) / k;
+    d = max(d, c);
+  }
+  return d * s;
+}` : P.shape === 'bulb' ? `float n${id}_bulb(vec3 p, float s) {
+  p /= s; vec3 z = p; float dr = 1.0, r = 0.0, pw = 7.0 + 1.5 * sin(u_time * 0.25);
+  for (int i = 0; i < 8; i++) {
+    r = length(z); if (r > 2.0) break;
+    float th = acos(clamp(z.y / max(r, 1e-6), -1.0, 1.0)) * pw, ph = atan(z.z, z.x) * pw;
+    dr = pow(r, pw - 1.0) * pw * dr + 1.0;
+    z = pow(r, pw) * vec3(sin(th) * cos(ph), cos(th), sin(th) * sin(ph)) + p;
+  }
+  return 0.5 * log(max(r, 1e-6)) * r / dr * s;
+}` : '';
     const layout = {
       single: '',
       grid: 'p = mod(p + sp * 0.5, sp) - sp * 0.5;',
@@ -253,7 +306,8 @@ vec2 n${id}_pat(vec2 p, float sc, float w, float amt, float sp, float seed){
       fly: 'vec3 ro = vec3(sin(tt * 0.3) * 0.4, cos(tt * 0.23) * 0.3, tt * 3.0); vec3 ta = ro + vec3(sin(tt * 0.5) * 0.3, cos(tt * 0.4) * 0.2, 1.0);',
       still: 'vec3 ro = vec3(0.0, 0.0, 4.5); vec3 ta = vec3(0.0);',
     }[P.cam] || '';
-    return `float n${id}_sd(vec3 p, float size, float twist, float sp) {
+    return `${helpers}
+float n${id}_sd(vec3 p, float size, float twist, float sp) {
   ${layout}
   float tw = p.y * twist; p.xz = mat2(cos(tw), -sin(tw), sin(tw), cos(tw)) * p.xz;
   return ${shape};
@@ -375,7 +429,7 @@ vec3 n${id}_march(vec2 uv, float size, float twist, float speed, float sp, out v
       } },
     scene3d: { title: 'Escena 3D', cat: 'Código',
       inputs: [UV, F('size', 'Tamaño', 0.8, 0.1, 2), F('twist', 'Torsión', 0, -3, 3), F('speed', 'Cámara (vel.)', 0.4, 0, 3), F('spacing', 'Separación', 3, 1.2, 8)],
-      params: [{ k: 'shape', label: 'Forma', v: 'torus', options: [['sphere', 'esfera'], ['box', 'cubo'], ['torus', 'toroide'], ['octa', 'octaedro'], ['gem', 'gema'], ['blob', 'gota viva']] },
+      params: [{ k: 'shape', label: 'Forma', v: 'torus', options: [['sphere', 'esfera'], ['box', 'cubo'], ['torus', 'toroide'], ['octa', 'octaedro'], ['gem', 'gema'], ['blob', 'gota viva'], ['menger', 'esponja de Menger (fractal)'], ['bulb', 'Mandelbulb (fractal)']] },
                { k: 'layout', label: 'Disposición', v: 'single', options: [['single', 'una'], ['grid', 'grilla infinita'], ['tunnel', 'túnel'], ['column', 'columnas']] },
                { k: 'cam', label: 'Cámara', v: 'orbit', options: [['orbit', 'órbita'], ['fly', 'vuelo'], ['still', 'quieta']] },
                { k: 'quality', label: 'Calidad', v: '72', options: [['40', 'baja (rápida)'], ['72', 'media'], ['120', 'alta']] }],
@@ -384,6 +438,12 @@ vec3 n${id}_march(vec2 uv, float size, float twist, float speed, float sp, out v
       glsl: (I, O, P, id) => `vec3 _nr${id}; vec3 _m${id} = n${id}_march(${I.uv}, ${I.size}, ${I.twist}, ${I.speed}, ${I.spacing}, _nr${id}); float ${O.v} = _m${id}.x; float ${O.depth} = _m${id}.y; vec3 ${O.c} = (_nr${id} * 0.5 + 0.5) * _m${id}.x * _m${id}.z;` },
 
     /* Generar */
+    fractal: { title: 'Fractal', cat: 'Generar',
+      inputs: [UV, F('zoom', 'Zoom (acercar)', 0, 0, 16), F('px', 'Mover X', 0, -2, 2), F('py', 'Mover Y', 0, -2, 2), F('detail', 'Detalle', 0.5, 0, 1), F('speed', 'Animación', 0.3, -3, 3), F('morph', 'Forma', 0.5, 0, 1)],
+      params: [{ k: 'kind', label: 'Fractal', v: 'julia', options: [['mandel', 'Mandelbrot'], ['julia', 'Julia'], ['ship', 'Burning Ship'], ['sierp', 'Sierpinski'], ['kifs', 'Caleidoscopio (Kali)'], ['apollo', 'Apolonio']] }],
+      outputs: [['c', 'color', 'Color'], ['v', 'float', 'Valor']],
+      globals: (P, id) => fractalGlobals(P, id),
+      glsl: (I, O, P, id) => `vec4 _f${id} = n${id}_frac(${I.uv}, ${I.zoom}, ${I.px}, ${I.py}, ${I.detail}, ${I.speed}, ${I.morph}); vec3 ${O.c} = _f${id}.rgb; float ${O.v} = _f${id}.a;` },
     pattern: { title: 'Patrón', cat: 'Generar',
       inputs: [UV, F('scale', 'Densidad', 8, 1, 60), F('width', 'Grosor', 0.4, 0.02, 0.98), F('amount', 'Forma', 0.6, 0, 2), F('speed', 'Velocidad', 0.2, -3, 3), F('seed', 'Semilla', 0, 0, 100)],
       params: [{ k: 'kind', label: 'Dibujo', v: 'wavy', options: [['wavy', 'Líneas onduladas'], ['zigzag', 'Zigzag'], ['op', 'Op-art'], ['rings', 'Círculos'], ['squares', 'Cuadrados'], ['contour', 'Topográfico'], ['blobs', 'Manchas líquidas'], ['truchet', 'Laberinto curvo'], ['maze', 'Diagonales'], ['weave', 'Tejido'], ['cubes', 'Cubos'], ['dots', 'Puntos'], ['grid', 'Cuadrícula'], ['cracks', 'Grietas']] }],

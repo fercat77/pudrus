@@ -161,3 +161,11 @@ body { display: grid; grid-template-rows: 44px minmax(0, 1fr) 24px; }
 .num.is-pub { box-shadow: inset 3px 0 0 var(--m); }
 .pa-stage { cursor: grab; }
 .pa-stage.orbit { cursor: grabbing; }
+
+/* the GLSL editor */
+.pa-card.pa-code { width: min(860px, 100%); }
+.pa-code textarea { width: 100%; height: 52vh; resize: vertical; background: var(--field); color: var(--head); border: 1px solid var(--field-bd); border-radius: 7px; padding: 10px 12px; font: 13px/1.5 var(--font); tab-size: 2; white-space: pre; }
+.pa-codemsg { min-height: 1.4em; color: var(--dim); }
+.pa-codemsg.bad { color: var(--red); }
+.pa-codemsg.ok { color: var(--accent); }
+.nd-file.nd-code { border-style: solid; border-color: rgba(var(--m-rgb),0.6); }

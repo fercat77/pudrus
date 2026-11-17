@@ -219,10 +219,10 @@
   <section data-sec="nodes" hidden>
     <dl class="hp-dl">
       <dt class="c-in">Entrada</dt><dd>Tiempo (con «Pulso» al BPM), LFO, Audio, Valor, Color, Coordenadas, Expresión, <b>Imagen</b>, <b>Texto</b>, <b>Cámara</b>, <b>Video</b> (soltá el archivo sobre el área), <b>Partículas</b> (un sistema de PARTRUS: elegilo desde el nodo, con velocidad, tono, estela, cámara 3D, «Explotar» y las perillas que publicaste en PARTRUS; menú Patch → «Sumar partículas al patch» lo agrega encima de lo que se ve).</dd>
-      <dt class="c-gen">Generar</dt><dd>Los dibujos base: Ruido, Celdas, Rayas, Ondas, Forma, Damero, Degradé, Patrón.</dd>
+      <dt class="c-gen">Generar</dt><dd>Los dibujos base: Ruido, Celdas, Rayas, Ondas, Forma, Damero, Degradé, Patrón, <b>Fractal</b> (Mandelbrot, Julia, Burning Ship, Sierpinski, caleidoscopio Kali, Apolonio: «Zoom» es exponencial, un LFO en sierra hace una zambullida sin fin).</dd>
       <dt class="c-uv">Coordenadas</dt><dd>Deforman el espacio y van <b>antes</b> de lo que dibujan: Caleidoscopio, Polar, Distorsión, Remolino, Repetir, Espejo, Transformar, Pixelar, Glitch.</dd>
       <dt class="c-col">Color</dt><dd>Paleta o Degradé de color (convierten un número en color), Mezclar, Superponer, Ajustar, Invertir, Posterizar, Umbral, Matemática, Rango.</dd>
-      <dt class="c-code">Código</dt><dd><b>📚 Librería</b>: shaders de Shadertoy (botón «Enviar a NODRUS») o propios, con miniatura, autor, licencia y hashtags para filtrar; «Usar» los carga en el nodo GLSL elegido o en un patch nuevo. <b>GLSL</b>: escribí tu propio shader o pegá uno de Shadertoy (✎ Editar código, Ctrl+Enter aplica). <b>Escena 3D</b>: formas en 3D por raymarching (esfera, cubo, toroide…, una o repetidas en grilla, túnel o columnas, con cámara en órbita o vuelo); usá su salida «Luz» en una Paleta.</dd>
+      <dt class="c-code">Código</dt><dd><b>📚 Librería</b>: shaders de Shadertoy (botón «Enviar a NODRUS») o propios, con miniatura, autor, licencia y hashtags para filtrar; «Usar» los carga en el nodo GLSL elegido o en un patch nuevo. <b>GLSL</b>: escribí tu propio shader o pegá uno de Shadertoy (✎ Editar código, Ctrl+Enter aplica). <b>Escena 3D</b>: formas en 3D por raymarching (esfera, cubo, toroide, esponja de Menger, Mandelbulb…, una o repetidas en grilla, túnel o columnas, con cámara en órbita o vuelo); usá su salida «Luz» en una Paleta.</dd>
       <dt class="c-hydra">Hydra</dt><dd>«Patch ▾ → ⌨ Hydra → nodos»: escribí o pegá un sketch de Hydra (o 🎲) y se convierte en nodos, cada número en un slider. El nodo <b>Hydra (código)</b> dibuja un sketch entero dentro de un patch.</dd>
       <dt class="c-fx">Efectos</dt><dd>Feedback: estelas, túneles y rastros (Persistencia, Zoom, Rotar).</dd>
       <dt class="c-out">Salida</dt><dd>El final de la cadena. Separación RGB, scanlines, viñeta, grano, <b>brillo (bloom)</b>, <b>desenfoque</b>, <b>glitch</b> y <b>flash al pulso</b>. «Reacciona a» hace que el audio empuje esos efectos.</dd>
@@ -480,10 +480,10 @@ Imagen ─── Color ─▶ Encima ├ Superponer ─▶ Salida
 <div class="lab-toast" id="toast" role="status"></div>
 <div class="lab-mobile-note">Pensado para compu o tablet. En el celular probá la <a href="movil/" onclick="try{localStorage.removeItem('nodrus_pc')}catch(e){}">versión táctil de NODRUS</a>.</div>
 
-<script src="../partrus/particles.js?v=4"></script>
-<script src="nodes.js?v=46"></script>
+<script src="../partrus/particles.js?v=5"></script>
+<script src="nodes.js?v=47"></script>
 <script src="hydra.js?v=44"></script>
-<script src="presets.js?v=44"></script>
+<script src="presets.js?v=45"></script>
 <script src="generate.js?v=45"></script>
 <script src="library.js?v=44" defer></script>
 <script src="dmx.js?v=3"></script>

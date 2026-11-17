@@ -78,6 +78,29 @@
                 link(6, 'uv', 7, 'uv'), link(5, 'c', 8, 'base'), link(7, 'c', 8, 'top'), link(7, 'a', 8, 'a'), link(8, 'c', 9, 'c')],
       },
     },
+    {
+      name: 'Julia que respira',
+      graph: {
+        nodes: [
+          node(1, 'lfo', 40, 300, { speed: 0.05, min: 0, max: 1 }, { shape: 'tri', sync: 'free' }),
+          node(2, 'fractal', 300, 60, { zoom: 0.4, px: 0, py: 0, detail: 0.55, speed: 0.25, morph: 0.5 }, { kind: 'julia' }),
+          node(3, 'feedback', 560, 40, { amount: 0.55, zoom: 1.01, rotate: 0.5, drift: 0 }, { blend: 'max' }),
+          node(4, 'output', 820, 60, { rgb: 0.1, scan: 0, vignette: 0.4, grain: 0.04 }, { react: 'none' }),
+        ],
+        links: [link(1, 'v', 2, 'morph'), link(2, 'c', 3, 'c'), link(3, 'c', 4, 'c')],
+      },
+    },
+    {
+      name: 'Mandelbulb',
+      graph: {
+        nodes: [
+          node(1, 'scene3d', 40, 60, { size: 0.9, twist: 0, speed: 0.25, spacing: 3 }, { shape: 'bulb', layout: 'single', cam: 'orbit', quality: '72' }),
+          node(2, 'palette', 300, 60, { shift: 0.1, speed: 0.04 }, { pal: 'neon' }),
+          node(3, 'output', 560, 60, { rgb: 0.1, scan: 0, vignette: 0.45, grain: 0.05 }, { react: 'none' }),
+        ],
+        links: [link(1, 'v', 2, 'v'), link(2, 'c', 3, 'c')],
+      },
+    },
   ];
 
   window.PudrusPresets = PRESETS;
