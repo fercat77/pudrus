@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="robots" content="noindex, nofollow">
+  <meta name="theme-color" content="#15151d">
+  <title>PARTRUS — PUDRUS Lab</title>
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600;700&display=swap">
+  <script src="/js/theme.js" data-button="off"></script>
+  <link rel="stylesheet" href="partrus.css?v=1">
+</head>
+<body>
+<header class="pa-bar">
+  <a class="pa-logo" href="/" title="PUDRUS.XYZ">PART<span>RUS</span></a>
+  <input class="pa-name" id="name" maxlength="60" spellcheck="false" title="Nombre del sistema (así aparece en NODRUS)">
+  <button class="pa-btn" id="btnEx" title="Sistemas de ejemplo para empezar">✨<span class="nl"> Ejemplos</span> ▾</button>
+  <button class="pa-btn" id="btnNew" title="Empezar un sistema nuevo">＋<span class="nl"> Nuevo</span></button>
+  <button class="pa-btn" id="btnSave" title="Guardar en tu biblioteca (Ctrl+S): así lo podés elegir en NODRUS">💾<span class="nl"> Guardar</span></button>
+  <button class="pa-btn" id="btnLib" title="Tus sistemas guardados">📚<span class="nl"> Biblioteca</span> ▾</button>
+  <button class="pa-btn" id="btnFile" title="Bajar el sistema como archivo o abrir uno">⤓⤒</button>
+  <span class="pa-sp"></span>
+  <button class="pa-btn" id="btnAudio" title="Sonido: micrófono o SYNDRUS (para los nodos Audio, Explosión con graves y las ráfagas)">🎤<span class="nl"> Sonido</span></button>
+  <button class="pa-btn pa-tap" id="btnTap" title="Marcá el tempo con clics (T). Con SYNDRUS sonando sigue su tempo"><b id="bpm">120</b> BPM</button>
+  <button class="pa-btn" id="btnNodrus" title="Cómo usarlo en NODRUS">◈<span class="nl"> En NODRUS</span></button>
+  <button class="pa-btn" id="btnHelp" title="Cómo funciona">?</button>
+</header>
+<main class="pa-main" id="main">
+  <section class="pa-graph" id="graph">
+    <svg class="pa-wires" id="wires"></svg>
+    <div class="pa-nodes" id="nodes"></div>
+    <div class="pa-err" id="err" hidden></div>
+    <button class="pa-add" id="btnAdd" title="Agregar un nodo (Shift+A o doble clic en el fondo)">＋ Agregar nodo</button>
+    <div class="pa-hint">arrastrá el fondo para moverte · rueda = zoom · Supr borra</div>
+  </section>
+  <div class="pa-split" id="split" title="Arrastrá para cambiar el tamaño"></div>
+  <section class="pa-view" id="view">
+    <div class="pa-stage" id="stage"><div class="frame" id="frame"></div></div>
+    <div class="pa-viewbar">
+      <button id="btnRestart" title="Empezar de nuevo (R)">↺</button>
+      <button id="btnPause" title="Pausa (Espacio)">❚❚</button>
+      <select id="aspect" title="Formato de la vista (en NODRUS toma el de la salida)">
+        <option value="1.7778">16:9</option><option value="0.5625">9:16</option><option value="1">1:1</option><option value="1.3333">4:3</option>
+      </select>
+      <button id="btnFull" title="Pantalla completa (F)">⛶</button>
+      <span class="count" id="count"></span>
+    </div>
+  </section>
+</main>
+<footer class="pa-status" id="status">
+  <span id="stFps">— fps</span>
+  <span id="stAudio">sonido apagado</span>
+  <span class="pa-meter" id="meter"><i></i><i></i><i></i><i></i></span>
+  <span id="stLib"></span>
+</footer>
+
+<div class="pa-pop" id="pop" hidden></div>
+<div class="pa-toast" id="toast"></div>
+<input type="file" id="fileIn" accept=".json,application/json" hidden>
+
+<div class="pa-modal" id="help" hidden><div class="pa-card">
+  <h2>PARTRUS · sistemas de partículas</h2>
+  <p>Cientos de miles de partículas que calcula la placa de video. Las armás con nodos, como en NODRUS: las partículas viajan por la cadena <b>Emisor → fuerzas → Aspecto → Salida</b> (el cable naranja).</p>
+  <h3>Nodos</h3>
+  <ul>
+    <li><b>Emisor</b>: dónde nacen (punto, anillo, línea, toda la pantalla, esfera 3D…), hacia dónde salen, cuánto viven y cuántas son. En «Emisión» elegís si salen todo el tiempo o en ráfagas con el ritmo o los graves.</li>
+    <li><b>Fuerzas</b>: gravedad, turbulencia (humo), atractor, remolino, ola, explosión con el ritmo, frenado y bordes. Se aplican en el orden de la cadena.</li>
+    <li><b>Aspecto</b>: tamaño, forma, color y cómo cambian con la edad.</li>
+    <li><b>Salida</b>: la estela (las partículas dejan rastro) y el brillo.</li>
+    <li><b>Valores</b>: LFO, Audio y Pulso. Conectalos a cualquier perilla (cable gris) para que se mueva sola o con la música.</li>
+  </ul>
+  <h3>Manejo</h3>
+  <ul>
+    <li>Las fuerzas y el aspecto nuevos se meten solos en la cadena, antes de la Salida. Para sacar uno, borralo: la cadena se vuelve a unir.</li>
+    <li>Arrastrá desde un enchufe de salida (derecha) a uno de entrada (izquierda). Tirá de un cable desde su entrada para desconectarlo.</li>
+    <li>Perillas: arrastrá de costado (Shift = fino), clic para escribir, doble clic = valor original.</li>
+    <li><kbd>Shift</kbd>+<kbd>A</kbd> agrega · <kbd>Supr</kbd> borra · <kbd>Ctrl</kbd>+<kbd>Z</kbd> deshace · <kbd>Ctrl</kbd>+<kbd>S</kbd> guarda · <kbd>T</kbd> tempo · <kbd>R</kbd> reinicia · <kbd>Espacio</kbd> pausa · <kbd>F</kbd> pantalla completa</li>
+  </ul>
+  <h3>En NODRUS</h3>
+  <p>Guardá el sistema (💾) y en NODRUS agregá el nodo <b>Entrada → Partículas</b>: elegís tu sistema y se mezcla con el resto del patch, va al aire, al proyector y a los videos que exportes. Mientras tengas PARTRUS abierto, lo que cambies acá se ve al instante en NODRUS.</p>
+  <div class="row"><button class="pa-btn" id="themeBtn">◐ Tema claro</button><button class="pa-btn" id="helpClose">Cerrar</button></div>
+</div></div>
+
+<script src="particles.js?v=1"></script>
+<script src="app.js?v=1"></script>
+</body>
+</html>

@@ -223,6 +223,14 @@
         row.append(b); body.append(row);
         continue;
       }
+      if (p.kind === 'particles') {
+        const b = el('button', 'nd-file', '✨ ' + ((n.p && n.p.name) || (window.PudrusParticles ? window.PudrusParticles.PRESETS[0].name : 'Partículas')));
+        b.title = 'Elegí un sistema de partículas de PARTRUS (tus guardados o los ejemplos), o editalo allá';
+        b.addEventListener('pointerdown', e => e.stopPropagation());
+        b.addEventListener('click', e => particlesPop(n, e.currentTarget));
+        row.append(b); body.append(row);
+        continue;
+      }
       if (p.kind === 'video') {
         const b = el('button', 'nd-file', n.p && n.p.name ? '🎞 ' + n.p.name : '🎞 Elegir video…');
         b.title = 'MP4 o WebM (también podés soltar el archivo sobre el área de nodos). Se repite en loop, sin sonido.';
@@ -682,6 +690,68 @@
       toast('Imagen cargada: ' + file.name);
     } catch (e) { toast('No se pudo leer esa imagen', true); }
   }
+  /* ── PARTRUS: the particle systems of the node «Partículas» ── */
+  const PP = window.PudrusParticles || null;
+  const partrusUrl = q => (DESK ? '/lab/partrus/' : new URL('../partrus/', document.baseURI).href) + (q || '');
+  function openPartrus(q) {
+    const w = window.open(partrusUrl(q), 'partrus');
+    if (!w) toast('El navegador bloqueó la ventana: permití las ventanas emergentes', true);
+  }
+  function setParticles(n, sys, name, lib) {
+    n.p = { ...(n.p || {}), sys: JSON.stringify(sys), name: String(name || '').slice(0, 40), lib: lib || '' };
+    rebuild(); recompile(); save(); remember();
+  }
+  let partPop = null;
+  function particlesPop(n, btn) {
+    if (!PP) { toast('Falta el motor de partículas (recargá la página)', true); return; }
+    if (!partPop) { partPop = el('div', 'lab-pop'); partPop.hidden = true; partPop.style.maxHeight = '70vh'; partPop.style.overflow = 'auto'; partPop.style.minWidth = '240px'; document.body.append(partPop); }
+    partPop.textContent = '';
+    const add = (txt, fn, on) => { const b = el('button', 'item', txt); if (on) b.style.color = 'var(--accent)'; b.addEventListener('click', () => { closePops(); fn(); }); partPop.append(b); };
+    const lib = PP.library();
+    partPop.append(el('label', '', 'Tus sistemas (PARTRUS)'));
+    if (!lib.length) partPop.append(el('p', 'dim', 'Todavía no guardaste ninguno: armalo en PARTRUS y tocá 💾.'));
+    lib.forEach(x => add('✨ ' + x.name, () => { setParticles(n, x.sys, x.name, x.id); toast('✨ ' + x.name); }, n.p && n.p.lib === x.id));
+    partPop.append(el('label', '', 'Ejemplos'));
+    PP.PRESETS.forEach(x => add(x.name, () => setParticles(n, x.sys, x.name, '')));
+    partPop.append(el('label', '', 'PARTRUS'));
+    add('✎ Editar este sistema en PARTRUS', () => {
+      // linked to the library: PARTRUS opens it and every change shows here at once
+      let id = n.p && n.p.lib;
+      if (!id || !PP.library().some(x => x.id === id)) {
+        const sys = PP.sane(PP.resolve(n.p) || PP.PRESETS[0].sys), list = PP.library();
+        sys.name = (n.p && n.p.name) || PP.PRESETS[0].name;
+        id = 'p' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+        list.unshift({ id, name: sys.name, sys, t: Date.now() });
+        if (!PP.saveLibrary(list)) { toast('No se pudo guardar en la biblioteca (sin lugar)', true); return; }
+        setParticles(n, sys, sys.name, id);
+      }
+      openPartrus('?edit=' + encodeURIComponent(id));
+    });
+    add('✨ Abrir PARTRUS', () => openPartrus(''));
+    const r = btn.getBoundingClientRect();
+    openPop(partPop, r.left, r.bottom + 4);
+  }
+  // PARTRUS is editing a system: the nodes linked to it keep its latest copy (the picture already follows it live)
+  if (PP && 'BroadcastChannel' in window) {
+    const pch = new BroadcastChannel(PP.channel);
+    pch.addEventListener('message', e => {
+      const m = e.data || {};
+      if (m.type !== 'sys' || typeof m.id !== 'string') return;
+      const sys = PP.sane(m.sys);
+      if (!sys) return;
+      let renamed = false;
+      [graph, liveGraph].forEach(g => (g && g.nodes || []).forEach(nd => {
+        if (nd.type !== 'particles' || !nd.p || nd.p.lib !== m.id) return;
+        nd.p.sys = JSON.stringify(sys);
+        const nm = String(m.name || '').slice(0, 40);
+        if (nm && nm !== nd.p.name) { nd.p.name = nm; renamed = renamed || g === graph; }
+      }));
+      if (renamed) rebuild();
+      save();
+    });
+  }
+  $('#pmPartrus').addEventListener('click', () => openPartrus(''));
+
   const videoPick = el('input'); videoPick.type = 'file'; videoPick.accept = 'video/mp4,video/webm,video/quicktime,video/*'; videoPick.hidden = true;
   document.body.append(videoPick);
   function pickVideo(n) { pickFor = n; videoPick.click(); }

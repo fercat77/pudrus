@@ -346,6 +346,12 @@ vec3 n${id}_march(vec2 uv, float size, float twist, float speed, float sp, out v
                { k: 'repeat', label: 'Repetir', v: 'no', options: [['no', 'no'], ['yes', 'sí (mosaico)']] }],
       outputs: [['c', 'color', 'Color'], ['a', 'float', 'Alfa']],
       glsl: (I, O, P, id) => texGLSL(I, O, P, id) },
+    // a PARTRUS particle system (lab/partrus/particles.js); its picture comes premultiplied: «Color» is how it looks over black
+    particles: { title: 'Partículas', cat: 'Entrada', tex: true,
+      inputs: [UV, F('size', 'Tamaño', 1, 0.05, 3), F('opacity', 'Opacidad', 1, 0, 1)],
+      params: [{ k: 'sys', label: 'Sistema', kind: 'particles', v: '' }],
+      outputs: [['c', 'color', 'Color'], ['a', 'float', 'Alfa']],
+      glsl: (I, O, P, id) => texGLSL(I, O, P, id) + ` ${O.c} *= ${I.opacity};` },
 
     glsl: { title: 'GLSL', cat: 'Código',
       inputs: [UV, COL('in', 'Color de entrada', '#000000'), F('k1', 'Perilla 1', 0.5, 0, 1), F('k2', 'Perilla 2', 0.5, 0, 1), F('k3', 'Perilla 3', 0.5, 0, 1), F('k4', 'Perilla 4', 0.5, 0, 1)],
@@ -1040,7 +1046,13 @@ void main(){
     }
     return { camera, video, get cameraState() { return cam ? (cam.ok ? 'ok' : cam.err ? 'error' : 'waiting') : 'off'; } };
   })();
-  function texSource(t) {
+  function texSource(t, owner, ctx) {
+    if (t.kind === 'particles') {   // one simulation per renderer and node, advanced to this renderer's time
+      const PP = window.PudrusParticles;
+      if (!PP || !ctx) return null;
+      const r = PP.source(owner, t.node, PP.resolve(t.p), ctx.time, ctx.audio, clock.beat, ctx.w, ctx.h);
+      return r ? { src: r.canvas, key: 'p' + r.n, aspect: r.aspect, premult: true } : null;
+    }
     if (t.kind === 'camera' || t.kind === 'video') {
       if (t.kind === 'video' && !t.p.vid) return null;
       const m = t.kind === 'camera' ? media.camera() : media.video(t.p.vid);
@@ -1059,11 +1071,12 @@ void main(){
   }
   // binds the pictures of a compiled graph to texture units 1, 2, … (unit 0 = feedback)
   function texBinder(gl) {
-    const cache = new Map();
+    const cache = new Map(), owner = {};
     let empty = null;
-    return function bind(textures, loc) {
+    return function bind(textures, loc, time, audio) {
+      const ctx = { time: time || 0, audio: audio || [0, 0, 0, 0], w: gl.drawingBufferWidth, h: gl.drawingBufferHeight };
       textures.forEach((t, i) => {
-        const s = texSource(t);
+        const s = texSource(t, owner, ctx);
         let tex;
         if (!s) {
           if (!empty) {
@@ -1078,7 +1091,9 @@ void main(){
           gl.bindTexture(gl.TEXTURE_2D, e.tex);
           if (e.key !== s.key) {
             gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, false);
+            if (s.premult) gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL, true);
             gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, s.src);
+            if (s.premult) gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL, false);
             gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
             gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
             gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
@@ -1188,7 +1203,7 @@ void main(){
         if (v === undefined) continue;
         if (u.type === 'color') gl.uniform3f(loc[u.name], v[0], v[1], v[2]); else gl.uniform1f(loc[u.name], v);
       }
-      if (textures.length) bindTextures(textures, loc);
+      if (textures.length) bindTextures(textures, loc, time, audio);
       gl.drawArrays(gl.TRIANGLES, 0, 6);
       // post pass to the screen
       gl.bindFramebuffer(gl.FRAMEBUFFER, null);
@@ -1312,7 +1327,7 @@ void main(){
         if (v === undefined) continue;
         if (u.type === 'color') gl.uniform3f(e.loc[u.name], v[0], v[1], v[2]); else gl.uniform1f(e.loc[u.name], v);
       }
-      if (e.compiled.textures && e.compiled.textures.length) bindTextures(e.compiled.textures, e.loc);
+      if (e.compiled.textures && e.compiled.textures.length) bindTextures(e.compiled.textures, e.loc, time, audio);
       gl.drawArrays(gl.TRIANGLES, 0, 6);
     }
     function clear() { cache.forEach(e => gl.deleteProgram(e.prog)); cache.clear(); }
