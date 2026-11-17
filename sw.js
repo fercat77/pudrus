@@ -12,7 +12,7 @@ const SHARE_CACHE = 'pudrus-share';
 const CORE = [
   '/', '/index.html', '/gallery/', '/share/',
   '/css/style.css', '/css/tool-shell.css',
-  '/js/i18n.js', '/js/utils.js', '/js/tool-shell.js', '/js/gallery.js', '/js/nav.js', '/js/pwa.js',
+  '/js/i18n.js', '/js/utils.js', '/js/tool-shell.js', '/js/gallery.js', '/js/nav.js', '/js/pwa.js', '/js/theme.js',
   '/lang/es.json', '/lang/en.json',
   '/favicon.svg', '/assets/sample.jpg', '/assets/icons/icon-192.png',
 ];

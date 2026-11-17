@@ -4,7 +4,9 @@
     "about": "About",
     "work": "Work",
     "menu": "Menu",
-    "gallery": "Gallery"
+    "gallery": "Gallery",
+    "themeLight": "Switch to the light theme",
+    "themeDark": "Switch to the dark theme"
   },
   "hero": {
     "tag": "◈ Creative Visual Suite",

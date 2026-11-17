@@ -4,7 +4,9 @@
     "about": "Acerca de",
     "work": "Trabajo",
     "menu": "Menú",
-    "gallery": "Galería"
+    "gallery": "Galería",
+    "themeLight": "Cambiar al tema claro",
+    "themeDark": "Cambiar al tema oscuro"
   },
   "hero": {
     "tag": "◈ Suite Visual Creativa",
