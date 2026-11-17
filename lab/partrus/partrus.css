@@ -151,3 +151,8 @@ body { display: grid; grid-template-rows: 44px minmax(0, 1fr) 24px; }
 :root[data-theme="light"] .pa-err { background: rgba(194,31,58,0.1); }
 :root[data-theme="light"] .pa-modal { background: rgba(43,47,53,0.45); }
 :root[data-theme="light"] .pa-pop, :root[data-theme="light"] .pa-card { box-shadow: 0 10px 30px rgba(43,47,53,0.25); }
+
+/* text and picture fields of the «Emisor de forma» */
+.nd-text { width: 100%; resize: vertical; min-height: 34px; background: var(--field); color: var(--head); border: 1px solid var(--field-bd); border-radius: 4px; padding: 4px 6px; font: inherit; }
+.nd-file { width: 100%; height: 24px; border-radius: 4px; border: 1px dashed var(--hover-bd); background: var(--field); text-align: left; padding: 0 8px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.nd-file:hover { border-color: var(--accent); color: var(--accent); }

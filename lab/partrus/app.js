@@ -46,7 +46,7 @@
     const e = $('#err');
     e.hidden = !sim.err; e.textContent = sim.err ? '⚠ ' + sim.err : '';
     const n = sim.count;
-    $('#count').textContent = n ? `${n >= 1e6 ? '1 millón' : Math.round(n / 1000) + ' mil'} partículas` : '';
+    $('#count').textContent = n ? `${{ 16384: '16 mil', 65536: '65 mil', 262144: '262 mil', 1048576: '1 millón' }[n] || n} partículas` : '';
   }
 
   /* ── saving, history, the live link to NODRUS ── */
@@ -188,11 +188,35 @@
       row.append(s); body.append(row); rec.outs[k] = s;
     }
     for (const q of def.params || []) {
+      if (q.when && Object.entries(q.when).some(([k, v]) => PP.paramOf(n, k) !== v)) continue;   // only for that source
+      if (q.kind === 'text') {
+        const row = el('div', 'nd-row'), ta = el('textarea', 'nd-text');
+        ta.rows = 2; ta.value = PP.paramOf(n, q.k); ta.placeholder = q.label; ta.maxLength = 300; ta.spellcheck = false;
+        ta.addEventListener('pointerdown', e => e.stopPropagation());
+        ta.addEventListener('keydown', e => e.stopPropagation());
+        let tt;
+        ta.addEventListener('input', () => { clearTimeout(tt); tt = setTimeout(() => { n.p[q.k] = ta.value; changed('value'); }, 150); });
+        row.append(ta); body.append(row);
+        continue;
+      }
+      if (q.kind === 'image') {
+        const row = el('div', 'nd-row'), b = el('button', 'nd-file', n.p[q.k] ? '🖼 Cambiar imagen…' : '🖼 Elegir imagen…');
+        b.title = 'PNG con transparencia (un logo) o una foto: las partículas nacen sobre ella';
+        b.addEventListener('pointerdown', e => e.stopPropagation());
+        b.addEventListener('click', () => pickImage(n, q.k));
+        row.append(b); body.append(row);
+        continue;
+      }
       const row = el('div', 'nd-row'), sel = el('select');
       q.options.forEach(([v, l]) => { const o = el('option', '', q.label + ': ' + l); o.value = v; sel.append(o); });
       sel.value = PP.paramOf(n, q.k);
       sel.addEventListener('pointerdown', e => e.stopPropagation());
-      sel.addEventListener('change', () => { n.p[q.k] = sel.value; changed('struct'); });
+      sel.addEventListener('change', () => {
+        n.p[q.k] = sel.value;
+        if ((def.params || []).some(x => x.when && x.when[q.k] !== undefined)) rebuildNode(n.id);   // other rows depend on this one
+        changed('struct');
+        if (n.type === 'form' && q.k === 'src' && sel.value === 'camera') toast('📷 El navegador te va a pedir permiso para usar la cámara');
+      });
       row.append(sel); body.append(row);
     }
     for (const inp of def.inputs) {
@@ -353,6 +377,29 @@
   graphEl.addEventListener('dblclick', e => { if (!e.target.closest('.nd') && !e.target.closest('button')) addMenu(e.clientX, e.clientY, toGraph(e.clientX, e.clientY)); });
   function toGraph(cx, cy) { const g = graphEl.getBoundingClientRect(); return { x: Math.round((cx - g.left - view.x) / view.z), y: Math.round((cy - g.top - view.y) / view.z) }; }
 
+  const imgIn = el('input'); imgIn.type = 'file'; imgIn.accept = 'image/png,image/jpeg,image/webp,image/gif'; imgIn.hidden = true;
+  document.body.append(imgIn);
+  let imgFor = null;
+  function pickImage(n, k) { imgFor = [n, k]; imgIn.click(); }
+  imgIn.addEventListener('change', () => {
+    const f = imgIn.files[0]; imgIn.value = '';
+    if (!f || !imgFor) return;
+    const [n, k] = imgFor, url = URL.createObjectURL(f), im = new Image();
+    im.onload = () => {
+      URL.revokeObjectURL(url);
+      const sc = Math.min(1, 256 / Math.max(im.naturalWidth, im.naturalHeight));
+      const c = el('canvas'); c.width = Math.max(1, Math.round(im.naturalWidth * sc)); c.height = Math.max(1, Math.round(im.naturalHeight * sc));
+      const g = c.getContext('2d'); g.drawImage(im, 0, 0, c.width, c.height);
+      const d = g.getImageData(0, 0, c.width, c.height).data;
+      let clear = false; for (let i = 3; i < d.length; i += 4) if (d[i] < 250) { clear = true; break; }
+      n.p[k] = clear ? c.toDataURL('image/png') : c.toDataURL('image/jpeg', 0.88);
+      rebuildNode(n.id); changed('value');
+      toast('🖼 ' + f.name + (clear ? ': las partículas nacen sobre lo que no es transparente' : ': una foto sin transparencia — en «Toma» elegí lo claro o lo oscuro'));
+    };
+    im.onerror = () => { URL.revokeObjectURL(url); toast('No se pudo leer esa imagen', true); };
+    im.src = url;
+  });
+
   /* adding and removing: forces and Aspecto slip into the chain on their own */
   const nextId = () => sys.nodes.reduce((m, n) => Math.max(m, n.id), 0) + 1;
   function chainList() {
@@ -368,6 +415,17 @@
     if (def.unique) { const ex = sys.nodes.find(n => n.type === type); if (ex) { select(ex.id); toast(`Ya hay un ${def.title}: puede haber uno solo`); return; } }
     const n = { id: nextId(), type, x: 0, y: 0, v: {}, p: {} };
     const chain = chainList();
+    if (def.cat === 'emit' && chain[0] && PP.isEmitter(chain[0].type)) {
+      const old = chain[0];
+      n.x = old.x; n.y = old.y;
+      sys.links = sys.links.map(l => (l.a === old.id ? { ...l, a: n.id } : l)).filter(l => l.b !== old.id);
+      sys.nodes = sys.nodes.filter(x => x !== old);
+      sys.nodes.push(n);
+      selected = n.id;
+      rebuild(); changed('struct');
+      toast(`Cambié el ${DEFS[old.type].title} por el ${def.title} (Ctrl+Z lo vuelve atrás)`);
+      return;
+    }
     if (def.cat === 'force' || def.cat === 'look') {
       // before the Aspecto (forces) or the Salida; the nodes from there on move one place to the right
       let ti = chain.findIndex(c => (def.cat === 'force' && c.type === 'look') || c.type === 'out');

@@ -26,15 +26,33 @@
     out: { title: 'Salida', color: '#4a4a55' },
   };
 
+  const DIRS = [['out', 'hacia afuera'], ['up', 'hacia arriba'], ['down', 'hacia abajo'], ['left', 'a la izquierda'], ['right', 'a la derecha'], ['random', 'al azar'], ['spin', 'girando'], ['front', 'hacia la cámara'], ['back', 'hacia el fondo'], ['still', 'quietas']];
+  const COUNTS = [['16384', '16 mil'], ['65536', '65 mil'], ['262144', '262 mil'], ['1048576', '1 millón']];
+  const BURSTS = [['cont', 'continua'], ['beat', 'ráfaga cada tiempo'], ['2', 'ráfaga cada 2 tiempos'], ['bar', 'ráfaga cada compás'], ['bass', 'ráfaga con los graves']];
+  const FONT_OPTS = [['sans', 'sans negrita'], ['display', 'display'], ['serif', 'serif'], ['mono', 'mono'], ['hand', 'manuscrita']];
   const DEFS = {
     emit: { title: 'Emisor', cat: 'emit', unique: true, outputs: [POUT],
       help: 'De dónde nacen las partículas, hacia dónde salen y cuánto viven',
       inputs: [F('x', 'Posición X', 0, -2, 2), F('y', 'Posición Y', 0, -1.5, 1.5), F('z', 'Profundidad', 0, -6, 1), F('size', 'Tamaño', 0.25, 0, 2), F('speed', 'Velocidad', 0.4, 0, 3),
                F('chaos', 'Azar', 0.5, 0, 1), F('life', 'Vida (s)', 3, 0.2, 15), F('lifeVar', 'Vida variable', 0.5, 0, 1)],
       params: [{ k: 'shape', label: 'Forma', v: 'point', options: [['point', 'punto'], ['ring', 'anillo'], ['disc', 'disco'], ['line', 'línea'], ['box', 'rectángulo'], ['screen', 'toda la pantalla'], ['sphere', 'esfera 3D']] },
-               { k: 'dir', label: 'Salen', v: 'out', options: [['out', 'hacia afuera'], ['up', 'hacia arriba'], ['down', 'hacia abajo'], ['left', 'a la izquierda'], ['right', 'a la derecha'], ['random', 'al azar'], ['spin', 'girando'], ['front', 'hacia la cámara'], ['back', 'hacia el fondo'], ['still', 'quietas']] },
-               { k: 'count', label: 'Cantidad', v: '65536', options: [['16384', '16 mil'], ['65536', '65 mil'], ['262144', '262 mil'], ['1048576', '1 millón']] },
-               { k: 'burst', label: 'Emisión', v: 'cont', options: [['cont', 'continua'], ['beat', 'ráfaga cada tiempo'], ['2', 'ráfaga cada 2 tiempos'], ['bar', 'ráfaga cada compás'], ['bass', 'ráfaga con los graves']] }] },
+               { k: 'dir', label: 'Salen', v: 'out', options: DIRS },
+               { k: 'count', label: 'Cantidad', v: '65536', options: COUNTS },
+               { k: 'burst', label: 'Emisión', v: 'cont', options: BURSTS }] },
+    // particles born on a text, a picture or what the camera sees (params with `when` only show for that source)
+    form: { title: 'Emisor de forma', cat: 'emit', unique: true, outputs: [POUT],
+      help: 'Las partículas nacen sobre un texto, una imagen o lo que ve la cámara',
+      inputs: [F('x', 'Posición X', 0, -2, 2), F('y', 'Posición Y', 0, -1.5, 1.5), F('z', 'Profundidad', 0, -6, 1), F('size', 'Tamaño', 1.2, 0.05, 3), F('speed', 'Velocidad', 0, 0, 3),
+               F('chaos', 'Azar', 0.3, 0, 1), F('life', 'Vida (s)', 8, 0.2, 30), F('lifeVar', 'Vida variable', 0.3, 0, 1)],
+      params: [{ k: 'src', label: 'Forma', v: 'text', options: [['text', 'texto'], ['image', 'imagen'], ['camera', 'cámara']] },
+               { k: 'text', label: 'Texto', kind: 'text', v: 'PUDRUS', when: { src: 'text' } },
+               { k: 'font', label: 'Letra', v: 'sans', options: FONT_OPTS, when: { src: 'text' } },
+               { k: 'img', label: 'Imagen', kind: 'image', v: '', when: { src: 'image' } },
+               { k: 'pick', label: 'Toma', v: 'auto', options: [['auto', 'lo que no es transparente'], ['bright', 'lo claro'], ['dark', 'lo oscuro']], when: { src: 'image' } },
+               { k: 'cam', label: 'Toma', v: 'motion', options: [['motion', 'lo que se mueve'], ['bright', 'lo claro'], ['dark', 'lo oscuro']], when: { src: 'camera' } },
+               { k: 'dir', label: 'Salen', v: 'still', options: DIRS },
+               { k: 'count', label: 'Cantidad', v: '65536', options: COUNTS },
+               { k: 'burst', label: 'Emisión', v: 'cont', options: BURSTS }] },
 
     gravity: { title: 'Gravedad', cat: 'force', inputs: [PIN, F('str', 'Fuerza', 0.6, -3, 3), F('angle', 'Ángulo', 0, -180, 180)], outputs: [POUT],
       help: 'Las tira hacia un lado (0° = abajo)' },
@@ -50,6 +68,11 @@
     explode: { title: 'Explosión', cat: 'force', inputs: [PIN, F('x', 'X', 0, -2, 2), F('y', 'Y', 0, -1.5, 1.5), F('str', 'Fuerza', 1.5, 0, 8)], outputs: [POUT],
       params: [{ k: 'trig', label: 'Golpe', v: 'beat', options: TRIG }],
       help: 'Un empujón desde un punto con el ritmo o los graves' },
+    home: { title: 'Formar', cat: 'force', inputs: [PIN, F('str', 'Fuerza', 8, 0, 40), F('damp', 'Amortiguar', 3.5, 0, 15)], outputs: [POUT],
+      help: 'Cada partícula vuelve a donde nació: el texto o la imagen se vuelve a armar' },
+    cam: { title: 'Cámara', cat: 'force', inputs: [PIN, F('str', 'Fuerza', 2, -8, 8)], outputs: [POUT],
+      params: [{ k: 'mode', label: 'Empuja', v: 'motion', options: [['motion', 'lo que se mueve'], ['bright', 'lo claro']] }],
+      help: 'Lo que pasa frente a la cámara empuja las partículas (negativo: las atrae)' },
     drag: { title: 'Frenado', cat: 'force', inputs: [PIN, F('amt', 'Frenado', 1, 0, 8)], outputs: [POUT],
       help: 'Les quita velocidad (como el aire)' },
     bounds: { title: 'Bordes', cat: 'force', inputs: [PIN, F('bounce', 'Rebote', 0.7, 0, 1)], outputs: [POUT],
@@ -58,7 +81,7 @@
 
     look: { title: 'Aspecto', cat: 'look', unique: true, inputs: [PIN, F('size', 'Tamaño', 3, 0.5, 40), F('opacity', 'Opacidad', 0.8, 0, 1), COL('a', 'Color A', '#66ff33'), COL('b', 'Color B', '#00d4ff')], outputs: [POUT],
       params: [{ k: 'shape', label: 'Forma', v: 'soft', options: [['soft', 'luz suave'], ['dot', 'punto'], ['ring', 'anillo'], ['star', 'destello'], ['square', 'cuadrado']] },
-               { k: 'color', label: 'Color', v: 'age', options: [['a', 'color A'], ['age', 'A → B con la edad'], ['speed', 'A → B con la velocidad'], ['rand', 'mezcla de A y B'], ['rainbow', 'arcoíris'], ['angle', 'arcoíris en círculo']] },
+               { k: 'color', label: 'Color', v: 'age', options: [['a', 'color A'], ['age', 'A → B con la edad'], ['speed', 'A → B con la velocidad'], ['rand', 'mezcla de A y B'], ['rainbow', 'arcoíris'], ['angle', 'arcoíris en círculo'], ['image', 'colores de la imagen']] },
                { k: 'life', label: 'Vida', v: 'fade', options: [['fade', 'aparece y se va'], ['shrink', 'se achica'], ['grow', 'crece'], ['twinkle', 'titila'], ['const', 'constante']] }],
       help: 'Tamaño, forma y color de cada partícula' },
 
@@ -78,6 +101,7 @@
   };
   const own = (o, k) => Object.prototype.hasOwnProperty.call(o, k);
   const isChain = t => DEFS[t] && DEFS[t].cat !== 'val';
+  const isEmitter = t => DEFS[t] && DEFS[t].cat === 'emit';
 
   /* ── sanitizer: every system from outside (storage, files, other windows) goes through here ── */
   const HEX = /^#[0-9a-f]{6}$/i;
@@ -94,7 +118,12 @@
         if (i.t === 'float' && Number.isFinite(x)) v[i.k] = Math.max(-1e4, Math.min(1e4, x));
         else if (i.t === 'color' && typeof x === 'string' && HEX.test(x)) v[i.k] = x.toLowerCase();
       }
-      for (const q of d.params || []) if (q.options.some(o => o[0] === np[q.k])) p[q.k] = np[q.k];
+      for (const q of d.params || []) {
+        const x = np[q.k];
+        if (q.kind === 'text') { if (typeof x === 'string') p[q.k] = x.slice(0, 300); }
+        else if (q.kind === 'image') { if (typeof x === 'string' && x.length <= 900000 && /^data:image\/(png|jpeg|webp);base64,[A-Za-z0-9+/=]+$/.test(x)) p[q.k] = x; }
+        else if (q.options.some(o => o[0] === x)) p[q.k] = x;
+      }
       nodes.push({ id: n.id, type: n.type, x: fin(n.x), y: fin(n.y), v, p });
     }
     const byId = new Map(nodes.map(n => [n.id, n])), links = [], into = new Map();
@@ -118,7 +147,9 @@
     return n.p && n.p[k] !== undefined ? n.p[k] : q ? q.v : '';
   };
   // what needs a recompile (types, options, links, count) — values only change uniforms
-  const structureKey = s => JSON.stringify([s.nodes.map(n => [n.id, n.type, n.p]), s.links.map(l => [l.a, l.ao, l.b, l.bi])]);
+  // (a text or a picture only changes the points the particles are born on, not the shaders)
+  const structP = n => { const o = {}; (DEFS[n.type].params || []).forEach(q => { if (!q.kind && n.p && n.p[q.k] !== undefined) o[q.k] = n.p[q.k]; }); return o; };
+  const structureKey = s => JSON.stringify([s.nodes.map(n => [n.id, n.type, structP(n)]), s.links.map(l => [l.a, l.ao, l.b, l.bi])]);
 
   /* ── GLSL ── */
   const fl = x => { const s = String(+x); return /[.e]/.test(s) ? s : s + '.0'; };
@@ -172,10 +203,10 @@ vec3 hsv(float h, float s, float v) { vec3 k = clamp(abs(fract(h + vec3(0.0, 2.0
       const n = byId.get(l.a);
       if (!n || seen.has(n.id) || !isChain(n.type)) break;
       seen.add(n.id); chain.unshift(n);
-      if (n.type === 'emit') break;
+      if (isEmitter(n.type)) break;
       l = linkInto(n.id, 'in');
     }
-    if (!chain.length || chain[0].type !== 'emit') throw new Error('Conectá un Emisor a la Salida (pasando por los nodos que quieras)');
+    if (!chain.length || !isEmitter(chain[0].type)) throw new Error('Conectá un Emisor a la Salida (pasando por los nodos que quieras)');
     const emit = chain[0];
     const uniforms = [], vals = [], valState = new Map();
     function emitValue(n) {
@@ -213,11 +244,20 @@ vec3 hsv(float h, float s, float v) { vec3 k = clamp(abs(fract(h + vec3(0.0, 2.0
       screen: 'pos = vec3((r.x * 2.0 - 1.0) * A * 1.02, (r.y * 2.0 - 1.0) * 1.02, 0.0); o = vec3(cos(r.z * 6.2831853), sin(r.z * 6.2831853), 0.0);',
       sphere: 'float z = r.y * 2.0 - 1.0, ang = r.x * 6.2831853, rr = sqrt(1.0 - z * z); o = vec3(rr * cos(ang), rr * sin(ang), z); pos = c + o * S;',
     }[EP.shape];
+    const formShape = `
+    int pidx = int(min(r.x * u_npts, max(u_npts - 1.0, 0.0)));
+    vec4 pt = texelFetch(u_pts, ivec2(pidx % 256, pidx / 256), 0);
+    vec2 puv = clamp(pt.xy + (r.yz - 0.5) * u_ptjit, 0.0, 1.0);
+    o = vec3(puv.x - 0.5, 0.5 - puv.y, 0.0);
+    pos = c + vec3(o.x * S * u_ptasp, o.y * S, 0.0);
+    o = normalize(o + vec3(0.0, 0.0001, 0.0));
+    hw = floor(puv.x * 4095.0) * 4096.0 + floor(puv.y * 4095.0);
+    ok = u_npts > 0.5;`;
     const dir = { out: 'o', up: 'vec3(0.0, 1.0, 0.0)', down: 'vec3(0.0, -1.0, 0.0)', left: 'vec3(-1.0, 0.0, 0.0)', right: 'vec3(1.0, 0.0, 0.0)',
                   random: 'vec3(cos(r2.x * 6.2831853), sin(r2.x * 6.2831853), 0.0)', spin: 'vec3(-o.y, o.x, 0.0)', front: 'vec3(0.0, 0.0, 1.0)', back: 'vec3(0.0, 0.0, -1.0)', still: 'vec3(0.0)' }[EP.dir];
     const EMIT = `
     vec3 c = vec3(${EI.x}, ${EI.y}, ${EI.z}), o; float S = ${EI.size};
-    ${shape}
+    ${emit.type === 'form' ? formShape : shape}
     vec3 d0 = ${dir};
     vel = d0 * ${EI.speed} * (1.0 + (r2.z - 0.5) * ${EI.chaos} * 1.5)
         + vec3(cos(r2.y * 6.2831853), sin(r2.y * 6.2831853), (r.w - 0.5) * 0.6) * ${EI.speed} * ${EI.chaos} * 0.6;
@@ -225,6 +265,7 @@ vec3 hsv(float h, float s, float v) { vec3 k = clamp(abs(fract(h + vec3(0.0, 2.0
 
     // forces (before moving) and edges (after)
     const pre = [], post = [], triggers = [];
+    let usesCam = emit.type === 'form' && EP.src === 'camera';
     if (EP.burst !== 'cont') triggers.push({ u: 'u_burst', mode: EP.burst });
     let look = null;
     for (const n of chain.slice(1)) {
@@ -242,6 +283,14 @@ vec3 hsv(float h, float s, float v) { vec3 k = clamp(abs(fract(h + vec3(0.0, 2.0
         uniforms.push({ name: hu, t: 'float', trig: true });
         triggers.push({ u: hu, mode: Q.trig });
         pre.push(`if (${hu} > 0.5) { vec3 d = pos - vec3(${I.x}, ${I.y}, 0.0); vel += normalize(d + vec3(1e-4, 0.0, 0.0)) * ${I.str} / (1.0 + length(d) * 1.5); }`);
+      } else if (n.type === 'home') pre.push(`{ vec3 d = home.xyz - pos; vel += d * ${I.str} * dt; vel *= exp(-max(0.0, ${I.damp}) * dt); }`);
+      else if (n.type === 'cam') {
+        usesCam = true;
+        const ch = Q.mode === 'bright' ? 'g' : 'r';
+        pre.push(`{ vec2 cu = vec2(pos.x / (2.0 * A) + 0.5, 0.5 - pos.y * 0.5), ce = vec2(1.5 / 160.0, 1.5 / 90.0);
+      float gx = textureLod(u_mot, cu + vec2(ce.x, 0.0), 0.0).${ch} - textureLod(u_mot, cu - vec2(ce.x, 0.0), 0.0).${ch};
+      float gy = textureLod(u_mot, cu - vec2(0.0, ce.y), 0.0).${ch} - textureLod(u_mot, cu + vec2(0.0, ce.y), 0.0).${ch};
+      vel.xy -= vec2(gx, gy) * ${I.str} * 8.0 * dt; }`);
       } else if (n.type === 'drag') pre.push(`vel *= exp(-max(0.0, ${I.amt}) * dt);`);
       else if (n.type === 'bounds') {
         const B = `clamp(${I.bounce}, 0.0, 1.0)`;
@@ -258,7 +307,9 @@ vec3 hsv(float h, float s, float v) { vec3 k = clamp(abs(fract(h + vec3(0.0, 2.0
     const head = `#version 300 es
 precision highp float;
 precision highp int;
-uniform sampler2D u_pos, u_vel;
+uniform sampler2D u_pos, u_vel, u_home, u_pts, u_img, u_mot;
+uniform float u_npts, u_ptasp;
+uniform vec2 u_ptjit;
 uniform float u_dt, u_time, u_beat, u_aspect, u_frame, u_burst, u_scale, u_maxpt;
 uniform vec4 u_audio;
 ${uniforms.map(u => `uniform ${u.t === 'color' ? 'vec3' : 'float'} ${u.name};`).join('\n')}
@@ -267,9 +318,10 @@ ${LIB}`;
     const sim = `${head}
 layout(location = 0) out vec4 oPos;
 layout(location = 1) out vec4 oVel;
+layout(location = 2) out vec4 oHome;
 void main() {
   ivec2 ij = ivec2(gl_FragCoord.xy);
-  vec4 P = texelFetch(u_pos, ij, 0), V = texelFetch(u_vel, ij, 0);
+  vec4 P = texelFetch(u_pos, ij, 0), V = texelFetch(u_vel, ij, 0), home = texelFetch(u_home, ij, 0);
   uint idu = uint(ij.y * textureSize(u_pos, 0).x + ij.x), fr = uint(u_frame);
   vec3 pos = P.xyz, vel = V.xyz; float age = P.w, life = V.w;
   float dt = u_dt, A = u_aspect;
@@ -277,8 +329,9 @@ void main() {
   float age0 = age; age += dt;
   bool spawn = ${burst ? 'u_burst > 0.5' : '(age0 < 0.0 && age >= 0.0) || age >= life'};
   if (spawn) {
-    vec4 r = rnd4(idu, fr, 1u), r2 = rnd4(idu, fr, 2u);${EMIT}
-    age = 0.0;
+    vec4 r = rnd4(idu, fr, 1u), r2 = rnd4(idu, fr, 2u); float hw = -1.0; bool ok = true;${EMIT}
+    age = 0.0; home = vec4(pos, hw);
+    if (!ok) { life = -1.0; pos = vec3(0.0, 0.0, -50.0); }   // nothing to be born on yet (empty text, camera starting): try again next frame
   } else if (age >= 0.0 && age < life) {
     ${pre.join('\n    ')}
     pos += vel * dt;
@@ -287,7 +340,7 @@ void main() {
     if (pos.z > 1.6) age = life + 1.0;   // went past the camera
   }
   if (!(abs(pos.x) < 1e4 && abs(pos.y) < 1e4 && abs(vel.x) < 1e4 && abs(vel.y) < 1e4)) { pos = vec3(0.0); vel = vec3(0.0); age = life + 1.0; }
-  oPos = vec4(pos, age); oVel = vec4(vel, life);
+  oPos = vec4(pos, age); oVel = vec4(vel, life); oHome = home;
 }`;
     // drawing
     const LI = look ? look.I : { size: '3.0', opacity: '0.8', a: 'vec3(0.4, 1.0, 0.2)', b: 'vec3(0.0, 0.83, 1.0)' };
@@ -295,6 +348,7 @@ void main() {
     const colExpr = {
       a: `${LI.a}`, age: `mix(${LI.a}, ${LI.b}, t)`, speed: `mix(${LI.a}, ${LI.b}, clamp(length(V.xyz) / 1.2, 0.0, 1.0))`, rand: `mix(${LI.a}, ${LI.b}, rs.x)`,
       rainbow: `hsv(fract(rs.x + u_time * 0.05), 0.75, 1.0)`, angle: `hsv(fract(atan(pos.y, pos.x) / 6.2831853 + u_time * 0.05), 0.75, 1.0)`,
+      image: `(HH.w >= 0.0 ? textureLod(u_img, vec2(floor(HH.w / 4096.0), mod(HH.w, 4096.0)) / 4095.0, 0.0).rgb : ${LI.a})`,
     }[LP.color];
     const lifeCurve = {
       fade: 'al *= smoothstep(0.0, 0.08, t) * (1.0 - smoothstep(0.65, 1.0, t));',
@@ -312,7 +366,7 @@ void main() {
   float age = P.w, life = V.w;
   if (age < 0.0 || age >= life) { gl_Position = vec4(2.0, 2.0, 2.0, 1.0); gl_PointSize = 0.0; vCol = vec4(0.0); return; }
   float t = age / life; vec3 pos = P.xyz;
-  vec4 rs = rnd4(uint(i), 0u, 9u);
+  vec4 rs = rnd4(uint(i), 0u, 9u);${LP.color === 'image' ? '\n  vec4 HH = texelFetch(u_home, ij, 0);' : ''}
   ${VALUES}
   float persp = 2.5 / max(0.6, 2.5 - pos.z);
   gl_Position = vec4(pos.x * persp / u_aspect, pos.y * persp, 0.0, 1.0);
@@ -344,7 +398,7 @@ void main() {
     return {
       sim, drawVS, drawFS, uniforms, triggers, burst,
       count: +EP.count, side: Math.round(Math.sqrt(+EP.count)),
-      blend: OP.blend, outId: out.id, emitId: emit.id,
+      blend: OP.blend, outId: out.id, emitId: emit.id, form: emit.type === 'form', usesCam, imgColor: LP.color === 'image',
     };
   }
 
@@ -360,11 +414,12 @@ void main() { vec4 c = texture(u_img, uv); vec3 rgb = clamp(c.rgb, 0.0, 1.0); o 
   const INIT_FS = `#version 300 es
 precision highp float; precision highp int;
 uniform float u_life, u_burst; uniform sampler2D u_dummy;
-layout(location = 0) out vec4 oPos; layout(location = 1) out vec4 oVel;
+layout(location = 0) out vec4 oPos; layout(location = 1) out vec4 oVel; layout(location = 2) out vec4 oHome;
 ${LIB}
 void main() {
   ivec2 ij = ivec2(gl_FragCoord.xy);
   vec4 r = rnd4(uint(ij.x), uint(ij.y), 5u);
+  oHome = vec4(0.0, 0.0, 0.0, -1.0);
   if (u_burst > 0.5) { oPos = vec4(0.0, 0.0, 0.0, 1e6); oVel = vec4(0.0, 0.0, 0.0, 1.0); }
   else { oPos = vec4(0.0, 0.0, 0.0, -r.x * u_life); oVel = vec4(0.0, 0.0, 0.0, u_life); }
 }`;
@@ -388,6 +443,11 @@ void main() {
       gl.bindVertexArray(null);
       Object.assign(pool, { ok: true, canvas, gl, vao, empty, progs: new Map(), sims: new Set(), shown: null, lost: false,
         maxPt: Math.min(256, gl.getParameter(gl.ALIASED_POINT_SIZE_RANGE)[1] || 64) });
+      const tiny = (fmt, type, data, ifmt) => { const t = gl.createTexture(); gl.bindTexture(gl.TEXTURE_2D, t); gl.texImage2D(gl.TEXTURE_2D, 0, ifmt, 1, 1, 0, fmt, type, data); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST); return t; };
+      pool.white = tiny(gl.RGBA, gl.UNSIGNED_BYTE, new Uint8Array([255, 255, 255, 255]), gl.RGBA);
+      pool.black = tiny(gl.RGBA, gl.UNSIGNED_BYTE, new Uint8Array([0, 0, 0, 0]), gl.RGBA);
+      pool.blank32 = tiny(gl.RGBA, gl.FLOAT, new Float32Array(4), gl.RGBA32F);
+      pool.cam = { st: 'off', ver: 0, t: 0, mot: null, img: null };
       pool.fade = program(QUAD_VS, FADE_FS); pool.blit = program(QUAD_VS, BLIT_FS); pool.init = program(QUAD_VS, INIT_FS);
       canvas.addEventListener('webglcontextlost', e => { e.preventDefault(); pool.lost = true; });
     } catch (e) { pool = { ok: false, err: String(e && e.message || e) }; }
@@ -443,6 +503,125 @@ void main() {
     }
   }
 
+  /* ── where a «form» emitter's particles are born ── */
+  const FONTS = {
+    sans: '800 160px "Helvetica Neue", Arial, sans-serif', display: '900 160px Impact, "Arial Black", sans-serif',
+    serif: '700 160px Georgia, "Times New Roman", serif', mono: '700 160px "IBM Plex Mono", Consolas, monospace', hand: '700 160px "Segoe Script", "Comic Sans MS", cursive',
+  };
+  const MAXP = 65536;
+  // the pixels that count → uv pairs (pixel centres), at most 65536 (a random even sample)
+  function pointsOf(cv, test) {
+    const w = cv.width, h = cv.height, d = cv.getContext('2d', { willReadFrequently: true }).getImageData(0, 0, w, h).data;
+    let idx = [];
+    for (let i = 0, p = 0; p < w * h; p++, i += 4) if (test(d[i], d[i + 1], d[i + 2], d[i + 3])) idx.push(p);
+    if (idx.length > MAXP) { for (let i = idx.length - 1; i > 0; i--) { const j = (Math.random() * (i + 1)) | 0; const t = idx[i]; idx[i] = idx[j]; idx[j] = t; } idx = idx.slice(0, MAXP); }
+    const uv = new Float32Array(idx.length * 2);
+    idx.forEach((p, k) => { uv[k * 2] = ((p % w) + 0.5) / w; uv[k * 2 + 1] = (Math.floor(p / w) + 0.5) / h; });
+    return { uv, n: idx.length, asp: w / h, jit: [1 / w, 1 / h], canvas: cv, ready: true };
+  }
+  const shapeCache = new Map();
+  const remember = (k, v) => { if (shapeCache.size > 24) shapeCache.clear(); shapeCache.set(k, v); return v; };
+  function textShape(text, font) {
+    text = String(text || '').trim() || ' ';
+    const k = 't' + font + '|' + text;
+    if (shapeCache.has(k)) return shapeCache.get(k);
+    const cv = document.createElement('canvas'), g = cv.getContext('2d', { willReadFrequently: true });
+    const f = FONTS[font] || FONTS.sans, lines = text.split('\n').slice(0, 6);
+    g.font = f;
+    const lh = 176, pad = 12;
+    cv.width = Math.min(2400, Math.max(8, ...lines.map(l => Math.ceil(g.measureText(l).width))) + pad * 2); cv.height = lines.length * lh + pad * 2;
+    g.font = f; g.fillStyle = '#fff'; g.textAlign = 'center'; g.textBaseline = 'middle';
+    lines.forEach((l, i) => g.fillText(l, cv.width / 2, pad + lh * (i + 0.5)));
+    return remember(k, pointsOf(cv, (r, gg, b, a) => a > 128));
+  }
+  function imageShape(url, pick) {
+    if (!url) return { ready: true, n: 0, asp: 1, jit: [0, 0], uv: new Float32Array(0), canvas: null };
+    const k = 'i' + pick + url.length + url.slice(-64);
+    const hit = shapeCache.get(k);
+    if (hit) return hit;
+    const pending = { ready: false, n: 0, asp: 1, jit: [0, 0] };
+    remember(k, pending);
+    const im = new Image();
+    im.onload = () => {
+      const cv = document.createElement('canvas');
+      cv.width = Math.max(1, im.naturalWidth); cv.height = Math.max(1, im.naturalHeight);
+      const g = cv.getContext('2d', { willReadFrequently: true }); g.drawImage(im, 0, 0);
+      const d = g.getImageData(0, 0, cv.width, cv.height).data;
+      let clear = false; for (let i = 3; i < d.length; i += 4) if (d[i] < 250) { clear = true; break; }
+      const lum = (r, gg, b) => 0.299 * r + 0.587 * gg + 0.114 * b;
+      const test = pick === 'bright' || (pick === 'auto' && !clear) ? (r, gg, b, a) => a > 128 && lum(r, gg, b) > 110
+        : pick === 'dark' ? (r, gg, b, a) => a > 128 && lum(r, gg, b) < 90 : (r, gg, b, a) => a > 128;
+      Object.assign(pending, pointsOf(cv, test));
+    };
+    im.onerror = () => { Object.assign(pending, { ready: true, uv: new Float32Array(0), canvas: null }); };
+    im.src = url;
+    return pending;
+  }
+  function uploadPts(tex, shp) {
+    const gl = pool.gl, n = Math.min(MAXP, shp.n || 0);
+    if (!n) return;
+    const rows = Math.ceil(n / 256), data = new Float32Array(rows * 256 * 4);
+    for (let k = 0; k < n; k++) { data[k * 4] = shp.uv[k * 2]; data[k * 4 + 1] = shp.uv[k * 2 + 1]; }
+    gl.bindTexture(gl.TEXTURE_2D, tex);
+    gl.texSubImage2D(gl.TEXTURE_2D, 0, 0, 0, 256, rows, gl.RGBA, gl.FLOAT, data);
+  }
+  /* the camera (one per page): a small mirrored picture, its brightness and how much each spot moves */
+  const CAM_W = 160, CAM_H = 90;
+  const camData = { el: null, cv: null, g: null, lum: new Float32Array(CAM_W * CAM_H), mot: new Float32Array(CAM_W * CAM_H), rg: new Uint8Array(CAM_W * CAM_H * 2), first: true };
+  function camTick() {
+    const P = pool, C = P.cam, now = performance.now();
+    if (C.st === 'off') {
+      C.st = 'wait';
+      const v = document.createElement('video'); v.muted = true; v.playsInline = true;
+      v.style.cssText = 'position:fixed;left:0;top:0;width:2px;height:2px;opacity:0;pointer-events:none';
+      (document.body || document.documentElement).append(v);
+      camData.el = v;
+      if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+        navigator.mediaDevices.getUserMedia({ video: { width: { ideal: 640 }, height: { ideal: 360 } }, audio: false })
+          .then(st => { v.srcObject = st; v.play().catch(() => {}); C.st = 'ok'; }).catch(() => { C.st = 'error'; });
+      } else C.st = 'error';
+      return;
+    }
+    if (C.st !== 'ok' || now - C.t < 30 || camData.el.readyState < 2 || !camData.el.videoWidth) return;
+    C.t = now;
+    if (!camData.cv) { camData.cv = document.createElement('canvas'); camData.cv.width = CAM_W; camData.cv.height = CAM_H; camData.g = camData.cv.getContext('2d', { willReadFrequently: true }); }
+    const v = camData.el, g = camData.g, vw = v.videoWidth, vh = v.videoHeight, a = CAM_W / CAM_H;
+    let sw = vw, sh = vw / a; if (sh > vh) { sh = vh; sw = vh * a; }   // cover, mirrored like a mirror
+    g.save(); g.translate(CAM_W, 0); g.scale(-1, 1); g.drawImage(v, (vw - sw) / 2, (vh - sh) / 2, sw, sh, 0, 0, CAM_W, CAM_H); g.restore();
+    const d = g.getImageData(0, 0, CAM_W, CAM_H).data, L = camData.lum, M = camData.mot, RG = camData.rg;
+    for (let p = 0, i = 0; p < CAM_W * CAM_H; p++, i += 4) {
+      const l = 0.299 * d[i] + 0.587 * d[i + 1] + 0.114 * d[i + 2];
+      const m = camData.first ? 0 : Math.min(255, Math.abs(l - L[p]) * 4);
+      M[p] = Math.max(m, M[p] * 0.82); L[p] = l;
+      RG[p * 2] = M[p]; RG[p * 2 + 1] = l;
+    }
+    camData.first = false;
+    const gl = P.gl;
+    if (!C.mot) {
+      C.mot = gl.createTexture(); gl.bindTexture(gl.TEXTURE_2D, C.mot); gl.texStorage2D(gl.TEXTURE_2D, 1, gl.RG8, CAM_W, CAM_H);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+      C.img = gl.createTexture(); gl.bindTexture(gl.TEXTURE_2D, C.img);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+    }
+    gl.pixelStorei(gl.UNPACK_ALIGNMENT, 1);
+    gl.bindTexture(gl.TEXTURE_2D, C.mot); gl.texSubImage2D(gl.TEXTURE_2D, 0, 0, 0, CAM_W, CAM_H, gl.RG, gl.UNSIGNED_BYTE, RG);
+    gl.pixelStorei(gl.UNPACK_ALIGNMENT, 4);
+    gl.bindTexture(gl.TEXTURE_2D, C.img); gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL, false);
+    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, camData.cv);
+    C.ver++;
+  }
+  function camPoints(mode) {
+    const L = camData.lum, M = camData.mot, idx = [];
+    if (pool.cam.st === 'ok' && !camData.first) for (let p = 0; p < CAM_W * CAM_H; p++) {
+      if (mode === 'motion' ? M[p] > 60 : mode === 'bright' ? L[p] > 160 : L[p] < 60) idx.push(p);
+    }
+    const uv = new Float32Array(idx.length * 2);
+    idx.forEach((p, k) => { uv[k * 2] = ((p % CAM_W) + 0.5) / CAM_W; uv[k * 2 + 1] = (Math.floor(p / CAM_W) + 0.5) / CAM_H; });
+    return { uv, n: idx.length };
+  }
+
   /* one running system */
   function createSim() {
     const P = getPool();
@@ -458,8 +637,8 @@ void main() {
     }
     function alloc(side) {
       freeState();
-      const tex = [floatTex(side, side), floatTex(side, side), floatTex(side, side), floatTex(side, side)];   // pos0 vel0 pos1 vel1
-      S.state = { side, tex, fb: [fbo([tex[0], tex[1]]), fbo([tex[2], tex[3]])], cur: 0 };
+      const tex = [0, 1, 2, 3, 4, 5].map(() => floatTex(side, side));   // pos vel home · pos vel home
+      S.state = { side, tex, fb: [fbo(tex.slice(0, 3)), fbo(tex.slice(3, 6))], cur: 0 };
       S.last = null;   // → init + warm-up on the next frame
     }
     function setSpec(spec) {
@@ -507,6 +686,69 @@ void main() {
       }
       return hit;
     }
+    function bindState(L, k) {
+      const gl = P.gl, st = S.state;
+      [['u_pos', 0], ['u_vel', 1], ['u_home', 2]].forEach(([n, i]) => {
+        gl.activeTexture(gl.TEXTURE0 + i); gl.bindTexture(gl.TEXTURE_2D, st.tex[k * 3 + i]);
+        if (L[n]) gl.uniform1i(L[n], i);
+      });
+    }
+    /* the points a «form» emitter is born on, the picture its colours come from, the camera's motion map */
+    function bindShape(L) {
+      const gl = P.gl, sh = S.shape;
+      gl.activeTexture(gl.TEXTURE3); gl.bindTexture(gl.TEXTURE_2D, sh ? sh.pts : P.blank32);
+      gl.activeTexture(gl.TEXTURE4); gl.bindTexture(gl.TEXTURE_2D, sh && sh.img ? sh.img : P.white);
+      gl.activeTexture(gl.TEXTURE5); gl.bindTexture(gl.TEXTURE_2D, P.cam.mot || P.black);
+      if (L.u_pts) gl.uniform1i(L.u_pts, 3);
+      if (L.u_img) gl.uniform1i(L.u_img, 4);
+      if (L.u_mot) gl.uniform1i(L.u_mot, 5);
+      if (L.u_npts) gl.uniform1f(L.u_npts, sh ? sh.n : 0);
+      if (L.u_ptasp) gl.uniform1f(L.u_ptasp, sh ? sh.asp : 1);
+      if (L.u_ptjit) gl.uniform2f(L.u_ptjit, sh ? sh.jit[0] : 0, sh ? sh.jit[1] : 0);
+      gl.activeTexture(gl.TEXTURE0);
+    }
+    function prepShape() {
+      const comp = S.comp;
+      if (comp.usesCam) camTick();
+      if (!comp.form) { if (S.shape) freeShape(); return; }
+      const em = S.spec.nodes.find(x => x.id === comp.emitId);
+      const src = paramOf(em, 'src');
+      if (src === 'camera') {
+        const mode = paramOf(em, 'cam');
+        if (!S.shape || S.shape.kind !== 'cam' || S.shape.mode !== mode || S.shape.ver !== P.cam.ver) {
+          const pts = camPoints(mode);
+          ensureOwnShape('cam');
+          Object.assign(S.shape, { mode, ver: P.cam.ver, n: pts.n, asp: 16 / 9, jit: [1 / CAM_W, 1 / CAM_H], img: P.cam.img || null });
+          uploadPts(S.shape.pts, pts);
+        }
+        return;
+      }
+      const key = src === 'image' ? 'i' + paramOf(em, 'pick') + paramOf(em, 'img') : 't' + paramOf(em, 'font') + '|' + paramOf(em, 'text');
+      if (S.shape && S.shape.key === key && S.shape.ready) return;
+      const shp = src === 'image' ? imageShape(paramOf(em, 'img'), paramOf(em, 'pick')) : textShape(paramOf(em, 'text'), paramOf(em, 'font'));
+      ensureOwnShape('pic');
+      Object.assign(S.shape, { key, ready: shp.ready, n: shp.n, asp: shp.asp, jit: shp.jit });
+      if (shp.ready && shp.canvas) {
+        uploadPts(S.shape.pts, shp);
+        const gl = P.gl;
+        if (!S.shape.img) S.shape.img = gl.createTexture();
+        gl.bindTexture(gl.TEXTURE_2D, S.shape.img);
+        gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL, false);
+        gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, shp.canvas);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+      }
+    }
+    function ensureOwnShape(kind) {
+      if (S.shape && S.shape.kind === kind) return;
+      freeShape();
+      S.shape = { kind, pts: floatTex(256, 256), img: null, n: 0, asp: 1, jit: [0, 0] };
+    }
+    function freeShape() {
+      const gl = P.gl;
+      if (S.shape) { gl.deleteTexture(S.shape.pts); if (S.shape.img && S.shape.kind !== 'cam') gl.deleteTexture(S.shape.img); }
+      S.shape = null;
+    }
     function step(dt, time, audio, beat, aspect, trigs) {
       const gl = P.gl, st = S.state, pr = S.progs.sim;
       const src = st.cur, dst = 1 - src;
@@ -514,11 +756,9 @@ void main() {
       gl.viewport(0, 0, st.side, st.side);
       gl.disable(gl.BLEND);
       gl.useProgram(pr.pr);
-      gl.activeTexture(gl.TEXTURE0); gl.bindTexture(gl.TEXTURE_2D, st.tex[src * 2]);
-      gl.activeTexture(gl.TEXTURE1); gl.bindTexture(gl.TEXTURE_2D, st.tex[src * 2 + 1]);
       const L = pr.loc;
-      if (L.u_pos) gl.uniform1i(L.u_pos, 0);
-      if (L.u_vel) gl.uniform1i(L.u_vel, 1);
+      bindState(L, src);
+      bindShape(L);
       if (L.u_dt) gl.uniform1f(L.u_dt, dt);
       if (L.u_time) gl.uniform1f(L.u_time, time);
       if (L.u_beat) gl.uniform1f(L.u_beat, beat);
@@ -534,6 +774,7 @@ void main() {
     }
     function init(time, audio, beat, aspect) {
       const gl = P.gl, st = S.state;
+      prepShape();
       [0, 1].forEach(i => {
         gl.bindFramebuffer(gl.FRAMEBUFFER, st.fb[i]);
         gl.viewport(0, 0, st.side, st.side);
@@ -546,7 +787,7 @@ void main() {
       });
       st.cur = 0;
       if (!S.comp.burst) {   // warm-up: the system starts full, as if it had been running
-        const steps = Math.max(1, Math.min(150, Math.round(S.life * 30), Math.floor(4e7 / S.comp.count)));
+        const steps = Math.max(1, Math.min(250, Math.round(S.life * 30), Math.floor(4e7 / S.comp.count)));
         const dt = Math.min(0.1, (S.life * 1.05) / steps);
         for (let i = 0; i < steps; i++) step(dt, time - (steps - i) * dt, audio, beat, aspect, {});
       }
@@ -574,10 +815,8 @@ void main() {
       } else { gl.clearColor(0, 0, 0, 0); gl.clear(gl.COLOR_BUFFER_BIT); }
       const pr = S.progs.draw, L = pr.loc;
       gl.useProgram(pr.pr);
-      gl.activeTexture(gl.TEXTURE0); gl.bindTexture(gl.TEXTURE_2D, st.tex[st.cur * 2]);
-      gl.activeTexture(gl.TEXTURE1); gl.bindTexture(gl.TEXTURE_2D, st.tex[st.cur * 2 + 1]);
-      if (L.u_pos) gl.uniform1i(L.u_pos, 0);
-      if (L.u_vel) gl.uniform1i(L.u_vel, 1);
+      bindState(L, st.cur);
+      bindShape(L);
       if (L.u_time) gl.uniform1f(L.u_time, time);
       if (L.u_beat) gl.uniform1f(L.u_beat, beat);
       if (L.u_aspect) gl.uniform1f(L.u_aspect, aspect);
@@ -618,6 +857,7 @@ void main() {
       if (dt < 0 || dt > 1) dt = 1 / 60;
       S.last = time;
       if (dt > 0) {
+        prepShape();
         const trigs = {};
         S.comp.triggers.forEach(tr => { if (fire(tr.mode, beat, audio[1] || 0, time)) trigs[tr.u] = true; });
         const n = dt > 1 / 25 ? Math.min(4, Math.ceil(dt * 30)) : 1;
@@ -628,7 +868,7 @@ void main() {
       return P.canvas;
     }
     function reset() { S.last = null; S.trig = {}; }
-    function free() { freeState(); freeColor(); P.sims.delete(S); if (P.shown === S) P.shown = null; S.comp = null; }
+    function free() { freeState(); freeColor(); freeShape(); P.sims.delete(S); if (P.shown === S) P.shown = null; S.comp = null; }
     if (P.ok) P.sims.add(S);
     Object.assign(S, { setSpec, frame, reset, free });
     Object.defineProperty(S, 'count', { get: () => (S.comp ? S.comp.count : 0) });   // a live getter (Object.assign would copy its value once)
@@ -723,6 +963,31 @@ void main() {
       ['look', { size: 2.2, opacity: 0.8, a: '#00d4ff', b: '#66ff33' }, { shape: 'soft', color: 'age', life: 'const' }],
       ['out', { trail: 0.75, gain: 1 }, { blend: 'add' }]],
       [['pulse', { decay: 4, min: 0.55, max: 1.1 }, { div: '1' }, 'v', 0, 'size']]) },
+    { name: 'Logo que estalla', sys: build('Logo que estalla', [
+      ['form', { size: 0.9, speed: 0, chaos: 0, life: 30, lifeVar: 0 }, { src: 'text', text: 'PUDRUS', font: 'display', dir: 'still', count: '65536' }],
+      ['home', { str: 9, damp: 3.5 }],
+      ['explode', { str: 2.6 }, { trig: 'bar' }],
+      ['explode', { str: 2 }, { trig: 'bass' }],
+      ['look', { size: 1.8, opacity: 0.85, a: '#ff3fa4', b: '#00d4ff' }, { shape: 'soft', color: 'speed', life: 'const' }],
+      ['out', { trail: 0.55, gain: 1 }, { blend: 'add' }]]) },
+    { name: 'Texto de humo', sys: build('Texto de humo', [
+      ['form', { size: 0.8, speed: 0.12, chaos: 0.4, life: 3, lifeVar: 0.5 }, { src: 'text', text: 'PUDRUS', font: 'sans', dir: 'up', count: '262144' }],
+      ['turb', { str: 0.7, scale: 2.2, speed: 0.3 }],
+      ['drag', { amt: 0.6 }],
+      ['look', { size: 2.2, opacity: 0.25, a: '#ffffff', b: '#3a7bff' }, { shape: 'soft', color: 'age', life: 'fade' }],
+      ['out', { trail: 0.3, gain: 1 }, { blend: 'add' }]]) },
+    { name: 'Silueta (cámara)', sys: build('Silueta (cámara)', [
+      ['form', { size: 2, speed: 0.25, chaos: 0.5, life: 2, lifeVar: 0.5 }, { src: 'camera', cam: 'motion', dir: 'up', count: '65536' }],
+      ['turb', { str: 0.6, scale: 2, speed: 0.4 }],
+      ['drag', { amt: 0.8 }],
+      ['look', { size: 2.4, opacity: 0.8, a: '#66ff33', b: '#00d4ff' }, { shape: 'soft', color: 'image', life: 'fade' }],
+      ['out', { trail: 0.6, gain: 1.2 }, { blend: 'add' }]]) },
+    { name: 'Tocar con el cuerpo (cámara)', sys: build('Tocar con el cuerpo (cámara)', [
+      ['emit', { speed: 0, chaos: 0, life: 30, lifeVar: 0 }, { shape: 'screen', dir: 'still', count: '65536' }],
+      ['cam', { str: 3 }, { mode: 'motion' }],
+      ['home', { str: 2.5, damp: 2 }],
+      ['look', { size: 2, opacity: 0.7 }, { shape: 'soft', color: 'angle', life: 'const' }],
+      ['out', { trail: 0.35, gain: 1 }, { blend: 'add' }]]) },
   ];
   const blank = () => build('Nuevo sistema', [
     ['emit', {}, { shape: 'point', dir: 'out', count: '65536' }],
@@ -760,7 +1025,7 @@ void main() {
   }
 
   window.PudrusParticles = {
-    DEFS, CATS, PRESETS, blank, sane, compile, structureKey, valueOf, paramOf, isChain,
+    DEFS, CATS, PRESETS, blank, sane, isEmitter, FONTS, get cameraState() { return pool && pool.cam ? pool.cam.st : 'off'; }, compile, structureKey, valueOf, paramOf, isChain,
     createSim, source, resolve, library, saveLibrary, LIB_KEY,
     get ok() { return getPool().ok; }, get error() { return getPool().err; }, get canvas() { return getPool().canvas; },
     channel: 'pudrus-partrus',
