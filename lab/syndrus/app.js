@@ -857,23 +857,34 @@
       drawRing(i, -1);
     });
   }
+  // the theme's colours for what is drawn on a canvas (read again whenever the theme changes)
+  let TH = {};
+  function readTheme() {
+    const cs = getComputedStyle(document.documentElement), v = (n, d) => (cs.getPropertyValue(n).trim() || d);
+    const light = document.documentElement.getAttribute('data-theme') === 'light';
+    TH = { g: v('--g-rgb', '102,255,51'), c: v('--c-rgb', '0,212,255'), text: v('--text-rgb', '208,239,255'), head: v('--head', '#ffffff'),
+      ringOff: v('--ring-off', '#1d2a3a'), ringMute: v('--ring-mute', '#2b5a37'), hand: light ? 'rgba(27,30,34,0.5)' : 'rgba(255,255,255,0.5)' };
+    const b = $('#themeBtn'); if (b) b.textContent = light ? '◐ Tema oscuro' : '◐ Tema claro';
+  }
+  readTheme();
+  document.addEventListener('pudrus:theme', () => { readTheme(); paintRings(); });
   function drawRing(i, n) {
     const cv = ringCanvases[i]; if (!cv) return;
     const r = st.rings[i], g = cv.getContext('2d'), S = cv.width, c = S / 2, rad = S * 0.4;
     const pat = X.euclid(r.steps, Math.min(r.pulses, r.steps), r.rot), cur = n >= 0 ? n % r.steps : -1;
     g.clearRect(0, 0, S, S);
-    g.strokeStyle = 'rgba(0,212,255,0.18)'; g.lineWidth = 2; g.beginPath(); g.arc(c, c, rad, 0, 7); g.stroke();
+    g.strokeStyle = `rgba(${TH.c},0.18)`; g.lineWidth = 2; g.beginPath(); g.arc(c, c, rad, 0, 7); g.stroke();
     const pts = pat.map((v, k) => (v ? [c + rad * Math.cos(k / r.steps * 6.2832 - 1.5708), c + rad * Math.sin(k / r.steps * 6.2832 - 1.5708)] : null)).filter(Boolean);
-    if (pts.length > 1) { g.strokeStyle = 'rgba(102,255,51,0.35)'; g.lineWidth = 3; g.beginPath(); pts.forEach(([x, y], k) => (k ? g.lineTo(x, y) : g.moveTo(x, y))); g.closePath(); g.stroke(); }
+    if (pts.length > 1) { g.strokeStyle = `rgba(${TH.g},0.35)`; g.lineWidth = 3; g.beginPath(); pts.forEach(([x, y], k) => (k ? g.lineTo(x, y) : g.moveTo(x, y))); g.closePath(); g.stroke(); }
     pat.forEach((v, k) => {
       const a = k / r.steps * 6.2832 - 1.5708, x = c + rad * Math.cos(a), y = c + rad * Math.sin(a), now = k === cur;
       g.beginPath(); g.arc(x, y, v ? S * 0.045 : S * 0.02, 0, 7);
-      g.fillStyle = now ? '#ffffff' : v ? (r.mute ? '#2b5a37' : '#66ff33') : '#1d2a3a';
-      if (now && v && !r.mute) { g.shadowColor = '#66ff33'; g.shadowBlur = 30; }
+      g.fillStyle = now ? TH.head : v ? (r.mute ? TH.ringMute : `rgb(${TH.g})`) : TH.ringOff;
+      if (now && v && !r.mute) { g.shadowColor = `rgb(${TH.g})`; g.shadowBlur = 30; }
       g.fill(); g.shadowBlur = 0;
     });
-    if (cur >= 0) { const a = cur / r.steps * 6.2832 - 1.5708; g.strokeStyle = 'rgba(255,255,255,0.5)'; g.lineWidth = 2; g.beginPath(); g.moveTo(c, c); g.lineTo(c + rad * 0.82 * Math.cos(a), c + rad * 0.82 * Math.sin(a)); g.stroke(); }
-    g.fillStyle = 'rgba(208,239,255,0.6)'; g.font = `600 ${S * 0.08}px "IBM Plex Mono", monospace`; g.textAlign = 'center'; g.textBaseline = 'middle';
+    if (cur >= 0) { const a = cur / r.steps * 6.2832 - 1.5708; g.strokeStyle = TH.hand; g.lineWidth = 2; g.beginPath(); g.moveTo(c, c); g.lineTo(c + rad * 0.82 * Math.cos(a), c + rad * 0.82 * Math.sin(a)); g.stroke(); }
+    g.fillStyle = `rgba(${TH.text},0.6)`; g.font = `600 ${S * 0.08}px "IBM Plex Mono", monospace`; g.textAlign = 'center'; g.textBaseline = 'middle';
     g.fillText(`${Math.min(r.pulses, r.steps)}/${r.steps}`, c, c);
   }
 
@@ -1426,7 +1437,7 @@
       sg.fillRect(x + 1, Hd - h, Wd / bars - 2, h);
     }
     an.getFloatTimeDomainData(wave);
-    { let mx = 0; for (let i = 0; i < wave.length; i += 2) mx = Math.max(mx, Math.abs(wave[i])); peakHold = Math.max(peakHold, mx); const gr = E.limiting ? E.limiting() : 0; if (gr < -1) { clipAt = performance.now(); limDb = Math.min(limDb, gr); } }
+    { let mx = 0; for (let i = 0; i < wave.length; i += 2) mx = Math.max(mx, Math.abs(wave[i])); peakHold = Math.max(peakHold, mx); const gr = E.limiting ? E.limiting() : 0; if (gr < -1 && mx > 0.6) { clipAt = performance.now(); limDb = Math.min(limDb, gr); } }   // (the node reports a false reduction for a second when the audio starts, in silence: only a loud output counts)
     sg.strokeStyle = '#66ff33'; sg.lineWidth = 2; sg.shadowColor = '#66ff33'; sg.shadowBlur = 8; sg.beginPath();
     for (let i = 0; i < 512; i++) { const x = i / 511 * Wd, y = Hd / 2 - wave[i * 2] * Hd * 0.42; i ? sg.lineTo(x, y) : sg.moveTo(x, y); }
     sg.stroke(); sg.shadowBlur = 0;
@@ -1526,6 +1537,7 @@
     } catch (err) { toast('No se pudo exportar: ' + (err.message || err)); }
     b.disabled = false; b.textContent = '⤓ WAV';
   });
+  $('#themeBtn').addEventListener('click', () => { if (window.pudrusTheme) window.pudrusTheme.toggle(); });
   $('#share').addEventListener('click', () => {
     const share = { v: 2, bpm: app.bpm, swing: app.swing, decks: app.decks, mix: { ...app.mix, cueMode: 'off', cueSink: '', decks: app.mix.decks.map(d => ({ ...d, cue: false })) }, edit: app.edit };   // the bank stays here
     const url = location.origin + location.pathname + '#s=' + btoa(unescape(encodeURIComponent(JSON.stringify(share))));

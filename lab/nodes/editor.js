@@ -536,6 +536,10 @@
   $('#pmVary').addEventListener('click', () => varyPatch());
   $('#pmLabels').addEventListener('click', () => setLabels(!opts.labels));
   $('#pmStatus').addEventListener('click', () => setStatusBar(!opts.status));
+  // the theme: one choice for the whole site, kept by js/theme.js (the output windows and the lights panel stay dark)
+  { const pt = $('#pmTheme'), paintTheme = () => { pt.firstChild.textContent = (document.documentElement.getAttribute('data-theme') === 'light' ? '✓ ' : '　') + 'Tema claro'; };
+    pt.addEventListener('click', () => { if (window.pudrusTheme) window.pudrusTheme.toggle(); });
+    document.addEventListener('pudrus:theme', paintTheme); paintTheme(); }
   $('#pmFps').addEventListener('click', () => setFpsCap(nextCap()));
   // help: tabs by topic, remembers the last one
   const help = $('#help');

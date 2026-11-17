@@ -418,6 +418,10 @@
   }
   $('#fileBtn').addEventListener('click', e => { e.stopPropagation(); openPop('#filePop', e.currentTarget); });
   $('#helpBtn').addEventListener('click', e => { e.stopPropagation(); openPop('#helpPop', e.currentTarget); });
+  // the theme: one choice for the whole site, kept by js/theme.js
+  const themeLabel = () => { $('#themeBtn').textContent = document.documentElement.getAttribute('data-theme') === 'light' ? '◐ Tema oscuro' : '◐ Tema claro'; };
+  $('#themeBtn').addEventListener('click', e => { e.stopPropagation(); if (window.pudrusTheme) window.pudrusTheme.toggle(); });
+  document.addEventListener('pudrus:theme', themeLabel); themeLabel();
   document.addEventListener('click', e => { if (!e.target.closest('.se-pop')) closePops(); });
   $('#fileSave').addEventListener('click', () => {
     const a = document.createElement('a'); a.download = (show.name || 'show').replace(/[^\w\-áéíóúñ ]+/gi, '').trim().replace(/\s+/g, '_') + '.setrus.json';

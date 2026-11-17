@@ -66,6 +66,10 @@
         "to": "web/js/splash.js"
       },
       {
+        "from": "../js/theme.js",
+        "to": "web/js/theme.js"
+      },
+      {
         "from": "../lab/syndrus",
         "to": "web/lab/syndrus",
         "filter": [
