@@ -7,8 +7,9 @@
   const SCALES = {
     minor: [0, 2, 3, 5, 7, 8, 10], phrygian: [0, 1, 3, 5, 7, 8, 10], dorian: [0, 2, 3, 5, 7, 9, 10],
     pentaMin: [0, 3, 5, 7, 10], major: [0, 2, 4, 5, 7, 9, 11], lydian: [0, 2, 4, 6, 7, 9, 11], hijaz: [0, 1, 4, 5, 7, 8, 10],
+    harmonic: [0, 2, 3, 5, 7, 8, 11],
   };
-  const SCALE_NAMES = { minor: 'Menor', phrygian: 'Frigia', dorian: 'Dórica', pentaMin: 'Pentatónica', major: 'Mayor', lydian: 'Lidia', hijaz: 'Hijaz' };
+  const SCALE_NAMES = { minor: 'Menor', phrygian: 'Frigia', dorian: 'Dórica', pentaMin: 'Pentatónica', major: 'Mayor', lydian: 'Lidia', hijaz: 'Hijaz', harmonic: 'Armónica' };
   const NOTE_NAMES = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
   const mtof = m => 440 * Math.pow(2, (m - 69) / 12);
   // a scale degree (can be negative or above 7) → MIDI note
@@ -82,11 +83,13 @@
       kick(d, t, p) {
         const o = ctx.createOscillator(), g = ctx.createGain(), sh = ctx.createWaveShaper();
         const c = new Float32Array(256); for (let i = 0; i < 256; i++) { const x = i / 255 * 2 - 1; c[i] = Math.tanh(x * 2.2); } sh.curve = c;
-        o.frequency.setValueAtTime(160 * p.tune, t); o.frequency.exponentialRampToValueAtTime(48 * p.tune, t + 0.09); o.frequency.exponentialRampToValueAtTime(40 * p.tune, t + 0.4);
+        // punch: 0 = the round techno kick … 1 = the psytrance one (the pitch falls from much higher, much faster, with a harder click)
+        const k = Math.max(0, Math.min(1, p.punch || 0));
+        o.frequency.setValueAtTime(160 * p.tune * (1 + k * 5), t); o.frequency.exponentialRampToValueAtTime(48 * p.tune, t + 0.09 - k * 0.06); o.frequency.exponentialRampToValueAtTime(40 * p.tune, t + 0.4);
         env(g, t, p.vel, 0.25 + p.decay * 0.9, 0.002);
         o.connect(sh); sh.connect(g); g.connect(d); o.start(t); o.stop(t + 1.5);
         const n = noise(), hp = ctx.createBiquadFilter(), ng = ctx.createGain(); hp.type = 'highpass'; hp.frequency.value = 2500;
-        env(ng, t, 0.25 * p.vel, 0.012); n.connect(hp); hp.connect(ng); ng.connect(d); n.start(t); n.stop(t + 0.05);
+        env(ng, t, (0.25 + k * 0.3) * p.vel, 0.012); n.connect(hp); hp.connect(ng); ng.connect(d); n.start(t); n.stop(t + 0.05);
       },
       snare(d, t, p) {
         const n = noise(), bp = ctx.createBiquadFilter(), g = ctx.createGain(); bp.type = 'bandpass'; bp.frequency.value = 1900 * p.tune; bp.Q.value = 0.7;
@@ -135,6 +138,11 @@
         const o = ctx.createOscillator(), lp = ctx.createBiquadFilter(), g = ctx.createGain(); o.type = 'sawtooth'; o.frequency.value = mtof(p.note);
         lp.type = 'lowpass'; lp.Q.value = 4; lp.frequency.setValueAtTime(4500, t); lp.frequency.exponentialRampToValueAtTime(300, t + 0.08 + p.decay * 0.4);
         env(g, t, 0.35 * p.vel, 0.12 + p.decay * 0.7); o.connect(lp); lp.connect(g); g.connect(d); o.start(t); o.stop(t + 1.5);
+      },
+      zap(d, t, p) {   // the psytrance «laser»: a pitch that falls fast from three octaves up to its note
+        const f = mtof(p.note) * (p.tune || 1), o = ctx.createOscillator(), g = ctx.createGain(), len = 0.05 + p.decay * 0.45;
+        o.type = 'triangle'; o.frequency.setValueAtTime(Math.min(12000, f * 8), t); o.frequency.exponentialRampToValueAtTime(f, t + len * 0.8);
+        env(g, t, 0.3 * p.vel, len, 0.002); o.connect(g); g.connect(d); o.start(t); o.stop(t + len + 0.1);
       },
     };
     E.hit = (kind, dest, t, p) => { if (V[kind]) V[kind](dest, t, p); };
@@ -250,7 +258,7 @@
     S.poly = (t, midis, dur, vel) => S.polyOff(S.polyOn(t, midis, vel), t + dur);
     D.synth = S;
 
-    /* ── the arpeggiator's own voice: one short note at a time, notes may overlap (pluck, pad, bell, glass),
+    /* ── the arpeggiator's own voice: one short note at a time, notes may overlap (pluck, pad, bell, glass, acid),
        or «synth»: through the synth's voice and channel (as it worked before it had its own) ── */
     D.arpNote = (t, m, dur, vel, a) => {
       if (a.sound === 'synth') { if (P) { S.noteOn(t, m, vel, false); S.noteOff(t + dur); } return; }
@@ -271,6 +279,12 @@
         const d2 = 0.15 + dec * 1.2;
         g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(0.3 * vel, t + 0.003); g.gain.exponentialRampToValueAtTime(0.0001, t + 0.003 + d2);
         end = t + d2 + 0.05;
+      } else if (a.sound === 'acid') {   // a saw into a resonant filter that snaps shut: the squelchy acid / psytrance lead
+        os = [osc('sawtooth', f, 0, 0.5), osc('square', f, 0, 0.18)];
+        lp.Q.value = 14; lp.frequency.setValueAtTime(Math.min(15000, cut * (vel > 1 ? 5 : 3)), t); lp.frequency.exponentialRampToValueAtTime(Math.max(120, cut * 0.45), t + 0.03 + dec * 0.3);
+        const hold = Math.max(0.02, dur), peak = 0.17 * vel;
+        g.gain.setValueAtTime(0.0001, t); g.gain.linearRampToValueAtTime(peak, t + 0.003); g.gain.setValueAtTime(peak, t + hold); g.gain.setTargetAtTime(0.0001, t + hold, 0.012);
+        end = t + hold + 0.12;
       } else {   // pluck: a bright attack that closes fast
         os = [osc('sawtooth', f, -4, 0.5), osc('square', f, 4, 0.25)];
         lp.Q.value = 3; lp.frequency.setValueAtTime(Math.min(16000, cut * 3), t); lp.frequency.exponentialRampToValueAtTime(Math.max(80, cut * 0.4), t + 0.04 + dec * 0.35);
@@ -388,7 +402,7 @@
   /* ── the arpeggiator: which notes it walks through on step n — the notes held live, or the chord of the
      progression saved in the pattern (it changes every `hold` bars) — and which one it plays ── */
   const ARP_MODES = [['up', 'arriba'], ['down', 'abajo'], ['updown', 'ida y vuelta'], ['converge', 'de afuera hacia adentro'], ['random', 'al azar'], ['played', 'como se toca']];
-  const ARP_SOUNDS = [['pluck', 'pluck'], ['pad', 'pad'], ['bell', 'campana'], ['glass', 'vidrio'], ['synth', 'el synth (su voz)']];
+  const ARP_SOUNDS = [['pluck', 'pluck'], ['acid', 'ácido'], ['pad', 'pad'], ['bell', 'campana'], ['glass', 'vidrio'], ['synth', 'el synth (su voz)']];
   function arpChordAt(st, n) {   // the slot of the progression that sounds on step n (-1: none)
     const a = st.arp, slots = [];
     (a.chords || []).forEach((c, i) => { if (c && Number.isFinite(c.deg)) slots.push(i); });
@@ -427,7 +441,7 @@
       if (tr.mute || (st.drums.some(x => x.solo) && !tr.solo)) return;
       const s = tr.steps[n % 16];
       if (!s || (tr.prob < 1 && rnd() > tr.prob)) return;
-      D.hit(DRUMS[i][0], D.drumStrips[i].input, t, { tune: tr.tune, decay: tr.decay, vel: s === 2 ? 1 : 0.7 });
+      D.hit(DRUMS[i][0], D.drumStrips[i].input, t, { tune: tr.tune, decay: tr.decay, punch: tr.punch, vel: s === 2 ? 1 : 0.7 });
     });
     const sy = st.synth, cur = sy.steps[n % 16], prev = sy.steps[(n + 15) % 16];
     if (!mute.synth && !sy.mute && cur && cur.on && sy.chord && sy.chord !== 'off') {   // chord stabs (polyphonic)

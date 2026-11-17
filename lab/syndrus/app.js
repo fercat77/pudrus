@@ -11,7 +11,7 @@
   const chance = p => Math.random() < p;
 
   /* ── state ── */
-  const drumTrack = (o = {}) => ({ steps: new Array(16).fill(0), level: 0.8, tune: 1, decay: 0.4, delay: 0, reverb: 0.05, prob: 1, mute: false, solo: false, ...o });
+  const drumTrack = (o = {}) => ({ steps: new Array(16).fill(0), level: 0.8, tune: 1, decay: 0.4, punch: 0, delay: 0, reverb: 0.05, prob: 1, mute: false, solo: false, ...o });
   const ring = (o = {}) => ({ steps: 16, pulses: 0, rot: 0, sound: 'bell', deg: 0, octave: 4, wander: false, tune: 1, decay: 0.5, level: 0.6, delay: 0.25, reverb: 0.5, mute: false, ...o });
   function blank() {
     return {
@@ -79,22 +79,136 @@
       s.rings[0] = ring({ sound: 'ride', steps: 16, pulses: 7, rot: 0, level: 0.18, reverb: 0.3 });
       return s;
     },
-    'Ambient deriva': () => {
-      const s = blank(); s.bpm = 84; s.scale = 'lydian'; s.root = 7;
-      line(s, [[0, 0], [8, 4]]);
-      Object.assign(s.synth, { wave1: 'triangle', wave2: 'sine', mix1: 0.5, mix2: 0.4, sub: 0, octave: 3, cutoff: 1400, res: 0.15, envAmt: 0.1, attack: 0.9, decay: 1, sustain: 0.8, release: 2.5, gate: 6, glide: 0.4, lfoRate: 0.1, lfoDepth: 0.15, level: 0.4, reverb: 0.85, delay: 0.3 });
-      s.synth.steps[0].slide = true;
-      s.rings = [ring({ sound: 'bell', steps: 7, pulses: 3, deg: 0, octave: 5, wander: true, decay: 0.8, level: 0.5, reverb: 0.8, delay: 0.35 }),
-        ring({ sound: 'bell', steps: 12, pulses: 5, rot: 2, deg: 4, octave: 4, wander: true, decay: 0.6, level: 0.45, reverb: 0.75, delay: 0.3 }),
-        ring({ sound: 'pluck', steps: 9, pulses: 2, deg: 2, octave: 3, decay: 0.7, level: 0.35, reverb: 0.7, delay: 0.5 }),
-        ring({ sound: 'bell', steps: 16, pulses: 1, deg: -3, octave: 3, decay: 1, level: 0.4, reverb: 0.9 })];
-      s.drums[7].steps = pat('o.......o.......'); s.drums[7].level = 0.12; s.drums[7].reverb = 0.6;
-      s.fx = { ...s.fx, space: 0.95, feedback: 0.55, delayTone: 2400, delayBeats: 1.5 };
+    'Psy full-on': () => {
+      const s = blank(), d = s.drums; s.bpm = 145; s.root = 6; s.scale = 'phrygian';
+      psyGroove(s, { shape: 'roll', punch: 0.8, kdecay: 0.08, acc: 2 });
+      s.synth.steps[15].deg = 1;   // the flat second as a pickup: the phrygian colour
+      d[1].steps = pat('....o.......o...'); d[1].level = 0.5; d[1].reverb = 0.12;
+      Object.assign(d[3], { steps: beats('oo.o'), level: 0.32, decay: 0.1 }); Object.assign(d[4], { steps: beats('..x.'), level: 0.42, decay: 0.25 });
+      psyLead(s, { mode: 'updown', accent: '3', tone: 0.6, decay: 0.35 }, [[0, 'seventh'], [0, 'sus4'], [1, 'triad'], [0, 'seventh']]);
+      s.rings[0] = ring({ sound: 'zap', steps: 16, pulses: 2, rot: 6, deg: 4, octave: 5, wander: true, decay: 0.35, level: 0.3, delay: 0.45, reverb: 0.3 });
+      s.rings[1] = ring({ sound: 'rim', steps: 16, pulses: 5, rot: 3, level: 0.3, delay: 0.3, reverb: 0.1 });
+      s.fx = { ...s.fx, feedback: 0.55, delayBeats: 0.75, delayTone: 2400, space: 0.4 };
+      return s;
+    },
+    'Psy progresivo': () => {
+      const s = blank(), d = s.drums; s.bpm = 138; s.root = 7; s.scale = 'minor';
+      psyGroove(s, { shape: 'off', punch: 0.45, kdecay: 0.25, tune: 1, bass: { cutoff: 240, res: 0.25, envAmt: 0.22, fdecay: 0.14, decay: 0.2, sustain: 0.5, gate: 0.95, release: 0.05 } });
+      s.synth.steps[15] = { on: true, deg: -1, acc: false, slide: false };
+      d[1].steps = pat('....o.......o...'); d[1].level = 0.42; d[1].reverb = 0.25;
+      Object.assign(d[3], { steps: beats('oooo'), level: 0.2, decay: 0.05, prob: 0.85 }); Object.assign(d[4], { steps: beats('..o.'), level: 0.38, decay: 0.3 });
+      psyLead(s, { sound: 'pluck', mode: 'up', accent: 'off', tone: 0.4, decay: 0.3, gate: 0.5, delay: 0.5, reverb: 0.35, hold: 4 }, [[0, 'add9'], [5, 'add9']]);
+      s.rings[0] = ring({ sound: 'rim', steps: 16, pulses: 3, rot: 2, level: 0.3, delay: 0.5, reverb: 0.2 });
+      s.rings[1] = ring({ sound: 'bell', steps: 32, pulses: 3, rot: 5, deg: 4, octave: 5, wander: true, decay: 0.5, level: 0.28, delay: 0.5, reverb: 0.7 });
+      s.fx = { ...s.fx, feedback: 0.6, delayBeats: 0.75, delayTone: 1800, space: 0.65 };
+      return s;
+    },
+    'Psy oscuro': () => {
+      const s = blank(), d = s.drums; s.bpm = 152; s.root = 4; s.scale = 'phrygian';
+      psyGroove(s, { shape: 'roll', punch: 0.9, kdecay: 0.04, tune: 1.1, acc: 3, bass: { cutoff: 210, res: 0.5, envAmt: 0.24, fdecay: 0.07, lfoRate: 0.11, lfoDepth: 0.05 } });
+      Object.assign(d[3], { steps: beats('oooo'), level: 0.28, decay: 0.06, prob: 0.9 }); Object.assign(d[4], { steps: beats('..o.'), level: 0.3, decay: 0.18 });
+      psyLead(s, { mode: 'random', rate: 0.5, oct: 3, accent: 'rnd', prob: 0.75, tone: 0.68, decay: 0.18, gate: 0.5, level: 0.34, delay: 0.5, reverb: 0.3, hold: 4 }, [[0, 'seventh'], null, [1, 'sus2']]);
+      s.rings[0] = ring({ sound: 'zap', steps: 11, pulses: 3, deg: 0, octave: 5, wander: true, decay: 0.3, level: 0.3, delay: 0.55, reverb: 0.4 });
+      s.rings[1] = ring({ sound: 'tom', steps: 7, pulses: 2, tune: 1.4, level: 0.32, delay: 0.5, reverb: 0.3 });
+      s.rings[2] = ring({ sound: 'zap', steps: 13, pulses: 2, rot: 4, deg: 2, octave: 6, wander: true, decay: 0.15, level: 0.22, delay: 0.6, reverb: 0.5 });
+      s.fx = { ...s.fx, feedback: 0.68, delayBeats: 0.75, delayTone: 1500, space: 0.7 };
+      return s;
+    },
+    'Goa': () => {
+      const s = blank(), d = s.drums; s.bpm = 142; s.root = 9; s.scale = 'hijaz';
+      psyGroove(s, { shape: 'roll', degs: [0, 0, 7], punch: 0.55, kdecay: 0.18, acc: 3, bass: { cutoff: 320, res: 0.5, envAmt: 0.42, fdecay: 0.1 } });
+      d[2].steps = pat('....o.......o...'); d[2].level = 0.45; d[2].reverb = 0.15;
+      Object.assign(d[3], { steps: beats('oo.o'), level: 0.3, decay: 0.1 }); Object.assign(d[4], { steps: beats('..x.'), level: 0.42, decay: 0.25 });
+      psyLead(s, { mode: 'up', oct: 3, octave: 3, accent: '3', tone: 0.65, decay: 0.5, gate: 0.7, delay: 0.5, reverb: 0.25 }, [[0, 'seventh'], [0, 'add9'], [1, 'seventh'], [6, 'triad']]);
+      s.rings[0] = ring({ sound: 'bell', steps: 12, pulses: 5, rot: 2, deg: 0, octave: 5, wander: true, decay: 0.3, level: 0.28, delay: 0.5, reverb: 0.5 });
+      s.rings[1] = ring({ sound: 'pluck', steps: 7, pulses: 3, deg: 4, octave: 4, wander: true, decay: 0.4, level: 0.3, delay: 0.55, reverb: 0.3 });
+      s.fx = { ...s.fx, feedback: 0.64, delayBeats: 0.75, delayTone: 2600, space: 0.55 };
       return s;
     },
   };
   // a melody as [step, degree, accent, slide]
   function line(s, notes) { notes.forEach(([i, deg, acc, slide]) => { s.synth.steps[i] = { on: true, deg, acc: !!acc, slide: !!slide }; }); }
+
+  /* ── psytrance: the kick on every beat and the bass on the 16ths between kicks — never on the kick's own step, that is
+     the room it needs. Four families: full-on, progressive, dark (forest) and Goa ── */
+  const PSY_STYLES = [['fullon', 'full-on'], ['prog', 'progresivo'], ['dark', 'oscuro'], ['goa', 'goa']];
+  const beats = p => pat(p.repeat(4));
+  // shape: 'roll' K B B B · 'gallop' K . B B · 'off' K . B .   degs: the notes of the three 16ths after the kick
+  function psyGroove(s, o) {
+    Object.assign(s.drums[0], { steps: beats('x...'), level: 0.9, tune: o.tune || 1.05, decay: o.kdecay, punch: o.punch, reverb: 0, delay: 0 });
+    const on = { roll: [1, 2, 3], gallop: [2, 3], off: [2] }[o.shape] || [1, 2, 3], degs = o.degs || [0, 0, 0];
+    for (let b = 0; b < 4; b++) on.forEach(k => { s.synth.steps[b * 4 + k] = { on: true, deg: degs[k - 1], acc: k === o.acc, slide: false }; });
+    Object.assign(s.synth, { octave: s.root >= 4 ? 1 : 2,   // E1…B1 or C2…D#2: the fundamental stays between 41 and 78 Hz
+      wave1: 'sawtooth', wave2: 'square', detune: 0, oct2: 0, mix1: 0.7, mix2: 0, sub: 0, noise: 0, cutoff: 300, res: 0.35, envAmt: 0.3, fdecay: 0.09,
+      attack: 0.001, decay: 0.12, sustain: 0.4, release: 0.03, gate: 0.65, glide: 0.02, lfoDepth: 0, level: 1, delay: 0, reverb: 0, chord: 'off' }, o.bass);
+  }
+  // the lead: the arpeggiator walking a chord of the tonic (psy harmony barely moves: a slot can stay empty)
+  function psyLead(s, o, chords) {
+    Object.assign(s.arp, { on: true, mute: false, keys: 'synth', sound: 'acid', mode: 'up', rate: 1, oct: 2, octave: 4, gate: 0.55, prob: 1, accent: '3', hold: 2,
+      tone: 0.6, decay: 0.35, level: 0.4, delay: 0.4, reverb: 0.15 }, o);
+    s.arp.chords = [0, 1, 2, 3].map(i => (chords[i] ? { deg: chords[i][0], kind: chords[i][1] } : { deg: null, kind: 'triad' }));
+  }
+  function randomPsy(kind) {
+    const k = PSY_STYLES.some(x => x[0] === kind) ? kind : pick(PSY_STYLES)[0];
+    const s = blank(), d = s.drums; s.root = I(0, 11);
+    const backbeat = (i, lv, rv) => Object.assign(d[i], { steps: pat('....o.......o...'), level: lv, reverb: rv });
+    const hat = (p, lv, dec, prob = 1) => Object.assign(d[3], { steps: beats(p), level: lv, decay: dec, prob });
+    const open = (p, lv, dec) => Object.assign(d[4], { steps: beats(p), level: lv, decay: dec });
+    const kinds = ['seventh', 'seventh', 'add9', 'sus4', 'sus2', 'triad', 'power'];
+    const lead = (o, progs) => psyLead(s, o, pick(progs).map(deg => (deg === null ? null : [deg, pick(kinds)])));
+    if (k === 'fullon') {
+      s.bpm = I(142, 148); s.scale = pick(['phrygian', 'hijaz', 'harmonic', 'minor']);
+      psyGroove(s, { shape: chance(0.8) ? 'roll' : 'gallop', punch: R(0.65, 0.9), kdecay: R(0.02, 0.15), tune: R(1, 1.12), acc: pick([0, 2, 3]),
+        bass: { cutoff: R(260, 380), res: R(0.3, 0.45), envAmt: R(0.25, 0.4), fdecay: R(0.07, 0.11) } });
+      if (chance(0.6)) s.synth.steps[15].deg = pick([1, 6, 7]);
+      if (chance(0.7)) backbeat(chance(0.6) ? 1 : 2, R(0.42, 0.55), R(0.08, 0.2));
+      hat('oo.o', R(0.26, 0.36), R(0.05, 0.15)); open('..x.', R(0.36, 0.46), R(0.2, 0.35));
+      if (chance(0.3)) Object.assign(d[7], { steps: beats('o...'), level: 0.16 });
+      lead({ mode: pick(['up', 'updown', 'converge', 'random']), oct: pick([2, 2, 3]), octave: pick([3, 4, 4]), accent: pick(['3', '3', '4', 'rnd']), gate: R(0.45, 0.7), tone: R(0.45, 0.7), decay: R(0.2, 0.5),
+        level: R(0.36, 0.42), delay: R(0.3, 0.5), reverb: R(0.1, 0.25), hold: pick([2, 4]), prob: pick([1, 1, 0.85]) }, [[0], [0, 0, 1, 0], [0, 1], [0, 0, 0, 6], [0, 5]]);
+      s.rings[0] = ring({ sound: 'zap', steps: pick([16, 32]), pulses: I(1, 3), rot: I(0, 15), deg: pick([0, 2, 4]), octave: 5, wander: true, decay: R(0.2, 0.5), level: 0.3, delay: R(0.35, 0.5), reverb: 0.3 });
+      if (chance(0.7)) s.rings[1] = ring({ sound: pick(['rim', 'tom', 'rim']), steps: 16, pulses: pick([3, 5, 7]), rot: I(0, 4), tune: R(0.9, 1.4), level: 0.3, delay: R(0.2, 0.4), reverb: 0.1 });
+      s.fx = { ...s.fx, feedback: R(0.45, 0.6), delayBeats: 0.75, delayTone: R(1800, 3000), space: R(0.3, 0.5) };
+    } else if (k === 'prog') {
+      s.bpm = I(134, 140); s.scale = pick(['minor', 'dorian', 'phrygian', 'minor']);
+      const off = chance(0.5);
+      psyGroove(s, { shape: off ? 'off' : 'roll', punch: R(0.35, 0.6), kdecay: R(0.15, 0.35), tune: R(0.95, 1.05),
+        bass: off ? { cutoff: R(200, 280), res: R(0.2, 0.3), envAmt: R(0.18, 0.26), fdecay: R(0.1, 0.16), decay: 0.2, sustain: 0.5, gate: R(0.8, 1), release: 0.05 }
+          : { cutoff: R(200, 260), res: R(0.2, 0.32), envAmt: R(0.18, 0.26), fdecay: R(0.08, 0.12), gate: 0.7 } });
+      if (chance(0.5)) s.synth.steps[15] = { on: true, deg: pick([-1, 2, 4]), acc: false, slide: false };
+      if (chance(0.7)) backbeat(1, R(0.36, 0.45), R(0.15, 0.3));
+      hat('oooo', R(0.16, 0.24), R(0.03, 0.08), R(0.75, 0.95)); open('..o.', R(0.32, 0.4), R(0.2, 0.4));
+      lead({ sound: pick(['pluck', 'pluck', 'acid', 'glass']), mode: pick(['up', 'updown', 'up']), accent: pick(['off', 'off', '4']), gate: R(0.4, 0.6), tone: R(0.3, 0.5), decay: R(0.25, 0.45),
+        level: R(0.34, 0.42), delay: R(0.4, 0.55), reverb: R(0.25, 0.45), hold: 4 }, [[0, 5], [0], [0, 2], [0, 0, 5, 3]]);
+      s.rings[0] = ring({ sound: pick(['rim', 'tom']), steps: 16, pulses: pick([3, 5]), rot: I(0, 4), level: 0.3, delay: R(0.4, 0.55), reverb: 0.2 });
+      if (chance(0.7)) s.rings[1] = ring({ sound: 'bell', steps: pick([24, 32]), pulses: I(2, 3), rot: I(0, 12), deg: pick([0, 2, 4]), octave: 5, wander: true, decay: R(0.4, 0.6), level: 0.28, delay: 0.5, reverb: R(0.55, 0.75) });
+      s.fx = { ...s.fx, feedback: R(0.5, 0.65), delayBeats: 0.75, delayTone: R(1400, 2200), space: R(0.5, 0.75) };
+    } else if (k === 'dark') {
+      s.bpm = I(148, 158); s.scale = pick(['phrygian', 'hijaz', 'phrygian']);
+      psyGroove(s, { shape: 'roll', punch: R(0.7, 1), kdecay: R(0, 0.1), tune: R(1.02, 1.15), acc: pick([0, 1, 3]),
+        bass: { cutoff: R(180, 260), res: R(0.4, 0.55), envAmt: R(0.2, 0.3), fdecay: R(0.06, 0.09), lfoRate: R(0.05, 0.2), lfoDepth: R(0.03, 0.08) } });
+      if (chance(0.5)) s.synth.steps[pick([11, 15])].deg = pick([1, 7]);
+      hat('oooo', R(0.24, 0.32), R(0.04, 0.08), R(0.8, 1)); if (chance(0.6)) open('..o.', R(0.26, 0.34), R(0.12, 0.25));
+      lead({ mode: pick(['random', 'random', 'converge', 'updown']), rate: pick([0.5, 0.5, 1]), oct: pick([2, 3]), accent: 'rnd', prob: R(0.6, 0.9), gate: R(0.4, 0.6), tone: R(0.5, 0.8), decay: R(0.1, 0.3),
+        level: R(0.3, 0.36), delay: R(0.35, 0.55), reverb: R(0.2, 0.4), hold: 4 }, [[0], [0, null, 1], [0, 1], [0, 0, 0, 1]]);
+      s.rings[0] = ring({ sound: 'zap', steps: pick([7, 9, 11, 13]), pulses: I(2, 4), rot: I(0, 6), deg: pick([0, 1, 4]), octave: pick([4, 5, 6]), wander: true, decay: R(0.15, 0.4), level: 0.3, delay: R(0.45, 0.6), reverb: 0.4 });
+      s.rings[1] = ring({ sound: 'tom', steps: pick([5, 7, 12]), pulses: I(1, 3), rot: I(0, 4), tune: R(0.8, 1.6), level: 0.32, delay: 0.5, reverb: 0.3 });
+      if (chance(0.6)) s.rings[2] = ring({ sound: pick(['zap', 'pluck']), steps: pick([9, 13, 15]), pulses: 2, rot: I(0, 8), deg: pick([2, 4, 6]), octave: pick([5, 6]), wander: true, decay: R(0.1, 0.3), level: 0.22, delay: 0.6, reverb: 0.5 });
+      s.fx = { ...s.fx, feedback: R(0.55, 0.72), delayBeats: pick([0.75, 0.75, 0.5]), delayTone: R(1200, 2500), space: R(0.5, 0.8) };
+    } else {   // goa: the bass jumps an octave, the lead is melodic and long, three against four
+      s.bpm = I(138, 146); s.scale = pick(['hijaz', 'phrygian', 'harmonic', 'hijaz']);
+      psyGroove(s, { shape: 'roll', degs: pick([[0, 0, 7], [0, 7, 0], [0, 7, 7], [0, 0, 0]]), punch: R(0.4, 0.7), kdecay: R(0.1, 0.25), tune: R(0.98, 1.1), acc: pick([0, 3]),
+        bass: { cutoff: R(260, 380), res: R(0.45, 0.6), envAmt: R(0.35, 0.5), fdecay: R(0.08, 0.12) } });
+      if (chance(0.7)) backbeat(chance(0.5) ? 2 : 1, R(0.4, 0.5), R(0.1, 0.2));
+      hat('oo.o', R(0.24, 0.34), R(0.05, 0.15)); open('..x.', R(0.36, 0.44), R(0.2, 0.3));
+      lead({ mode: pick(['up', 'updown', 'up', 'converge']), oct: pick([2, 3]), octave: pick([3, 4]), accent: '3', gate: R(0.55, 0.8), tone: R(0.5, 0.75), decay: R(0.3, 0.6),
+        level: R(0.36, 0.42), delay: R(0.4, 0.55), reverb: R(0.2, 0.35), hold: 2 }, [[0, 0, 1, 0], [0, 0, 1, 6], [0, 5, 6, 0], [0, 1]]);
+      s.rings[0] = ring({ sound: 'bell', steps: pick([9, 12, 16]), pulses: I(3, 5), rot: I(0, 5), deg: pick([0, 2, 4]), octave: 5, wander: true, decay: R(0.2, 0.4), level: 0.28, delay: 0.5, reverb: 0.5 });
+      if (chance(0.7)) s.rings[1] = ring({ sound: pick(['pluck', 'zap']), steps: pick([7, 11, 12]), pulses: I(2, 3), rot: I(0, 5), deg: pick([0, 4]), octave: pick([4, 5]), wander: true, decay: R(0.3, 0.5), level: 0.3, delay: 0.55, reverb: 0.3 });
+      s.fx = { ...s.fx, feedback: R(0.55, 0.68), delayBeats: 0.75, delayTone: R(2000, 3200), space: R(0.45, 0.7) };
+    }
+    return s;
+  }
 
   /* ── the random generators ── */
   function randomTechno() {
@@ -120,18 +234,6 @@
     if (chance(0.25)) randomArp(s, { sound: pick(['pluck', 'pluck', 'glass']), rate: pick([1, 1, 2, 0.5]), octave: pick([4, 5]), level: R(0.3, 0.45), hold: pick([1, 2]) });
     return s;
   }
-  function randomAmbient() {
-    const s = blank(); s.bpm = I(68, 96); s.root = I(0, 11); s.scale = pick(['lydian', 'major', 'dorian', 'pentaMin', 'minor']);
-    const steps = [5, 7, 9, 11, 12, 13, 16];
-    s.rings = [0, 1, 2, 3].map(k => ring({ sound: k === 3 ? pick(['pluck', 'bell']) : 'bell', steps: pick(steps), pulses: I(1, 4), rot: I(0, 5), deg: pick([0, 2, 4, 6, -3]), octave: k === 0 ? 5 : k === 3 ? 3 : 4, wander: chance(0.6), decay: R(0.5, 1), level: R(0.3, 0.5), reverb: R(0.6, 0.95), delay: R(0.15, 0.5), mute: k > 1 && chance(0.3) }));
-    const a = I(0, 7); line(s, [[0, a], [8, a + pick([2, 4, -1])]]);
-    Object.assign(s.synth, { wave1: pick(['triangle', 'sine', 'sawtooth']), wave2: 'sine', mix1: 0.5, mix2: 0.4, sub: 0, octave: 3, cutoff: R(700, 2200), res: R(0.05, 0.3), envAmt: 0.1, attack: R(0.4, 1.5), decay: 1, sustain: 0.8, release: R(1.5, 3.5), gate: R(4, 7.5), glide: R(0.2, 0.8), lfoRate: R(0.05, 0.3), lfoDepth: R(0.05, 0.2), level: 0.35, reverb: R(0.7, 0.95), delay: R(0.1, 0.4), mute: chance(0.2) });
-    if (chance(0.5)) { s.drums[7].steps = X.euclid(16, I(1, 3), 0); s.drums[7].level = 0.1; s.drums[7].reverb = 0.6; }
-    if (chance(0.35)) { s.drums[0].steps = pat('x...............'); s.drums[0].decay = 1; s.drums[0].level = 0.45; s.drums[0].reverb = 0.5; }
-    s.fx = { ...s.fx, space: R(0.8, 1), feedback: R(0.4, 0.65), delayTone: R(1500, 3500), delayBeats: pick([1, 1.5, 0.75]) };
-    if (chance(0.45)) randomArp(s, { sound: pick(['pad', 'bell', 'glass', 'glass']), rate: pick([2, 4, 2]), octave: pick([3, 4, 5]), level: R(0.3, 0.5), reverb: R(0.6, 0.95), delay: R(0.3, 0.6), hold: pick([2, 4]), mode: pick(['up', 'updown', 'random', 'converge']) });
-    return s;
-  }
   // an arpeggio over a progression of the scale (i, VI, III, VII… degrees that sound good together)
   function randomArp(s, o) {
     const prog = pick([[0, 5, 2, 6], [0, 3, 4, 0], [0, 5, 3, 4], [0, 2, 5, 4], [0, 6, 5, 6], [0, 3, 0, 4]]);
@@ -152,14 +254,14 @@
   const oneOf = (v, d, list) => { if (typeof v !== 'string' && typeof v !== 'number') return d; const hit = list.find(x => x === v || String(x) === String(v)); return hit === undefined ? d : hit; };
   const obj = x => (x && typeof x === 'object' && !Array.isArray(x) ? x : {});
   const arr = x => (Array.isArray(x) ? x : []);
-  const WAVES = ['sawtooth', 'square', 'triangle', 'sine'], RING_SOUNDS = ['bell', 'pluck', ...X.DRUMS.map(d => d[0])];
+  const WAVES = ['sawtooth', 'square', 'triangle', 'sine'], RING_SOUNDS = ['bell', 'pluck', 'zap', ...X.DRUMS.map(d => d[0])];
   const CHORDS = X.CHORD_NAMES.map(c => c[0]), ARP_MODES = X.ARP_MODES.map(c => c[0]), ARP_SOUNDS = X.ARP_SOUNDS.map(c => c[0]);
   function sane(s) {   // a pattern: fill anything missing from an old or shared one
     const b = blank(); s = obj(s);
     const out = { v: 1, bpm: num(s.bpm, b.bpm, 40, 300), swing: num(s.swing, b.swing, 0, 0.6), root: int(s.root, b.root, 0, 11),
       scale: typeof s.scale === 'string' && Object.prototype.hasOwnProperty.call(X.SCALES, s.scale) ? s.scale : b.scale };
     out.drums = b.drums.map((t, i) => { const d = obj(arr(s.drums)[i]); return {
-      steps: t.steps.map((_, n) => int(arr(d.steps)[n], 0, 0, 2)), level: lvl(d.level, t.level), tune: num(d.tune, t.tune, 0.5, 2), decay: unit(d.decay, t.decay),
+      steps: t.steps.map((_, n) => int(arr(d.steps)[n], 0, 0, 2)), level: lvl(d.level, t.level), tune: num(d.tune, t.tune, 0.5, 2), decay: unit(d.decay, t.decay), punch: unit(d.punch, t.punch),
       delay: unit(d.delay, t.delay), reverb: unit(d.reverb, t.reverb), prob: unit(d.prob, t.prob), mute: bool(d.mute, false), solo: bool(d.solo, false) }; });
     const y = obj(s.synth), by = b.synth;
     out.synth = {
@@ -468,7 +570,7 @@
   Object.keys(PRESETS).forEach(k => { const o = el('option', '', k); o.value = k; $('#preset').append(o); });
   $('#preset').addEventListener('change', e => { if (PRESETS[e.target.value]) load(PRESETS[e.target.value](), e.target.value); e.target.value = ''; $('#more').classList.remove('open'); });
   $('#rndTechno').addEventListener('click', () => { load(randomTechno(), '🎲 Techno al azar'); $('#more').classList.remove('open'); });
-  $('#rndAmbient').addEventListener('click', () => { load(randomAmbient(), '🎲 Ambient al azar'); $('#more').classList.remove('open'); });
+  $('#rndPsy').addEventListener('click', () => { const [k, n] = pick(PSY_STYLES); load(randomPsy(k), '🎲 Psytrance ' + n); $('#more').classList.remove('open'); });
   // a preset / random pattern into the deck being edited; the locks keep the tempo and the key
   function load(s, msg) {
     const p = sane(s);
@@ -483,7 +585,7 @@
   /* ── drums: a grid on the desktop, instrument chips + 4×4 pads on the phone ── */
   let selTrack = 0;
   let stepEls = [];
-  function hitTrack(i) { const tr = st.drums[i]; ensureAudio(); deck().hit(X.DRUMS[i][0], deck().drumStrips[i].input, ac.currentTime + 0.01, { tune: tr.tune, decay: tr.decay, vel: 0.9 }); }
+  function hitTrack(i) { const tr = st.drums[i]; ensureAudio(); deck().hit(X.DRUMS[i][0], deck().drumStrips[i].input, ac.currentTime + 0.01, { tune: tr.tune, decay: tr.decay, punch: tr.punch, vel: 0.9 }); }
   function stepButton(tr, k, extra) {
     const b = el('button', 'sy-step' + (Math.floor(k / 4) % 2 ? ' q' : '') + (extra || ''));
     const paint = () => { b.classList.toggle('on', tr.steps[k] === 1); b.classList.toggle('acc', tr.steps[k] === 2); };
@@ -535,6 +637,7 @@
     const tr = st.drums[selTrack], head = el('div', 'sy-sel');
     head.append(el('span', '', 'Pista'), el('b', '', X.DRUMS[selTrack][1]));
     p.append(head, param('Volumen', tr, 'level', 0, 1.2), param('Afinación', tr, 'tune', 0.5, 2, { fmt: x => '×' + x.toFixed(2) }), param('Caída', tr, 'decay', 0, 1),
+      ...(selTrack === 0 ? [param('Pegada', tr, 'punch', 0, 1)] : []),   // the kick only: 0 round (techno) … 1 the psytrance kick
       param('Probab.', tr, 'prob', 0, 1, { fmt: x => Math.round(x * 100) + '%' }), param('→ Delay', tr, 'delay', 0, 1), param('→ Reverb', tr, 'reverb', 0, 1));
   }
   $('#clearDrums').addEventListener('click', () => { st.drums.forEach(t => t.steps.fill(0)); paintDrums(); save(); });
@@ -736,7 +839,7 @@
       [['ritmo', 'Ritmo', 'Rit'], ['tono', 'Tono', 'Tono'], ['mezcla', 'Mezcla', 'Mez']].forEach(([k, l, sh]) => { const b = el('button', ringTab[i] === k ? 'on' : ''); b.title = l; b.append(el('span', 'lg', l), el('span', 'sh', sh)); b.addEventListener('click', () => { ringTab[i] = k; paintRings(); }); tabs.append(b); });
       top.append(el('b', '', '◎ ' + (i + 1)), tabs, el('span', 'sy-sp'), mute);
       const ps = el('div', 'sy-params'), redraw = () => drawRing(i, -1);
-      const SOUNDS = [['bell', 'Campana'], ['pluck', 'Pluck'], ...X.DRUMS.map(([k, n]) => [k, n])];
+      const SOUNDS = [['bell', 'Campana'], ['pluck', 'Pluck'], ['zap', 'Láser'], ...X.DRUMS.map(([k, n]) => [k, n])];
       const T = ringTab[i];
       if (T === 'ritmo') ps.append(
         param('Pasos', r, 'steps', 2, 32, { step: 1, on: () => { r.pulses = Math.min(r.pulses, r.steps); r.rot %= r.steps; redraw(); save(); } }),
@@ -1367,5 +1470,5 @@
   paintAll();
   try { setTab(sessionStorage.getItem('syndrus_tab') || 'drums'); } catch (e) { setTab('drums'); }
   paintStatus();
-  window.__syndrus = { midiTest: { onMidi, setLearn: v => { learnMode = v; learnArmed = null; }, get map() { return midiO.map; }, opts: midiO, noteDown, noteUp, get arpSet() { return arpSet; } }, paintArp, perform, get roll() { return roll; }, set roll(v) { roll = v; }, get app() { return app; }, get state() { return st; }, setEdit, get pending() { return pending; }, get engine() { return E; }, get ctx() { return ac; }, setPlay, load, PRESETS, randomTechno, randomAmbient };
+  window.__syndrus = { midiTest: { onMidi, setLearn: v => { learnMode = v; learnArmed = null; }, get map() { return midiO.map; }, opts: midiO, noteDown, noteUp, get arpSet() { return arpSet; } }, paintArp, perform, get roll() { return roll; }, set roll(v) { roll = v; }, get app() { return app; }, get state() { return st; }, setEdit, get pending() { return pending; }, get engine() { return E; }, get ctx() { return ac; }, setPlay, load, PRESETS, randomTechno, randomPsy, PSY_STYLES };
 })();
