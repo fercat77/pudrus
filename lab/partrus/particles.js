@@ -85,9 +85,10 @@
                { k: 'life', label: 'Vida', v: 'fade', options: [['fade', 'aparece y se va'], ['shrink', 'se achica'], ['grow', 'crece'], ['twinkle', 'titila'], ['const', 'constante']] }],
       help: 'Tamaño, forma y color de cada partícula' },
 
-    out: { title: 'Salida', cat: 'out', unique: true, inputs: [PIN, F('trail', 'Estela', 0, 0, 0.99, { nl: true }), F('gain', 'Brillo', 1, 0, 4)], outputs: [],
+    out: { title: 'Salida', cat: 'out', unique: true, inputs: [PIN, F('trail', 'Estela', 0, 0, 0.99, { nl: true }), F('gain', 'Brillo', 1, 0, 4),
+      F('yaw', 'Cámara: giro', 0, -180, 180), F('pitch', 'Cámara: inclinación', 0, -89, 89), F('dist', 'Cámara: distancia', 1, 0.3, 4), F('spin', 'Cámara: gira sola', 0, -90, 90)], outputs: [],
       params: [{ k: 'blend', label: 'Mezcla', v: 'add', options: [['add', 'suman luz'], ['normal', 'normal (tapan)']] }],
-      help: 'Lo que se ve (y lo que recibe NODRUS)' },
+      help: 'Lo que se ve (y lo que recibe NODRUS). La cámara 3D también se mueve arrastrando la vista' },
 
     lfo: { title: 'LFO', cat: 'val', inputs: [F('speed', 'Velocidad', 0.3, 0, 10), F('min', 'Mín', -1, -5, 5), F('max', 'Máx', 1, -5, 5)], outputs: [['v', 'float', 'Valor']],
       params: [{ k: 'shape', label: 'Forma', v: 'sine', options: [['sine', 'seno'], ['tri', 'triángulo'], ['saw', 'sierra'], ['square', 'cuadrada'], ['random', 'aleatoria']] },
@@ -136,7 +137,13 @@
       into.set(b.id + ':' + i.k, { a: a.id, ao: o[0], b: b.id, bi: i.k });   // one link per input (the last wins)
     }
     into.forEach(l => links.push(l));
-    return { v: 1, name: typeof s.name === 'string' ? s.name.slice(0, 60) : '', nodes, links };
+    const pub = [], seenPub = new Set();
+    (Array.isArray(s.pub) ? s.pub : []).forEach(x => {
+      const n = x && byId.get(x.n), i = n && DEFS[n.type].inputs.find(q => q.k === x.k);
+      if (!i || i.t !== 'float' || i.nl || pub.length >= 16 || seenPub.has(n.id + ':' + i.k)) return;
+      seenPub.add(n.id + ':' + i.k); pub.push({ n: n.id, k: i.k });
+    });
+    return { v: 1, name: typeof s.name === 'string' ? s.name.slice(0, 60) : '', nodes, links, pub };
   }
   const valueOf = (n, k) => {
     const i = DEFS[n.type].inputs.find(x => x.k === k);
@@ -179,6 +186,7 @@ vec4 vnoised(vec3 x) {
   vec3 dv = du * vec3(k1 + k4 * u.y + k6 * u.z + k7 * u.y * u.z, k2 + k5 * u.z + k4 * u.x + k7 * u.z * u.x, k3 + k6 * u.x + k5 * u.y + k7 * u.x * u.y);
   return vec4(v, dv);
 }
+vec3 hueShift(vec3 c, float h) { vec3 k = vec3(0.57735); float a = h * 6.2831853, ca = cos(a); return c * ca + cross(k, c) * sin(a) + k * dot(k, c) * (1.0 - ca); }
 vec3 hsv(float h, float s, float v) { vec3 k = clamp(abs(fract(h + vec3(0.0, 2.0, 1.0) / 3.0) * 6.0 - 3.0) - 1.0, 0.0, 1.0); return v * mix(vec3(1.0), k, s); }
 `;
   const VALUE_GLSL = {
@@ -310,7 +318,8 @@ precision highp int;
 uniform sampler2D u_pos, u_vel, u_home, u_pts, u_img, u_mot;
 uniform float u_npts, u_ptasp;
 uniform vec2 u_ptjit;
-uniform float u_dt, u_time, u_beat, u_aspect, u_frame, u_burst, u_scale, u_maxpt;
+uniform float u_dt, u_time, u_beat, u_aspect, u_frame, u_burst, u_scale, u_maxpt, u_kick, u_msize, u_hue, u_mgain, u_rtime;
+uniform vec4 u_cam;
 uniform vec4 u_audio;
 ${uniforms.map(u => `uniform ${u.t === 'color' ? 'vec3' : 'float'} ${u.name};`).join('\n')}
 ${LIB}`;
@@ -333,6 +342,7 @@ void main() {
     age = 0.0; home = vec4(pos, hw);
     if (!ok) { life = -1.0; pos = vec3(0.0, 0.0, -50.0); }   // nothing to be born on yet (empty text, camera starting): try again next frame
   } else if (age >= 0.0 && age < life) {
+    if (u_kick > 0.5) vel += normalize(pos + vec3(1e-4, 0.0, 0.0)) * 1.8 / (1.0 + length(pos));   // «Explotar» from outside
     ${pre.join('\n    ')}
     pos += vel * dt;
     ${post.join('\n    ')}
@@ -368,14 +378,23 @@ void main() {
   float t = age / life; vec3 pos = P.xyz;
   vec4 rs = rnd4(uint(i), 0u, 9u);${LP.color === 'image' ? '\n  vec4 HH = texelFetch(u_home, ij, 0);' : ''}
   ${VALUES}
-  float persp = 2.5 / max(0.6, 2.5 - pos.z);
-  gl_Position = vec4(pos.x * persp / u_aspect, pos.y * persp, 0.0, 1.0);
-  float sz = max(0.0, ${LI.size}) * persp, al = clamp(${LI.opacity}, 0.0, 1.0);
+  // the 3D camera: turns around the centre, tilts, moves away (2.5 = the default distance)
+  float yaw = radians(${OI.yaw} + u_cam.x + (${OI.spin} + u_cam.w) * u_rtime), pitch = radians(clamp(${OI.pitch} + u_cam.y, -89.0, 89.0));
+  float cy = cos(yaw), sy = sin(yaw), cp = cos(pitch), sp = sin(pitch);
+  vec3 cq = vec3(cy * pos.x + sy * pos.z, pos.y, -sy * pos.x + cy * pos.z);
+  cq = vec3(cq.x, cp * cq.y - sp * cq.z, sp * cq.y + cp * cq.z);
+  float dz = 2.5 * max(0.1, ${OI.dist} * u_cam.z) - cq.z;
+  if (dz < 0.25) { gl_Position = vec4(2.0, 2.0, 2.0, 1.0); gl_PointSize = 0.0; vCol = vec4(0.0); return; }
+  float persp = 2.5 / dz;
+  gl_Position = vec4(cq.x * persp / u_aspect, cq.y * persp, 0.0, 1.0);
+  float sz = max(0.0, ${LI.size}) * persp * u_msize, al = clamp(${LI.opacity}, 0.0, 1.0);
   ${lifeCurve}
   float px = sz * u_scale;
   if (px < 1.0) { al *= max(px, 0.0); px = 1.0; }
   gl_PointSize = min(px, u_maxpt);
-  vCol = vec4(${colExpr} * max(0.0, ${OI.gain}), al);
+  vec3 col = ${colExpr};
+  if (u_hue != 0.0) col = max(hueShift(col, u_hue), 0.0);
+  vCol = vec4(col * max(0.0, ${OI.gain}) * u_mgain, al);
 }`;
     const shapeExpr = {
       soft: 'exp(-r * r * 4.0) * (1.0 - smoothstep(0.85, 1.0, r))',
@@ -623,7 +642,11 @@ void main() {
   }
 
   /* one running system */
-  function createSim() {
+  const NOMODS = {};
+  const kicks = new Map();   // node key (or '*' for all) → count: «Explotar» from NODRUS or a SYNDRUS drop
+  function kick(key) { kicks.set(key, (kicks.get(key) || 0) + 1); }
+  function createSim(opts) {
+    const maxCount = opts && opts.maxCount;
     const P = getPool();
     const S = { spec: null, json: null, comp: null, key: '', progs: null, err: '', state: null, color: null, last: null, fno: 0,
       trig: {}, values: {}, used: 0, w: 0, h: 0, uploaded: 0 };
@@ -655,6 +678,7 @@ void main() {
       if (key !== S.key) {
         try {
           const comp = compile(sys);
+          if (maxCount && comp.count > maxCount) { comp.count = maxCount; comp.side = Math.round(Math.sqrt(maxCount)); }
           const progs = programsFor(comp, key);
           if (!S.state || S.state.side !== comp.side || (S.comp && S.comp.burst !== comp.burst)) { S.comp = comp; alloc(comp.side); }
           S.comp = comp; S.progs = progs; S.key = key; S.err = '';
@@ -669,9 +693,9 @@ void main() {
         const x = valueOf(n, u.k);
         v[u.name] = u.t === 'color' ? hexRgb(x) : +x;
       }
-      S.values = v;
+      S.values = v; S.cur = v;
       const out = sys.nodes.find(x => x.id === S.comp.outId);
-      S.trail = out ? Math.max(0, Math.min(0.995, +valueOf(out, 'trail') || 0)) : 0;
+      S.trail0 = out ? Math.max(0, Math.min(0.995, +valueOf(out, 'trail') || 0)) : 0;
       const em = sys.nodes.find(x => x.id === S.comp.emitId);
       S.life = em ? Math.max(0.2, Math.min(30, +valueOf(em, 'life') || 3)) : 3;
       return true;
@@ -723,9 +747,11 @@ void main() {
         }
         return;
       }
-      const key = src === 'image' ? 'i' + paramOf(em, 'pick') + paramOf(em, 'img') : 't' + paramOf(em, 'font') + '|' + paramOf(em, 'text');
+      // NODRUS can put its own text or picture on a system (the node's text field / a dropped PNG)
+      const M = S.mods || NOMODS, txt = typeof M.text === 'string' && M.text.trim() ? M.text : paramOf(em, 'text'), img = M.img || paramOf(em, 'img');
+      const key = src === 'image' ? 'i' + paramOf(em, 'pick') + img : 't' + paramOf(em, 'font') + '|' + txt;
       if (S.shape && S.shape.key === key && S.shape.ready) return;
-      const shp = src === 'image' ? imageShape(paramOf(em, 'img'), paramOf(em, 'pick')) : textShape(paramOf(em, 'text'), paramOf(em, 'font'));
+      const shp = src === 'image' ? imageShape(img, paramOf(em, 'pick')) : textShape(txt, paramOf(em, 'font'));
       ensureOwnShape('pic');
       Object.assign(S.shape, { key, ready: shp.ready, n: shp.n, asp: shp.asp, jit: shp.jit });
       if (shp.ready && shp.canvas) {
@@ -766,7 +792,8 @@ void main() {
       if (L.u_frame) gl.uniform1f(L.u_frame, (S.fno = (S.fno + 1) % 16777216));
       if (L.u_audio) gl.uniform4f(L.u_audio, audio[0] || 0, audio[1] || 0, audio[2] || 0, audio[3] || 0);
       if (L.u_burst) gl.uniform1f(L.u_burst, trigs.u_burst ? 1 : 0);
-      setUniforms(gl, L, S.comp, S.values);
+      if (L.u_kick) gl.uniform1f(L.u_kick, trigs.u_kick ? 1 : 0);
+      setUniforms(gl, L, S.comp, S.cur);
       S.comp.uniforms.forEach(u => { if (u.trig && L[u.name]) gl.uniform1f(L[u.name], trigs[u.name] ? 1 : 0); });
       gl.bindVertexArray(P.vao);
       gl.drawArrays(gl.TRIANGLES, 0, 6);
@@ -805,6 +832,8 @@ void main() {
       gl.bindFramebuffer(gl.FRAMEBUFFER, C.fb[dst]);
       gl.viewport(0, 0, w, h);
       gl.disable(gl.BLEND);
+      const M = S.mods || NOMODS;
+      S.trail = 1 - (1 - S.trail0) * (1 - Math.max(0, Math.min(0.98, +M.trail || 0)));
       if (S.trail > 0) {
         gl.useProgram(P.fade.pr);
         gl.activeTexture(gl.TEXTURE0); gl.bindTexture(gl.TEXTURE_2D, C.tex[src]);
@@ -821,9 +850,15 @@ void main() {
       if (L.u_beat) gl.uniform1f(L.u_beat, beat);
       if (L.u_aspect) gl.uniform1f(L.u_aspect, aspect);
       if (L.u_scale) gl.uniform1f(L.u_scale, h / 720);
+      const num = (x, d) => (Number.isFinite(+x) && x !== undefined && x !== null ? +x : d);
+      if (L.u_msize) gl.uniform1f(L.u_msize, Math.max(0, num(M.size, 1)));
+      if (L.u_hue) gl.uniform1f(L.u_hue, num(M.hue, 0));
+      if (L.u_mgain) gl.uniform1f(L.u_mgain, Math.max(0, num(M.glow, 1)));
+      if (L.u_rtime) gl.uniform1f(L.u_rtime, S.rclock || 0);
+      if (L.u_cam) gl.uniform4f(L.u_cam, num(M.yaw, 0), num(M.pitch, 0), Math.max(0.1, num(M.zoom, 1)), num(M.spin, 0));
       if (L.u_maxpt) gl.uniform1f(L.u_maxpt, P.maxPt);
       if (L.u_audio) gl.uniform4f(L.u_audio, audio[0] || 0, audio[1] || 0, audio[2] || 0, audio[3] || 0);
-      setUniforms(gl, L, S.comp, S.values);
+      setUniforms(gl, L, S.comp, S.cur);
       gl.enable(gl.BLEND);
       if (S.comp.blend === 'normal') gl.blendFunc(gl.ONE, gl.ONE_MINUS_SRC_ALPHA); else gl.blendFunc(gl.ONE, gl.ONE);
       gl.bindVertexArray(P.empty);
@@ -845,32 +880,54 @@ void main() {
       P.shown = S; S.uploaded++;
     }
     /* advance to `time` and draw at w×h; returns the shared canvas (valid until another system draws) */
-    function frame(time, audio, beat, w, h) {
+    /* mods (from NODRUS or the editor): speed, size, hue, glow, trail, yaw, pitch, zoom, spin (camera), boom (≥ 0.5 = explode),
+       pub {uniform: value} (published knobs), text / img (the form emitter's own text or picture) */
+    function frame(time, audio, beat, w, h, mods) {
       S.used = performance.now();
       if (!P.ok || P.lost || !S.comp || !S.state) return null;
       audio = audio || [0, 0, 0, 0]; beat = beat || 0;
+      const M = (S.mods = mods || NOMODS);
       h = Math.max(2, Math.min(1440, Math.round(h))); w = Math.max(2, Math.min(2560, Math.round(w)));
       const aspect = w / h;
+      if (M.pub) {   // a published knob replaces the system's value (only where that value is a plain number)
+        let cur = null;
+        for (const k in M.pub) if (k in S.values && Number.isFinite(M.pub[k])) { cur = cur || Object.assign({}, S.values); cur[k] = M.pub[k]; }
+        S.cur = cur || S.values;
+      } else S.cur = S.values;
+      S.clock = S.clock || 0;
       let dt;
-      if (S.last === null) { init(time, audio, beat, aspect); dt = 1 / 60; }
+      if (S.last === null) { init(S.clock, audio, beat, aspect); dt = 1 / 60; }
       else dt = time - S.last;
       if (dt < 0 || dt > 1) dt = 1 / 60;
       S.last = time;
       if (dt > 0) {
         prepShape();
+        S.rclock = (S.rclock || 0) + dt;
+        const sp = Math.max(0, Math.min(8, Number.isFinite(+M.speed) && M.speed !== undefined ? +M.speed : 1)), sdt = dt * sp;
         const trigs = {};
         S.comp.triggers.forEach(tr => { if (fire(tr.mode, beat, audio[1] || 0, time)) trigs[tr.u] = true; });
-        const n = dt > 1 / 25 ? Math.min(4, Math.ceil(dt * 30)) : 1;
-        for (let i = 0; i < n; i++) step(dt / n, time - dt + (i + 1) * dt / n, audio, beat, aspect, i === 0 ? trigs : {});
-        draw(w, h, aspect, time, audio, beat, dt);
-      } else if (!S.color || S.color.w !== w || S.color.h !== h) draw(w, h, aspect, time, audio, beat, 0);
+        // «Explotar»: the node's button, a SYNDRUS drop, the editor (kick()), or a knob going over half
+        const kn = kicks.get(S.ownKey) || 0, ka = kicks.get('*') || 0, boom = +M.boom || 0;
+        if (S.kn === undefined) { S.kn = kn; S.ka = ka; }
+        if (kn !== S.kn || ka !== S.ka || S.kreq || (boom >= 0.5 && !(S.boom >= 0.5))) {
+          trigs.u_kick = true; if (S.comp.burst) trigs.u_burst = true;
+        }
+        S.kn = kn; S.ka = ka; S.kreq = 0; S.boom = boom;
+        if (sdt > 0) {
+          const n = sdt > 1 / 25 ? Math.min(4, Math.ceil(sdt * 30)) : 1;
+          for (let i = 0; i < n; i++) step(sdt / n, S.clock + (i + 1) * sdt / n, audio, beat, aspect, i === 0 ? trigs : {});
+          S.clock += sdt;
+        }
+        draw(w, h, aspect, S.clock, audio, beat, dt);
+      } else if (!S.color || S.color.w !== w || S.color.h !== h) draw(w, h, aspect, S.clock, audio, beat, 0);
       if (P.shown !== S || dt > 0) show();
       return P.canvas;
     }
     function reset() { S.last = null; S.trig = {}; }
+    function kickNow() { S.kreq = 1; }
     function free() { freeState(); freeColor(); freeShape(); P.sims.delete(S); if (P.shown === S) P.shown = null; S.comp = null; }
     if (P.ok) P.sims.add(S);
-    Object.assign(S, { setSpec, frame, reset, free });
+    Object.assign(S, { setSpec, frame, reset, free, kick: kickNow });
     Object.defineProperty(S, 'count', { get: () => (S.comp ? S.comp.count : 0) });   // a live getter (Object.assign would copy its value once)
     return S;
   }
@@ -883,7 +940,7 @@ void main() {
     lastSweep = now;
     pool.sims.forEach(s => { if (s.owned && now - s.used > 4000) { s.owned.delete(s.ownKey); s.free(); } });
   }
-  function source(owner, key, spec, time, audio, beat, w, h) {
+  function source(owner, key, spec, time, audio, beat, w, h, mods) {
     const P = getPool();
     if (!P.ok) return null;
     let m = owners.get(owner);
@@ -893,7 +950,7 @@ void main() {
     s.setSpec(spec || PRESETS[0].sys);
     sweep(performance.now());
     if (s.err) return null;
-    const c = s.frame(time, audio, beat, w, h);
+    const c = s.frame(time, audio, beat, w, h, mods);
     return c ? { canvas: c, aspect: c.width / c.height, n: s.uploaded } : null;
   }
 
@@ -1004,6 +1061,21 @@ void main() {
   }
   function saveLibrary(list) { try { localStorage.setItem(LIB_KEY, JSON.stringify(list)); return true; } catch (e) { return false; } }
 
+  const pubCache = new WeakMap();
+  function publishedInputs(sys) {
+    if (!sys || typeof sys !== 'object') return [];
+    let r = pubCache.get(sys);
+    if (r) return r;
+    r = [];
+    (sys.pub || []).forEach(x => {
+      const n = (sys.nodes || []).find(m => m.id === x.n), d = n && DEFS[n.type], i = d && d.inputs.find(q => q.k === x.k);
+      if (!i) return;
+      r.push({ k: 'pub_' + n.id + '_' + i.k, uniform: 'u' + n.id + '_' + i.k, label: d.title + ' · ' + i.label, t: 'float', v: +valueOf(n, i.k), min: i.min, max: i.max });
+    });
+    pubCache.set(sys, r);
+    return r;
+  }
+
   /* what a NODRUS node shows: the system it is linked to (as PARTRUS is editing it right now, or as saved in the
      library) — or its own copy, saved with the patch (another device, or a system deleted from the library) */
   const live = new Map();
@@ -1026,7 +1098,7 @@ void main() {
 
   window.PudrusParticles = {
     DEFS, CATS, PRESETS, blank, sane, isEmitter, FONTS, get cameraState() { return pool && pool.cam ? pool.cam.st : 'off'; }, compile, structureKey, valueOf, paramOf, isChain,
-    createSim, source, resolve, library, saveLibrary, LIB_KEY,
+    createSim, source, resolve, kick, publishedInputs, library, saveLibrary, LIB_KEY,
     get ok() { return getPool().ok; }, get error() { return getPool().err; }, get canvas() { return getPool().canvas; },
     channel: 'pudrus-partrus',
   };

@@ -347,9 +347,14 @@ vec3 n${id}_march(vec2 uv, float size, float twist, float speed, float sp, out v
       outputs: [['c', 'color', 'Color'], ['a', 'float', 'Alfa']],
       glsl: (I, O, P, id) => texGLSL(I, O, P, id) },
     // a PARTRUS particle system (lab/partrus/particles.js); its picture comes premultiplied: «Color» is how it looks over black
+    // its own knobs work on any system (speed, size, hue, glow, trail, the 3D camera, explode); the system's published knobs come after
     particles: { title: 'Partículas', cat: 'Entrada', tex: true,
-      inputs: [UV, F('size', 'Tamaño', 1, 0.05, 3), F('opacity', 'Opacidad', 1, 0, 1)],
+      inputs: [UV, F('size', 'Tamaño', 1, 0.05, 3), F('opacity', 'Opacidad', 1, 0, 1),
+        F('pspeed', 'Velocidad', 1, 0, 4), F('psize', 'Tamaño partículas', 1, 0, 4), F('hue', 'Tono', 0, 0, 1), F('glow', 'Brillo', 1, 0, 4), F('trail', 'Estela', 0, 0, 0.98),
+        F('yaw', 'Cámara: giro', 0, -180, 180), F('pitch', 'Cámara: inclinación', 0, -89, 89), F('zoom', 'Cámara: distancia', 1, 0.3, 4), F('spin', 'Cámara: gira sola', 0, -90, 90),
+        F('boom', 'Explotar', 0, 0, 1)],
       params: [{ k: 'sys', label: 'Sistema', kind: 'particles', v: '' }],
+      dynInputs: n => { const PP = window.PudrusParticles; return PP ? PP.publishedInputs(particleSys(n.p)).map(x => ({ ...x })) : []; },
       outputs: [['c', 'color', 'Color'], ['a', 'float', 'Alfa']],
       glsl: (I, O, P, id) => texGLSL(I, O, P, id) + ` ${O.c} *= ${I.opacity};` },
 
@@ -800,6 +805,20 @@ mat2 h_rot(float a){ return mat2(cos(a), -sin(a), sin(a), cos(a)); }
     let usesAudio = false, usesFeedback = false;
     const outVar = (id, k) => `n${id}_${k}`;
 
+    // how each knob of a «Partículas» node gets its value on the CPU: its own number, or a small chain of LFO / audio / time / value / range / math
+    function cpuPlan(id, inp) {
+      const link = graph.links.find(l => l.b === id && l.bi === inp.k), src = link && byId.get(link.a);
+      if (!link) return { u: uniformName(id, inp.k), d: inp.v };
+      if (!src || !CPU_NODES[src.type]) return { c: inp.v };
+      const I = {};
+      inputsOf(src).forEach(i => { if (i.t === 'float') I[i.k] = cpuPlan(src.id, i); });
+      return { n: src.type, o: link.ao, P: { ...defaultsFor(src.type).p, ...(src.p || {}) }, I };
+    }
+    function particlePlan(node) {
+      const m = {};
+      inputsOf(node).forEach(i => { if (MACROS[i.k] || i.uniform) m[i.k] = { pl: cpuPlan(node.id, i), uniform: i.uniform }; });
+      return m;
+    }
     function emit(node) {
       if (done.has(node.id)) return;
       if (visiting.has(node.id)) throw new Error('Hay un ciclo en las conexiones');
@@ -829,7 +848,7 @@ mat2 h_rot(float a){ return mat2(cos(a), -sin(a), sin(a), cos(a)); }
       if (def.globals) globals.push(`// ${def.title} #${node.id}\n` + def.globals(P, node.id));
       if (def.lib) libs.add(def.lib);
       lines.push(`  // ${def.title} #${node.id}\n  ` + def.glsl(I, O, P, node.id));
-      if (def.tex) textures.push({ node: node.id, kind: node.type, p: P, texName: `u_${node.id}_tex`, aspName: `u_${node.id}_aspect` });
+      if (def.tex) textures.push({ node: node.id, kind: node.type, p: P, texName: `u_${node.id}_tex`, aspName: `u_${node.id}_aspect`, macros: node.type === 'particles' ? particlePlan(node) : null });
       if (def.usesAudio) usesAudio = true;
       if (def.usesFeedback || (def.feedbackIf && def.feedbackIf(P))) usesFeedback = true;
       visiting.delete(node.id);
@@ -1046,11 +1065,58 @@ void main(){
     }
     return { camera, video, get cameraState() { return cam ? (cam.ok ? 'ok' : cam.err ? 'error' : 'waiting') : 'off'; } };
   })();
+  /* ── PARTRUS systems: which one a node shows, and its knobs evaluated here on the CPU (they drive another GL context) ── */
+  const sysCache = new Map();
+  function particleSys(p) {
+    const PP = window.PudrusParticles;
+    if (!PP) return null;
+    const r = PP.resolve(p) || PP.PRESETS[0].sys;
+    if (typeof r !== 'string') return r;
+    let s = sysCache.get(r);
+    if (s === undefined) { s = PP.sane(r); if (sysCache.size > 40) sysCache.clear(); sysCache.set(r, s); }
+    return s;
+  }
+  const CPU_NODES = { value: 1, range: 1, time: 1, lfo: 1, audio: 1, math: 1 };
+  const hashJS = (x, y) => { let px = x * 123.34, py = y * 456.21; px -= Math.floor(px); py -= Math.floor(py); const d = px * (px + 45.32) + py * (py + 45.32); px += d; py += d; const r = px * py; return r - Math.floor(r); };
+  function cpuVal(pl, ctx) {
+    if (!pl) return 0;
+    if (pl.u) { const v = ctx.values[pl.u]; return typeof v === 'number' ? v : (pl.d || 0); }
+    if (pl.c !== undefined) return pl.c;
+    const I = k => cpuVal(pl.I[k], ctx), P = pl.P, t = ctx.time, beat = clock.beat, a = ctx.audio;
+    const fr = x => x - Math.floor(x);
+    switch (pl.n) {
+      case 'value': return I('v');
+      case 'range': return I('min') + (I('max') - I('min')) * I('v');
+      case 'time': { const tt = t * I('speed'); return pl.o === 'wave' ? Math.sin(tt) * 0.5 + 0.5 : pl.o === 'ramp' ? fr(tt) : pl.o === 'pulse' ? Math.pow(1 - fr(beat), 3) : tt; }
+      case 'lfo': {
+        const ph = !P.sync || P.sync === 'free' ? t * I('speed') : beat / +P.sync, f = fr(ph);
+        const sh = { sine: Math.sin(ph * 6.28318) * 0.5 + 0.5, tri: Math.abs(f * 2 - 1), saw: f, square: f >= 0.5 ? 1 : 0, random: hashJS(Math.floor(ph), 7) }[P.shape] || 0;
+        return I('min') + (I('max') - I('min')) * sh;
+      }
+      case 'audio': return Math.max(0, Math.min(1, (a[{ level: 0, bass: 1, mid: 2, high: 3 }[pl.o] || 0] || 0) * I('gain')));
+      case 'math': {
+        const x = I('a'), y = I('b');
+        return { add: x + y, sub: x - y, mul: x * y, div: x / Math.max(Math.abs(y), 1e-4) * Math.sign(y + 1e-9), pow: Math.pow(Math.abs(x), y), min: Math.min(x, y), max: Math.max(x, y),
+                 sin: Math.sin(x * 6.28318) * 0.5 + 0.5, abs: Math.abs(x), fract: fr(x), step: x >= y ? 1 : 0, smooth: (() => { const k = Math.max(0, Math.min(1, x / Math.max(y, 1e-4))); return k * k * (3 - 2 * k); })() }[P.op] || 0;
+      }
+    }
+    return 0;
+  }
+  const MACROS = { pspeed: 'speed', psize: 'size', hue: 'hue', glow: 'glow', trail: 'trail', yaw: 'yaw', pitch: 'pitch', zoom: 'zoom', spin: 'spin', boom: 'boom' };
+  function particleMods(t, ctx) {
+    const m = t.macros || {}, mods = { text: t.p.otext || undefined, img: t.p.oimg || undefined, pub: null };
+    for (const k in m) {
+      const v = cpuVal(m[k].pl, ctx);
+      if (MACROS[k]) mods[MACROS[k]] = v;
+      else if (m[k].uniform) (mods.pub = mods.pub || {})[m[k].uniform] = v;
+    }
+    return mods;
+  }
   function texSource(t, owner, ctx) {
     if (t.kind === 'particles') {   // one simulation per renderer and node, advanced to this renderer's time
       const PP = window.PudrusParticles;
       if (!PP || !ctx) return null;
-      const r = PP.source(owner, t.node, PP.resolve(t.p), ctx.time, ctx.audio, clock.beat, ctx.w, ctx.h);
+      const r = PP.source(owner, t.node, particleSys(t.p), ctx.time, ctx.audio, clock.beat, ctx.w, ctx.h, particleMods(t, ctx));
       return r ? { src: r.canvas, key: 'p' + r.n, aspect: r.aspect, premult: true } : null;
     }
     if (t.kind === 'camera' || t.kind === 'video') {
@@ -1073,8 +1139,8 @@ void main(){
   function texBinder(gl) {
     const cache = new Map(), owner = {};
     let empty = null;
-    return function bind(textures, loc, time, audio) {
-      const ctx = { time: time || 0, audio: audio || [0, 0, 0, 0], w: gl.drawingBufferWidth, h: gl.drawingBufferHeight };
+    return function bind(textures, loc, time, audio, values) {
+      const ctx = { time: time || 0, audio: audio || [0, 0, 0, 0], w: gl.drawingBufferWidth, h: gl.drawingBufferHeight, values: values || {} };
       textures.forEach((t, i) => {
         const s = texSource(t, owner, ctx);
         let tex;
@@ -1203,7 +1269,7 @@ void main(){
         if (v === undefined) continue;
         if (u.type === 'color') gl.uniform3f(loc[u.name], v[0], v[1], v[2]); else gl.uniform1f(loc[u.name], v);
       }
-      if (textures.length) bindTextures(textures, loc, time, audio);
+      if (textures.length) bindTextures(textures, loc, time, audio, values);
       gl.drawArrays(gl.TRIANGLES, 0, 6);
       // post pass to the screen
       gl.bindFramebuffer(gl.FRAMEBUFFER, null);
@@ -1327,7 +1393,7 @@ void main(){
         if (v === undefined) continue;
         if (u.type === 'color') gl.uniform3f(e.loc[u.name], v[0], v[1], v[2]); else gl.uniform1f(e.loc[u.name], v);
       }
-      if (e.compiled.textures && e.compiled.textures.length) bindTextures(e.compiled.textures, e.loc, time, audio);
+      if (e.compiled.textures && e.compiled.textures.length) bindTextures(e.compiled.textures, e.loc, time, audio, vals);
       gl.drawArrays(gl.TRIANGLES, 0, 6);
     }
     function clear() { cache.forEach(e => gl.deleteProgram(e.prog)); cache.clear(); }
@@ -1757,5 +1823,5 @@ void main(){ gl_FragColor = vec4(mix(texture2D(u_a, v_uv).rgb, texture2D(u_b, v_
     };
   }
 
-  window.PudrusNodes = { sliderPos, sliderVal, fpsLimiter, FPS_CAPS, createTransition, createFxChain, ES3, inputsOf, glslParams, clock, assets, media, drawOverlay, textPicture, createMixer, GLSL_TEMPLATES, NODES, CATEGORIES, compile, createRenderer, createThumbs, createStage, structureKey, uniformValues, defaultsFor, dependsOn, uniformName, postValues, applyValues };
+  window.PudrusNodes = { particleSys, sliderPos, sliderVal, fpsLimiter, FPS_CAPS, createTransition, createFxChain, ES3, inputsOf, glslParams, clock, assets, media, drawOverlay, textPicture, createMixer, GLSL_TEMPLATES, NODES, CATEGORIES, compile, createRenderer, createThumbs, createStage, structureKey, uniformValues, defaultsFor, dependsOn, uniformName, postValues, applyValues };
 })();

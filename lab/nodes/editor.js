@@ -39,7 +39,7 @@
   const opts = Object.assign({ direct: false, fade: 1, thumbs: true, labels: true, status: true }, (() => { try { return JSON.parse(localStorage.getItem(LIVE_STORE) || '{}'); } catch (e) { return {}; } })());
   const saveOpts = () => { try { localStorage.setItem(LIVE_STORE, JSON.stringify(opts)); } catch (e) { /* ignore */ } };
   // what the visuals do on a SYNDRUS drop (see «SYNDRUS link»)
-  opts.dropFx = Object.assign({ build: 'none', cut: 'black', flash: true, scene: false, random: false, deck: false }, opts.dropFx || {});
+  opts.dropFx = Object.assign({ build: 'none', cut: 'black', flash: true, scene: false, random: false, deck: false, particles: true }, opts.dropFx || {});
   if (!['off', 'mic', 'syndrus'].includes(opts.audioSrc)) opts.audioSrc = 'off';   // the microphone needs a click (browser rule): never auto-opened
 
   // A patch from storage, a file or a link is data from outside: only a well-formed one gets in (known nodes, whole ids,
@@ -229,6 +229,25 @@
         b.addEventListener('pointerdown', e => e.stopPropagation());
         b.addEventListener('click', e => particlesPop(n, e.currentTarget));
         row.append(b); body.append(row);
+        const sy = N.particleSys(n.p), em = sy && sy.nodes.find(x => x.type === 'form'), src = em && ((em.p && em.p.src) || 'text');
+        if (src === 'text') {   // its own text, without opening PARTRUS
+          const r2 = el('div', 'nd-row'), ta = el('textarea', 'nd-text'); ta.rows = 2; ta.maxLength = 300;
+          ta.value = (n.p && n.p.otext) || ''; ta.placeholder = 'Texto: ' + ((em.p && em.p.text) || 'PUDRUS') + ' (escribí otro)';
+          ta.addEventListener('pointerdown', e => e.stopPropagation());
+          let tt;
+          ta.addEventListener('input', () => { clearTimeout(tt); tt = setTimeout(() => { n.p = { ...(n.p || {}), otext: ta.value }; recompile(); save(); remember(); }, 250); });
+          r2.append(ta); body.append(r2);
+        } else if (src === 'image') {   // its own picture: pick or drop a PNG on the node
+          const r2 = el('div', 'nd-row'), b2 = el('button', 'nd-file', n.p && n.p.oimg ? '🖼 Imagen propia (clic: otra · soltá un PNG)' : '🖼 Otra imagen… (o soltá un PNG acá)');
+          b2.addEventListener('pointerdown', e => e.stopPropagation());
+          b2.addEventListener('click', () => { partImgFor = n; partImgPick.click(); });
+          r2.append(b2); body.append(r2);
+        }
+        const r3 = el('div', 'nd-row'), kb = el('button', 'nd-file nd-kick', '💥 Explotar');
+        kb.title = 'Un empujón desde el centro (también con la perilla «Explotar»: mapeala al MIDI o al celular)';
+        kb.addEventListener('pointerdown', e => e.stopPropagation());
+        kb.addEventListener('click', () => { if (window.PudrusParticles) window.PudrusParticles.kick(n.id); });
+        r3.append(kb); body.append(r3);
         continue;
       }
       if (p.kind === 'video') {
@@ -701,18 +720,44 @@
     n.p = { ...(n.p || {}), sys: JSON.stringify(sys), name: String(name || '').slice(0, 40), lib: lib || '' };
     rebuild(); recompile(); save(); remember();
   }
-  let partPop = null;
+  let partPop = null, thumbRun = 0;
+  const THUMB_MODS = { size: 2.6, glow: 1.4 };   // fewer, smaller particles in a thumbnail: bigger and brighter so they read
+  // the chooser: every system with a small moving picture (16 thousand particles each, a few drawn per frame)
   function particlesPop(n, btn) {
     if (!PP) { toast('Falta el motor de partículas (recargá la página)', true); return; }
-    if (!partPop) { partPop = el('div', 'lab-pop'); partPop.hidden = true; partPop.style.maxHeight = '70vh'; partPop.style.overflow = 'auto'; partPop.style.minWidth = '240px'; document.body.append(partPop); }
+    if (!partPop) { partPop = el('div', 'lab-pop part-pop'); partPop.hidden = true; document.body.append(partPop); }
     partPop.textContent = '';
-    const add = (txt, fn, on) => { const b = el('button', 'item', txt); if (on) b.style.color = 'var(--accent)'; b.addEventListener('click', () => { closePops(); fn(); }); partPop.append(b); };
+    const thumbs = [];
+    const grid = () => { const g = el('div', 'part-grid'); partPop.append(g); return g; };
+    const card = (g, sys, txt, fn, on) => {
+      const b = el('button', 'part-card' + (on ? ' is-on' : '')), c = el('canvas'); c.width = 128; c.height = 72;
+      b.append(c, el('span', '', txt)); b.title = txt;
+      b.addEventListener('click', () => { closePops(); fn(); });
+      g.append(b); thumbs.push({ c, sys, sim: null });
+    };
+    const add = (txt, fn) => { const b = el('button', 'item', txt); b.addEventListener('click', () => { closePops(); fn(); }); partPop.append(b); };
     const lib = PP.library();
     partPop.append(el('label', '', 'Tus sistemas (PARTRUS)'));
     if (!lib.length) partPop.append(el('p', 'dim', 'Todavía no guardaste ninguno: armalo en PARTRUS y tocá 💾.'));
-    lib.forEach(x => add('✨ ' + x.name, () => { setParticles(n, x.sys, x.name, x.id); toast('✨ ' + x.name); }, n.p && n.p.lib === x.id));
+    else { const g = grid(); lib.forEach(x => card(g, x.sys, x.name, () => { setParticles(n, x.sys, x.name, x.id); toast('✨ ' + x.name); }, n.p && n.p.lib === x.id)); }
     partPop.append(el('label', '', 'Ejemplos'));
-    PP.PRESETS.forEach(x => add(x.name, () => setParticles(n, x.sys, x.name, '')));
+    const g2 = grid();
+    PP.PRESETS.forEach(x => card(g2, x.sys, x.name, () => setParticles(n, x.sys, x.name, ''), !(n.p && n.p.lib) && n.p && n.p.name === x.name));
+    // animate the thumbnails while the chooser is open (round robin: 3 per frame)
+    const run = ++thumbRun, t0 = performance.now();
+    let k = 0;
+    const tick = () => {
+      if (run !== thumbRun || partPop.hidden) { thumbs.forEach(t => t.sim && t.sim.free()); return; }
+      const now = (performance.now() - t0) / 1000;
+      for (let j = 0; j < Math.min(3, thumbs.length); j++, k++) {
+        const t = thumbs[k % thumbs.length];
+        if (!t.sim) { t.sim = PP.createSim({ maxCount: 16384 }); t.sim.setSpec(t.sys); }
+        const cv = t.sim.err ? null : t.sim.frame(now, audio.bands, N.clock.beat, 256, 144, THUMB_MODS);
+        if (cv) { const g = t.c.getContext('2d'); g.fillStyle = '#000'; g.fillRect(0, 0, 128, 72); g.drawImage(cv, 0, 0, 128, 72); }
+      }
+      requestAnimationFrame(tick);
+    };
+    requestAnimationFrame(tick);
     partPop.append(el('label', '', 'PARTRUS'));
     add('✎ Editar este sistema en PARTRUS', () => {
       // linked to the library: PARTRUS opens it and every change shows here at once
@@ -731,6 +776,51 @@
     const r = btn.getBoundingClientRect();
     openPop(partPop, r.left, r.bottom + 4);
   }
+  // one click: particles as a layer over what the patch already shows (light added on top)
+  function addParticlesLayer() {
+    if (!PP) return;
+    const out = graph.nodes.find(m => m.type === 'output');
+    if (!out) { toast('El patch no tiene Salida', true); return; }
+    const L = graph.links.find(l => l.b === out.id && l.bi === 'c');
+    let id = nextId();
+    const dp = N.defaultsFor('particles'), pre = PP.PRESETS[0];
+    // the mix takes the place of the Salida (which moves one column right); the particles go under everything
+    const bottom = Math.max(...graph.nodes.map(m => m.y)) + 340;
+    const pn = { id: id++, type: 'particles', x: L ? out.x - 250 : out.x - 260, y: bottom, v: dp.v, p: { ...dp.p, sys: JSON.stringify(pre.sys), name: pre.name, lib: '' } };
+    graph.nodes.push(pn);
+    if (L) {
+      const ox = out.x, oy = out.y;
+      graph.nodes.forEach(m => { if (m.x >= ox - 20 && m !== pn) m.x += 250; });
+      const dm = N.defaultsFor('mix'), mx = { id: id++, type: 'mix', x: ox, y: oy, v: { ...dm.v, f: 1 }, p: { ...dm.p, mode: 'screen' } };
+      graph.nodes.push(mx);
+      graph.links = graph.links.filter(l => l !== L);
+      graph.links.push({ a: L.a, ao: L.ao, b: mx.id, bi: 'a' }, { a: pn.id, ao: 'c', b: mx.id, bi: 'b' }, { a: mx.id, ao: 'c', b: out.id, bi: 'c' });
+    } else graph.links.push({ a: pn.id, ao: 'c', b: out.id, bi: 'c' });
+    select([pn.id]); rebuild(); recompile(); save(); remember();
+    toast('✨ Partículas sumadas encima del patch (mezcla «pantalla»): elegí el sistema en el nodo, botón ✨');
+  }
+  $('#pmParticles').addEventListener('click', () => { closePops(); addParticlesLayer(); });
+  // a picture of its own for a «form» system (button or dropped on the node)
+  let partImgFor = null;
+  const partImgPick = el('input'); partImgPick.type = 'file'; partImgPick.accept = 'image/png,image/jpeg,image/webp'; partImgPick.hidden = true;
+  document.body.append(partImgPick);
+  partImgPick.addEventListener('change', () => { const f = partImgPick.files[0]; partImgPick.value = ''; if (f && partImgFor) setParticleImage(partImgFor, f); });
+  function setParticleImage(n, f) {
+    const url = URL.createObjectURL(f), im = new Image();
+    im.onload = () => {
+      URL.revokeObjectURL(url);
+      const sc = Math.min(1, 256 / Math.max(im.naturalWidth, im.naturalHeight)), c = el('canvas');
+      c.width = Math.max(1, Math.round(im.naturalWidth * sc)); c.height = Math.max(1, Math.round(im.naturalHeight * sc));
+      const g = c.getContext('2d'); g.drawImage(im, 0, 0, c.width, c.height);
+      const d = g.getImageData(0, 0, c.width, c.height).data;
+      let clear = false; for (let i = 3; i < d.length; i += 4) if (d[i] < 250) { clear = true; break; }
+      n.p = { ...(n.p || {}), oimg: clear ? c.toDataURL('image/png') : c.toDataURL('image/jpeg', 0.88) };
+      rebuild(); recompile(); save(); remember();
+      toast('🖼 Las partículas toman la forma de ' + f.name);
+    };
+    im.onerror = () => { URL.revokeObjectURL(url); toast('No se pudo leer esa imagen', true); };
+    im.src = url;
+  }
   // PARTRUS is editing a system: the nodes linked to it keep its latest copy (the picture already follows it live)
   if (PP && 'BroadcastChannel' in window) {
     const pch = new BroadcastChannel(PP.channel);
@@ -740,13 +830,16 @@
       const sys = PP.sane(m.sys);
       if (!sys) return;
       let renamed = false;
+      const shape = x => { const s2 = N.particleSys(x.p), em = s2 && s2.nodes.find(q => q.type === 'form'); return JSON.stringify([(s2 && s2.pub) || [], em ? em.p.src || 'text' : '']); };
       [graph, liveGraph].forEach(g => (g && g.nodes || []).forEach(nd => {
         if (nd.type !== 'particles' || !nd.p || nd.p.lib !== m.id) return;
+        const before = g === graph ? shape(nd) : '';
         nd.p.sys = JSON.stringify(sys);
+        if (g === graph && before !== shape(nd)) renamed = true;   // its knobs or its text field change: redraw the node
         const nm = String(m.name || '').slice(0, 40);
         if (nm && nm !== nd.p.name) { nd.p.name = nm; renamed = renamed || g === graph; }
       }));
-      if (renamed) rebuild();
+      if (renamed) { rebuild(); recompile(); }
       save();
     });
   }
@@ -772,6 +865,13 @@
     const f = [...e.dataTransfer.files].find(x => /^(image|video)\//.test(x.type));
     if (!f) return;
     e.preventDefault();
+    const onNode = e.target.closest && e.target.closest('.nd'), pn = onNode && graph.nodes.find(m => String(m.id) === onNode.dataset.id);
+    if (pn && pn.type === 'particles' && /^image\//.test(f.type)) {
+      const sy = N.particleSys(pn.p), em = sy && sy.nodes.find(x => x.type === 'form');
+      if (em && (em.p.src || 'text') === 'image') { setParticleImage(pn, f); return; }
+      toast('Ese sistema no es de imagen: elegí uno con «Emisor de forma → imagen» (o el ejemplo «Logo que estalla» y cambiá la forma en PARTRUS)', true);
+      return;
+    }
     const [wx, wy] = toWorld(e.clientX, e.clientY);
     const kind = /^video\//.test(f.type) ? 'video' : 'image';
     selected.clear();
@@ -845,7 +945,7 @@
   $('#syDrops').addEventListener('change', e => { opts.syDrops = e.target.checked; saveOpts(); });
   $('#dfBuild').addEventListener('change', e => { opts.dropFx.build = e.target.value; saveOpts(); });
   $('#dfCut').addEventListener('change', e => { opts.dropFx.cut = e.target.value; saveOpts(); });
-  ['flash', 'scene', 'random', 'deck'].forEach(k => $('#df_' + k).addEventListener('change', e => { opts.dropFx[k] = e.target.checked; saveOpts(); }));
+  ['flash', 'scene', 'random', 'deck', 'particles'].forEach(k => $('#df_' + k).addEventListener('change', e => { opts.dropFx[k] = e.target.checked; saveOpts(); }));
   $('#dfTest').addEventListener('click', () => { const b = 60000 / Math.max(40, bpm); runDrop(0, b * 7, b * 8); toast('Probando el drop: 2 compases'); });
   paintDropFx();
   paintSyLink();
@@ -1533,13 +1633,14 @@
       if (fx.scene) stepScene(1);
       if (fx.random) { randomPatch(); goLive(undefined, 0); }
       if (fx.flash) flashAt(0, 140);
+      if (fx.particles !== false && PP) PP.kick('*');
     }, at + dur);
   }
   function paintDropFx() {
     const fx = opts.dropFx;
     if ($('#dfBuild')) $('#dfBuild').value = fx.build;
     if ($('#dfCut')) $('#dfCut').value = fx.cut;
-    ['flash', 'scene', 'random', 'deck'].forEach(k => { const c = $('#df_' + k); if (c) c.checked = !!fx[k]; });
+    ['flash', 'scene', 'random', 'deck', 'particles'].forEach(k => { const c = $('#df_' + k); if (c) c.checked = !!fx[k]; });
   }
   /* ── the sound source: off · microphone · SYNDRUS (one at a time, chosen in the 🎤 menu) ── */
   async function setSource(src) {

@@ -11,7 +11,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600;700&display=swap">
   <script src="/js/theme.js" data-button="off"></script>
-  <link rel="stylesheet" href="partrus.css?v=2">
+  <link rel="stylesheet" href="partrus.css?v=3">
 </head>
 <body>
 <header class="pa-bar">
@@ -41,6 +41,8 @@
     <div class="pa-stage" id="stage"><div class="frame" id="frame"></div></div>
     <div class="pa-viewbar">
       <button id="btnRestart" title="Empezar de nuevo (R)">↺</button>
+      <button id="btnKick" title="Explotar (E): un empujón desde el centro">💥</button>
+      <button id="btnCam" title="Cámara al frente (arrastrá la vista para girarla, rueda para acercar)">⟲ cámara</button>
       <button id="btnPause" title="Pausa (Espacio)">❚❚</button>
       <select id="aspect" title="Formato de la vista (en NODRUS toma el de la salida)">
         <option value="1.7778">16:9</option><option value="0.5625">9:16</option><option value="1">1:1</option><option value="1.3333">4:3</option>
@@ -70,22 +72,22 @@
     <li><b>Emisor de forma</b>: las partículas nacen sobre un <b>texto</b>, una <b>imagen</b> (un PNG con transparencia, como tu logo, o una foto: lo claro o lo oscuro) o lo que ve la <b>cámara</b> (lo que se mueve, lo claro o lo oscuro). Agregarlo reemplaza al Emisor de la cadena.</li>
     <li><b>Fuerzas</b>: gravedad, turbulencia (humo), atractor, remolino, ola, explosión con el ritmo, frenado y bordes. <b>Formar</b> hace que cada partícula vuelva a donde nació: con una explosión, el logo estalla y se vuelve a armar. <b>Cámara</b>: lo que se mueve frente a la cámara las empuja. Se aplican en el orden de la cadena.</li>
     <li><b>Aspecto</b>: tamaño, forma, color y cómo cambian con la edad. «Colores de la imagen» pinta cada partícula con el color de la imagen o de la cámara donde nació.</li>
-    <li><b>Salida</b>: la estela (las partículas dejan rastro) y el brillo.</li>
+    <li><b>Salida</b>: la estela (las partículas dejan rastro), el brillo y la <b>cámara 3D</b>: arrastrá la vista para girarla e inclinarla, rueda para acercar o alejar, «gira sola» para que dé vueltas. ⟲ la vuelve al frente.</li>
     <li><b>Valores</b>: LFO, Audio y Pulso. Conectalos a cualquier perilla (cable gris) para que se mueva sola o con la música.</li>
   </ul>
   <h3>Manejo</h3>
   <ul>
     <li>Las fuerzas y el aspecto nuevos se meten solos en la cadena, antes de la Salida. Para sacar uno, borralo: la cadena se vuelve a unir.</li>
     <li>Arrastrá desde un enchufe de salida (derecha) a uno de entrada (izquierda). Tirá de un cable desde su entrada para desconectarlo.</li>
-    <li>Perillas: arrastrá de costado (Shift = fino), clic para escribir, doble clic = valor original.</li>
-    <li><kbd>Shift</kbd>+<kbd>A</kbd> agrega · <kbd>Supr</kbd> borra · <kbd>Ctrl</kbd>+<kbd>Z</kbd> deshace · <kbd>Ctrl</kbd>+<kbd>S</kbd> guarda · <kbd>T</kbd> tempo · <kbd>R</kbd> reinicia · <kbd>Espacio</kbd> pausa · <kbd>F</kbd> pantalla completa</li>
+    <li>Perillas: arrastrá de costado (Shift = fino), clic para escribir, doble clic = valor original. <b>Clic derecho → «Mostrar en NODRUS»</b>: esa perilla aparece en el nodo Partículas de NODRUS (con borde rosa acá).</li>
+    <li><kbd>Shift</kbd>+<kbd>A</kbd> agrega · <kbd>Supr</kbd> borra · <kbd>Ctrl</kbd>+<kbd>Z</kbd> deshace · <kbd>Ctrl</kbd>+<kbd>S</kbd> guarda · <kbd>T</kbd> tempo · <kbd>E</kbd> explotar · <kbd>R</kbd> reinicia · <kbd>Espacio</kbd> pausa · <kbd>F</kbd> pantalla completa</li>
   </ul>
   <h3>En NODRUS</h3>
   <p>Guardá el sistema (💾) y en NODRUS agregá el nodo <b>Entrada → Partículas</b>: elegís tu sistema y se mezcla con el resto del patch, va al aire, al proyector y a los videos que exportes. Mientras tengas PARTRUS abierto, lo que cambies acá se ve al instante en NODRUS.</p>
   <div class="row"><button class="pa-btn" id="themeBtn">◐ Tema claro</button><button class="pa-btn" id="helpClose">Cerrar</button></div>
 </div></div>
 
-<script src="particles.js?v=3"></script>
-<script src="app.js?v=4"></script>
+<script src="particles.js?v=4"></script>
+<script src="app.js?v=5"></script>
 </body>
 </html>

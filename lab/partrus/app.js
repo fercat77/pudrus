@@ -163,6 +163,25 @@
       f.addEventListener('blur', () => done(true));
     });
     box.addEventListener('dblclick', e => { e.stopPropagation(); delete n.v[inp.k]; paint(); changed('value'); });
+    const isPub = () => (sys.pub || []).some(x => x.n === n.id && x.k === inp.k);
+    box.classList.toggle('is-pub', isPub());
+    box.title = isPub() ? 'Esta perilla aparece en el nodo Partículas de NODRUS (clic derecho para sacarla)' : 'Clic derecho: mostrar esta perilla en NODRUS';
+    box.addEventListener('contextmenu', e => {
+      e.preventDefault(); e.stopPropagation();
+      openPop(pp => {
+        const on = isPub();
+        pp.append(item(on ? '📌 Sacar de NODRUS' : '📌 Mostrar en NODRUS', () => {
+          sys.pub = (sys.pub || []).filter(x => !(x.n === n.id && x.k === inp.k));
+          if (!on) {
+            if (sys.pub.length >= 16) { toast('Hasta 16 perillas en NODRUS', true); return; }
+            sys.pub.push({ n: n.id, k: inp.k });
+          }
+          rebuildNode(n.id); changed('struct');
+          toast(on ? 'Ya no aparece en NODRUS' : `📌 «${DEFS[n.type].title} · ${inp.label}» aparece en el nodo Partículas de NODRUS (guardá el sistema)`);
+        }));
+        pp.append(el('p', '', 'Así la movés desde NODRUS: a mano, con un LFO, el audio, el MIDI o el celular.'));
+      }, e.clientX, e.clientY);
+    });
     paint();
     return { box, paint };
   }
@@ -460,6 +479,7 @@
       if (at >= 0) chain.slice(at).forEach(c => { if (Math.abs(c.y - n.y) < 300) c.x -= 236; });
     }
     sys.nodes = sys.nodes.filter(x => x !== n);
+    sys.pub = (sys.pub || []).filter(x => x.n !== id);
     if (selected === id) selected = null;
     rebuild(); changed('struct');
   }
@@ -659,6 +679,32 @@
     if (now - fpsT > 1000) { $('#stFps').textContent = Math.round(fpsN * 1000 / (now - fpsT)) + ' fps · ' + size[0] + '×' + size[1]; fpsN = 0; fpsT = now; }
   }
   $('#btnRestart').addEventListener('click', () => sim.reset());
+  $('#btnKick').addEventListener('click', () => sim.kick());
+  const outNode = () => sys.nodes.find(n => n.type === 'out');
+  function setCam(vals) {
+    const o = outNode(); if (!o) return;
+    Object.assign(o.v, vals);
+    const r = recs.get(o.id); if (r) Object.keys(vals).forEach(k => { if (r.nums[k]) r.nums[k](); });
+    changed('value');
+  }
+  $('#btnCam').addEventListener('click', () => { const o = outNode(); if (!o) return; ['yaw', 'pitch', 'dist', 'spin'].forEach(k => delete o.v[k]); setCam({}); toast('Cámara al frente'); });
+  stage.addEventListener('pointerdown', e => {
+    if (e.button !== 0 || !outNode()) return;
+    const o = outNode(), y0 = PP.valueOf(o, 'yaw'), p0 = PP.valueOf(o, 'pitch'), sx = e.clientX, sy = e.clientY;
+    stage.setPointerCapture(e.pointerId); stage.classList.add('orbit');
+    const mv = ev => {
+      let yaw = y0 + (ev.clientX - sx) * 0.4;
+      yaw = ((yaw + 180) % 360 + 360) % 360 - 180;
+      setCam({ yaw: Math.round(yaw * 10) / 10, pitch: Math.round(Math.max(-89, Math.min(89, p0 + (ev.clientY - sy) * 0.3)) * 10) / 10 });
+    };
+    const up = () => { stage.removeEventListener('pointermove', mv); stage.removeEventListener('pointerup', up); stage.classList.remove('orbit'); };
+    stage.addEventListener('pointermove', mv); stage.addEventListener('pointerup', up);
+  });
+  stage.addEventListener('wheel', e => {
+    e.preventDefault();
+    const o = outNode(); if (!o) return;
+    setCam({ dist: Math.round(Math.max(0.3, Math.min(4, PP.valueOf(o, 'dist') * Math.exp(e.deltaY * 0.001))) * 100) / 100 });
+  }, { passive: false });
   const setPause = v => { paused = v; $('#btnPause').textContent = paused ? '▶' : '❚❚'; };
   $('#btnPause').addEventListener('click', () => setPause(!paused));
   $('#aspect').value = opts.aspect;
@@ -691,6 +737,7 @@
     if (e.shiftKey && k === 'a') { e.preventDefault(); const g = graphEl.getBoundingClientRect(); addMenu(g.left + g.width / 2 - 110, g.top + 40); return; }
     if (k === 't') tap();
     else if (k === 'r') sim.reset();
+    else if (k === 'e') sim.kick();
     else if (k === 'f') full();
     else if (e.key === ' ') { e.preventDefault(); setPause(!paused); }
   });
@@ -717,5 +764,5 @@
   if (!store.get('partrus_view_v1')) requestAnimationFrame(fitView);
   requestAnimationFrame(loop);
 
-  window.__partrus = { get sys() { return sys; }, get sim() { return sim; }, addNode, removeNode, connect, saveToLibrary, setSystem, undo, redo, get libId() { return libId; }, get dirty() { return dirty; }, chainList, fitView, setAudio, tap, get bpm() { return bpm; } };
+  window.__partrus = { setCam: v => setCam(v), get sys() { return sys; }, get sim() { return sim; }, addNode, removeNode, connect, saveToLibrary, setSystem, undo, redo, get libId() { return libId; }, get dirty() { return dirty; }, chainList, fitView, setAudio, tap, get bpm() { return bpm; } };
 })();

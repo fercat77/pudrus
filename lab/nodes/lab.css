@@ -589,3 +589,13 @@ body.has-status .lab-toast { bottom: 34px; }
 :root[data-theme="light"] .nd { box-shadow: 0 3px 10px rgba(43,47,53,0.22); }
 :root[data-theme="light"] .nd.is-sel { box-shadow: 0 0 0 1px var(--sel), 0 3px 10px rgba(43,47,53,0.22); }
 :root[data-theme="light"] .nd.is-active { box-shadow: 0 0 0 1px var(--accent), 0 3px 10px rgba(43,47,53,0.22); }
+
+/* the particle chooser: a grid of moving thumbnails */
+.part-pop { max-height: 72vh; overflow: auto; width: 440px; max-width: calc(100vw - 16px); }
+.part-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; margin: 2px 0 6px; }
+.part-card { display: flex; flex-direction: column; gap: 3px; padding: 4px; border-radius: 6px; border: 1px solid var(--line); background: var(--panel2); text-align: left; min-width: 0; }
+.part-card canvas { display: block; width: 100%; height: auto; aspect-ratio: 16 / 9; border-radius: 4px; background: #000; }
+.part-card span { font-size: 11px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.part-card:hover { border-color: var(--accent); color: var(--accent); }
+.part-card.is-on { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent); }
+.nd-kick { text-align: center; }
