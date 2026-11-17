@@ -630,7 +630,9 @@ void main() {
     function reset() { S.last = null; S.trig = {}; }
     function free() { freeState(); freeColor(); P.sims.delete(S); if (P.shown === S) P.shown = null; S.comp = null; }
     if (P.ok) P.sims.add(S);
-    return Object.assign(S, { setSpec, frame, reset, free, get count() { return S.comp ? S.comp.count : 0; } });
+    Object.assign(S, { setSpec, frame, reset, free });
+    Object.defineProperty(S, 'count', { get: () => (S.comp ? S.comp.count : 0) });   // a live getter (Object.assign would copy its value once)
+    return S;
   }
 
   /* ── NODRUS: one system per (renderer, node); systems nobody draws for a few seconds are freed ── */

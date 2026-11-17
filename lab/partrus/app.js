@@ -11,7 +11,7 @@
   const saveOpts = () => store.set(OPTS, opts);
 
   /* ── the system being edited ── */
-  let sys, libId = null, dirty = false;
+  let sys, libId = null, dirty = false, touched = false;   // dirty = differs from the library; touched = edited since it was opened
   (function boot() {
     const q = new URLSearchParams(location.search);
     const lib = PP.library();
@@ -42,7 +42,7 @@
   if (PP.ok) frame.append(PP.canvas);
   else { const m = el('div', 'pa-msg', '⚠ ' + PP.error + '. Probá con Chrome o Edge actualizados.'); $('#stage').append(m); }
   function applySim() {
-    sim.setSpec(sys);
+    sim.setSpec(JSON.stringify(sys));   // a fresh string: the engine skips a spec it has already seen (same object)
     const e = $('#err');
     e.hidden = !sim.err; e.textContent = sim.err ? '⚠ ' + sim.err : '';
     const n = sim.count;
@@ -54,7 +54,7 @@
   let saveT, bcT, histT;
   let hist = [JSON.stringify(sys)], hi = 0;
   function changed(kind) {
-    if (kind !== 'view') { dirty = true; paintDirty(); }
+    if (kind !== 'view') { dirty = true; touched = true; paintDirty(); }
     if (kind !== 'pos' && kind !== 'view') applySim();
     clearTimeout(saveT); saveT = setTimeout(() => store.set(CUR, { sys, lib: libId, dirty }), 300);
     if (kind === 'view') return;
@@ -74,7 +74,7 @@
   const undo = () => { clearTimeout(histT); if (hi > 0) restore(hi - 1); };
   const redo = () => { if (hi < hist.length - 1) restore(hi + 1); };
   function setSystem(s, lib, isDirty) {
-    sys = clone(s); libId = lib || null; dirty = !!isDirty; selected = null;
+    sys = clone(s); libId = lib || null; dirty = !!isDirty; touched = false; selected = null;
     hist = [JSON.stringify(sys)]; hi = 0;
     $('#name').value = sys.name || '';
     rebuild(); fitView(); applySim(); sim.reset(); paintDirty();
@@ -94,7 +94,7 @@
     if (!e) { libId = 'p' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6); e = { id: libId }; list.unshift(e); }
     e.name = sys.name; e.sys = clone(sys); e.t = Date.now();
     if (!PP.saveLibrary(list)) { toast('No se pudo guardar: el navegador no tiene lugar', true); return; }
-    dirty = false; paintDirty(); store.set(CUR, { sys, lib: libId, dirty });
+    dirty = false; touched = false; paintDirty(); store.set(CUR, { sys, lib: libId, dirty });
     if (bc) { bc.postMessage({ type: 'lib' }); bc.postMessage({ type: 'sys', id: libId, name: sys.name, sys }); }
     toast(`💾 «${sys.name}» guardado: ya lo podés elegir en NODRUS`);
   }
@@ -436,7 +436,8 @@
     }, x, y);
   }
   $('#btnAdd').addEventListener('click', e => { const r = e.currentTarget.getBoundingClientRect(); addMenu(r.left, r.top - 420); });
-  const askLeave = () => !dirty || confirm(`«${sys.name || 'Sin nombre'}» tiene cambios sin guardar en la biblioteca. ¿Seguir igual?`);
+  // only when you changed something since opening it (an example you just looked at goes away without asking)
+  const askLeave = () => !(dirty && touched) || confirm(`Cambiaste «${sys.name || 'Sin nombre'}» y no lo guardaste. ¿Seguir igual? (💾 Guardar lo deja en tu biblioteca)`);
   $('#btnEx').addEventListener('click', e => openPop(p => {
     p.append(el('h4', '', 'Ejemplos'));
     PP.PRESETS.forEach(pr => p.append(item(pr.name, () => { if (askLeave()) { setSystem(pr.sys, null, true); toast(`✨ ${pr.name}: cambiá lo que quieras y guardalo con tu nombre`); } })));
