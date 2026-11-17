@@ -19,12 +19,14 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <title>NODRUS táctil — PUDRUS Lab</title>
   <link rel="icon" type="image/svg+xml" href="/favicon.svg">
-  <link rel="stylesheet" href="movil.css?v=2">
+  <script src="/js/theme.js" data-button="off"></script>
+  <link rel="stylesheet" href="movil.css?v=3">
 </head>
 <body>
 <header class="m-top">
   <a class="m-logo" href="/">NODRUS<span> táctil</span></a>
   <span class="m-sp"></span>
+  <button class="m-ic" id="themeBtn" title="Cambiar al tema claro">◐</button>
   <button class="m-ic" id="btnTour" title="Recorrido">?</button>
   <button class="m-ic" id="btnMenu" title="Más">⋯</button>
 </header>
@@ -65,5 +67,14 @@
 <script src="../nodes.js?v=44"></script>
 <script src="../generate.js?v=45"></script>
 <script src="movil.js?v=3"></script>
+<script>
+  // the theme: the ◐ button switches it (one choice for every PUDRUS page in this browser, kept by /js/theme.js)
+  (function () {
+    const b = document.getElementById('themeBtn'); if (!b) return;
+    const paint = () => { const l = document.documentElement.getAttribute('data-theme') === 'light'; b.title = l ? 'Cambiar al tema oscuro' : 'Cambiar al tema claro'; b.setAttribute('aria-pressed', l ? 'true' : 'false'); };
+    b.addEventListener('click', () => { if (window.pudrusTheme) window.pudrusTheme.toggle(); });
+    document.addEventListener('pudrus:theme', paint); paint();
+  })();
+</script>
 </body>
 </html>

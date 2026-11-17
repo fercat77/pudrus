@@ -13,7 +13,15 @@
     sessionStorage.setItem(KEY, '1');
   } catch (e) { /* storage blocked: show it anyway */ }
 
-  const G = '#66ff33', CY = '#00d4ff', MG = '#ff3fa4', BG = '#050508';
+  // the palette follows the theme (js/theme.js puts data-theme="light" on <html> before this runs): the dark one is the
+  // default; the light one is the cream panel with orange, like the rest of the site in the light theme
+  const LIGHT = (() => { try { return document.documentElement.getAttribute('data-theme') === 'light' || localStorage.getItem('pudrus_theme') === 'light'; } catch (e) { return false; } })();
+  const P = LIGHT
+    ? { g: '#b23c08', gRgb: '178,60,8', cy: '#1a657f', mg: '#a8246a', y: '#865600', bg: '#e8e6de', bgRgb: [232, 230, 222], ink: '#1b1e22', inkRgb: '43,47,53',
+        tile: '#f3f1ea', tileOff: '#ebe2c8', pipeOff: '#d9b9a3', pipeFar: '#cbc5b5', node: '#fbfaf6', nodeLine: 'rgba(43,47,53,0.3)', grid: 'rgba(43,47,53,0.07)', ledOff: '#2b2f35', scan: 'rgba(43,47,53,0.07)', hint: 'rgba(178,60,8,.6)' }
+    : { g: '#66ff33', gRgb: '102,255,51', cy: '#00d4ff', mg: '#ff3fa4', y: '#ffd23f', bg: '#050508', bgRgb: [5, 5, 8], ink: '#ffffff', inkRgb: '208,239,255',
+        tile: '#0b0b14', tileOff: '#08080f', pipeOff: '#2b5a37', pipeFar: '#16261c', node: '#12121c', nodeLine: 'rgba(0,212,255,0.25)', grid: 'rgba(0,212,255,0.05)', ledOff: '#1d3a28', scan: 'rgba(0,0,0,0.28)', hint: 'rgba(102,255,51,.35)' };
+  const G = P.g, CY = P.cy, MG = P.mg, BG = P.bg;
   const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
   const DUR = { home: 2100, juegos: 2300, nodrus: 2500, syndrus: 2400 }[mode] || 2100;
 
@@ -25,7 +33,7 @@
   cv.style.cssText = 'position:absolute;inset:0;width:100%;height:100%;display:block;';
   const hint = document.createElement('div');
   hint.textContent = 'tocá para saltar';
-  hint.style.cssText = `position:absolute;left:0;right:0;bottom:22px;text-align:center;font:11px "IBM Plex Mono",ui-monospace,monospace;letter-spacing:.2em;text-transform:uppercase;color:rgba(102,255,51,.35);opacity:0;transition:opacity .6s .5s;`;
+  hint.style.cssText = `position:absolute;left:0;right:0;bottom:22px;text-align:center;font:11px "IBM Plex Mono",ui-monospace,monospace;letter-spacing:.2em;text-transform:uppercase;color:${P.hint};opacity:0;transition:opacity .6s .5s;`;
   ov.append(cv, hint);
   (document.body || document.documentElement).appendChild(ov);
   const html = document.documentElement, prevOverflow = html.style.overflow;
@@ -93,6 +101,13 @@
           const noise = n * (1 - tune * 0.92) * (0.55 + roll);
           const sig = m * tune > b ? 1 : 0;
           let r, gg, bb;
+          if (LIGHT) {
+            if (sig) { r = 178; gg = 60; bb = 8; }
+            else { const v = noise * 160; r = 232 - v * 0.75; gg = 230 - v * 0.6; bb = 222 - v * 0.5 - (n > 0.985 ? 90 : 0); }
+            const [R0, G0, B0] = P.bgRgb;   // fading out = back to the panel colour
+            px[o] = R0 + (r - R0) * fade; px[o + 1] = G0 + (gg - G0) * fade; px[o + 2] = B0 + (bb - B0) * fade; px[o + 3] = 255;
+            continue;
+          }
           if (sig) { r = 102; gg = 255; bb = 51; }
           else { const v = noise * 160; r = v * 0.3; gg = v; bb = v * 0.75 + (n > 0.985 ? 120 : 0); }
           px[o] = r * fade; px[o + 1] = gg * fade; px[o + 2] = bb * fade; px[o + 3] = 255;
@@ -106,7 +121,7 @@
         const bands = 9;
         for (let k = 0; k < bands; k++) {
           const sy = (k / bands) * rows, sh = rows / bands, dx = (Math.random() - 0.5) * 40 * (Math.random() < 0.4 ? 1 : 0.1);
-          g.globalCompositeOperation = 'lighter';
+          g.globalCompositeOperation = LIGHT ? 'multiply' : 'lighter';   // the RGB split adds light on black, takes it away on cream
           g.globalAlpha = 0.9; g.drawImage(lo, 0, sy, cols, sh, dx, sy / rows * H, W, sh / rows * H);
           g.globalAlpha = 0.5; g.filter = 'none';
           g.drawImage(lo, 0, sy, cols, sh, dx + 6, sy / rows * H, W, sh / rows * H);
@@ -115,9 +130,9 @@
         g.fillStyle = 'rgba(255,63,164,0.08)'; g.fillRect(0, 0, W, H);
       } else g.drawImage(lo, 0, 0, W, H);
       // scanlines and a bright sweep
-      g.fillStyle = 'rgba(0,0,0,0.28)'; for (let y = 0; y < H; y += 3) g.fillRect(0, y, W, 1);
+      g.fillStyle = P.scan; for (let y = 0; y < H; y += 3) g.fillRect(0, y, W, 1);
       const sweep = ((t * 0.0009) % 1.3) * H;
-      const gr = g.createLinearGradient(0, sweep - 60, 0, sweep); gr.addColorStop(0, 'rgba(102,255,51,0)'); gr.addColorStop(1, 'rgba(102,255,51,0.10)');
+      const gr = g.createLinearGradient(0, sweep - 60, 0, sweep); gr.addColorStop(0, `rgba(${P.gRgb},0)`); gr.addColorStop(1, `rgba(${P.gRgb},0.10)`);
       g.fillStyle = gr; g.fillRect(0, sweep - 60, W, 60);
       // the screen tears away in horizontal bands
       if (t > 1700) {
@@ -167,8 +182,8 @@
         g.save(); g.translate(cx, cy + (p.on ? 0 : out * (p.y - by0) * 4)); g.rotate(ang);
         const sc = p.on ? 1 - out * 0.15 : 1; g.scale(sc, sc);
         g.globalAlpha = p.on ? 1 - out : (0.5 - out * 0.5) * (0.3 + 0.7 * seg(t, 0, 300));
-        g.fillStyle = p.on ? '#0b0b14' : '#08080f'; g.fillRect(-S / 2 + 1, -S / 2 + 1, S - 2, S - 2);
-        g.strokeStyle = lit ? G : p.on ? '#2b5a37' : '#16261c'; g.lineWidth = S * (p.on ? 0.26 : 0.16); g.lineCap = 'round';
+        g.fillStyle = p.on ? P.tile : P.tileOff; g.fillRect(-S / 2 + 1, -S / 2 + 1, S - 2, S - 2);
+        g.strokeStyle = lit ? G : p.on ? P.pipeOff : P.pipeFar; g.lineWidth = S * (p.on ? 0.26 : 0.16); g.lineCap = 'round';
         if (lit) { g.shadowColor = G; g.shadowBlur = 16; }
         g.beginPath();
         [[0, -1, 1], [1, 0, 2], [0, 1, 4], [-1, 0, 8]].forEach(([dx, dy, bit]) => { if (p.m & bit) { g.moveTo(0, 0); g.lineTo(dx * S / 2, dy * S / 2); } });
@@ -178,7 +193,7 @@
       const run = seg(t, 150, 1250);
       if (run > 0 && run < 1) {
         const sx = ox + run * gw * S, gr = g.createRadialGradient(sx, H / 2, 0, sx, H / 2, S * 3);
-        gr.addColorStop(0, 'rgba(102,255,51,0.35)'); gr.addColorStop(1, 'rgba(102,255,51,0)');
+        gr.addColorStop(0, `rgba(${P.gRgb},0.35)`); gr.addColorStop(1, `rgba(${P.gRgb},0)`);
         g.fillStyle = gr; g.fillRect(sx - S * 3, H / 2 - S * 3, S * 6, S * 6);
       }
       // tagline
@@ -187,7 +202,7 @@
         g.globalAlpha = ta; g.fillStyle = CY; g.font = FONT(Math.max(11, S * 0.42)); g.textAlign = 'center'; g.textBaseline = 'top';
         g.fillText('ENTRENÁ LA CABEZA', W / 2, oy + gh * S + S * 0.9); g.globalAlpha = 1;
       }
-      if (t > 1250 && t < 1400) { g.fillStyle = `rgba(102,255,51,${0.12 * (1 - seg(t, 1250, 1400))})`; g.fillRect(0, 0, W, H); }
+      if (t > 1250 && t < 1400) { g.fillStyle = `rgba(${P.gRgb},${0.12 * (1 - seg(t, 1250, 1400))})`; g.fillRect(0, 0, W, H); }
     };
   }
 
@@ -218,14 +233,14 @@
     return t => {
       g.fillStyle = BG; g.fillRect(0, 0, W, H);
       // a faint grid, like the editor
-      g.strokeStyle = 'rgba(0,212,255,0.05)'; g.lineWidth = 1; g.beginPath();
+      g.strokeStyle = P.grid; g.lineWidth = 1; g.beginPath();
       for (let x = (t * 0.01) % 32; x < W; x += 32) { g.moveTo(x, 0); g.lineTo(x, H); }
       for (let y = 0; y < H; y += 32) { g.moveTo(0, y); g.lineTo(W, y); }
       g.stroke();
       // cables grow, then pulses travel along them
       for (const l of links) {
         const k = seg(t, l.at, l.at + 260); if (k <= 0) continue;
-        g.strokeStyle = 'rgba(102,255,51,0.55)'; g.lineWidth = 2; g.beginPath();
+        g.strokeStyle = `rgba(${P.gRgb},0.55)`; g.lineWidth = 2; g.beginPath();
         for (let i = 0; i <= 24; i++) { const [x, y] = pt(l.a, l.b, k * i / 24); i ? g.lineTo(x, y) : g.moveTo(x, y); }
         g.stroke();
         if (k >= 1) for (let j = 0; j < 2; j++) {
@@ -238,12 +253,12 @@
         const k = seg(t, n.at, n.at + 220); if (k <= 0) continue;
         const s = 0.6 + 0.4 * k + Math.sin(k * Math.PI) * 0.08;
         g.save(); g.translate(n.x + nw / 2, n.y + nh / 2); g.scale(s, s); g.globalAlpha = k;
-        g.fillStyle = '#12121c'; g.strokeStyle = n.out && t > FLOOD - 300 ? G : 'rgba(0,212,255,0.25)'; g.lineWidth = n.out && t > FLOOD - 300 ? 2 : 1;
+        g.fillStyle = P.node; g.strokeStyle = n.out && t > FLOOD - 300 ? G : P.nodeLine; g.lineWidth = n.out && t > FLOOD - 300 ? 2 : 1;
         rr(-nw / 2, -nh / 2, nw, nh, 7); g.fill(); g.stroke();
         g.fillStyle = n.col; rr(-nw / 2, -nh / 2, nw, nh * 0.36, 7, true); g.fill();
         g.fillStyle = '#fff'; g.font = FONT(Math.max(9, nh * 0.2)); g.textAlign = 'left'; g.textBaseline = 'middle';
         g.fillText(n.name, -nw / 2 + 8, -nh / 2 + nh * 0.18);
-        g.fillStyle = 'rgba(208,239,255,0.25)'; g.fillRect(-nw / 2 + 8, nh * 0.08, nw * 0.6, 3); g.fillRect(-nw / 2 + 8, nh * 0.24, nw * 0.4, 3);
+        g.fillStyle = `rgba(${P.inkRgb},0.25)`; g.fillRect(-nw / 2 + 8, nh * 0.08, nw * 0.6, 3); g.fillRect(-nw / 2 + 8, nh * 0.24, nw * 0.4, 3);
         g.fillStyle = G; g.beginPath(); g.arc(nw / 2, nh * 0.12, 3.5, 0, 7); g.fill();
         g.restore();
       }
@@ -300,8 +315,8 @@
           const i = y * cols + x, up = (rows - 1 - y) / rows, cx = left + (x + 0.5) * cell, cy = top + (y + 0.5) * cell;
           const word = mask[i] && form > th[i] * 0.85;
           if (word) { if (drop > 0) fall[i] += vel[i] * drop * 1.6; words.push([cx, cy + fall[i] * cell]); continue; }
-          let a = 0.06, col = '#1d3a28';
-          if (up < lvl[x]) { a = 0.75 * (1 - form); col = up > 0.72 ? MG : up > 0.48 ? '#ffd23f' : G; }
+          let a = 0.06, col = P.ledOff;
+          if (up < lvl[x]) { a = 0.75 * (1 - form); col = up > 0.72 ? MG : up > 0.48 ? P.y : G; }
           else if (Math.abs(up - peak[x]) < 0.6 / rows && form < 1) { a = 0.9 * (1 - form); col = CY; }
           g.globalAlpha = Math.max(0.06, a) * (1 - drop); g.fillStyle = col;
           g.fillRect(cx - cell * 0.3, cy - cell * 0.3, cell * 0.6, cell * 0.6);
@@ -310,7 +325,7 @@
       // the name: a soft glow pass, then crisp dots (white on the beat)
       g.globalAlpha = (0.18 + beat * 0.2) * (1 - drop); g.fillStyle = G;
       for (const [x, y] of words) g.fillRect(x - cell * 0.75, y - cell * 0.75, cell * 1.5, cell * 1.5);
-      g.globalAlpha = 1 - drop * 0.7; g.fillStyle = beat > 0.6 ? '#ffffff' : G;
+      g.globalAlpha = 1 - drop * 0.7; g.fillStyle = beat > 0.6 ? P.ink : G;
       const r = cell * (0.34 + beat * 0.06);
       for (const [x, y] of words) g.fillRect(x - r, y - r, r * 2, r * 2);
       g.globalAlpha = 1;
