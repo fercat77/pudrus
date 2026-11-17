@@ -57,6 +57,20 @@
     const analyser = ctx.createAnalyser(); analyser.fftSize = 2048; analyser.smoothingTimeConstant = 0.75;
     const masterHP = ctx.createBiquadFilter(); masterHP.type = 'highpass'; masterHP.frequency.value = 10; masterHP.Q.value = 1.4;
     const gate = ctx.createGain();
+    // The glue compressor's one knob: 0 = off … 0.5 = what it always was (−14 dB, 3:1) … 1 = hard (−28 dB, 5:1).
+    // The harder it works the quieter the mix comes out (the node's own make-up gain covers only part of it), so compTrim
+    // evens it out: the knob changes how dense the mix is, not how loud. COMP_TRIM = dB at 0, 25, 50, 75 and 100 %,
+    // measured on the presets (the loudness stays within about 1 dB and the peaks stay under the limiter).
+    const compTrim = ctx.createGain(), COMP_TRIM = [0, -0.5, 0, 1.5, 3];
+    let compAmt = null;
+    function setComp(a) {
+      a = a === undefined ? 0.5 : Math.max(0, Math.min(1, +a || 0));
+      if (a === compAmt) return;
+      const k = a * 4, i = Math.min(3, Math.floor(k)), trim = Math.pow(10, (COMP_TRIM[i] + (COMP_TRIM[i + 1] - COMP_TRIM[i]) * (k - i)) / 20), now = ctx.currentTime;
+      if (compAmt === null) { comp.threshold.value = -28 * a; comp.ratio.value = 1 + 4 * a; compTrim.gain.value = trim; }
+      else { comp.threshold.setTargetAtTime(-28 * a, now, 0.03); comp.ratio.setTargetAtTime(1 + 4 * a, now, 0.03); compTrim.gain.setTargetAtTime(trim, now, 0.03); }
+      compAmt = a;
+    }
     // The limiter is the last thing before the output: a fast, hard compressor holds whatever goes over −1 dB, and the soft
     // clip after it is a ceiling nothing crosses (−0.3 dBFS) — two decks, a drop and an impact together can't overload a PA.
     const lim = ctx.createDynamicsCompressor(); lim.threshold.value = -1; lim.knee.value = 0; lim.ratio.value = 20; lim.attack.value = 0.001; lim.release.value = 0.06;
@@ -65,7 +79,7 @@
     { const n = 2049, c = new Float32Array(n), T = 0.9, C = 0.98;
       for (let i = 0; i < n; i++) { const x = i / (n - 1) * 2 - 1, a = Math.abs(x); c[i] = Math.sign(x) * (a <= T ? a : T + (C - T) * Math.tanh((a - T) / (C - T))); }
       ceil.curve = c; }
-    masterIn.connect(masterHP); masterHP.connect(gate); gate.connect(drive); drive.connect(vol); vol.connect(comp); comp.connect(lim); lim.connect(limTrim); limTrim.connect(ceil); ceil.connect(analyser); analyser.connect(out);
+    masterIn.connect(masterHP); masterHP.connect(gate); gate.connect(drive); drive.connect(vol); vol.connect(comp); comp.connect(compTrim); compTrim.connect(lim); lim.connect(limTrim); limTrim.connect(ceil); ceil.connect(analyser); analyser.connect(out);
     E.analyser = analyser;
     E.limiting = () => lim.reduction;   // dB the limiter is taking off right now (0 = it is not working)
     // performance FX bus (risers, impacts): after the master filter, with its own long reverb
@@ -331,7 +345,7 @@
     return D;
     }
     E.decks = [buildDeck(), buildDeck()];
-    E.setMaster = m => { setDrive(m.drive); vol.gain.setTargetAtTime(m.volume, ctx.currentTime, 0.02); };
+    E.setMaster = m => { setDrive(m.drive); setComp(m.comp); vol.gain.setTargetAtTime(m.volume, ctx.currentTime, 0.02); };
 
     /* ── cue output ──
        'off'    · normal stereo master

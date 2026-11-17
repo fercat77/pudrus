@@ -232,8 +232,8 @@ body[data-deck="B"] .sy-drums .sy-head b::after, body[data-deck="B"] .sy-synth .
 }
 /* narrow desktop: the rings stack their header and scroll inside their card */
 @media (min-width: 761px) and (max-width: 1240px) { .sy-ring .top { flex-wrap: wrap; row-gap: 3px; } .sy-ring { overflow-y: auto; } .sy-ring .tabs button { font-size: 9px; padding: 0 3px; } }
-/* the top bar fits up to ~1600px: icons only for Consola and NODRUS, narrower faders and preset menu */
-@media (min-width: 761px) and (max-width: 1599px) { .sy-bar .sy-lbl, .sy-bar .sy-ico { display: none; } .sy-bar .sy-group .sy-param { width: 84px; } #preset { max-width: 118px; } #scale { max-width: 94px; } .sy-bar { gap: 6px; } .sy-bar .sy-group { gap: 4px; } }
+/* the top bar fits up to ~1680px: icons only for Consola and NODRUS, narrower faders and preset menu */
+@media (min-width: 761px) and (max-width: 1679px) { .sy-bar .sy-lbl, .sy-bar .sy-ico { display: none; } .sy-bar .sy-group .sy-param { width: 84px; } #preset { max-width: 118px; } #scale { max-width: 94px; } .sy-bar { gap: 6px; } .sy-bar .sy-group { gap: 4px; } }
 @media (min-width: 761px) and (max-width: 1500px) { .sy-ring .top { gap: 3px; } .sy-ring .top b { font-size: 9.5px; } .sy-ring .tabs { gap: 2px; } .sy-ring .tabs button { font-size: 9px; padding: 0 3px; } .sy-ring { --cv: max(28px, min(calc((100cqh - 6px) / 2 - 12px), 24cqw, calc(50cqw - 172px))); } .sy-ring .tabs .lg { display: none; } .sy-ring .tabs .sh { display: inline; } .sy-seg button { white-space: nowrap; overflow: hidden; padding: 0 2px; } .sy-arp .sy-params.sy-row { grid-template-columns: repeat(auto-fill, minmax(68px, 1fr)); } }
 @media (min-width: 761px) and (max-width: 1320px) { .sy-bar .sy-logo { display: none; } .sy-arp .sy-params.sy-row { grid-template-columns: repeat(auto-fill, minmax(62px, 1fr)); } }
 @media (min-width: 761px) and (max-width: 1180px) { .sy-hint { display: none; } .sy-bar { flex-wrap: wrap; } }
@@ -377,3 +377,8 @@ body.sy-learning .sy-param, body.sy-learning .sy-knob, body.sy-learning .sy-vf {
 /* the EQ row of each deck takes its height from the scope, so the panels below keep theirs */
 @media (min-width: 761px) { #scope { height: clamp(22px, calc(7vh - 27px), 170px); } }
 @media (max-width: 760px) { .sy-eq .sy-param { height: 40px; } .sy-eq .sy-param .l { font-size: 9px; top: 2px; } .sy-eq .sy-param .v { font-size: 12px; bottom: 2px; } }
+/* recording the live set */
+#rec { color: var(--r); }
+#rec.on { background: var(--r); border-color: var(--r); color: #000; animation: sy-rec 1.2s steps(2, jump-none) infinite; }
+@keyframes sy-rec { 50% { opacity: 0.55; } }
+.sy-status .rec { color: var(--r); font-weight: 700; }

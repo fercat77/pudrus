@@ -302,7 +302,7 @@
     const m = obj(a.mix), md = arr(m.decks);
     return {
       v: 2, bpm: num(a.bpm, decks[0].bpm, 40, 300), swing: num(a.swing, 0, 0, 0.6), lockBpm: bool(a.lockBpm, false), lockKey: bool(a.lockKey, false), edit: a.edit === 1 ? 1 : 0, decks,
-      mix: { x: unit(m.x, 0), drive: unit(m.drive, 0.12), volume: lvl(m.volume, 0.8),
+      mix: { x: unit(m.x, 0), drive: unit(m.drive, 0.12), comp: unit(m.comp, 0.5), volume: lvl(m.volume, 0.8),
         cueMode: oneOf(m.cueMode, 'off', ['off', 'split', 'device']), cueBlend: unit(m.cueBlend, 0.25), cueSink: typeof m.cueSink === 'string' ? m.cueSink.slice(0, 200) : '',
         decks: [0, 1].map(i => { const d = obj(md[i]), mu = obj(d.mute), b0 = deckMix(); return { level: lvl(d.level, b0.level), dj: num(d.dj, 0, -1, 1), eqLo: num(d.eqLo, 0, -1, 1), eqMid: num(d.eqMid, 0, -1, 1), eqHi: num(d.eqHi, 0, -1, 1), kill: bool(d.kill, false), cue: bool(d.cue, false),
           mute: { drums: bool(mu.drums, false), synth: bool(mu.synth, false), rings: bool(mu.rings, false), arp: bool(mu.arp, false) } }; }) },
@@ -1047,7 +1047,9 @@
       body.append(p);
     } else {
       const p = el('div', 'sy-params');
-      p.append(param('Saturación', app.mix, 'drive', 0, 1), param('Volumen', app.mix, 'volume', 0, 1.2));
+      const cp = param('Compresor', app.mix, 'comp', 0, 1, { def: 0.5, fmt: x => (x < 0.01 ? 'no' : Math.round(x * 100) + '%') });
+      cp.title = 'Cuánto aprieta el compresor del master: 0 apagado · 50 % el de siempre · 100 % bien apretado · doble clic: 50 %';
+      p.append(param('Saturación', app.mix, 'drive', 0, 1), cp, param('Volumen', app.mix, 'volume', 0, 1.2));
       body.append(p);
     }
     paintMixer();
@@ -1129,7 +1131,7 @@
     xw.append(lbls, xf, qb); requestAnimationFrame(paintX);
     const ms = el('div', 'sy-strip'), fw = el('div', 'sy-faderwrap'), mt = el('div', 'sy-meter'), mi = el('i'); mt.append(mi);
     const mv = vfader(app.mix, 'volume', 0, 1.2, 'master'); fw.append(mv, mt);
-    ms.append(el('div', 'grp', 'master'), el('div', 'nm', 'Salida'), knob('Satur.', app.mix, 'drive', 0, 1, null, 'Saturación master'), fw, mv.val);
+    ms.append(el('div', 'grp', 'master'), el('div', 'nm', 'Salida'), knob('Satur.', app.mix, 'drive', 0, 1, null, 'Saturación master'), knob('Comp.', app.mix, 'comp', 0, 1, null, 'Compresor master'), fw, mv.val);
     conMeters.push({ an: () => E && E.analyser, el: mi, big: true });
     mb.append(xw, ms);
   }
@@ -1373,6 +1375,7 @@
     const db = peakHold > 0 ? 20 * Math.log10(peakHold) : -Infinity, clip = performance.now() - clipAt < 1500;
     const lat = ac ? Math.round(((ac.baseLatency || 0) + (ac.outputLatency || 0)) * 1000) : 0;
     const out = [
+      ...(rec ? [`<span class="rec">⏺ REC ${clock(rec.frames / rec.rate)}</span>`] : []),
       `<span class="${playing ? 'ok' : ''}">${playing ? '▶ sonando' : '■ parado'}</span>`,
       `pos <b>${pos}</b>`,
       `<b>${app.bpm}</b> BPM${app.lockBpm ? ' 🔒' : ''}${app.swing > 0.01 ? ' · swing ' + Math.round(app.swing * 100) + '%' : ''}`,
@@ -1445,6 +1448,72 @@
   });
   addEventListener('keyup', e => { const i = KEYMAP.indexOf(e.key.toLowerCase()); if (i >= 0) release(i); });
 
+  /* ── recording the live set: everything that leaves the master (after the limiter) into a WAV. A worklet hands the
+     samples over in blocks; they pile up as 16-bit chunks and move into blobs every few seconds, so an hour of set
+     doesn't sit in memory ── */
+  const REC_SRC = `class R extends AudioWorkletProcessor {
+    constructor() { super(); this.l = new Float32Array(4096); this.r = new Float32Array(4096); this.n = 0; this.on = true;
+      this.port.onmessage = () => { this.flush(); this.on = false; this.port.postMessage(null); }; }
+    flush() { if (this.n) { this.port.postMessage({ l: this.l.slice(0, this.n), r: this.r.slice(0, this.n) }); this.n = 0; } }
+    process(inputs) {
+      if (!this.on) return false;
+      const i = inputs[0], L = i && i[0], Rr = i && (i[1] || i[0]);   // nothing coming in = silence, still recorded: the time must not shrink
+      for (let k = 0; k < 128; k++) { this.l[this.n] = L ? L[k] : 0; this.r[this.n] = Rr ? Rr[k] : 0; if (++this.n === 4096) this.flush(); }
+      return true; } }
+  registerProcessor('syndrus-rec', R);`;
+  let rec = null, recReady = null, recBusy = false;
+  const clock = s => { s = Math.floor(s); const h = Math.floor(s / 3600), m = Math.floor(s / 60) % 60, p = n => String(n).padStart(2, '0'); return (h ? h + ':' + p(m) : String(m)) + ':' + p(s % 60); };
+  function paintRec() { const b = $('#rec'); b.classList.toggle('on', !!rec); b.title = rec ? 'Parar la grabación y bajar el WAV' : 'Grabar lo que tocás (el set en vivo) en un WAV'; }
+  async function recStart() {
+    ensureAudio();
+    if (rec) return true;
+    if (!ac.audioWorklet || !window.AudioWorkletNode) { toast('Este navegador no puede grabar el set: probá con Chrome o con el programa NODRUS', 5000); return false; }
+    try {
+      if (!recReady) { const u = URL.createObjectURL(new Blob([REC_SRC], { type: 'application/javascript' })); recReady = ac.audioWorklet.addModule(u).finally(() => URL.revokeObjectURL(u)); }
+      await recReady;
+    } catch (e) { recReady = null; toast('No se pudo empezar a grabar: ' + (e.message || e), 5000); return false; }
+    if (rec) return true;
+    const node = new AudioWorkletNode(ac, 'syndrus-rec', { numberOfInputs: 1, numberOfOutputs: 1, outputChannelCount: [1], channelCount: 2, channelCountMode: 'explicit', channelInterpretation: 'speakers' });
+    const r = rec = { node, parts: [], blobs: [], frames: 0, done: null, rate: ac.sampleRate };
+    node.port.onmessage = e => {
+      if (!e.data) { if (r.done) r.done(); return; }
+      const l = e.data.l, rr = e.data.r, n = l.length, pcm = new Int16Array(n * 2);
+      for (let i = 0; i < n; i++) { pcm[i * 2] = Math.max(-1, Math.min(1, l[i])) * 32767; pcm[i * 2 + 1] = Math.max(-1, Math.min(1, rr[i])) * 32767; }
+      r.parts.push(pcm); r.frames += n;
+      if (r.parts.length >= 128) { r.blobs.push(new Blob(r.parts)); r.parts = []; }   // every ~12 s: out of memory, into a blob
+      if (r.frames * 4 > 3.9e9 && rec === r) recStop(true).then(saveRec);   // a WAV can't hold more than 4 GB (about six hours)
+    };
+    E.analyser.connect(node); node.connect(ac.destination);   // it sends out silence: connected only so that it keeps running
+    paintRec(); toast('⏺ Grabando todo lo que sale por el master · tocá ⏺ otra vez para parar y bajar el WAV', 4500);
+    return true;
+  }
+  async function recStop(full) {
+    const r = rec; if (!r) return null;
+    rec = null; paintRec();
+    await new Promise(res => { r.done = res; r.node.port.postMessage('stop'); setTimeout(res, 700); });   // the worklet sends what it still holds
+    try { E.analyser.disconnect(r.node); } catch (e) { /* already out */ }
+    try { r.node.disconnect(); } catch (e) { /* idem */ }
+    const bytes = r.frames * 4, hd = new DataView(new ArrayBuffer(44)), w = (o, str) => [...str].forEach((c, i) => hd.setUint8(o + i, c.charCodeAt(0)));
+    w(0, 'RIFF'); hd.setUint32(4, 36 + bytes, true); w(8, 'WAVE'); w(12, 'fmt '); hd.setUint32(16, 16, true); hd.setUint16(20, 1, true); hd.setUint16(22, 2, true);
+    hd.setUint32(24, r.rate, true); hd.setUint32(28, r.rate * 4, true); hd.setUint16(32, 4, true); hd.setUint16(34, 16, true); w(36, 'data'); hd.setUint32(40, bytes, true);
+    return { blob: new Blob([hd, ...r.blobs, ...r.parts], { type: 'audio/wav' }), secs: r.frames / r.rate, full: !!full };
+  }
+  function saveRec(out) {
+    if (!out || out.secs < 0.2) { toast('La grabación quedó vacía'); return; }
+    const d = new Date(), p = n => String(n).padStart(2, '0'), a = el('a');
+    a.href = URL.createObjectURL(out.blob); a.download = `syndrus_set_${d.getFullYear()}${p(d.getMonth() + 1)}${p(d.getDate())}_${p(d.getHours())}${p(d.getMinutes())}.wav`;
+    document.body.append(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 60000);
+    toast(`⏺ Set guardado · ${clock(out.secs)} · WAV de ${Math.max(1, Math.round(out.blob.size / 1048576))} MB${out.full ? ' · llegó al máximo de un WAV: empezá otra grabación para seguir' : ''}`, 6000);
+  }
+  $('#rec').addEventListener('click', async () => {
+    if (recBusy) return;
+    recBusy = true;
+    try { if (rec) saveRec(await recStop()); else await recStart(); } finally { recBusy = false; }
+    $('#more').classList.remove('open');
+  });
+  // closing the tab in the middle of a recording would lose it (in the desktop app the window closes without asking, so no guard there)
+  addEventListener('beforeunload', e => { if (rec && !DESK) { e.preventDefault(); e.returnValue = ''; } });
+
   /* ── export / share / help ── */
   $('#export').addEventListener('click', async () => {
     const bars = +$('#bars').value, b = $('#export');
@@ -1478,5 +1547,5 @@
   paintAll();
   try { setTab(sessionStorage.getItem('syndrus_tab') || 'drums'); } catch (e) { setTab('drums'); }
   paintStatus();
-  window.__syndrus = { midiTest: { onMidi, setLearn: v => { learnMode = v; learnArmed = null; }, get map() { return midiO.map; }, opts: midiO, noteDown, noteUp, get arpSet() { return arpSet; } }, paintArp, perform, get roll() { return roll; }, set roll(v) { roll = v; }, get app() { return app; }, get state() { return st; }, setEdit, get pending() { return pending; }, get engine() { return E; }, get ctx() { return ac; }, setPlay, load, PRESETS, randomTechno, randomPsy, PSY_STYLES };
+  window.__syndrus = { midiTest: { onMidi, setLearn: v => { learnMode = v; learnArmed = null; }, get map() { return midiO.map; }, opts: midiO, noteDown, noteUp, get arpSet() { return arpSet; } }, paintArp, perform, get roll() { return roll; }, set roll(v) { roll = v; }, get app() { return app; }, get state() { return st; }, setEdit, get pending() { return pending; }, get engine() { return E; }, get ctx() { return ac; }, setPlay, load, PRESETS, randomTechno, randomPsy, PSY_STYLES, rec: { start: recStart, stop: recStop, get on() { return !!rec; } } };
 })();
