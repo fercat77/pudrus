@@ -2,7 +2,7 @@
    Shared by the PARTRUS editor (lab/partrus/) and NODRUS (node «Partículas»).
 
    A system is a small node graph, like a NODRUS patch:
-     { v: 1, name, nodes: [{ id, type, x, y, v: {input: value}, p: {param: option} }], links: [{ a, ao, b, bi }] }
+     { v: 2, name, nodes: [{ id, type, x, y, v: {input: value}, p: {param: option} }], links: [{ a, ao, b, bi }] }
    The particles flow along a chain  Emisor → (fuerzas…) → Aspecto → Salida ; value nodes (LFO, audio, pulso)
    plug into any number input.
 
@@ -54,7 +54,7 @@ vec3 force(vec3 p, vec3 v, float t, float k1, float k2, float k3, float k4) {
   const DEFS = {
     emit: { title: 'Emisor', cat: 'emit', unique: true, outputs: [POUT],
       help: 'De dónde nacen las partículas, hacia dónde salen y cuánto viven',
-      inputs: [F('x', 'Posición X', 0, -2, 2), F('y', 'Posición Y', 0, -1.5, 1.5), F('z', 'Profundidad', 0, -6, 1), F('size', 'Tamaño', 0.25, 0, 2), F('speed', 'Velocidad', 0.4, 0, 3),
+      inputs: [F('x', 'Posición X', 0, -2, 2), F('y', 'Posición Y', 0, -1.5, 1.5), F('z', 'Posición Z', 0, -6, 1), F('depth', 'Profundidad 3D', 0.5, 0, 1), F('size', 'Tamaño', 0.25, 0, 2), F('speed', 'Velocidad', 0.4, 0, 3),
                F('chaos', 'Azar', 0.5, 0, 1), F('life', 'Vida (s)', 3, 0.2, 15), F('lifeVar', 'Vida variable', 0.5, 0, 1)],
       params: [{ k: 'shape', label: 'Forma', v: 'point', options: [['point', 'punto'], ['ring', 'anillo'], ['disc', 'disco'], ['line', 'línea'], ['box', 'rectángulo'], ['screen', 'toda la pantalla'], ['sphere', 'esfera 3D']] },
                { k: 'dir', label: 'Salen', v: 'out', options: DIRS },
@@ -63,7 +63,7 @@ vec3 force(vec3 p, vec3 v, float t, float k1, float k2, float k3, float k4) {
     // particles born on a geometric figure or a fractal (the fractals are drawn by the chaos game, a few dozen steps per particle)
     geo: { title: 'Emisor geométrico', cat: 'emit', unique: true, outputs: [POUT],
       help: 'Las partículas nacen sobre una figura geométrica o un fractal',
-      inputs: [F('x', 'Posición X', 0, -2, 2), F('y', 'Posición Y', 0, -1.5, 1.5), F('z', 'Profundidad', 0, -6, 1), F('size', 'Tamaño', 0.8, 0.05, 3),
+      inputs: [F('x', 'Posición X', 0, -2, 2), F('y', 'Posición Y', 0, -1.5, 1.5), F('z', 'Posición Z', 0, -6, 1), F('depth', 'Profundidad 3D', 0, 0, 1), F('size', 'Tamaño', 0.8, 0.05, 3),
                F('a', 'Forma A', 0.5, 0, 1, { labels: GEO_A }), F('b', 'Forma B', 0.5, 0, 1, { labels: GEO_B }), F('rot', 'Giro (°)', 0, -180, 180), F('turn', 'Gira sola (°/s)', 0, -180, 180),
                F('speed', 'Velocidad', 0, 0, 3), F('chaos', 'Azar', 0.2, 0, 1), F('life', 'Vida (s)', 8, 0.2, 30), F('lifeVar', 'Vida variable', 0.3, 0, 1)],
       params: [{ k: 'kind', label: 'Figura', v: 'rose', options: [['polygon', 'polígono'], ['star', 'estrella'], ['spiral', 'espiral'], ['rose', 'rosa'], ['lissa', 'Lissajous'], ['grid', 'grilla'],
@@ -76,7 +76,7 @@ vec3 force(vec3 p, vec3 v, float t, float k1, float k2, float k3, float k4) {
     // particles born on a text, a picture or what the camera sees (params with `when` only show for that source)
     form: { title: 'Emisor de forma', cat: 'emit', unique: true, outputs: [POUT],
       help: 'Las partículas nacen sobre un texto, una imagen o lo que ve la cámara',
-      inputs: [F('x', 'Posición X', 0, -2, 2), F('y', 'Posición Y', 0, -1.5, 1.5), F('z', 'Profundidad', 0, -6, 1), F('size', 'Tamaño', 1.2, 0.05, 3), F('speed', 'Velocidad', 0, 0, 3),
+      inputs: [F('x', 'Posición X', 0, -2, 2), F('y', 'Posición Y', 0, -1.5, 1.5), F('z', 'Posición Z', 0, -6, 1), F('depth', 'Profundidad 3D', 0, 0, 1), F('size', 'Tamaño', 1.2, 0.05, 3), F('speed', 'Velocidad', 0, 0, 3),
                F('chaos', 'Azar', 0.3, 0, 1), F('life', 'Vida (s)', 8, 0.2, 30), F('lifeVar', 'Vida variable', 0.3, 0, 1)],
       params: [{ k: 'src', label: 'Forma', v: 'text', options: [['text', 'texto'], ['image', 'imagen'], ['camera', 'cámara']] },
                { k: 'text', label: 'Texto', kind: 'text', v: 'PUDRUS', when: { src: 'text' } },
@@ -90,14 +90,14 @@ vec3 force(vec3 p, vec3 v, float t, float k1, float k2, float k3, float k4) {
 
     gravity: { title: 'Gravedad', cat: 'force', inputs: [PIN, F('str', 'Fuerza', 0.6, -3, 3), F('angle', 'Ángulo', 0, -180, 180)], outputs: [POUT],
       help: 'Las tira hacia un lado (0° = abajo)' },
-    turb: { title: 'Turbulencia', cat: 'force', inputs: [PIN, F('str', 'Fuerza', 0.8, 0, 4), F('scale', 'Escala', 1.5, 0.1, 10), F('speed', 'Evolución', 0.3, 0, 3)], outputs: [POUT],
+    turb: { title: 'Turbulencia', cat: 'force', inputs: [PIN, F('str', 'Fuerza', 0.8, 0, 4), F('scale', 'Escala', 1.5, 0.1, 10), F('speed', 'Evolución', 0.3, 0, 3), F('z3', 'Movimiento en Z', 1, 0, 2)], outputs: [POUT],
       help: 'Remolinos de humo: un flujo que cambia con el tiempo' },
     attract: { title: 'Atractor', cat: 'force', inputs: [PIN, F('x', 'X', 0, -2, 2), F('y', 'Y', 0, -1.5, 1.5), F('str', 'Fuerza', 0.6, -3, 3)], outputs: [POUT],
       help: 'Las atrae a un punto (negativo: las espanta)' },
     vortex: { title: 'Remolino', cat: 'force', inputs: [PIN, F('x', 'X', 0, -2, 2), F('y', 'Y', 0, -1.5, 1.5), F('str', 'Giro', 1, -5, 5), F('pull', 'Atracción', 0.2, -2, 2)], outputs: [POUT],
       help: 'Las hace girar alrededor de un punto' },
     wave: { title: 'Ola', cat: 'force', inputs: [PIN, F('str', 'Fuerza', 0.6, 0, 4), F('freq', 'Frecuencia', 4, 0.2, 30), F('speed', 'Velocidad', 1, -5, 5)], outputs: [POUT],
-      params: [{ k: 'dir', label: 'Ola', v: 'h', options: [['h', 'sube y baja'], ['v', 'de lado a lado'], ['r', 'en círculos']] }],
+      params: [{ k: 'dir', label: 'Ola', v: 'h', options: [['h', 'sube y baja'], ['v', 'de lado a lado'], ['r', 'en círculos'], ['z', 'hacia adelante y atrás (3D)']] }],
       help: 'Las mece con una onda' },
     explode: { title: 'Explosión', cat: 'force', inputs: [PIN, F('x', 'X', 0, -2, 2), F('y', 'Y', 0, -1.5, 1.5), F('str', 'Fuerza', 1.5, 0, 8)], outputs: [POUT],
       params: [{ k: 'trig', label: 'Golpe', v: 'beat', options: TRIG }],
@@ -130,7 +130,8 @@ vec3 force(vec3 p, vec3 v, float t, float k1, float k2, float k3, float k4) {
                { k: 'mirror', label: 'Espejo', v: 'yes', options: [['yes', 'sí (caleidoscopio)'], ['no', 'no (sólo gira)']] }],
       help: 'Copias girando alrededor del centro: mandalas y caleidoscopios' },
     out: { title: 'Salida', cat: 'out', unique: true, inputs: [PIN, F('trail', 'Estela', 0, 0, 0.99, { nl: true }), F('gain', 'Brillo', 1, 0, 4),
-      F('yaw', 'Cámara: giro', 0, -180, 180), F('pitch', 'Cámara: inclinación', 0, -89, 89), F('dist', 'Cámara: distancia', 1, 0.3, 4), F('spin', 'Cámara: gira sola', 0, -90, 90)], outputs: [],
+      F('yaw', 'Cámara: giro', 0, -180, 180), F('pitch', 'Cámara: inclinación', 0, -89, 89), F('dist', 'Cámara: distancia', 1, 0.3, 4), F('spin', 'Cámara: gira sola', 0, -90, 90),
+      F('sway', 'Cámara: vaivén (°)', 0, 0, 45), F('fog', 'Niebla', 0.5, 0, 1)], outputs: [],
       params: [{ k: 'blend', label: 'Mezcla', v: 'add', options: [['add', 'suman luz'], ['normal', 'normal (tapan)']] }],
       help: 'Lo que se ve (y lo que recibe NODRUS). La cámara 3D también se mueve arrastrando la vista' },
 
@@ -150,6 +151,7 @@ vec3 force(vec3 p, vec3 v, float t, float k1, float k2, float k3, float k4) {
 
   /* ── sanitizer: every system from outside (storage, files, other windows) goes through here ── */
   const HEX = /^#[0-9a-f]{6}$/i;
+  const LEGACY0 = [['emit', 'depth'], ['turb', 'z3'], ['out', 'fog']];
   function sane(s) {
     if (typeof s === 'string') { try { s = JSON.parse(s); } catch (e) { return null; } }
     if (!s || typeof s !== 'object' || !Array.isArray(s.nodes) || !Array.isArray(s.links) || !s.nodes.length || s.nodes.length > 80) return null;
@@ -170,6 +172,8 @@ vec3 force(vec3 p, vec3 v, float t, float k1, float k2, float k3, float k4) {
         else if (q.kind === 'image') { if (typeof x === 'string' && x.length <= 900000 && /^data:image\/(png|jpeg|webp);base64,[A-Za-z0-9+/=]+$/.test(x)) p[q.k] = x; }
         else if (q.options.some(o => o[0] === x)) p[q.k] = x;
       }
+      // systems from before the depth knobs (v 1) keep looking as they did: flat, no z turbulence, no fog
+      if (!(s.v >= 2)) LEGACY0.forEach(([t, k]) => { if (n.type === t && v[k] === undefined) v[k] = 0; });
       nodes.push({ id: n.id, type: n.type, x: fin(n.x), y: fin(n.y), v, p });
     }
     const byId = new Map(nodes.map(n => [n.id, n])), links = [], into = new Map();
@@ -188,7 +192,7 @@ vec3 force(vec3 p, vec3 v, float t, float k1, float k2, float k3, float k4) {
       if (!i || i.t !== 'float' || i.nl || pub.length >= 16 || seenPub.has(n.id + ':' + i.k)) return;
       seenPub.add(n.id + ':' + i.k); pub.push({ n: n.id, k: i.k });
     });
-    return { v: 1, name: typeof s.name === 'string' ? s.name.slice(0, 60) : '', nodes, links, pub };
+    return { v: 2, name: typeof s.name === 'string' ? s.name.slice(0, 60) : '', nodes, links, pub };
   }
   const valueOf = (n, k) => {
     const i = DEFS[n.type].inputs.find(x => x.k === k);
@@ -349,7 +353,7 @@ vec3 hsv(float h, float s, float v) { vec3 k = clamp(abs(fract(h + vec3(0.0, 2.0
     g = vec3(q / 2.1, 0.0);`,
     };
     const dir = { out: 'o', up: 'vec3(0.0, 1.0, 0.0)', down: 'vec3(0.0, -1.0, 0.0)', left: 'vec3(-1.0, 0.0, 0.0)', right: 'vec3(1.0, 0.0, 0.0)',
-                  random: 'vec3(cos(r2.x * 6.2831853), sin(r2.x * 6.2831853), 0.0)', spin: 'vec3(-o.y, o.x, 0.0)', front: 'vec3(0.0, 0.0, 1.0)', back: 'vec3(0.0, 0.0, -1.0)', still: 'vec3(0.0)' }[EP.dir];
+                  random: 'normalize(vec3(cos(r2.x * 6.2831853), sin(r2.x * 6.2831853), (r3.z * 2.0 - 1.0) * D3 * 1.6))', spin: 'vec3(-o.y, o.x, 0.0)', front: 'vec3(0.0, 0.0, 1.0)', back: 'vec3(0.0, 0.0, -1.0)', still: 'vec3(0.0)' }[EP.dir];
     const globals = [], codeMarks = [];
     const userCode = (id, src, fn) => {   // the node's GLSL, with its function renamed to this node
       const code = String(src || '').replace(/^[ \t]*#[ \t]*(version|extension)\b.*$/gm, '').replace(new RegExp('\\b' + fn + '\\b', 'g'), `f${id}_${fn}`);
@@ -368,10 +372,16 @@ vec3 hsv(float h, float s, float v) { vec3 k = clamp(abs(fract(h + vec3(0.0, 2.0
     }
     const EMIT = `
     vec3 c = vec3(${EI.x}, ${EI.y}, ${EI.z}), o; float S = ${EI.size};
+    vec4 r3 = rnd4(idu, fr, 3u); float D3 = clamp(${EI.depth}, 0.0, 1.0);
     ${emit.type === 'form' ? formShape : emit.type === 'geo' ? geoShape : shape}
+    // «Profundidad 3D»: born in a slab of that thickness, and leaving towards the front and the back too
+    if (D3 > 0.0) {
+      pos.z += (r3.x * 2.0 - 1.0) * D3 * ${emit.type === 'emit' && EP.shape === 'screen' ? '1.0' : emit.type === 'emit' && EP.shape === 'point' ? '0.0' : 'max(S, 0.2) * 0.8'};
+      o = normalize(o + vec3(0.0, 0.0, (r3.y * 2.0 - 1.0) * D3 * 1.6) + vec3(1e-5, 0.0, 0.0));
+    }
     vec3 d0 = ${dir};
     vel = d0 * ${EI.speed} * (1.0 + (r2.z - 0.5) * ${EI.chaos} * 1.5)
-        + vec3(cos(r2.y * 6.2831853), sin(r2.y * 6.2831853), (r.w - 0.5) * 0.6) * ${EI.speed} * ${EI.chaos} * 0.6;
+        + vec3(cos(r2.y * 6.2831853), sin(r2.y * 6.2831853), (r.w - 0.5) * (0.6 + D3 * 1.4)) * ${EI.speed} * ${EI.chaos} * 0.6;
     life = max(0.05, ${EI.life} * (1.0 + (r2.w * 2.0 - 1.0) * ${EI.lifeVar} * 0.8));`;
 
     // forces (before moving) and edges (after)
@@ -383,10 +393,14 @@ vec3 hsv(float h, float s, float v) { vec3 k = clamp(abs(fract(h + vec3(0.0, 2.0
       const I = inputsOf(n), Q = P(n), id = n.id;
       if (n.type === 'gravity') pre.push(`{ float ga = radians(${I.angle}); vel.xy += vec2(sin(ga), -cos(ga)) * ${I.str} * dt; }`);
       else if (n.type === 'turb') pre.push(`{ vec3 q = pos * ${I.scale} + vec3(0.0, 0.0, u_time * ${I.speed}); vec4 n1 = vnoised(q), n2 = vnoised(q * 2.03 + vec3(19.1, 7.3, 3.7));
-      vec3 g = n1.yzw + n2.yzw * 1.015; vel += vec3(g.y, -g.x, g.z * 0.25) * ${I.str} * dt; }`);
+      vec3 g = n1.yzw + n2.yzw * 1.015; vel += vec3(g.y, -g.x, g.z * 0.25) * ${I.str} * dt;
+      // «Movimiento en Z»: a second flow (the curl of two more noises) that also swirls towards the front and the back
+      if (${I.z3} > 0.0) { vec4 n3 = vnoised(q * 1.31 + vec3(5.2, 1.3, 8.7)), n4 = vnoised(q * 1.31 + vec3(2.9, 9.1, 4.4));
+        vel += vec3(-n4.w, n3.w, n4.y - n3.z) * 1.6 * ${I.z3} * ${I.str} * dt; } }`);
       else if (n.type === 'attract') pre.push(`{ vec3 d = vec3(${I.x}, ${I.y}, 0.0) - pos; vel += d * (${I.str} * 0.35 / (dot(d, d) + 0.06)) * dt; }`);
       else if (n.type === 'vortex') pre.push(`{ vec2 d = pos.xy - vec2(${I.x}, ${I.y}); float r2v = dot(d, d) + 0.05; vel.xy += (vec2(-d.y, d.x) * ${I.str} * 0.2 / r2v - d * ${I.pull}) * dt; }`);
-      else if (n.type === 'wave') pre.push(Q.dir === 'v' ? `vel.x += sin(pos.y * ${I.freq} + u_time * ${I.speed}) * ${I.str} * dt;`
+      else if (n.type === 'wave') pre.push(Q.dir === 'z' ? `{ float rl = length(pos.xy); vel.z += sin(rl * ${I.freq} - u_time * ${I.speed} + pos.x * 1.3) * ${I.str} * dt; }`
+        : Q.dir === 'v' ? `vel.x += sin(pos.y * ${I.freq} + u_time * ${I.speed}) * ${I.str} * dt;`
         : Q.dir === 'r' ? `{ float rl = length(pos.xy) + 1e-4; vel.xy += pos.xy / rl * sin(rl * ${I.freq} - u_time * ${I.speed}) * ${I.str} * dt; }`
         : `vel.y += sin(pos.x * ${I.freq} + u_time * ${I.speed}) * ${I.str} * dt;`);
       else if (n.type === 'explode') {
@@ -509,7 +523,10 @@ void main() {
   vec4 rs = rnd4(uint(i), 0u, 9u);${LP.color === 'image' ? '\n  vec4 HH = texelFetch(u_home, ij, 0);' : ''}
   ${VALUES}
   // the 3D camera: turns around the centre, tilts, moves away (2.5 = the default distance)
-  float yaw = radians(${OI.yaw} + u_cam.x + (${OI.spin} + u_cam.w) * u_rtime), pitch = radians(clamp(${OI.pitch} + u_cam.y, -89.0, 89.0));
+  // «vaivén»: the camera sways slowly from side to side and up and down, so the depth shows
+  float sw = max(${OI.sway}, 0.0);
+  float yaw = radians(${OI.yaw} + u_cam.x + (${OI.spin} + u_cam.w) * u_rtime + sw * sin(u_rtime * 0.37)),
+        pitch = radians(clamp(${OI.pitch} + u_cam.y + sw * 0.45 * sin(u_rtime * 0.23 + 1.0), -89.0, 89.0));
   float cy = cos(yaw), sy = sin(yaw), cp = cos(pitch), sp = sin(pitch);
   vec3 cq = vec3(cy * pos.x + sy * pos.z, pos.y, -sy * pos.x + cy * pos.z);
   cq = vec3(cq.x, cp * cq.y - sp * cq.z, sp * cq.y + cp * cq.z);
@@ -518,6 +535,8 @@ void main() {
   float persp = 2.5 / dz;
   gl_Position = vec4(cq.x * persp / u_aspect, cq.y * persp, 0.0, 1.0);
   float sz = max(0.0, ${LI.size}) * persp * u_msize, al = clamp(${LI.opacity}, 0.0, 1.0);
+  // «Niebla»: behind the centre fades out, in front glows a little more
+  al *= clamp(exp(clamp(${OI.fog}, 0.0, 1.0) * cq.z * 0.9), 0.0, ${OP.blend === 'normal' ? '1.0' : '1.6'});
   ${lifeCurve}
   float px = sz * u_scale;
   if (px < 1.0) { al *= max(px, 0.0); px = 1.0; }
@@ -1115,62 +1134,62 @@ void main() {
     });
     (vals || []).forEach(([type, v, p, ao, to, k], j) => {
       const id = chain.length + j + 1, tgt = nodes[to];
-      nodes.push({ id, type, x: Math.max(40, tgt.x - 120) + j * 236, y: 400, v: v || {}, p: p || {} });
+      nodes.push({ id, type, x: Math.max(40, tgt.x - 120) + j * 236, y: 470, v: v || {}, p: p || {} });
       links.push({ a: id, ao, b: tgt.id, bi: k });
     });
-    return sane({ v: 1, name, nodes, links });
+    return sane({ v: 2, name, nodes, links });
   }
   const PRESETS = [
     { name: 'Galaxia', sys: build('Galaxia', [
-      ['emit', { size: 0.95, speed: 0.22, chaos: 0.25, life: 9, lifeVar: 0.6 }, { shape: 'disc', dir: 'spin', count: '262144' }],
+      ['emit', { depth: 0.25, size: 0.95, speed: 0.22, chaos: 0.25, life: 9, lifeVar: 0.6 }, { shape: 'disc', dir: 'spin', count: '262144' }],
       ['vortex', { str: 0.5, pull: 0.12 }],
       ['turb', { str: 0.22, scale: 2.2, speed: 0.12 }],
       ['drag', { amt: 0.35 }],
       ['look', { size: 2.2, opacity: 0.5, a: '#3a7bff', b: '#ff3fa4' }, { shape: 'soft', color: 'age', life: 'fade' }],
-      ['out', { trail: 0.55, gain: 1 }, { blend: 'add' }]]) },
+      ['out', { trail: 0.55, gain: 1, sway: 12 }, { blend: 'add' }]]) },
     { name: 'Fuegos artificiales', sys: build('Fuegos artificiales', [
-      ['emit', { size: 0.02, speed: 1.5, chaos: 0.55, life: 1.8, lifeVar: 0.5 }, { shape: 'point', dir: 'out', count: '16384', burst: 'beat' }],
+      ['emit', { depth: 1, size: 0.02, speed: 1.5, chaos: 0.55, life: 1.8, lifeVar: 0.5 }, { shape: 'point', dir: 'out', count: '16384', burst: 'beat' }],
       ['gravity', { str: 0.9 }],
       ['drag', { amt: 1.3 }],
       ['look', { size: 2.8, opacity: 0.75, a: '#ffd23f', b: '#ff3fa4' }, { shape: 'soft', color: 'rand', life: 'shrink' }],
-      ['out', { trail: 0.8, gain: 1.2 }, { blend: 'add' }]],
+      ['out', { trail: 0.8, gain: 1.2, sway: 14 }, { blend: 'add' }]],
       [['lfo', { speed: 1, min: -1, max: 1 }, { shape: 'random', sync: '1' }, 'v', 0, 'x'],
        ['lfo', { speed: 1, min: -0.1, max: 0.6 }, { shape: 'random', sync: '1' }, 'v', 0, 'y']]) },
     { name: 'Humo', sys: build('Humo', [
-      ['emit', { y: -1.08, size: 1.1, speed: 0.22, chaos: 0.3, life: 7, lifeVar: 0.5 }, { shape: 'line', dir: 'up', count: '65536' }],
+      ['emit', { depth: 0.7, y: -1.08, size: 1.1, speed: 0.22, chaos: 0.3, life: 7, lifeVar: 0.5 }, { shape: 'line', dir: 'up', count: '65536' }],
       ['turb', { str: 1.1, scale: 1.2, speed: 0.22 }],
       ['drag', { amt: 0.9 }],
       ['look', { size: 22, opacity: 0.05, a: '#a7b4c6', b: '#2b3a55' }, { shape: 'soft', color: 'age', life: 'grow' }],
-      ['out', { trail: 0, gain: 1 }, { blend: 'normal' }]]) },
+      ['out', { trail: 0, gain: 1, sway: 8 }, { blend: 'normal' }]]) },
     { name: 'Lluvia de luz', sys: build('Lluvia de luz', [
-      ['emit', { y: 1.06, size: 1, speed: 0.25, chaos: 0.15, life: 4, lifeVar: 0.4 }, { shape: 'line', dir: 'down', count: '65536' }],
+      ['emit', { depth: 0.9, y: 1.06, size: 1, speed: 0.25, chaos: 0.15, life: 4, lifeVar: 0.4 }, { shape: 'line', dir: 'down', count: '65536' }],
       ['gravity', { str: 0.7 }],
       ['bounds', { bounce: 0.45 }, { mode: 'floor' }],
       ['drag', { amt: 0.25 }],
       ['look', { size: 2, opacity: 0.8, a: '#00d4ff', b: '#ffffff' }, { shape: 'dot', color: 'speed', life: 'fade' }],
-      ['out', { trail: 0.5, gain: 1 }, { blend: 'add' }]]) },
+      ['out', { trail: 0.5, gain: 1, sway: 12 }, { blend: 'add' }]]) },
     { name: 'Enjambre', sys: build('Enjambre', [
-      ['emit', { speed: 0.1, chaos: 1, life: 10, lifeVar: 0.5 }, { shape: 'screen', dir: 'random', count: '262144' }],
+      ['emit', { depth: 1, speed: 0.1, chaos: 1, life: 10, lifeVar: 0.5 }, { shape: 'screen', dir: 'random', count: '262144' }],
       ['turb', { str: 1.4, scale: 1, speed: 0.4 }],
       ['attract', { str: 0.6 }],
       ['drag', { amt: 1.5 }],
       ['look', { size: 1.6, opacity: 0.6 }, { shape: 'soft', color: 'angle', life: 'fade' }],
-      ['out', { trail: 0.4, gain: 1 }, { blend: 'add' }]],
+      ['out', { trail: 0.4, gain: 1, sway: 15 }, { blend: 'add' }]],
       [['lfo', { speed: 0.13, min: -1.1, max: 1.1 }, { shape: 'sine' }, 'v', 2, 'x'],
        ['lfo', { speed: 0.21, min: -0.6, max: 0.6 }, { shape: 'sine' }, 'v', 2, 'y']]) },
     { name: 'Pulso de graves', sys: build('Pulso de graves', [
-      ['emit', { size: 0.35, speed: 0.12, chaos: 0.35, life: 3, lifeVar: 0.4 }, { shape: 'ring', dir: 'out', count: '65536' }],
+      ['emit', { depth: 0.35, size: 0.35, speed: 0.12, chaos: 0.35, life: 3, lifeVar: 0.4 }, { shape: 'ring', dir: 'out', count: '65536' }],
       ['explode', { str: 2 }, { trig: 'bass' }],
       ['explode', { str: 1.2 }, { trig: 'beat' }],
       ['drag', { amt: 1.6 }],
       ['bounds', {}, { mode: 'wrap' }],
       ['look', { size: 2.4, opacity: 0.6 }, { shape: 'soft', color: 'angle', life: 'fade' }],
-      ['out', { trail: 0.7, gain: 1 }, { blend: 'add' }]]) },
+      ['out', { trail: 0.7, gain: 1, sway: 10 }, { blend: 'add' }]]) },
     { name: 'Túnel 3D', sys: build('Túnel 3D', [
-      ['emit', { z: -6, size: 0.7, speed: 1.6, chaos: 0.05, life: 5, lifeVar: 0.2 }, { shape: 'ring', dir: 'front', count: '65536' }],
+      ['emit', { depth: 0, z: -6, size: 0.7, speed: 1.6, chaos: 0.05, life: 5, lifeVar: 0.2 }, { shape: 'ring', dir: 'front', count: '65536' }],
       ['vortex', { str: 0.25, pull: 0 }],
       ['look', { size: 2.2, opacity: 0.8, a: '#00d4ff', b: '#66ff33' }, { shape: 'soft', color: 'age', life: 'const' }],
-      ['out', { trail: 0.75, gain: 1 }, { blend: 'add' }]],
+      ['out', { trail: 0.75, gain: 1, fog: 0.3 }, { blend: 'add' }]],
       [['pulse', { decay: 4, min: 0.55, max: 1.1 }, { div: '1' }, 'v', 0, 'size']]) },
     { name: 'Logo que estalla', sys: build('Logo que estalla', [
       ['form', { size: 0.9, speed: 0, chaos: 0, life: 30, lifeVar: 0 }, { src: 'text', text: 'PUDRUS', font: 'display', dir: 'still', count: '65536' }],
@@ -1192,7 +1211,7 @@ void main() {
       ['look', { size: 2.4, opacity: 0.8, a: '#66ff33', b: '#00d4ff' }, { shape: 'soft', color: 'image', life: 'fade' }],
       ['out', { trail: 0.6, gain: 1.2 }, { blend: 'add' }]]) },
     { name: 'Tocar con el cuerpo (cámara)', sys: build('Tocar con el cuerpo (cámara)', [
-      ['emit', { speed: 0, chaos: 0, life: 30, lifeVar: 0 }, { shape: 'screen', dir: 'still', count: '65536' }],
+      ['emit', { depth: 0, speed: 0, chaos: 0, life: 30, lifeVar: 0 }, { shape: 'screen', dir: 'still', count: '65536' }],
       ['cam', { str: 3 }, { mode: 'motion' }],
       ['home', { str: 2.5, damp: 2 }],
       ['look', { size: 2, opacity: 0.7 }, { shape: 'soft', color: 'angle', life: 'const' }],
@@ -1203,12 +1222,12 @@ void main() {
       ['look', { size: 1.4, opacity: 0.5 }, { shape: 'soft', color: 'angle', life: 'fade' }],
       ['out', { trail: 0.35, gain: 1 }, { blend: 'add' }]]) },
     { name: 'Lorenz (mariposa)', sys: build('Lorenz (mariposa)', [
-      ['emit', { size: 0.6, speed: 0, chaos: 0, life: 14, lifeVar: 0.4 }, { shape: 'sphere', dir: 'still', count: '262144' }],
+      ['emit', { depth: 0, size: 0.6, speed: 0, chaos: 0, life: 14, lifeVar: 0.4 }, { shape: 'sphere', dir: 'still', count: '262144' }],
       ['strange', { size: 0.85, speed: 1, str: 0.85 }, { kind: 'lorenz' }],
       ['look', { size: 1.3, opacity: 0.45, a: '#ff3fa4', b: '#ffd23f' }, { shape: 'soft', color: 'speed', life: 'fade' }],
       ['out', { trail: 0.5, gain: 1, spin: 12, pitch: 10 }, { blend: 'add' }]]) },
     { name: 'Aizawa', sys: build('Aizawa', [
-      ['emit', { size: 0.6, speed: 0, chaos: 0, life: 12, lifeVar: 0.4 }, { shape: 'sphere', dir: 'still', count: '262144' }],
+      ['emit', { depth: 0, size: 0.6, speed: 0, chaos: 0, life: 12, lifeVar: 0.4 }, { shape: 'sphere', dir: 'still', count: '262144' }],
       ['strange', { size: 0.75, speed: 1.2, str: 0.85 }, { kind: 'aizawa' }],
       ['look', { size: 1.3, opacity: 0.45 }, { shape: 'soft', color: 'angle', life: 'fade' }],
       ['out', { trail: 0.55, gain: 1, spin: 15, pitch: 20 }, { blend: 'add' }]]) },
@@ -1233,11 +1252,11 @@ void main() {
       ['look', { size: 1.1, opacity: 0.3, a: '#00d4ff', b: '#ff3fa4' }, { shape: 'soft', color: 'angle', life: 'fade' }],
       ['out', { trail: 0.2, gain: 1 }, { blend: 'add' }]]) },
     { name: 'Código GLSL (remolino)', sys: build('Código GLSL (remolino)', [
-      ['emit', { size: 0.9, speed: 0.1, chaos: 1, life: 8, lifeVar: 0.5 }, { shape: 'disc', dir: 'random', count: '65536' }],
+      ['emit', { depth: 0.4, size: 0.9, speed: 0.1, chaos: 1, life: 8, lifeVar: 0.5 }, { shape: 'disc', dir: 'random', count: '65536' }],
       ['code', { k1: 0.7, k2: 0.25, k3: 0.3, k4: 0.4 }],
       ['drag', { amt: 1.2 }],
       ['look', { size: 1.8, opacity: 0.6 }, { shape: 'soft', color: 'speed', life: 'fade' }],
-      ['out', { trail: 0.5, gain: 1 }, { blend: 'add' }]]) },
+      ['out', { trail: 0.5, gain: 1, sway: 10 }, { blend: 'add' }]]) },
   ];
   const blank = () => build('Nuevo sistema', [
     ['emit', {}, { shape: 'point', dir: 'out', count: '65536' }],

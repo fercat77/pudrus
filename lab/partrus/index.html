@@ -74,7 +74,8 @@
     <li><b>Fuerzas</b>: gravedad, turbulencia (humo), atractor, remolino, ola, explosión con el ritmo, frenado y bordes. <b>Formar</b> hace que cada partícula vuelva a donde nació: con una explosión, el logo estalla y se vuelve a armar. <b>Cámara</b>: lo que se mueve frente a la cámara las empuja. <b>Atractor extraño</b> (Lorenz, Aizawa, Thomas, Halvorsen): fluyen por un caos en 3D. <b>Código GLSL</b>: tu propia fuerza, con 4 perillas (✎ abre el editor, Ctrl+Enter aplica). Se aplican en el orden de la cadena.</li>
     <li><b>Simetría</b>: copias que giran alrededor del centro, con espejo: mandalas y caleidoscopios.</li>
     <li><b>Aspecto</b>: tamaño, forma, color y cómo cambian con la edad. «Colores de la imagen» pinta cada partícula con el color de la imagen o de la cámara donde nació.</li>
-    <li><b>Salida</b>: la estela (las partículas dejan rastro), el brillo y la <b>cámara 3D</b>: arrastrá la vista para girarla e inclinarla, rueda para acercar o alejar, «gira sola» para que dé vueltas. ⟲ la vuelve al frente.</li>
+    <li><b>Salida</b>: la estela (las partículas dejan rastro), el brillo y la <b>cámara 3D</b>: arrastrá la vista para girarla e inclinarla, rueda para acercar o alejar, «gira sola» para que dé vueltas, «vaivén» para que se mueva un poco de lado a lado y se note la profundidad. ⟲ la vuelve al frente. «Niebla» apaga lo que queda lejos y aviva lo que está cerca.</li>
+    <li><b>En 3D</b>: «Profundidad 3D» en los emisores hace que las partículas nazcan en un volumen y salgan también hacia adelante y atrás; «Movimiento en Z» de la turbulencia las arremolina en profundidad; la Ola tiene «hacia adelante y atrás». Los sistemas que guardaste antes quedan como estaban (planos) hasta que subas esas perillas.</li>
     <li><b>Valores</b>: LFO, Audio y Pulso. Conectalos a cualquier perilla (cable gris) para que se mueva sola o con la música.</li>
   </ul>
   <h3>Manejo</h3>
@@ -89,7 +90,7 @@
   <div class="row"><button class="pa-btn" id="themeBtn">◐ Tema claro</button><button class="pa-btn" id="helpClose">Cerrar</button></div>
 </div></div>
 
-<script src="particles.js?v=6"></script>
+<script src="particles.js?v=7"></script>
 <script src="app.js?v=7"></script>
 </body>
 </html>
