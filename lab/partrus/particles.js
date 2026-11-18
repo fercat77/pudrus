@@ -840,6 +840,12 @@ void main() {
       S.trail0 = out ? Math.max(0, Math.min(0.995, +valueOf(out, 'trail') || 0)) : 0;
       const em = sys.nodes.find(x => x.id === S.comp.emitId);
       S.life = em ? Math.max(0.2, Math.min(30, +valueOf(em, 'life') || 3)) : 3;
+      // the emitter's knobs (shape, size, figure, position…) only reach particles born afterwards, and those already alive
+      // last up to 30 s: so when they change the system starts over (full, warmed up) and the change shows at once
+      const ek = em ? JSON.stringify([S.comp.uniforms.filter(u => u.node === em.id && !u.trig).map(u => v[u.name]), S.life,
+        ['text', 'font', 'img', 'pick'].map(k => (DEFS[em.type].params || []).some(q => q.k === k) ? paramOf(em, k) : 0)]) : '';
+      if (S.emKey !== undefined && ek !== S.emKey && S.state && S.last !== null && !S.comp.burst) S.wantInit = true;
+      S.emKey = ek;
       return true;
     }
     function fire(mode, beat, bass, now) {
@@ -1037,6 +1043,10 @@ void main() {
         S.cur = cur || S.values;
       } else S.cur = S.values;
       S.clock = S.clock || 0;
+      if (S.wantInit && S.last !== null) {   // an emitter knob changed: start over (at most ~8 times a second while dragging)
+        const now = performance.now();
+        if (!(now - (S.initAt || 0) < 120)) { S.wantInit = false; S.initAt = now; S.last = null; }
+      }
       let dt;
       if (S.last === null) { init(S.clock, audio, beat, aspect); dt = 1 / 60; }
       else dt = time - S.last;

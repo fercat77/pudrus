@@ -156,6 +156,8 @@
       const f = el('input'); f.value = String(get()).replace('.', ',');
       box.append(f); f.focus(); f.select();
       const done = ok => {
+        if (f.dataset.done) return;   // Enter already closed it (removing it fires a blur)
+        f.dataset.done = '1';
         if (ok) { const x = parseFloat(f.value.replace(',', '.')); if (Number.isFinite(x)) set(Math.max(-1e4, Math.min(1e4, x))); }
         f.remove();
       };
