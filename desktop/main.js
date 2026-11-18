@@ -219,12 +219,11 @@ function createMain() {
       const d = outputDisplay();
       return { action: 'allow', overrideBrowserWindowOptions: { x: d.bounds.x + 40, y: d.bounds.y + 40, width: 960, height: 540, show: !TEST, backgroundColor: '#000000', autoHideMenuBar: true, title: 'NODRUS — Salida', webPreferences: { backgroundThrottling: false } } };
     }
-    // SYNDRUS opens as a window of the app: same origin → it talks to NODRUS (BroadcastChannel); never throttled, it plays the clock
-    if (url.startsWith(base) && url.includes('/lab/syndrus/')) return { action: 'allow', overrideBrowserWindowOptions: { width: 1366, height: 820, show: !TEST, backgroundColor: '#050508', autoHideMenuBar: true, title: 'SYNDRUS', webPreferences: { preload: path.join(__dirname, 'preload.js'), contextIsolation: true, nodeIntegration: false, backgroundThrottling: false } } };
-    // SETRUS (the show timeline): it conducts both, so it is never throttled either
-    if (url.startsWith(base) && url.includes('/lab/setrus/')) return { action: 'allow', overrideBrowserWindowOptions: { width: 1280, height: 760, show: !TEST, backgroundColor: '#050508', autoHideMenuBar: true, title: 'SETRUS', webPreferences: { contextIsolation: true, nodeIntegration: false, backgroundThrottling: false } } };
-    // PARTRUS (particle systems): same origin → its library and live edits reach NODRUS
-    if (url.startsWith(base) && url.includes('/lab/partrus/')) return { action: 'allow', overrideBrowserWindowOptions: { width: 1440, height: 860, show: !TEST, backgroundColor: '#0a0a10', autoHideMenuBar: true, title: 'PARTRUS', webPreferences: { contextIsolation: true, nodeIntegration: false, backgroundThrottling: false } } };
+    // SYNDRUS, SETRUS and PARTRUS: windows of the app, each in ITS OWN PROCESS (see openOwn)
+    const kind = url.startsWith(base) && (url.includes('/lab/syndrus/') ? 'syndrus' : url.includes('/lab/setrus/') ? 'setrus' : url.includes('/lab/partrus/') ? 'partrus' : '');
+    if (kind) { openOwn(kind, url); return { action: 'deny' }; }
+    // «Abrir NODRUS» from one of them: NODRUS is this window
+    if (url.startsWith(base) && url.includes('/lab/nodes/') && !url.includes('output.html') && mainWin) { if (mainWin.isMinimized()) mainWin.restore(); mainWin.focus(); return { action: 'deny' }; }
     if (/^https?:/.test(url) && !url.startsWith(base)) shell.openExternal(url);
     return { action: 'deny' };
   }
@@ -234,13 +233,35 @@ function createMain() {
     e.preventDefault();
     if (/^https?:/.test(url)) shell.openExternal(url);
   });
-  mainWin.webContents.on('did-create-window', (win, details) => {
-    if (details && /\/lab\/syndrus\//.test(details.url || '')) { syWin = win; win.on('closed', () => { syWin = null; }); return; }   // SYNDRUS: a normal window, it receives its phones
-    if (details && /\/lab\/partrus\//.test(details.url || '')) {   // PARTRUS: a normal window; its outside links open in the browser
-      win.webContents.setWindowOpenHandler(({ url }) => { if (/^https?:/.test(url) && !url.startsWith(base)) shell.openExternal(url); return { action: 'deny' }; });
+  /* A window opened with window.open shares the process of the one that opened it, and so its single JavaScript
+     thread: a heavy moment in NODRUS or PARTRUS (a big patch, a shader compiling, particles starting over) froze
+     SYNDRUS's clock too and the music cut. So these three get a BrowserWindow of their own — a process of their own.
+     They still talk over BroadcastChannel and share the library (same origin, same session). */
+  const OWN = {
+    syndrus: { width: 1366, height: 820, backgroundColor: '#050508', title: 'SYNDRUS', preload: true },   // the preload: it receives its phones
+    setrus: { width: 1280, height: 760, backgroundColor: '#050508', title: 'SETRUS' },
+    partrus: { width: 1440, height: 860, backgroundColor: '#0a0a10', title: 'PARTRUS' },
+  };
+  const own = {};
+  function openOwn(kind, url) {
+    const w = own[kind];
+    if (w && !w.isDestroyed()) {
+      // already open: SYNDRUS is never reloaded (it would stop the music); PARTRUS goes to the system asked for (?edit=…)
+      if (kind === 'partrus' && w.webContents.getURL() !== url) w.loadURL(url);
+      if (!TEST) { if (w.isMinimized()) w.restore(); w.show(); w.focus(); }
       return;
     }
-    if (details && /\/lab\/setrus\//.test(details.url || '')) { win.webContents.setWindowOpenHandler(openHandler); win.webContents.on('did-create-window', (w2, d2) => { if (d2 && /\/lab\/syndrus\//.test(d2.url || '')) { syWin = w2; w2.on('closed', () => { if (syWin === w2) syWin = null; }); } }); return; }   // SETRUS opens SYNDRUS with the same rules
+    const o = OWN[kind];
+    const win = new BrowserWindow({ width: o.width, height: o.height, show: !TEST, backgroundColor: o.backgroundColor, title: o.title, autoHideMenuBar: true,
+      webPreferences: { ...(o.preload ? { preload: path.join(__dirname, 'preload.js') } : {}), contextIsolation: true, nodeIntegration: false, backgroundThrottling: false } });
+    own[kind] = win;
+    if (kind === 'syndrus') syWin = win;
+    win.on('closed', () => { if (own[kind] === win) own[kind] = null; if (syWin === win) syWin = null; });
+    win.webContents.setWindowOpenHandler(openHandler);   // SETRUS opens SYNDRUS, PARTRUS opens NODRUS, outside links go to the browser
+    win.webContents.on('will-navigate', (e, u) => { if (u.startsWith(base)) return; e.preventDefault(); if (/^https?:/.test(u)) shell.openExternal(u); });
+    win.loadURL(url);
+  }
+  mainWin.webContents.on('did-create-window', (win, details) => {
     // the output goes fullscreen on the projector when there is a second display
     const d = outputDisplay();
     if (d.id !== screen.getPrimaryDisplay().id && !TEST) win.once('ready-to-show', () => { win.setBounds(d.bounds); win.setFullScreen(true); });

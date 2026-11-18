@@ -150,7 +150,8 @@ module.exports = async function run({ app, mainWin, base, port, startSpout, stop
       await js('document.getElementById("pmSyndrus").click()');
       await wait(2500);
       const wins = BrowserWindow.getAllWindows(), sy = wins.find(w => /syndrus/.test(w.webContents.getURL()));
-      out.syndrusWindow = { opened: wins.length > before, url: sy ? sy.webContents.getURL().replace(base, '') : null };
+      out.syndrusWindow = { opened: wins.length > before, url: sy ? sy.webContents.getURL().replace(base, '') : null,
+        ownProcess: sy ? sy.webContents.getOSProcessId() !== BrowserWindow.getAllWindows().find(w => /\/lab\/nodes\//.test(w.webContents.getURL())).webContents.getOSProcessId() : null };
       if (sy) {
         await sy.webContents.executeJavaScript('window.__syndrus.setPlay(true)', true);
         await wait(2000);

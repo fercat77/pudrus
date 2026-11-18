@@ -981,7 +981,9 @@ void main() {
       });
       st.cur = 0;
       if (!S.comp.burst) {   // warm-up: the system starts full, as if it had been running
-        const steps = Math.max(1, Math.min(250, Math.round(S.life * 30), Math.floor(4e7 / S.comp.count)));
+        // a knob being turned (S.quick) gets a short warm-up: a long one freezes the page a moment, and other windows with it (the music)
+        const steps = Math.max(1, Math.min(S.quick ? 24 : 250, Math.round(S.life * 30), Math.floor((S.quick ? 6e6 : 4e7) / S.comp.count)));
+        S.quick = false;
         const dt = Math.min(0.1, (S.life * 1.05) / steps);
         for (let i = 0; i < steps; i++) step(dt, time - (steps - i) * dt, audio, beat, aspect, {});
       }
@@ -1064,7 +1066,7 @@ void main() {
       S.clock = S.clock || 0;
       if (S.wantInit && S.last !== null) {   // an emitter knob changed: start over (at most ~8 times a second while dragging)
         const now = performance.now();
-        if (!(now - (S.initAt || 0) < 120)) { S.wantInit = false; S.initAt = now; S.last = null; }
+        if (!(now - (S.initAt || 0) < 120)) { S.wantInit = false; S.initAt = now; S.last = null; S.quick = true; }
       }
       let dt;
       if (S.last === null) { init(S.clock, audio, beat, aspect); dt = 1 / 60; }

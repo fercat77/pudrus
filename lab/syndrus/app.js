@@ -355,9 +355,24 @@
   const deck = () => E.decks[app.edit];
   const pending = [null, null];   // bank patterns waiting for the next bar, per deck
   let roll = null;                 // { start, len } while a Roll button is held
+  // how far ahead the notes are scheduled: 0.12 s normally (changes are heard almost at once); when this window
+  // was frozen for a moment (a heavy patch, particles, a shader compiling) it goes up to 0.5 s and comes back slowly,
+  // so the next freeze does not cut the music
+  let ahead = 0.12, lastTick = 0;
   function tick() {
-    const stepDur = 60 / app.bpm / 4, g = X.xfGains(app.mix.x);
-    while (nextTime < ac.currentTime + 0.12) {
+    const stepDur = 60 / app.bpm / 4, g = X.xfGains(app.mix.x), nowMs = performance.now();
+    if (lastTick) {
+      const gap = (nowMs - lastTick) / 1000;
+      ahead = gap > 0.06 ? Math.min(0.5, Math.max(ahead, gap * 1.6 + 0.05)) : Math.max(0.12, ahead - 0.002);
+    }
+    lastTick = nowMs;
+    // frozen longer than that: the steps already gone are skipped (in time, cues included) instead of all sounding at once
+    while (nextTime < ac.currentTime - 0.03) {
+      if (showQ.length || xfRamp) showTick(nextTime);
+      anchor = { beat: step / 4, time: nextTime, bpm: app.bpm };
+      nextTime += stepDur; step++;
+    }
+    while (nextTime < ac.currentTime + ahead) {
       if (showQ.length || xfRamp) showTick(nextTime);   // SETRUS: its cues, exact to the step
       if (step % 16 === 0 && (pending[0] || pending[1])) applyPending();
       const t = nextTime + (step % 2 ? app.swing * stepDur * 0.5 : 0);
@@ -392,7 +407,7 @@
     playing = on; $('#play').classList.toggle('on', on); $('#play').textContent = on ? '■' : '▶'; rmPush(); paintUnlock();
     if (on && !(app.mix.volume > 0.02)) toast('🔇 El volumen master está en 0: subí el fader «master» en Mezcla', 6000);
     clearInterval(timer);
-    if (on) { step = 0; nextTime = ac.currentTime + 0.06; if (midiO.clockOut) midiSend([0xFA], performance.now() + (nextTime - ac.currentTime + latency()) * 1000); tick(); timer = setInterval(tick, 25); }
+    if (on) { step = 0; lastTick = 0; nextTime = ac.currentTime + 0.06; if (midiO.clockOut) midiSend([0xFA], performance.now() + (nextTime - ac.currentTime + latency()) * 1000); tick(); timer = setInterval(tick, 25); }
     else {
       showQ.length = 0; xfRamp = null;
       if (midiO.clockOut) midiSend([0xFC]); E.decks.forEach(D => D.synth.noteOff(ac.currentTime)); queue.length = 0; paintNow(-1); if (pending[0] || pending[1]) applyPending(); }

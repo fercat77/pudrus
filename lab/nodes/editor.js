@@ -714,7 +714,7 @@
   const partrusUrl = q => (DESK ? '/lab/partrus/' : new URL('../partrus/', document.baseURI).href) + (q || '');
   function openPartrus(q) {
     const w = window.open(partrusUrl(q), 'partrus');
-    if (!w) toast('El navegador bloqueó la ventana: permití las ventanas emergentes', true);
+    if (!w && !DESK) toast('El navegador bloqueó la ventana: permití las ventanas emergentes', true);
   }
   function setParticles(n, sys, name, lib) {
     n.p = { ...(n.p || {}), sys: JSON.stringify(sys), name: String(name || '').slice(0, 40), lib: lib || '' };
@@ -940,7 +940,7 @@
   });
   $('#pmHydra').addEventListener('click', openHydra);
   $('#pmSyndrus').addEventListener('click', openSyndrus);
-  $('#pmSetrus').addEventListener('click', () => { const w = window.open(DESK ? '/lab/setrus/' : new URL('../setrus/', document.baseURI).href, 'setrus'); if (!w) toast('El navegador bloqueó la ventana: permití las ventanas emergentes', true); });
+  $('#pmSetrus').addEventListener('click', () => { const w = window.open(DESK ? '/lab/setrus/' : new URL('../setrus/', document.baseURI).href, 'setrus'); if (!w && !DESK) toast('El navegador bloqueó la ventana: permití las ventanas emergentes', true); });
   $('#syOpen').addEventListener('click', openSyndrus);
   $('#syDrops').addEventListener('change', e => { opts.syDrops = e.target.checked; saveOpts(); });
   $('#dfBuild').addEventListener('change', e => { opts.dropFx.build = e.target.value; saveOpts(); });
@@ -1678,10 +1678,14 @@
   }
   function paintSyLink() { const d = $('#syDrops'); if (d) d.checked = opts.syDrops !== false; }
   const syUrl = () => (DESK ? '/lab/syndrus/' : new URL('../syndrus/', document.baseURI).href);
+  // SYNDRUS opens on its own («noopener»): a window that keeps its opener shares its process — and its single
+  // JavaScript thread — so a heavy moment here (a big patch, a shader compiling, particles) cut the music.
+  // In the desktop app every window of SYNDRUS / SETRUS / PARTRUS already gets its own process.
   function openSyndrus() {
-    const w = window.open(syUrl(), 'syndrus');
-    if (!w) toast('El navegador bloqueó la ventana: permití las ventanas emergentes', true);
-    else toast('🎛 SYNDRUS abierto: dale play allá y NODRUS lo sigue');
+    if (DESK) { window.open(syUrl(), 'syndrus'); toast('🎛 SYNDRUS abierto: dale play allá y NODRUS lo sigue'); return; }
+    if (syFresh()) { toast('🎛 SYNDRUS ya está abierto en otra ventana'); return; }
+    window.open(syUrl(), '_blank', 'noopener');
+    toast('🎛 Abriendo SYNDRUS en su propia ventana: dale play allá y NODRUS lo sigue (si no aparece, permití las ventanas emergentes)');
   }
 
   /* ── Live controls: values you play from the phone or MIDI ── */

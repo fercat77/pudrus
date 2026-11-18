@@ -79,9 +79,13 @@
   const wins = {};
   function openWin(which) {
     const url = new URL(which === 'sy' ? '../syndrus/' : '../nodes/' + (/Mobi|Android/i.test(navigator.userAgent) ? '' : '?pc'), location.href).href;
+    // SYNDRUS on its own (noopener): sharing this window's process would let any freeze here cut the music
+    // (the desktop app gives it its own process anyway, and window.open returns nothing there)
+    const desk = /Electron\//.test(navigator.userAgent);
+    if (which === 'sy' && !desk) { window.open(url, '_blank', 'noopener'); toast('🎛 Abriendo SYNDRUS en su propia ventana (si no aparece, permití las ventanas emergentes)'); return; }
     const w = window.open(url, which === 'sy' ? 'syndrus' : 'nodrus');
     if (w) wins[which] = w;
-    if (!w) toast('El navegador bloqueó la ventana: permití las ventanas emergentes', true);
+    if (!w && !desk) toast('El navegador bloqueó la ventana: permití las ventanas emergentes', true);
   }
   $('#lnkSy').addEventListener('click', () => openWin('sy'));
   $('#lnkNo').addEventListener('click', () => openWin('no'));

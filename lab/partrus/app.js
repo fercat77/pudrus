@@ -611,7 +611,7 @@
     p.append(el('p', '', 'Con PARTRUS abierto, lo que cambies acá se ve al instante en NODRUS (también al aire).'));
     p.append(item('◈ Abrir NODRUS', () => {
       if (window.opener && !window.opener.closed) { try { window.opener.focus(); return; } catch (e) { /* another site */ } }
-      const w = window.open(new URL('../nodes/?pc', location.href).href, 'nodrus'); if (!w) toast('El navegador bloqueó la ventana: permití las ventanas emergentes', true); }));
+      const w = window.open(new URL('../nodes/?pc', location.href).href, 'nodrus'); if (!w && !/Electron\//.test(navigator.userAgent)) toast('El navegador bloqueó la ventana: permití las ventanas emergentes', true); }));
   }, ...below(e.currentTarget), e.currentTarget));
 
   /* ── sound: off · microphone · SYNDRUS ── */
@@ -872,8 +872,17 @@
   $('#btnExport').addEventListener('click', e => { if (rec) stopRec(); else exportPop(e.currentTarget); });
   function setAspect(v) { opts.aspect = v; $('#aspect').value = v; delete opts.win.w; saveOpts(); layoutView(); size = fitFrame(); }
 
+  // the preview draws at most 60 times a second, 30 while you work in another window, and stops when it can't be seen:
+  // in a show NODRUS and SYNDRUS need the computer more than this editor
+  let lastDraw = 0;
   function loop(now) {
     requestAnimationFrame(loop);
+    if (!rec) {
+      if (document.hidden) return;
+      const cap = document.hasFocus() ? 60 : 30;
+      if (now - lastDraw < 1000 / cap - 2) return;
+    }
+    lastDraw = now;
     const dt = Math.min(0.1, (now - lastNow) / 1000); lastNow = now;
     if (!paused) simT += dt;
     const bands = audio.read(), beat = beatNow();
