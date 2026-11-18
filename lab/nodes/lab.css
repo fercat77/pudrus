@@ -599,3 +599,42 @@ body.has-status .lab-toast { bottom: 34px; }
 .part-card:hover { border-color: var(--accent); color: var(--accent); }
 .part-card.is-on { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent); }
 .nd-kick { text-align: center; }
+
+/* «Editar acá»: the particle system of a node, in a side panel (no second window in a show) */
+.part-ed { position: fixed; left: 12px; top: 56px; bottom: 12px; width: 340px; z-index: 70; overflow: auto; padding: 0 0 10px;
+  background: var(--panel); border: 1px solid var(--line); border-radius: 10px; box-shadow: 0 12px 34px rgba(0,0,0,0.5); scrollbar-width: thin; }
+.part-ed[hidden] { display: none; }
+.pe-head { position: sticky; top: 0; z-index: 2; display: flex; align-items: center; gap: 6px; padding: 8px 10px; background: var(--panel); border-bottom: 1px solid var(--line); }
+.pe-name { flex: 1; min-width: 0; height: 28px; padding: 0 8px; border-radius: 6px; border: 1px solid transparent; background: transparent; font-weight: 700; color: var(--head); }
+.pe-name:hover, .pe-name:focus { border-color: var(--line); background: var(--panel2); outline: none; }
+.pe-x, .pe-kick { height: 28px; min-width: 28px; border-radius: 6px; border: 1px solid var(--line); background: var(--panel2); font-size: 14px; }
+.pe-x:hover, .pe-kick:hover { border-color: var(--accent); color: var(--accent); }
+.pe-tip { padding: 8px 12px 2px; color: var(--dim); font-size: 11px; line-height: 1.4; }
+.pe-sec { margin: 8px 8px 0; border-radius: 8px; border: 1px solid var(--line); background: var(--panel2); overflow: hidden; }
+.pe-sh { display: flex; align-items: center; gap: 6px; padding: 6px 8px; color: #fff; background: #4a4a55; }
+.pe-emit .pe-sh, .pe-sec.pe-emit .pe-sh { background: #b33b3b; }
+.pe-sec.pe-force .pe-sh { background: #3b6ab3; }
+.pe-sec.pe-look .pe-sh { background: #b3973b; }
+.pe-sh b { flex: 1; }
+.pe-sh select.pe-emit { flex: 1; height: 24px; border-radius: 5px; border: 1px solid rgba(0,0,0,0.3); background: rgba(0,0,0,0.25); color: #fff; font-weight: 700; }
+.pe-sh select.pe-emit option { color: var(--text); background: var(--panel); }
+.pe-rm { height: 22px; width: 24px; border: 0; border-radius: 5px; background: rgba(0,0,0,0.25); color: #fff; font-size: 14px; line-height: 1; }
+.pe-rm:hover { background: rgba(0,0,0,0.5); }
+.pe-row { display: flex; align-items: center; gap: 6px; padding: 3px 8px; min-height: 26px; }
+.pe-l { flex: 0 0 104px; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: 11px; }
+.pe-range { flex: 1; min-width: 0; accent-color: var(--accent); }
+.pe-v { flex: 0 0 42px; text-align: right; color: var(--head); font-variant-numeric: tabular-nums; font-size: 11px; }
+.pe-pub { flex: none; width: 22px; height: 20px; padding: 0; border-radius: 4px; border: 1px solid var(--line); background: transparent; color: var(--dim); font-size: 11px; }
+.pe-pub:hover { border-color: var(--ctl-col); color: var(--ctl-col); }
+.pe-pub.is-on { border-color: var(--ctl-col); background: var(--ctl-col); color: #fff; }
+.pe-sel { flex: 1; min-width: 0; height: 24px; border-radius: 5px; border: 1px solid var(--ctl-bd); background: var(--ctl); }
+.pe-text { flex: 1; min-width: 0; resize: vertical; background: var(--field); color: var(--head); border: 1px solid var(--field-bd); border-radius: 5px; padding: 4px 6px; }
+.pe-col { width: 46px; height: 22px; border: 1px solid var(--ctl-bd); border-radius: 4px; background: none; padding: 0; cursor: pointer; }
+.pe-linked { flex: 1; color: var(--dim); font-style: italic; font-size: 11px; }
+.pe-btn { flex: 1; height: 26px; border-radius: 6px; border: 1px solid var(--line); background: var(--panel); text-align: left; padding: 0 8px; }
+.pe-btn:hover { border-color: var(--accent); color: var(--accent); }
+.pe-add { display: block; width: calc(100% - 16px); margin: 8px 8px 0; height: 28px; border-radius: 7px; border: 1px dashed var(--hover-bd); background: var(--panel); color: var(--accent); }
+.pe-foot { display: flex; gap: 6px; padding: 10px 8px 0; }
+.nd-row2 { gap: 6px; }
+.nd-row2 .nd-file { flex: 1; text-align: center; }
+:root[data-theme="light"] .part-ed { box-shadow: 0 12px 34px rgba(43,47,53,0.25); }

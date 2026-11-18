@@ -243,11 +243,14 @@
           b2.addEventListener('click', () => { partImgFor = n; partImgPick.click(); });
           r2.append(b2); body.append(r2);
         }
-        const r3 = el('div', 'nd-row'), kb = el('button', 'nd-file nd-kick', '💥 Explotar');
+        const r3 = el('div', 'nd-row nd-row2'), eb = el('button', 'nd-file', '🎛 Editar'), kb = el('button', 'nd-file nd-kick', '💥 Explotar');
+        eb.title = 'Editar el sistema acá, en un panel al costado (sin abrir PARTRUS)';
+        eb.addEventListener('pointerdown', e => e.stopPropagation());
+        eb.addEventListener('click', () => openPartEd(n));
         kb.title = 'Un empujón desde el centro (también con la perilla «Explotar»: mapeala al MIDI o al celular)';
         kb.addEventListener('pointerdown', e => e.stopPropagation());
         kb.addEventListener('click', () => pkick(n.id));
-        r3.append(kb); body.append(r3);
+        r3.append(eb, kb); body.append(r3);
         continue;
       }
       if (p.kind === 'video') {
@@ -760,24 +763,229 @@
       requestAnimationFrame(tick);
     };
     requestAnimationFrame(tick);
-    partPop.append(el('label', '', 'PARTRUS'));
-    add('✎ Editar este sistema en PARTRUS', () => {
-      // linked to the library: PARTRUS opens it and every change shows here at once
-      let id = n.p && n.p.lib;
-      if (!id || !PP.library().some(x => x.id === id)) {
-        const sys = PP.sane(PP.resolve(n.p) || PP.PRESETS[0].sys), list = PP.library();
-        sys.name = (n.p && n.p.name) || PP.PRESETS[0].name;
-        id = 'p' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
-        list.unshift({ id, name: sys.name, sys, t: Date.now() });
-        if (!PP.saveLibrary(list)) { toast('No se pudo guardar en la biblioteca (sin lugar)', true); return; }
-        setParticles(n, sys, sys.name, id);
-      }
-      openPartrus('?edit=' + encodeURIComponent(id));
-    });
+    partPop.append(el('label', '', 'Editar'));
+    add('🎛 Editar acá, sin salir de NODRUS', () => openPartEd(n));
+    add('✎ Editar en PARTRUS (el editor completo, otra ventana)', () => { const id = linkToLibrary(n); if (id) openPartrus('?edit=' + encodeURIComponent(id)); });
     add('✨ Abrir PARTRUS', () => openPartrus(''));
     const r = btn.getBoundingClientRect();
     openPop(partPop, r.left, r.bottom + 4);
   }
+  // a node's system linked to an entry of the library (made from its copy when it has none):
+  // then PARTRUS, the side panel, the output windows and Spout all follow its changes at once
+  function linkToLibrary(n) {
+    let id = n.p && n.p.lib;
+    if (id && PP.library().some(x => x.id === id)) return id;
+    const sys = PP.sane(PP.resolve(n.p) || PP.PRESETS[0].sys), list = PP.library();
+    sys.name = (n.p && n.p.name) || PP.PRESETS[0].name;
+    id = 'p' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+    list.unshift({ id, name: sys.name, sys, t: Date.now() });
+    if (!PP.saveLibrary(list)) { toast('No se pudo guardar en la biblioteca (sin lugar)', true); return null; }
+    setParticles(n, sys, sys.name, id);
+    return id;
+  }
+
+  /* ── «Editar acá»: the particle system of a node, edited in a side panel of NODRUS — for a show with one screen.
+     The chain top to bottom (emitter → forces → look → output) with its knobs; changes travel like PARTRUS's
+     (BroadcastChannel): the preview, what is on air, the output window and Spout change at once, no recompiling. ── */
+  let ped = null;   // { n, id, sys, box }
+  const pedBc = PP && 'BroadcastChannel' in window ? new BroadcastChannel(PP.channel) : null;   // its own object: this page's engine hears it too
+  let pedSendT = 0, pedSaveT = 0;
+  function pedCommit() {
+    if (!ped) return;
+    const { id, sys } = ped;
+    clearTimeout(pedSendT);
+    pedSendT = setTimeout(() => { if (pedBc) pedBc.postMessage({ type: 'sys', id, name: sys.name, sys, from: 'nodrus' }); }, 40);
+    clearTimeout(pedSaveT);
+    pedSaveT = setTimeout(() => {   // kept in the library (PARTRUS and the other patches see it)
+      const list = PP.library(), e = list.find(x => x.id === id);
+      if (e) { e.sys = sys; e.name = sys.name || e.name; e.t = Date.now(); if (PP.saveLibrary(list) && pedBc) pedBc.postMessage({ type: 'lib' }); }
+    }, 500);
+  }
+  const pedChain = s => {
+    const out = [], seen = new Set();
+    let cur = s.nodes.find(x => PP.isEmitter(x.type));
+    while (cur && !seen.has(cur.id)) { seen.add(cur.id); out.push(cur); const l = s.links.find(q => q.a === cur.id && q.ao === 'out'); cur = l && s.nodes.find(x => x.id === l.b); }
+    return out;
+  };
+  const pedNewId = s => Math.max(0, ...s.nodes.map(x => x.id)) + 1;
+  function pedInsert(type) {   // a force (or Simetría) goes into the chain just before Aspecto (or the Salida)
+    const s = ped.sys, ch = pedChain(s), before = ch.find(x => x.type === 'look') || ch.find(x => x.type === 'out');
+    if (!before) return;
+    const L = s.links.find(q => q.b === before.id && q.bi === 'in');
+    const nn = { id: pedNewId(s), type, x: before.x, y: before.y + 160, v: {}, p: {} };
+    s.nodes.push(nn);
+    if (L) { s.links = s.links.filter(q => q !== L); s.links.push({ a: L.a, ao: 'out', b: nn.id, bi: 'in' }); }
+    s.links.push({ a: nn.id, ao: 'out', b: before.id, bi: 'in' });
+  }
+  function pedRemove(node) {   // the chain closes over the gap
+    const s = ped.sys, inL = s.links.find(q => q.b === node.id && q.bi === 'in'), outL = s.links.find(q => q.a === node.id && q.ao === 'out');
+    s.links = s.links.filter(q => q.a !== node.id && q.b !== node.id);
+    if (inL && outL) s.links.push({ a: inL.a, ao: 'out', b: outL.b, bi: 'in' });
+    s.nodes = s.nodes.filter(x => x !== node);
+    s.pub = (s.pub || []).filter(x => x.n !== node.id);
+  }
+  function pedSwapEmitter(old, type) {   // the same place in the chain, keeping what both share (position, size, life, amount…)
+    const s = ped.sys, D = PP.DEFS[type], nn = { id: pedNewId(s), type, x: old.x, y: old.y, v: {}, p: {} };
+    D.inputs.forEach(i => { if (old.v && old.v[i.k] !== undefined) nn.v[i.k] = old.v[i.k]; });
+    (D.params || []).forEach(q => { if (['dir', 'count', 'burst'].includes(q.k) && old.p && old.p[q.k] !== undefined) nn.p[q.k] = old.p[q.k]; });
+    s.nodes = s.nodes.map(x => (x === old ? nn : x));
+    s.links = s.links.filter(q => q.b !== old.id || D.inputs.some(i => i.k === q.bi)).map(q => ({ ...q, a: q.a === old.id ? nn.id : q.a, b: q.b === old.id ? nn.id : q.b }));
+    s.pub = (s.pub || []).filter(x => x.n !== old.id || D.inputs.some(i => i.k === x.k)).map(x => (x.n === old.id ? { n: nn.id, k: x.k } : x));
+  }
+  const pedImg = el('input'); pedImg.type = 'file'; pedImg.accept = 'image/png,image/jpeg,image/webp'; pedImg.hidden = true;
+  document.body.append(pedImg);
+  let pedImgFor = null;
+  pedImg.addEventListener('change', () => {
+    const f = pedImg.files[0]; pedImg.value = '';
+    if (!f || !pedImgFor || !ped) return;
+    const url = URL.createObjectURL(f), im = new Image(), [node, k] = pedImgFor;
+    im.onload = () => {
+      URL.revokeObjectURL(url);
+      const sc = Math.min(1, 256 / Math.max(im.naturalWidth, im.naturalHeight)), c = el('canvas');
+      c.width = Math.max(1, Math.round(im.naturalWidth * sc)); c.height = Math.max(1, Math.round(im.naturalHeight * sc));
+      const g = c.getContext('2d'); g.drawImage(im, 0, 0, c.width, c.height);
+      const d = g.getImageData(0, 0, c.width, c.height).data;
+      let clear = false; for (let i = 3; i < d.length; i += 4) if (d[i] < 250) { clear = true; break; }
+      node.p[k] = clear ? c.toDataURL('image/png') : c.toDataURL('image/jpeg', 0.88);
+      pedCommit(); pedRender();
+    };
+    im.onerror = () => { URL.revokeObjectURL(url); toast('No se pudo leer esa imagen', true); };
+    im.src = url;
+  });
+  function openPartEd(n) {
+    if (!PP) { toast('Falta el motor de partículas (recargá la página)', true); return; }
+    const id = linkToLibrary(n);
+    if (!id) return;
+    const sys = PP.sane(PP.resolve(n.p) || PP.PRESETS[0].sys);
+    if (!sys) return;
+    if (!ped) {
+      const box = el('div', 'part-ed'); box.id = 'partEd';
+      document.body.append(box);
+      ped = { box };
+    }
+    Object.assign(ped, { n, id, sys });
+    ped.box.hidden = false;
+    pedRender();
+  }
+  function closePartEd() { if (ped) { ped.box.hidden = true; ped.n = null; } }
+  function pedRender() {
+    if (!ped || !ped.n) return;
+    const { box, sys, n } = ped;
+    if (!graph.nodes.includes(n)) { closePartEd(); return; }
+    const keepScroll = box.scrollTop;
+    box.textContent = '';
+    const head = el('div', 'pe-head');
+    const nm = el('input', 'pe-name'); nm.value = sys.name || ''; nm.maxLength = 60; nm.title = 'Nombre del sistema (así aparece en la biblioteca)';
+    nm.addEventListener('input', () => { sys.name = nm.value.slice(0, 60); pedCommit(); });
+    nm.addEventListener('keydown', e => e.stopPropagation());
+    const x = el('button', 'pe-x', '×'); x.title = 'Cerrar (Esc)'; x.addEventListener('click', closePartEd);
+    const kb = el('button', 'pe-kick', '💥'); kb.title = 'Explotar'; kb.addEventListener('click', () => pkick(n.id));
+    head.append(el('b', '', '✨'), nm, kb, x);
+    box.append(head);
+    box.append(el('p', 'pe-tip', 'Los cambios se ven al instante (también al aire, en la Salida y en Spout) y quedan guardados en tu biblioteca. ◈ = esa perilla aparece en el nodo (para el celular o el MIDI).'));
+    const ch = pedChain(sys);
+    const isPub = (node, k) => (sys.pub || []).some(p => p.n === node.id && p.k === k);
+    ch.forEach(node => {
+      const D = PP.DEFS[node.type];
+      const sec = el('div', 'pe-sec pe-' + D.cat), sh = el('div', 'pe-sh');
+      if (D.cat === 'emit') {   // the emitter: its kind can change here
+        const sel = el('select', 'pe-emit');
+        [['emit', 'Emisor'], ['geo', 'Emisor geométrico'], ['form', 'Emisor de forma']].forEach(([v, t]) => { const o = el('option', '', t); o.value = v; sel.append(o); });
+        sel.value = node.type;
+        sel.addEventListener('change', () => { pedSwapEmitter(node, sel.value); pedCommit(); pedRender(); });
+        sh.append(sel);
+      } else sh.append(el('b', '', D.title));
+      if (D.cat === 'force' || node.type === 'sym') {
+        const rm = el('button', 'pe-rm', '×'); rm.title = 'Sacar ' + D.title;
+        rm.addEventListener('click', () => { pedRemove(node); pedCommit(); pedRender(); });
+        sh.append(rm);
+      }
+      sh.title = D.help || '';
+      sec.append(sh);
+      // options (menus, text, picture, code)
+      (D.params || []).forEach(q => {
+        if (q.when && Object.entries(q.when).some(([k, v]) => PP.paramOf(node, k) !== v)) return;
+        const row = el('div', 'pe-row');
+        row.append(el('span', 'pe-l', q.label));
+        if (q.kind === 'text') {
+          const ta = el('textarea', 'pe-text'); ta.rows = 2; ta.maxLength = 300; ta.value = PP.paramOf(node, q.k);
+          ta.addEventListener('keydown', e => e.stopPropagation());
+          ta.addEventListener('input', () => { node.p[q.k] = ta.value; pedCommit(); });
+          row.append(ta);
+        } else if (q.kind === 'image') {
+          const b = el('button', 'pe-btn', PP.paramOf(node, q.k) ? '🖼 Cambiar imagen…' : '🖼 Elegir imagen…');
+          b.addEventListener('click', () => { pedImgFor = [node, q.k]; pedImg.click(); });
+          row.append(b);
+        } else if (q.kind === 'code') {
+          const b = el('button', 'pe-btn', '✎ Código: editalo en PARTRUS');
+          b.addEventListener('click', () => openPartrus('?edit=' + encodeURIComponent(ped.id)));
+          row.append(b);
+        } else {
+          const sel = el('select', 'pe-sel');
+          q.options.forEach(([v, t]) => { const o = el('option', '', t); o.value = v; sel.append(o); });
+          sel.value = PP.paramOf(node, q.k);
+          sel.addEventListener('change', () => { node.p[q.k] = sel.value; pedCommit(); pedRender(); });   // other rows may depend on it
+          row.append(sel);
+        }
+        sec.append(row);
+      });
+      // knobs
+      D.inputs.forEach(inp => {
+        if (inp.t === 'part') return;
+        const label = PP.labelOf(node, inp);
+        if (label === null) return;
+        const row = el('div', 'pe-row');
+        row.append(el('span', 'pe-l', label));
+        const lk = sys.links.find(q => q.b === node.id && q.bi === inp.k);
+        if (lk) {
+          const src = sys.nodes.find(x => x.id === lk.a);
+          row.append(el('span', 'pe-linked', '← ' + (src ? PP.DEFS[src.type].title : '?') + ' (en PARTRUS)'));
+          sec.append(row); return;
+        }
+        if (inp.t === 'color') {
+          const c = el('input', 'pe-col'); c.type = 'color'; c.value = PP.valueOf(node, inp.k);
+          c.addEventListener('input', () => { node.v[inp.k] = c.value; pedCommit(); });
+          row.append(c); sec.append(row); return;
+        }
+        const r = el('input', 'pe-range'); r.type = 'range'; r.min = inp.min; r.max = inp.max; r.step = (inp.max - inp.min) / 400;
+        const val = el('span', 'pe-v'), get = () => PP.valueOf(node, inp.k);
+        const span = Math.abs(inp.max - inp.min), fmt = v => (span >= 100 ? v.toFixed(0) : span >= 10 ? v.toFixed(1) : v.toFixed(2)).replace('.', ',');
+        const paint = () => { r.value = get(); val.textContent = fmt(+get()); };
+        r.addEventListener('input', () => { node.v[inp.k] = Math.round(+r.value * 10000) / 10000; val.textContent = fmt(+r.value); pedCommit(); });
+        r.addEventListener('dblclick', () => { delete node.v[inp.k]; paint(); pedCommit(); });
+        r.addEventListener('keydown', e => e.stopPropagation());
+        r.title = 'Doble clic: valor original';
+        paint();
+        const pb = el('button', 'pe-pub' + (isPub(node, inp.k) ? ' is-on' : ''), '◈');
+        pb.title = isPub(node, inp.k) ? 'Está en el nodo de NODRUS (clic: sacarla)' : 'Mostrar esta perilla en el nodo de NODRUS (para conectarla, mapearla al MIDI o al celular)';
+        pb.addEventListener('click', () => {
+          sys.pub = sys.pub || [];
+          if (isPub(node, inp.k)) sys.pub = sys.pub.filter(p => !(p.n === node.id && p.k === inp.k));
+          else { if (sys.pub.length >= 16) { toast('Hasta 16 perillas en el nodo', true); return; } sys.pub.push({ n: node.id, k: inp.k }); }
+          pedCommit(); pedRender();
+        });
+        row.append(r, val, pb);
+        sec.append(row);
+      });
+      box.append(sec);
+      // after the emitter's forces, before the look: add a force
+      const nxt = ch[ch.indexOf(node) + 1];
+      if (nxt && (nxt.type === 'look' || (nxt.type === 'out' && node.type !== 'look'))) {
+        const add = el('select', 'pe-add');
+        const o0 = el('option', '', '＋ Agregar fuerza o efecto…'); o0.value = ''; add.append(o0);
+        Object.entries(PP.DEFS).filter(([t, d]) => d.cat === 'force' || (t === 'sym' && !sys.nodes.some(m => m.type === 'sym'))).forEach(([t, d]) => { const o = el('option', '', d.title); o.value = t; o.title = d.help || ''; add.append(o); });
+        add.addEventListener('change', () => { if (!add.value) return; pedInsert(add.value); pedCommit(); pedRender(); });
+        box.append(add);
+      }
+    });
+    const foot = el('div', 'pe-foot');
+    const full = el('button', 'pe-btn', '✎ Abrir en PARTRUS'); full.title = 'El editor completo, con nodos (LFO, Audio, Pulso conectados a perillas) en otra ventana';
+    full.addEventListener('click', () => openPartrus('?edit=' + encodeURIComponent(ped.id)));
+    foot.append(full);
+    box.append(foot);
+    box.scrollTop = keepScroll;
+  }
+  addEventListener('keydown', e => { if (e.key === 'Escape' && ped && ped.n && !ped.box.hidden && !(e.target.closest && e.target.closest('input, textarea, select'))) closePartEd(); });
   // one click: particles as a layer over what the patch already shows (light added on top)
   function addParticlesLayer() {
     if (!PP) return;
@@ -843,6 +1051,8 @@
       }));
       if (renamed) { rebuild(); recompile(); }
       save();
+      // PARTRUS changed the system open in the side panel: the panel shows it (unless you are touching it right now)
+      if (ped && ped.n && m.id === ped.id && m.from !== 'nodrus') { ped.sys = sys; if (!ped.box.contains(document.activeElement)) pedRender(); }
     });
   }
   $('#pmPartrus').addEventListener('click', () => openPartrus(''));
