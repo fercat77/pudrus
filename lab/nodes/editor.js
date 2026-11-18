@@ -1049,7 +1049,7 @@
         const nm = String(m.name || '').slice(0, 40);
         if (nm && nm !== nd.p.name) { nd.p.name = nm; renamed = renamed || g === graph; }
       }));
-      if (renamed) { rebuild(); recompile(); }
+      if (renamed) { rebuild(); recompile(); pushState(); }
       save();
       // PARTRUS changed the system open in the side panel: the panel shows it (unless you are touching it right now)
       if (ped && ped.n && m.id === ped.id && m.from !== 'nodrus') { ped.sys = sys; if (!ped.box.contains(document.activeElement)) pedRender(); }
@@ -2226,10 +2226,21 @@
   $('#rmTabPhone').addEventListener('click', () => setRmTab('phone'));
   $('#rmTabScreen').addEventListener('click', () => { setRmTab('screen'); startRemote(); });
 
+  /* the phone's «✨ Partículas»: every particle system ON AIR with its main knobs (and the ones shown with ◈),
+     plus «Explotar» — no need to assign them by hand. A knob that is wired to something (LFO, audio…) stays out. */
+  const P_KEYS = ['pspeed', 'psize', 'hue', 'glow', 'trail', 'yaw', 'pitch', 'zoom', 'spin'];
+  const P_LABELS = { pspeed: 'Velocidad', psize: 'Tamaño', hue: 'Tono', glow: 'Brillo', trail: 'Estela', yaw: 'Cámara: giro', pitch: 'Cámara: inclinación', zoom: 'Cámara: distancia', spin: 'Cámara: gira sola' };
+  function partInputs(n) { return N.inputsOf(n).filter(i => i.t === 'float' && (P_KEYS.includes(i.k) || /^pub_/.test(i.k)) && !linkedIn(liveGraph, n.id, i.k)); }
+  const partNorm = (n, i) => { const v = n.v && n.v[i.k] !== undefined ? n.v[i.k] : i.v; return i.curve ? N.sliderPos(i, v) : Math.min(1, Math.max(0, (v - i.min) / ((i.max - i.min) || 1))); };
+  const liveParticles = () => (liveGraph.nodes || []).filter(n => n.type === 'particles').slice(0, 3);
+  function particleControls() {
+    return liveParticles().map(n => ({ n: n.id, name: (n.p && n.p.name) || (PP ? PP.PRESETS[0].name : 'Partículas'), ctls: partInputs(n).map(i => ({ k: i.k, label: P_LABELS[i.k] || i.label.replace(/^[^·]*·\s*/, ''), v: Math.round(partNorm(n, i) * 1000) / 1000 })) }));
+  }
   function fullState() {
     return {
       t: 'state',
       controls: liveControls().map(c => ({ kind: c.kind || 'fader', label: ctlLabel(c, liveGraph), v: ctlValue(c) })),
+      particles: particleControls(),
       scenes: Array.from({ length: 16 }, (_, i) => { const sc = scenes[i]; return { filled: !!sc, thumb: sc ? sc.thumb || '' : '', live: i === liveScene }; }),
       black: stage.black, bpm: Math.round(bpm), fade: opts.fade, direct: opts.direct,
       overlay: ov.items.length ? ov.on : null,
@@ -2246,12 +2257,20 @@
   function pushValues(now) {
     if (!conns.size || now - valsAt < 200) return;
     valsAt = now;
+    pushPartValues();
     const r3 = x => Math.round(x * 1000) / 1000;
     const v = liveControls().map(c => { const x = ctlValue(c); return Array.isArray(x) ? x.map(r3) : r3(x); });
     const key = JSON.stringify(v);
     if (key === lastVals) return;
     lastVals = key;
     conns.forEach(c => { try { c.send({ t: 'vals', v }); } catch (e) { /* closed */ } });
+  }
+  let lastPVals = '';
+  function pushPartValues() {   // the particle knobs moved from here (mouse, MIDI, a scene): the phone follows
+    const pv = particleControls().map(s => s.ctls.map(c => c.v)), key = JSON.stringify(pv);
+    if (key === lastPVals) return;
+    lastPVals = key;
+    conns.forEach(c => { try { c.send({ t: 'pvals', v: pv }); } catch (e) { /* closed */ } });
   }
   // Messages from the phone (data only, validated)
   function remoteMsg(m, conn) {
@@ -2276,6 +2295,15 @@
     else if (m.t === 'vary') { varyPatch(); goLive(); }
     else if (m.t === 'video' && conn) sendVideo(conn, !!m.on);
     else if (m.t === 'fade' && [0, 0.5, 1, 2, 4].includes(m.v)) { opts.fade = m.v; fadeSel.value = String(m.v); saveOpts(); pushState(); }
+    else if ((m.t === 'pctl' || m.t === 'pkick') && Number.isInteger(m.n)) {   // «✨ Partículas» on the phone
+      const n = liveParticles().find(x => x.id === m.n);
+      if (!n) return;
+      if (m.t === 'pkick') { pkick(n.id); return; }
+      const inp = typeof m.k === 'string' && partInputs(n).find(i => i.k === m.k);
+      if (!inp || !num(m.v)) return;
+      const p = Math.min(1, Math.max(0, m.v));
+      setAbs(n.id, inp.k, 'particles', inp.curve ? N.sliderVal(inp, p) : inp.min + p * (inp.max - inp.min));
+    }
   }
   /* ── Remote screens: output.html on a TV / tablet / another computer (wifi or internet).
      «render»: the device draws the patch itself (messages like the output window) ·

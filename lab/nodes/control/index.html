@@ -90,6 +90,19 @@
     .xfader span { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; color: var(--dim); font-size: 12px; pointer-events: none; }
     .xfader.active { border-color: var(--red); }
     .empty-msg { color: var(--dim); line-height: 1.6; padding: 10px 2px; }
+    /* ✨ Partículas: the systems on air, their knobs and a big «Explotar» */
+    #parts[hidden], #partsHead[hidden] { display: none; }
+    .psys { display: flex; flex-direction: column; gap: 8px; margin-bottom: 14px; }
+    .psys-head { display: flex; align-items: center; gap: 8px; }
+    .psys-head b { flex: 1; color: var(--head); font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .pkick { height: 64px; font-size: 18px; font-weight: 700; border-color: var(--warn); color: var(--warn); }
+    .pkick:active, .pkick.on { background: var(--warn); color: #000; }
+    .pgrid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+    .pgrid .fader { height: 48px; width: auto !important; }
+    .pgrid .fader i { inset: 0 auto 0 0 !important; height: auto !important; background: linear-gradient(90deg, rgba(255,210,63,0.3), rgba(255,210,63,0.65)) !important; }
+    .pgrid .fader em { top: 0 !important; bottom: 0 !important; left: auto; width: 3px !important; height: auto !important; margin: 0 0 0 -1px !important; }
+    .pgrid .fader span { left: 10px !important; top: 50% !important; bottom: auto !important; transform: translateY(-50%) !important; writing-mode: horizontal-tb !important; font-size: 12px; max-width: calc(100% - 16px) !important; }
+    .pgrid .fader.active { border-color: var(--warn); }
     .nohash { margin-top: 30vh; text-align: center; color: var(--dim); line-height: 1.7; }
     #lockLayer { position: fixed; inset: 0; z-index: 10; display: none; }
     body.locked #lockLayer { display: block; }
@@ -151,6 +164,8 @@
     </div>
     <h2>Controles</h2>
     <div id="ctls"></div>
+    <h2 id="partsHead" hidden>✨ Partículas</h2>
+    <div id="parts" hidden></div>
   </section>
 </main>
 <p class="nohash" id="nohash" hidden>Abrí este control escaneando el código QR<br>desde «📱 Control» en el editor de nodos.</p>
@@ -223,6 +238,12 @@
     else if (m.t === 'vals' && state && Array.isArray(m.v)) {
       m.v.forEach((v, i) => { const c = state.controls[i]; if (c && !touching.has(i)) { c.v = v; paintCtl(i); } });
     }
+    else if (m.t === 'pvals' && state && Array.isArray(state.particles) && Array.isArray(m.v)) {
+      m.v.forEach((row, s) => (Array.isArray(row) ? row : []).forEach((v, j) => {
+        const c = state.particles[s] && state.particles[s].ctls[j];
+        if (c && typeof v === 'number' && !touching.has('p' + s + '.' + j)) { c.v = v; paintP(s, j); }
+      }));
+    }
   }
 
   /* ── UI ── */
@@ -272,6 +293,39 @@
       box.append(e);
       paintCtl(i);
     });
+    renderParts();
+  }
+  // ✨ Partículas: one block per system on air
+  function renderParts() {
+    const P = Array.isArray(state.particles) ? state.particles : [], box = $('parts');
+    box.textContent = '';
+    box.hidden = $('partsHead').hidden = !P.length;
+    P.forEach((sy, s) => {
+      const blk = el('div', 'psys'), hd = el('div', 'psys-head');
+      hd.append(el('b', '', '✨ ' + String(sy.name || 'Partículas')));
+      blk.append(hd);
+      const k = el('button', 'pkick', '💥 EXPLOTAR');
+      k.addEventListener('pointerdown', () => { k.classList.add('on'); send({ t: 'pkick', n: sy.n }); buzz(30); });
+      ['pointerup', 'pointercancel', 'pointerleave'].forEach(t => k.addEventListener(t, () => k.classList.remove('on')));
+      k.addEventListener('contextmenu', e => e.preventDefault());
+      blk.append(k);
+      const grid = el('div', 'pgrid');
+      (sy.ctls || []).forEach((c, j) => {
+        const f = el('div', 'fader'), sp = el('span', '', String(c.label || c.k));
+        f.append(el('i'), el('em'), sp);
+        f.dataset.p = s + '.' + j;
+        bindFaderX(f, 'p' + s + '.' + j, () => state.particles[s] && state.particles[s].ctls[j], v => ({ t: 'pctl', n: sy.n, k: c.k, v }), () => paintP(s, j), true);
+        grid.append(f);
+      });
+      blk.append(grid);
+      box.append(blk);
+      (sy.ctls || []).forEach((_, j) => paintP(s, j));
+    });
+  }
+  function paintP(s, j) {
+    const c = state.particles && state.particles[s] && state.particles[s].ctls[j], e = document.querySelector(`#parts [data-p="${s}.${j}"]`);
+    if (!c || !e) return;
+    e.querySelector('i').style.width = (c.v * 100) + '%';
   }
   function paintCtl(i) {
     const c = state.controls[i], e = document.querySelector(`#ctls [data-i="${i}"]`);
@@ -287,27 +341,30 @@
   }
   // Faders "pick up" the value: if you touch far from where it is, it waits until your
   // finger passes the current value, so nothing jumps on air.
-  function bindFader(f, i) {
+  function bindFader(f, i) { bindFaderX(f, i, () => state.controls[i], v => ({ t: 'ctl', i, v }), () => paintCtl(i), false); }
+  // key: what «touching» remembers · get: the control · msg: what to send · paint: redraw · flat: always horizontal
+  function bindFaderX(f, key, get, msg, paint, flat) {
     const out = sender();
     let armed = false, prev = 0;
-    const pos = e => { const r = f.getBoundingClientRect(); return vertical() ? 1 - (e.clientY - r.top) / r.height : (e.clientX - r.left) / r.width; };
-    const ghost = v => { const g = f.querySelector('em'); if (vertical()) { g.style.bottom = (v * 100) + '%'; g.style.left = ''; } else { g.style.left = (v * 100) + '%'; g.style.bottom = ''; } };
+    const vert = () => !flat && vertical();
+    const pos = e => { const r = f.getBoundingClientRect(); return vert() ? 1 - (e.clientY - r.top) / r.height : (e.clientX - r.left) / r.width; };
+    const ghost = v => { const g = f.querySelector('em'); if (vert()) { g.style.bottom = (v * 100) + '%'; g.style.left = ''; } else { g.style.left = (v * 100) + '%'; g.style.bottom = ''; } };
     const move = e => {
-      const c = state.controls[i]; if (!c) return;
+      const c = get(); if (!c) return;
       const v = Math.min(1, Math.max(0, pos(e)));
       if (!armed && (Math.abs(v - c.v) < 0.05 || (prev - c.v) * (v - c.v) <= 0)) { armed = true; f.classList.remove('wait'); }
       prev = v;
-      if (armed) { c.v = v; paintCtl(i); out({ t: 'ctl', i, v }); } else ghost(v);
+      if (armed) { c.v = v; paint(); out(msg(v)); } else ghost(v);
     };
     f.addEventListener('pointerdown', e => {
-      f.setPointerCapture(e.pointerId); touching.add(i); f.classList.add('active'); wake();
-      const c = state.controls[i]; const v = Math.min(1, Math.max(0, pos(e)));
+      f.setPointerCapture(e.pointerId); touching.add(key); f.classList.add('active'); wake();
+      const c = get(); const v = Math.min(1, Math.max(0, pos(e)));
       armed = !c || Math.abs(v - c.v) < 0.06; prev = v;
       if (!armed) { f.classList.add('wait'); ghost(v); }
       move(e);
     });
-    f.addEventListener('pointermove', e => { if (touching.has(i)) move(e); });
-    const end = () => { touching.delete(i); f.classList.remove('active', 'wait'); };
+    f.addEventListener('pointermove', e => { if (touching.has(key)) move(e); });
+    const end = () => { touching.delete(key); f.classList.remove('active', 'wait'); };
     f.addEventListener('pointerup', end); f.addEventListener('pointercancel', end);
   }
   function bindXY(p, i) {
