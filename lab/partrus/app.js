@@ -7,7 +7,7 @@
   const clone = o => JSON.parse(JSON.stringify(o));
   const CUR = 'partrus_cur_v1', OPTS = 'partrus_opts_v1';
   const store = { get(k) { try { return JSON.parse(localStorage.getItem(k) || 'null'); } catch (e) { return null; } }, set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) { /* full */ } } };
-  const opts = Object.assign({ audio: 'off', viewW: 44, aspect: '1.7778' }, store.get(OPTS) || {});
+  const opts = Object.assign({ audio: 'off', size: 'm', aspect: '1.7778' }, store.get(OPTS) || {});
   const saveOpts = () => store.set(OPTS, opts);
 
   /* ── the system being edited ── */
@@ -696,25 +696,195 @@
   /* ── the preview loop ── */
   let paused = false, simT = 0, lastNow = performance.now(), fpsN = 0, fpsT = performance.now(), lastBeatI = -1;
   const stage = $('#stage'), meter = [...document.querySelectorAll('#meter i')];
+  const AR = () => +opts.aspect || 16 / 9;
   function fitFrame() {
-    const r = stage.getBoundingClientRect(), a = +opts.aspect || 16 / 9;
-    let w = r.width - 16, h = w / a;
-    if (h > r.height - 16) { h = r.height - 16; w = h * a; }
+    const r = stage.getBoundingClientRect(), a = AR();
+    let w = r.width, h = w / a;
+    if (h > r.height) { h = r.height; w = h * a; }
     w = Math.max(2, Math.floor(w)); h = Math.max(2, Math.floor(h));
     frame.style.width = w + 'px'; frame.style.height = h + 'px';
     if (PP.ok) { PP.canvas.style.width = w + 'px'; PP.canvas.style.height = h + 'px'; }
     const dpr = Math.min(2, devicePixelRatio || 1), ph = Math.min(1080, Math.round(h * dpr));
-    return [Math.round(ph * a), ph];
+    return [Math.max(2, Math.round(ph * a)), Math.max(2, ph)];
   }
   let size = [2, 2];
-  new ResizeObserver(() => { size = fitFrame(); drawWires(); }).observe(stage);
+  new ResizeObserver(() => { size = fitFrame(); }).observe(stage);
+
+  /* ── the preview window: S / M / L, moved and resized by hand, ▣ behind the nodes, fullscreen ── */
+  const main = $('#main'), viewEl = $('#view'), viewbar = $('#viewbar');
+  const SIZES = { s: 360, m: 520, l: 760 };   // the long side, in px
+  if (!SIZES[opts.size]) opts.size = 'm';
+  if (!opts.win || typeof opts.win !== 'object') opts.win = {};
+  function layoutView() {
+    const back = main.classList.contains('backdrop');
+    if (back) { if (viewbar.parentNode !== main) main.append(viewbar); }
+    else if (viewbar.parentNode !== viewEl) viewEl.insertBefore(viewbar, $('#wsize'));
+    if (back || document.fullscreenElement === viewEl) { stage.style.width = stage.style.height = ''; viewEl.style.width = ''; return; }
+    const r = main.getBoundingClientRect(), a = AR(), long = SIZES[opts.size];
+    let w = Number.isFinite(opts.win.w) ? opts.win.w : (a >= 1 ? long : Math.round(long * a));
+    w = Math.max(200, Math.min(w, r.width - 24));
+    let h = Math.round(w / a);
+    const room = r.height - 24 - (viewbar.offsetHeight || 34);
+    if (h > room) { h = Math.max(110, room); w = Math.round(h * a); }
+    viewEl.style.width = w + 'px'; stage.style.width = w + 'px'; stage.style.height = h + 'px';
+    viewEl.classList.toggle('is-narrow', w < 470);
+    if (Number.isFinite(opts.win.x) && Number.isFinite(opts.win.y)) {
+      const vh = viewEl.offsetHeight;
+      viewEl.style.left = Math.min(Math.max(0, opts.win.x), Math.max(0, r.width - w)) + 'px';
+      viewEl.style.top = Math.min(Math.max(0, opts.win.y), Math.max(0, r.height - vh)) + 'px';
+      viewEl.style.right = 'auto';
+    } else { viewEl.style.left = ''; viewEl.style.top = ''; viewEl.style.right = ''; }
+  }
+  function paintSizes() {
+    document.querySelectorAll('[data-size]').forEach(b => b.classList.toggle('is-on', b.dataset.size === opts.size && !main.classList.contains('backdrop')));
+    $('#btnBack').classList.toggle('is-on', main.classList.contains('backdrop'));
+  }
+  function setBackdrop(on) {
+    main.classList.toggle('backdrop', on); opts.back = on; saveOpts();
+    layoutView(); paintSizes();
+  }
+  document.querySelectorAll('[data-size]').forEach(b => b.addEventListener('click', () => {
+    opts.size = b.dataset.size; delete opts.win.w; saveOpts();
+    if (main.classList.contains('backdrop')) setBackdrop(false); else { layoutView(); paintSizes(); }
+  }));
+  $('#btnBack').addEventListener('click', () => setBackdrop(!main.classList.contains('backdrop')));
+  // move (the strip on top) and resize (the corner at the bottom left: the window hangs from the right)
+  function winDrag(e, mode) {
+    if (e.button !== 0 || main.classList.contains('backdrop')) return;
+    e.preventDefault(); e.stopPropagation();
+    const t = e.currentTarget; t.setPointerCapture(e.pointerId);
+    const r = viewEl.getBoundingClientRect(), mr = main.getBoundingClientRect();
+    const s0 = { x: e.clientX, y: e.clientY, l: r.left - mr.left, t: r.top - mr.top, w: r.width, right: r.right - mr.left };
+    viewEl.classList.add('is-moving');
+    const mv = ev => {
+      if (mode === 'move') { opts.win.x = Math.round(s0.l + ev.clientX - s0.x); opts.win.y = Math.round(s0.t + ev.clientY - s0.y); }
+      else {
+        const w = Math.round(Math.max(200, s0.w - (ev.clientX - s0.x)));
+        opts.win.w = w; opts.win.x = Math.round(s0.right - w); opts.win.y = Math.round(s0.t);
+      }
+      layoutView();
+    };
+    const up = () => { t.removeEventListener('pointermove', mv); t.removeEventListener('pointerup', up); viewEl.classList.remove('is-moving'); saveOpts(); };
+    t.addEventListener('pointermove', mv); t.addEventListener('pointerup', up);
+  }
+  $('#grip').addEventListener('pointerdown', e => winDrag(e, 'move'));
+  $('#wsize').addEventListener('pointerdown', e => winDrag(e, 'size'));
+  $('#grip').addEventListener('dblclick', () => { opts.win = {}; saveOpts(); layoutView(); });
+  addEventListener('resize', layoutView);
+  document.addEventListener('fullscreenchange', layoutView);
+
+  /* ── export: a photo (black or transparent) or a video, at the chosen format and resolution ── */
+  if (!opts.exp || typeof opts.exp !== 'object') opts.exp = {};
+  const ex = Object.assign({ res: 1080, fps: 30, q: 'alta', dur: 0 }, opts.exp);
+  const even = x => Math.max(2, Math.round(x / 2) * 2);
+  const expSize = () => { const a = AR(), s = ex.res; return a >= 1 ? [even(s * a), s] : [s, even(s / a)]; };
+  const fmtName = () => ({ '1.7778': '16x9', '0.5625': '9x16', '0.8': '4x5', '1': '1x1', '1.3333': '4x3' }[opts.aspect] || 'vista');
+  const fileTag = () => `partrus_${(sys.name || 'sistema').replace(/[^\w-]+/g, '_')}_${fmtName()}_${expSize().join('x')}_${Date.now()}`;
+  function saveBlob(b, name) { const a = document.createElement('a'); a.download = name; a.href = URL.createObjectURL(b); a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 15000); }
+  let rec = null;   // { r: MediaRecorder, c: canvas, g: 2d, t0, size, stopAt }
+  function composite(c, g, transparent) {   // the particles over black (a video has no transparency)
+    g.globalCompositeOperation = 'copy';
+    if (transparent) g.clearRect(0, 0, c.width, c.height); else { g.fillStyle = '#000'; g.fillRect(0, 0, c.width, c.height); g.globalCompositeOperation = 'source-over'; }
+    g.drawImage(PP.canvas, 0, 0, c.width, c.height);
+    g.globalCompositeOperation = 'source-over';
+  }
+  function takePhoto(transparent) {
+    if (!PP.ok || sim.err) { toast('No hay nada para exportar', true); return; }
+    const [w, h] = expSize();
+    const cv = sim.frame(simT, audio.bands, beatNow(), w, h);   // one frame at the full export size (time does not move)
+    if (!cv) return;
+    const c = document.createElement('canvas'); c.width = w; c.height = h;
+    composite(c, c.getContext('2d'), transparent);
+    c.toBlob(b => { if (b) { saveBlob(b, fileTag() + (transparent ? '_transparente' : '') + '.png'); toast(`📷 Foto guardada · ${w}×${h}${transparent ? ' · fondo transparente' : ''}`); } }, 'image/png');
+  }
+  const bitrateFor = ([w, h], fps) => Math.round(Math.min(80e6, Math.max(4e6, w * h * fps * ({ normal: 0.07, alta: 0.12, max: 0.2 }[ex.q] || 0.12))));
+  function startRec() {
+    if (rec) return;
+    if (!PP.ok || sim.err) { toast('No hay nada para grabar', true); return; }
+    const c = document.createElement('canvas');
+    if (!c.captureStream || typeof MediaRecorder === 'undefined') { toast('Este navegador no puede grabar video', true); return; }
+    const sz = expSize(); c.width = sz[0]; c.height = sz[1];
+    const g = c.getContext('2d'); g.fillStyle = '#000'; g.fillRect(0, 0, sz[0], sz[1]);
+    const mime = ['video/mp4;codecs=avc1', 'video/webm;codecs=vp9', 'video/webm'].find(m => MediaRecorder.isTypeSupported(m)) || '';
+    const stream = c.captureStream(ex.fps);
+    if (opts.audio === 'mic' && audio.stream) audio.stream.getAudioTracks().forEach(t => stream.addTrack(t));
+    const chunks = [];
+    let r;
+    try { r = new MediaRecorder(stream, mime ? { mimeType: mime, videoBitsPerSecond: bitrateFor(sz, ex.fps) } : undefined); } catch (e) { toast('No se pudo empezar a grabar', true); return; }
+    r.ondataavailable = ev => { if (ev.data && ev.data.size) chunks.push(ev.data); };
+    r.onstop = () => {
+      const type = r.mimeType || 'video/webm';
+      saveBlob(new Blob(chunks, { type }), `${fileTag()}.${type.includes('mp4') ? 'mp4' : 'webm'}`);
+      toast('🎥 Video guardado');
+    };
+    r.start();   // no timeslice: some phones played only the first seconds of an MP4 recorded in slices
+    rec = { r, c, g, size: sz, t0: performance.now(), stopAt: ex.dur ? performance.now() + ex.dur * 1000 : 0 };
+    paintRec();
+    toast(`● Grabando · ${sz.join('×')} · ${ex.fps} fps${ex.dur ? ' · ' + ex.dur + ' s' : ''}${opts.audio === 'mic' && audio.stream ? ' · con el micrófono' : ''}`);
+  }
+  function stopRec() {
+    if (!rec) return;
+    const r = rec.r; rec = null;
+    try { r.stop(); } catch (e) { /* already stopped */ }
+    paintRec(); size = fitFrame(); applySim();
+  }
+  function paintRec() {
+    const b = $('#btnExport');
+    b.classList.toggle('is-rec', !!rec);
+    b.innerHTML = rec ? '■<span class="nl"> Detener</span>' : '⤓<span class="nl"> Exportar</span>';
+    b.title = rec ? 'Detener la grabación y guardar el video' : 'Exportar: foto o video';
+    $('#count').classList.toggle('rec', !!rec);
+  }
+  function exportPop(anchor) {
+    openPop(p => {
+      p.append(el('h4', '', 'Exportar'));
+      const grid = el('div', 'pa-exp');
+      const seg = (label, key, list, fmt) => {
+        const s = el('div', 'pa-seg');
+        list.forEach(v => {
+          const b = el('button', ex[key] === v ? 'is-on' : '', fmt ? fmt(v) : String(v));
+          b.addEventListener('click', () => { ex[key] = v; opts.exp = { ...ex }; saveOpts(); s.querySelectorAll('button').forEach(x => x.classList.toggle('is-on', x === b)); paintSize(); });
+          s.append(b);
+        });
+        grid.append(el('span', '', label), s);
+      };
+      const fmtSel = el('div', 'pa-seg');
+      [['1.7778', '16:9'], ['0.5625', '9:16'], ['0.8', '4:5'], ['1', '1:1'], ['1.3333', '4:3']].forEach(([v, l]) => {
+        const b = el('button', opts.aspect === v ? 'is-on' : '', l);
+        b.addEventListener('click', () => { setAspect(v); fmtSel.querySelectorAll('button').forEach(x => x.classList.toggle('is-on', x === b)); paintSize(); });
+        fmtSel.append(b);
+      });
+      grid.append(el('span', '', 'Formato'), fmtSel);
+      seg('Resolución', 'res', [720, 1080, 1440], v => v + 'p');
+      seg('Cuadros', 'fps', [30, 60], v => v + ' fps');
+      seg('Calidad', 'q', ['normal', 'alta', 'max'], v => ({ normal: 'normal', alta: 'alta', max: 'máxima' }[v]));
+      seg('Duración', 'dur', [0, 5, 10, 15, 30, 60], v => (v ? v + ' s' : 'hasta que pare'));
+      p.append(grid);
+      const sizeLine = el('p', '');
+      const paintSize = () => { sizeLine.textContent = `${expSize().join(' × ')} px · ${ex.fps} fps · MP4 (o WebM si el navegador no puede MP4)`; };
+      paintSize(); p.append(sizeLine);
+      p.append(item('📷 Foto (PNG, fondo negro)', () => { closePop(); takePhoto(false); }));
+      p.append(item('📷 Foto con fondo transparente (PNG)', () => { closePop(); takePhoto(true); }));
+      const rb = item('● Grabar video', () => { closePop(); startRec(); }); rb.classList.add('rec'); p.append(rb);
+      p.append(el('p', '', 'El video se graba en vivo: lo que veas es lo que queda (con el sonido del micrófono si lo usás). Las partículas no tienen fondo: en NODRUS se mezclan con lo que quieras.'));
+    }, ...below(anchor), anchor);
+  }
+  $('#btnExport').addEventListener('click', e => { if (rec) stopRec(); else exportPop(e.currentTarget); });
+  function setAspect(v) { opts.aspect = v; $('#aspect').value = v; delete opts.win.w; saveOpts(); layoutView(); size = fitFrame(); }
+
   function loop(now) {
     requestAnimationFrame(loop);
     const dt = Math.min(0.1, (now - lastNow) / 1000); lastNow = now;
     if (!paused) simT += dt;
     const bands = audio.read(), beat = beatNow();
     if (opts.audio === 'syndrus' && syLive() && Math.abs(SY.bpm - bpm) > 0.01) { bpm = SY.bpm; $('#bpm').textContent = Math.round(bpm); }
-    if (PP.ok && !sim.err) sim.frame(simT, bands, beat, size[0], size[1]);
+    if (rec && rec.stopAt && now >= rec.stopAt) stopRec();
+    const rsz = rec ? rec.size : size;   // while recording the particles are drawn at the video's size
+    if (PP.ok && !sim.err) {
+      const cv = sim.frame(simT, bands, beat, rsz[0], rsz[1]);
+      if (rec && cv) composite(rec.c, rec.g, false);
+    }
+    if (rec) { const s = Math.floor((now - rec.t0) / 1000); $('#count').textContent = `● ${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}${rec.stopAt ? ' / ' + ex.dur + ' s' : ''}`; }
     meter.forEach((m, i) => { m.style.height = Math.max(1, Math.round(bands[i] * 12)) + 'px'; });
     const bi = Math.floor(beat);
     if (bi !== lastBeatI) { lastBeatI = bi; const t = $('#btnTap'); t.classList.add('beat'); setTimeout(() => t.classList.remove('beat'), 90); }
@@ -731,18 +901,19 @@
     changed('value');
   }
   $('#btnCam').addEventListener('click', () => { const o = outNode(); if (!o) return; ['yaw', 'pitch', 'dist', 'spin'].forEach(k => delete o.v[k]); setCam({}); toast('Cámara al frente'); });
-  stage.addEventListener('pointerdown', e => {
-    if (e.button !== 0 || !outNode()) return;
-    const o = outNode(), y0 = PP.valueOf(o, 'yaw'), p0 = PP.valueOf(o, 'pitch'), sx = e.clientX, sy = e.clientY;
-    stage.setPointerCapture(e.pointerId); stage.classList.add('orbit');
+  function orbitStart(e, on) {
+    const o = outNode(); if (!o) return;
+    const y0 = PP.valueOf(o, 'yaw'), p0 = PP.valueOf(o, 'pitch'), sx = e.clientX, sy = e.clientY;
+    on.setPointerCapture(e.pointerId); on.classList.add('orbit');
     const mv = ev => {
       let yaw = y0 + (ev.clientX - sx) * 0.4;
       yaw = ((yaw + 180) % 360 + 360) % 360 - 180;
       setCam({ yaw: Math.round(yaw * 10) / 10, pitch: Math.round(Math.max(-89, Math.min(89, p0 + (ev.clientY - sy) * 0.3)) * 10) / 10 });
     };
-    const up = () => { stage.removeEventListener('pointermove', mv); stage.removeEventListener('pointerup', up); stage.classList.remove('orbit'); };
-    stage.addEventListener('pointermove', mv); stage.addEventListener('pointerup', up);
-  });
+    const up = () => { on.removeEventListener('pointermove', mv); on.removeEventListener('pointerup', up); on.classList.remove('orbit'); };
+    on.addEventListener('pointermove', mv); on.addEventListener('pointerup', up);
+  }
+  stage.addEventListener('pointerdown', e => { if (e.button === 0 && outNode()) orbitStart(e, stage); });
   stage.addEventListener('wheel', e => {
     e.preventDefault();
     const o = outNode(); if (!o) return;
@@ -750,21 +921,18 @@
   }, { passive: false });
   const setPause = v => { paused = v; $('#btnPause').textContent = paused ? '▶' : '❚❚'; };
   $('#btnPause').addEventListener('click', () => setPause(!paused));
+  if (!['1.7778', '0.5625', '0.8', '1', '1.3333'].includes(opts.aspect)) opts.aspect = '1.7778';
   $('#aspect').value = opts.aspect;
-  $('#aspect').addEventListener('change', e => { opts.aspect = e.target.value; saveOpts(); size = fitFrame(); });
-  const full = () => { const v = $('#view'); if (document.fullscreenElement) document.exitFullscreen(); else if (v.requestFullscreen) v.requestFullscreen().catch(() => {}); };
+  $('#aspect').addEventListener('change', e => setAspect(e.target.value));
+  const full = () => { if (document.fullscreenElement) document.exitFullscreen(); else if (viewEl.requestFullscreen) viewEl.requestFullscreen().catch(() => toast('El navegador no permitió pantalla completa', true)); };
   $('#btnFull').addEventListener('click', full);
-  $('#view').addEventListener('dblclick', full);
-
-  /* the split between nodes and preview */
-  const main = $('#main');
-  main.style.setProperty('--view-w', opts.viewW + '%');
-  $('#split').addEventListener('pointerdown', e => {
-    const sp = e.currentTarget; sp.setPointerCapture(e.pointerId);
-    const mv = ev => { const r = main.getBoundingClientRect(); opts.viewW = Math.max(20, Math.min(75, (r.right - ev.clientX) / r.width * 100)); main.style.setProperty('--view-w', opts.viewW.toFixed(1) + '%'); };
-    const up = () => { sp.removeEventListener('pointermove', mv); sp.removeEventListener('pointerup', up); saveOpts(); };
-    sp.addEventListener('pointermove', mv); sp.addEventListener('pointerup', up);
-  });
+  stage.addEventListener('dblclick', full);
+  // ▣ behind the nodes: Alt + drag on the background turns the camera (a plain drag still moves the nodes)
+  graphEl.addEventListener('pointerdown', e => {
+    if (!main.classList.contains('backdrop') || !e.altKey || e.button !== 0 || e.target.closest('.nd') || e.target.closest('button')) return;
+    e.stopImmediatePropagation(); e.preventDefault();
+    orbitStart(e, graphEl);
+  }, true);
 
   /* keys */
   addEventListener('keydown', e => {
@@ -782,6 +950,7 @@
     else if (k === 'r') sim.reset();
     else if (k === 'e') sim.kick();
     else if (k === 'f') full();
+    else if (k === 'b') setBackdrop(!main.classList.contains('backdrop'));
     else if (e.key === ' ') { e.preventDefault(); setPause(!paused); }
   });
 
@@ -803,7 +972,9 @@
   // another PARTRUS tab saved or deleted: the dot of «Guardar» stays honest
   if (bc) bc.onmessage = e => { if (e.data && e.data.type === 'lib') paintDirty(); };
 
-  rebuild(); applyView(); applySim(); paintDirty();
+  main.classList.toggle('backdrop', !!opts.back); paintSizes(); paintRec();
+  rebuild(); applyView(); applySim(); paintDirty(); layoutView();
+  addEventListener('resize', () => drawWires());
   if (!store.get('partrus_view_v1')) requestAnimationFrame(fitView);
   requestAnimationFrame(loop);
 

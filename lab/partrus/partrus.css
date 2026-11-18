@@ -32,9 +32,9 @@ body { display: grid; grid-template-rows: 44px minmax(0, 1fr) 24px; }
 .pa-sp { flex: 1; min-width: 8px; }
 @media (max-width: 1180px) { .pa-bar .nl { display: none; } }
 
-/* main: nodes | preview */
-.pa-main { display: grid; grid-template-columns: minmax(0, 1fr) 6px var(--view-w, 44%); min-height: 0; }
-.pa-graph { position: relative; overflow: hidden; background-color: var(--bg);
+/* main: the nodes fill it; the preview floats over them (or sits behind them: ▣) */
+.pa-main { position: relative; min-height: 0; overflow: hidden; }
+.pa-graph { position: absolute; inset: 0; z-index: 1; overflow: hidden; background-color: var(--bg);
   background-image: linear-gradient(var(--grid) 1px, transparent 1px), linear-gradient(90deg, var(--grid) 1px, transparent 1px);
   background-size: 24px 24px; cursor: default; touch-action: none; }
 .pa-graph.panning { cursor: grabbing; }
@@ -44,8 +44,6 @@ body { display: grid; grid-template-rows: 44px minmax(0, 1fr) 24px; }
 .pa-wires path.t-float { stroke: var(--t-float); }
 .pa-wires path.drag { stroke-dasharray: 5 4; }
 .pa-nodes { position: absolute; left: 0; top: 0; transform-origin: 0 0; z-index: 2; }
-.pa-split { cursor: col-resize; background: var(--line); }
-.pa-split:hover { background: var(--accent); }
 .pa-add { position: absolute; left: 12px; bottom: 12px; z-index: 5; height: 32px; padding: 0 14px; border-radius: 16px; border: 1px solid rgba(var(--accent-rgb),0.6); background: var(--panel); color: var(--accent); font-weight: 600; box-shadow: var(--shadow); }
 .pa-add:hover { background: var(--accent); color: var(--bg); }
 .pa-err { position: absolute; left: 12px; right: 12px; top: 10px; z-index: 5; padding: 7px 10px; border-radius: 7px; background: rgba(255,42,77,0.16); border: 1px solid rgba(255,42,77,0.6); color: var(--head); }
@@ -86,17 +84,50 @@ body { display: grid; grid-template-rows: 44px minmax(0, 1fr) 24px; }
 .colorw { flex: 1; display: flex; align-items: center; justify-content: space-between; gap: 6px; }
 .colorw input { width: 46px; height: 20px; border: 1px solid var(--ctl-bd); border-radius: 4px; background: none; padding: 0; cursor: pointer; }
 
-/* preview: always a dark screen (it is the output), in both themes */
-.pa-view { position: relative; display: flex; flex-direction: column; min-width: 0; background: #000; color: #d8dbe6; }
-.pa-stage { position: relative; flex: 1; min-height: 0; display: flex; align-items: center; justify-content: center; overflow: hidden; }
-.pa-stage canvas { display: block; max-width: 100%; max-height: 100%; background: #000; }
-.pa-stage .frame { position: relative; box-shadow: 0 0 0 1px rgba(255,255,255,0.12); }
-.pa-viewbar { display: flex; align-items: center; gap: 6px; padding: 6px 8px; background: #101016; border-top: 1px solid #22222c; }
-.pa-viewbar button, .pa-viewbar select { height: 26px; padding: 0 9px; border-radius: 6px; border: 1px solid #2b2b38; background: #1d1d27; color: #d8dbe6; }
+/* preview: always a dark screen (it is the output), in both themes. A window over the nodes, like NODRUS */
+.pa-view { position: absolute; z-index: 8; top: 12px; right: 12px; display: flex; flex-direction: column; min-width: 0; background: #000; color: #d8dbe6;
+  border: 1px solid #2b2b38; border-radius: 8px; overflow: hidden; box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
+.pa-view.is-moving { opacity: 0.9; }
+.pa-grip { position: absolute; left: 0; right: 0; top: 0; height: 20px; z-index: 3; cursor: move; display: flex; align-items: center; padding: 0 8px;
+  background: linear-gradient(rgba(0,0,0,0.65), transparent); opacity: 0; transition: opacity .15s; }
+.pa-view:hover .pa-grip { opacity: 1; }
+.pa-grip span { font-size: 10px; letter-spacing: .12em; color: #8a8ea3; font-weight: 700; }
+.pa-wsize { position: absolute; left: 0; bottom: 0; width: 16px; height: 16px; z-index: 4; cursor: nesw-resize;
+  background: linear-gradient(45deg, transparent 45%, #66ff33 45% 55%, transparent 55% 70%, #66ff33 70% 80%, transparent 80%); opacity: 0; }
+.pa-view:hover .pa-wsize { opacity: 0.7; }
+.pa-stage { position: relative; flex: none; display: flex; align-items: center; justify-content: center; overflow: hidden; background: #000; }
+.pa-stage canvas { display: block; background: #000; }
+.pa-stage .frame { position: relative; }
+.pa-viewbar { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; padding: 5px 6px; background: #101016; border-top: 1px solid #22222c; }
+.pa-viewbar button, .pa-viewbar select { height: 24px; padding: 0 7px; border-radius: 5px; border: 1px solid #2b2b38; background: #1d1d27; color: #d8dbe6; }
 .pa-viewbar button:hover { border-color: #66ff33; color: #66ff33; }
+.pa-viewbar button.is-on { border-color: #66ff33; color: #66ff33; }
+.pa-viewbar button.is-rec { border-color: #ff2a4d; color: #fff; background: #ff2a4d; animation: pa-rec 1s steps(2) infinite; }
+@keyframes pa-rec { 50% { background: #8f1029; } }
+.pa-sizes { display: inline-flex; gap: 2px; margin-right: 4px; }
 .pa-viewbar .count { margin-left: auto; color: #8a8ea3; font-variant-numeric: tabular-nums; white-space: nowrap; }
-.pa-view:fullscreen .pa-viewbar { display: none; }
-.pa-view:fullscreen { cursor: none; }
+.pa-viewbar .count.rec { color: #ff6b81; }
+/* narrow window: icons only */
+.pa-view.is-narrow .pa-viewbar .nl, .pa-view.is-narrow .pa-viewbar .count { display: none; }
+/* ▣ the preview behind the nodes: it fills the area, the grid goes, the bar floats at the top right */
+.pa-main.backdrop .pa-view { inset: 0 !important; width: auto !important; height: auto !important; z-index: 0; border: 0; border-radius: 0; box-shadow: none; }
+.pa-main.backdrop .pa-stage { position: absolute; inset: 0; width: auto !important; height: auto !important; }
+.pa-main.backdrop .pa-grip, .pa-main.backdrop .pa-wsize { display: none; }
+.pa-main.backdrop .pa-graph { background: transparent; }
+.pa-main.backdrop .pa-graph.orbit { cursor: grabbing; }
+.pa-main.backdrop > .pa-viewbar { position: absolute; z-index: 8; top: 10px; right: 10px; max-width: calc(100% - 20px); border: 1px solid #2b2b38; border-radius: 8px; background: rgba(16,16,22,0.88); }
+.pa-main.backdrop .pa-hint { text-shadow: 0 1px 2px #000; }
+.pa-view:fullscreen { border: 0; border-radius: 0; cursor: none; }
+.pa-view:fullscreen .pa-stage { position: absolute; inset: 0; width: auto !important; height: auto !important; }
+.pa-view:fullscreen .pa-viewbar, .pa-view:fullscreen .pa-grip, .pa-view:fullscreen .pa-wsize { display: none; }
+/* the export popover */
+.pa-exp { display: grid; grid-template-columns: auto 1fr; gap: 6px 10px; align-items: center; padding: 4px 8px 8px; }
+.pa-exp > span { color: var(--dim); }
+.pa-seg { display: flex; flex-wrap: wrap; gap: 3px; }
+.pa-seg button { height: 24px; padding: 0 8px; border-radius: 5px; border: 1px solid var(--line); background: var(--panel2); }
+.pa-seg button.is-on { border-color: var(--accent); color: var(--accent); }
+.pa-pop .it.big { justify-content: flex-start; font-weight: 600; }
+.pa-pop .it.rec { color: #ff6b81; }
 .pa-msg { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; padding: 30px; text-align: center; color: #ffb3c0; }
 
 /* status bar */

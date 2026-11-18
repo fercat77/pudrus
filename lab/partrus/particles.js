@@ -1054,7 +1054,7 @@ void main() {
       if (!P.ok || P.lost || !S.comp || !S.state) return null;
       audio = audio || [0, 0, 0, 0]; beat = beat || 0;
       const M = (S.mods = mods || NOMODS);
-      h = Math.max(2, Math.min(1440, Math.round(h))); w = Math.max(2, Math.min(2560, Math.round(w)));
+      h = Math.max(2, Math.min(2560, Math.round(h))); w = Math.max(2, Math.min(2560, Math.round(w)));   // up to 1440p, landscape or portrait
       const aspect = w / h;
       if (M.pub) {   // a published knob replaces the system's value (only where that value is a plain number)
         let cur = null;

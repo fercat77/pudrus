@@ -11,7 +11,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600;700&display=swap">
   <script src="/js/theme.js" data-button="off"></script>
-  <link rel="stylesheet" href="partrus.css?v=4">
+  <link rel="stylesheet" href="partrus.css?v=5">
 </head>
 <body>
 <header class="pa-bar">
@@ -36,20 +36,26 @@
     <button class="pa-add" id="btnAdd" title="Agregar un nodo (Shift+A o doble clic en el fondo)">＋ Agregar nodo</button>
     <div class="pa-hint">arrastrá el fondo para moverte · rueda = zoom · Supr borra</div>
   </section>
-  <div class="pa-split" id="split" title="Arrastrá para cambiar el tamaño"></div>
   <section class="pa-view" id="view">
-    <div class="pa-stage" id="stage"><div class="frame" id="frame"></div></div>
-    <div class="pa-viewbar">
+    <div class="pa-grip" id="grip" title="Arrastrá para mover la vista · doble clic: volver a su lugar"><span>VISTA</span></div>
+    <div class="pa-stage" id="stage" title="Arrastrá para girar la cámara 3D · rueda: acercar"><div class="frame" id="frame"></div></div>
+    <div class="pa-viewbar" id="viewbar">
+      <span class="pa-sizes">
+        <button data-size="s" title="Vista chica">S</button><button data-size="m" title="Vista mediana">M</button><button data-size="l" title="Vista grande">L</button>
+        <button id="btnBack" title="La vista de fondo, detrás de los nodos (B). Ahí Alt + arrastrar gira la cámara">▣</button>
+        <button id="btnFull" title="Pantalla completa (F)">⛶</button>
+      </span>
+      <select id="aspect" title="Formato de la vista y de lo que exportes (en NODRUS toma el de la salida)">
+        <option value="1.7778">16:9</option><option value="0.5625">9:16</option><option value="0.8">4:5</option><option value="1">1:1</option><option value="1.3333">4:3</option>
+      </select>
       <button id="btnRestart" title="Empezar de nuevo (R)">↺</button>
       <button id="btnKick" title="Explotar (E): un empujón desde el centro">💥</button>
-      <button id="btnCam" title="Cámara al frente (arrastrá la vista para girarla, rueda para acercar)">⟲ cámara</button>
+      <button id="btnCam" title="Cámara al frente (arrastrá la vista para girarla, rueda para acercar)">⟲<span class="nl"> cámara</span></button>
       <button id="btnPause" title="Pausa (Espacio)">❚❚</button>
-      <select id="aspect" title="Formato de la vista (en NODRUS toma el de la salida)">
-        <option value="1.7778">16:9</option><option value="0.5625">9:16</option><option value="1">1:1</option><option value="1.3333">4:3</option>
-      </select>
-      <button id="btnFull" title="Pantalla completa (F)">⛶</button>
+      <button id="btnExport" title="Exportar: foto o video">⤓<span class="nl"> Exportar</span></button>
       <span class="count" id="count"></span>
     </div>
+    <div class="pa-wsize" id="wsize" title="Arrastrá para cambiar el tamaño"></div>
   </section>
 </main>
 <footer class="pa-status" id="status">
@@ -83,14 +89,16 @@
     <li>Las fuerzas y el aspecto nuevos se meten solos en la cadena, antes de la Salida. Para sacar uno, borralo: la cadena se vuelve a unir.</li>
     <li>Arrastrá desde un enchufe de salida (derecha) a uno de entrada (izquierda). Tirá de un cable desde su entrada para desconectarlo.</li>
     <li>Perillas: arrastrá de costado (Shift = fino), clic para escribir, doble clic = valor original. <b>Clic derecho → «Mostrar en NODRUS»</b>: esa perilla aparece en el nodo Partículas de NODRUS (con borde rosa acá).</li>
-    <li><kbd>Shift</kbd>+<kbd>A</kbd> agrega · <kbd>Supr</kbd> borra · <kbd>Ctrl</kbd>+<kbd>Z</kbd> deshace · <kbd>Ctrl</kbd>+<kbd>S</kbd> guarda · <kbd>T</kbd> tempo · <kbd>E</kbd> explotar · <kbd>R</kbd> reinicia · <kbd>Espacio</kbd> pausa · <kbd>F</kbd> pantalla completa</li>
+    <li><kbd>Shift</kbd>+<kbd>A</kbd> agrega · <kbd>Supr</kbd> borra · <kbd>Ctrl</kbd>+<kbd>Z</kbd> deshace · <kbd>Ctrl</kbd>+<kbd>S</kbd> guarda · <kbd>T</kbd> tempo · <kbd>E</kbd> explotar · <kbd>R</kbd> reinicia · <kbd>Espacio</kbd> pausa · <kbd>F</kbd> pantalla completa · <kbd>B</kbd> vista de fondo</li>
+    <li><b>La vista</b> flota sobre los nodos, como en NODRUS: <b>S / M / L</b> la achican o agrandan, la franja de arriba la mueve, la esquina de abajo a la izquierda cambia su tamaño (doble clic en la franja: vuelve a su lugar). <b>▣</b> la pone de fondo, detrás de los nodos (ahí <kbd>Alt</kbd> + arrastrar gira la cámara). El formato (16:9, 9:16, 4:5, 1:1, 4:3) vale para la vista y para lo que exportes.</li>
+    <li><b>⤓ Exportar</b>: una foto PNG (con fondo negro o transparente, para usar las partículas en un flyer) o un video MP4 grabado en vivo, en 720p, 1080p o 1440p, a 30 o 60 cuadros, hasta que lo pares o con una duración fija.</li>
   </ul>
   <h3>En NODRUS</h3>
   <p>Guardá el sistema (💾) y en NODRUS agregá el nodo <b>Entrada → Partículas</b>: elegís tu sistema y se mezcla con el resto del patch, va al aire, al proyector y a los videos que exportes. Mientras tengas PARTRUS abierto, lo que cambies acá se ve al instante en NODRUS.</p>
   <div class="row"><button class="pa-btn" id="themeBtn">◐ Tema claro</button><button class="pa-btn" id="helpClose">Cerrar</button></div>
 </div></div>
 
-<script src="particles.js?v=7"></script>
-<script src="app.js?v=7"></script>
+<script src="particles.js?v=8"></script>
+<script src="app.js?v=8"></script>
 </body>
 </html>
