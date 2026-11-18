@@ -246,7 +246,7 @@
         const r3 = el('div', 'nd-row'), kb = el('button', 'nd-file nd-kick', '💥 Explotar');
         kb.title = 'Un empujón desde el centro (también con la perilla «Explotar»: mapeala al MIDI o al celular)';
         kb.addEventListener('pointerdown', e => e.stopPropagation());
-        kb.addEventListener('click', () => { if (window.PudrusParticles) window.PudrusParticles.kick(n.id); });
+        kb.addEventListener('click', () => pkick(n.id));
         r3.append(kb); body.append(r3);
         continue;
       }
@@ -711,6 +711,8 @@
   }
   /* ── PARTRUS: the particle systems of the node «Partículas» ── */
   const PP = window.PudrusParticles || null;
+  // «Explotar»: here, and in the output windows, Spout copies and remote screens (each runs its own particles)
+  function pkick(key) { if (PP) PP.kick(key); broadcast({ type: 'pkick', key }); }
   const partrusUrl = q => (DESK ? '/lab/partrus/' : new URL('../partrus/', document.baseURI).href) + (q || '');
   function openPartrus(q) {
     const w = window.open(partrusUrl(q), 'partrus');
@@ -1633,7 +1635,7 @@
       if (fx.scene) stepScene(1);
       if (fx.random) { randomPatch(); goLive(undefined, 0); }
       if (fx.flash) flashAt(0, 140);
-      if (fx.particles !== false && PP) PP.kick('*');
+      if (fx.particles !== false && PP) pkick('*');
     }, at + dur);
   }
   function paintDropFx() {
@@ -2809,7 +2811,7 @@
   }
   /* Spout: up to 4 outputs, each one shows the mix on air, one layer, or a saved scene */
   const SP_SIZES = [['1280x720', '1280×720'], ['1920x1080', '1920×1080'], ['2560x1440', '2560×1440'], ['3840x2160', '3840×2160 (4K)'], ['1080x1920', '1080×1920 vertical']];
-  const spSrcs = () => [['live', 'Al aire (la mezcla)'], ['A', 'Capa A (limpia)'], ['B', 'Capa B (limpia)'], ...Array.from({ length: 16 }, (_, i) => ['scene:' + (i + 1), `Escena ${i + 1}${scenes[i] ? '' : ' (vacía)'}`])];
+  const spSrcs = () => [['live', 'Al aire (la mezcla)'], ['A', 'Capa A (limpia)'], ['B', 'Capa B (limpia)'], ['particles', 'Sólo partículas (fondo transparente)'], ...Array.from({ length: 16 }, (_, i) => ['scene:' + (i + 1), `Escena ${i + 1}${scenes[i] ? '' : ' (vacía)'}`])];
   const srcName = v => (spSrcs().find(x => x[0] === v) || [v, v])[1];
   function paintSpouts() {
     const box = $('#dkSpouts'); if (!box || !deskInfo) return;

@@ -66,6 +66,24 @@ module.exports = async function run({ app, mainWin, base, port, startSpout, stop
       out.multiDup = startSpout({ slot: 3, name: 'T-A', src: 'B' }).ok;   // a second «T-A» is refused
       await js('window.__nodesEditor.setBlack(false)');
       stopSpout();
+      // 1c) «only particles»: a Spout output with the particles on air over transparency (a layer for Resolume)
+      await js(`(() => { const E = window.__nodesEditor; E.selectDeck('A');
+        E.loadGraph(${JSON.stringify({ nodes: [{ id: 1, type: 'particles', x: 0, y: 0, v: {}, p: {} }, { id: 2, type: 'output', x: 300, y: 0, v: { vignette: 0, grain: 0 }, p: {} }], links: [{ a: 1, ao: 'c', b: 2, bi: 'c' }] })});
+        E.goLive(undefined, 0); E.setXf(0); })()`);
+      out.partStart = startSpout({ slot: 0, name: 'T-PART', src: 'particles', width: 640, height: 360, fps: 30 }).ok;
+      await wait(4500);
+      {
+        const r = new bridge.TextureReceiver('T-PART');
+        let frame = null;
+        for (let i = 0; i < 80 && !frame; i++) { await wait(40); if (r.hasNewFrame()) frame = r.receiveFrame(); }
+        if (frame) {
+          let lit = 0, clear = 0, n = 0;
+          for (let i = 0; i < frame.data.length; i += 4 * 31) { const a = frame.data[i + 3]; if (a > 10) lit++; else if (a === 0) clear++; n++; }
+          out.partSpout = { lit: Math.round(lit / n * 100) + '%', transparent: Math.round(clear / n * 100) + '%' };
+        } else out.partSpout = 'sin cuadros';
+        try { r.stop(); } catch (e) { /* stopped */ }
+      }
+      stopSpout();
       // the panel: 4 rows; turning one on from the panel starts that output with its source
       await js('document.getElementById("btnDesk").click()'); await wait(800);
       out.deskRows = await js('[...document.querySelectorAll("#dkSpouts .dk-sp")].map(r => r.querySelector("input[type=text]").value + "|" + r.querySelector("select").value)');

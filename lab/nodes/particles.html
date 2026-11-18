@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="robots" content="noindex, nofollow">
+  <title>Partículas — NODRUS</title>
+  <style>
+    /* transparent: the desktop app sends this page through Spout as a layer of its own (Resolume, TouchDesigner) */
+    html, body { margin: 0; height: 100%; background: transparent; overflow: hidden; }
+    canvas { display: block; width: 100vw; height: 100vh; }
+  </style>
+</head>
+<body>
+<canvas id="c"></canvas>
+<script src="../partrus/particles.js?v=9"></script>
+<script src="nodes.js?v=48"></script>
+<script>
+(function () {
+  // Only the particles of what is ON AIR in NODRUS (the «Partículas» nodes that reach the Output), over transparency,
+  // with the same knobs (LFO, audio, phone, MIDI) and «Explotar»: the rest of the patch stays out.
+  const N = window.PudrusNodes, PP = window.PudrusParticles;
+  const c = document.getElementById('c'), g = c.getContext('2d');
+  const ch = new BroadcastChannel('pudrus-nodes');
+  const deck = () => ({ graph: null, comp: null, key: '', vals: {}, owner: {} });
+  const decks = { A: deck(), B: deck() };
+  let x = 0, mode = 'mix', time = 0, audio = [0, 0, 0, 0], playing = true, lastMsg = 0, last = performance.now();
+  function setGraph(d, graph) {
+    const D = decks[d === 'B' ? 'B' : 'A'];
+    D.graph = graph;
+    if (!graph || !Array.isArray(graph.nodes) || !graph.nodes.some(n => n.type === 'particles')) { D.comp = null; D.key = ''; return; }
+    const k = N.structureKey(graph);
+    if (k !== D.key) { try { D.comp = N.compile(graph); D.key = k; } catch (e) { /* keep the last good one */ } }
+    if (D.comp) D.vals = N.uniformValues(graph, D.comp);
+  }
+  ch.onmessage = e => {
+    const m = e.data || {};
+    lastMsg = performance.now();
+    try {
+      if (m.type === 'live' || m.type === 'direct') setGraph(m.deck || 'A', m.graph);
+      else if (m.type === 'mix') { x = Math.min(1, Math.max(0, +m.x || 0)); mode = m.mode || 'mix'; }
+      else if (m.type === 'frame') { time = m.t; audio = m.audio || audio; if (typeof m.beat === 'number') N.clock.beat = m.beat; }
+      else if (m.type === 'play') playing = m.playing;
+      else if (m.type === 'pkick') PP.kick(m.key);
+    } catch (err) { /* keep going */ }
+  };
+  ch.postMessage({ type: 'hello' });
+  // the crossfader: A and B fade into each other (mix / transition); the other modes lay B over A
+  const weight = d => (mode === 'mix' || mode === 'trans' ? (d === 'A' ? 1 - x : x) : (d === 'A' ? 1 : x));
+  let frames = 0, t0 = performance.now();
+  const oId = Math.random().toString(36).slice(2), Q = new URLSearchParams(location.search);
+  setInterval(() => {
+    const n = performance.now(), fps = frames / ((n - t0) / 1000); frames = 0; t0 = n;
+    ch.postMessage({ type: 'ostat', id: oId, fps, w: c.width, h: c.height, mode: '', spout: Q.get('spout') || '', src: 'particles', sw: Math.round(screen.width * devicePixelRatio), sh: Math.round(screen.height * devicePixelRatio), full: false });
+  }, 1000);
+  function loop(now) {
+    requestAnimationFrame(loop);
+    frames++;
+    if (playing && now - lastMsg > 100) time += Math.min(0.1, (now - last) / 1000);
+    last = now;
+    const W = Math.round(Math.min(2560, innerWidth * devicePixelRatio)), H = Math.round(Math.min(2560, innerHeight * devicePixelRatio));
+    if (c.width !== W || c.height !== H) { c.width = W; c.height = H; }
+    g.globalCompositeOperation = 'source-over'; g.globalAlpha = 1;
+    g.clearRect(0, 0, W, H);
+    g.globalCompositeOperation = 'lighter';   // several systems add up their light
+    ['A', 'B'].forEach(d => {
+      const D = decks[d], wgt = weight(d);
+      if (!D.comp || wgt < 0.002) return;
+      D.comp.textures.forEach(t => {
+        if (t.kind !== 'particles') return;
+        const op = D.vals[N.uniformName(t.node, 'opacity')];
+        const ctx = { time, audio, values: D.vals };
+        const r = PP.source(D.owner, t.node, N.particleSys(t.p), time, audio, N.clock.beat, W, H, N.particleMods(t, ctx));
+        if (!r) return;
+        g.globalAlpha = Math.max(0, Math.min(1, wgt * (typeof op === 'number' ? op : 1)));
+        g.drawImage(r.canvas, 0, 0, W, H);
+      });
+    });
+    g.globalAlpha = 1; g.globalCompositeOperation = 'source-over';
+  }
+  requestAnimationFrame(loop);
+  window.__particlesOut = { decks, get x() { return x; } };
+})();
+</script>
+</body>
+</html>

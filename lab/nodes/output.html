@@ -113,7 +113,7 @@
 <video id="vid" muted playsinline autoplay></video>
 <div class="hint" id="hint">Doble clic: pantalla completa · M: ajustar (superficies y máscaras) · esperando al editor…</div>
 <script src="../partrus/particles.js?v=9"></script>
-<script src="nodes.js?v=47"></script>
+<script src="nodes.js?v=48"></script>
 <script src="hydra.js?v=44"></script>
 <script>
 (function () {
@@ -274,6 +274,7 @@
       else if (m.type === 'screenfx') stage.setFx(m.fx);
       else if (m.type === 'transition') stage.setTransition(m.t);
       else if (m.type === 'play') playing = m.playing;
+      else if (m.type === 'pkick' && window.PudrusParticles) window.PudrusParticles.kick(m.key);   // «Explotar» from the editor
     } catch (err) { /* keep the last good shader */ }
   };
   if (!REMOTE) ch.postMessage({ type: 'hello' });

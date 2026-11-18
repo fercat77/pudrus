@@ -130,7 +130,7 @@ ipcMain.on('remote-send', (e, id, msg) => {
 /* ── Spout: up to 4 senders. Each one is an invisible, clean copy of the output window that shows
    one source — what is on air (the mix), layer A, layer B, or a saved scene — shared on the GPU ── */
 const SPOUT_MAX = 4;
-const SPOUT_SRC = /^(live|A|B|scene:(1[0-6]|[1-9]))$/;
+const SPOUT_SRC = /^(live|A|B|particles|scene:(1[0-6]|[1-9]))$/;   // particles = only the particles on air, over transparency
 const spouts = new Map();   // slot → { sender, win, name, width, height, fps, src, frames, defects, error }
 function stopSpout(slot) {
   if (slot === undefined) { [...spouts.keys()].forEach(k => stopSpout(k)); return; }
@@ -148,7 +148,8 @@ function startSpout(o = {}) {
   if ([...spouts.values()].some(s => s.name === name)) return { ok: false, error: `Ya hay otra salida Spout llamada «${name}»: cada una necesita su nombre` };
   let sender;
   try { sender = new bridge.TextureSender(name, width, height); } catch (e) { return { ok: false, error: String(e.message || e) }; }
-  const win = new BrowserWindow({ width, height, show: false, frame: false, useContentSize: true,
+  const parts = src === 'particles';   // a transparent page: Resolume gets the particles with their alpha, as a layer of their own
+  const win = new BrowserWindow({ width, height, show: false, frame: false, useContentSize: true, ...(parts ? { transparent: true, backgroundColor: '#00000000' } : {}),
     webPreferences: { offscreen: { useSharedTexture: true, deviceScaleFactor: 1 }, backgroundThrottling: false } });
   const sp = { sender, win, name, width, height, fps, src, frames: 0, defects: 0, error: '' };
   spouts.set(slot, sp);
@@ -162,7 +163,7 @@ function startSpout(o = {}) {
     finally { try { tex.release(); } catch (e) { /* released */ } }
   });
   win.webContents.setFrameRate(fps);
-  win.loadURL(`${base}/lab/nodes/output.html?clean=1&src=${encodeURIComponent(src)}&spout=${encodeURIComponent(name)}`);
+  win.loadURL(parts ? `${base}/lab/nodes/particles.html?spout=${encodeURIComponent(name)}` : `${base}/lab/nodes/output.html?clean=1&src=${encodeURIComponent(src)}&spout=${encodeURIComponent(name)}`);
   return { ok: true, slot, name, width, height, fps, src };
 }
 const statOf = sp => ({ on: true, name: sp.name, width: sp.width, height: sp.height, fps: sp.fps, src: sp.src, frames: sp.frames, defects: sp.defects, error: sp.error });
