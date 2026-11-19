@@ -6,7 +6,8 @@
     "menu": "Menú",
     "gallery": "Galería",
     "themeLight": "Cambiar al tema claro",
-    "themeDark": "Cambiar al tema oscuro"
+    "themeDark": "Cambiar al tema oscuro",
+    "games": "Juegos"
   },
   "hero": {
     "tag": "◈ Suite Visual Creativa",
@@ -21,7 +22,7 @@
     "install": "instalación"
   },
   "work": {
-    "sectionTag": "◈ 03 — Trabajo",
+    "sectionTag": "◈ 04 — Trabajo",
     "title": "Trabajo entre el arte, la tecnología y la escena",
     "p1": "Durante más de una década desarrollé mi trabajo atravesando distintas disciplinas: diseño gráfico, artes visuales, informática, música y producción audiovisual. Ese recorrido me permitió construir una forma de trabajo donde la creatividad y la técnica no funcionan como áreas separadas, sino como partes de un mismo proceso.",
     "p2": "Me desempeño como artista visual, diseñador gráfico, director de cámaras (CCTV), técnico audiovisual, técnico escénico y VJ, además de desarrollar proyectos musicales y colaborar en la producción de eventos en vivo. Cada una de estas experiencias aporta una mirada diferente sobre la imagen, el sonido, el espacio y la relación entre las personas y la tecnología.",
@@ -376,7 +377,7 @@
     "shapeSquare": "Cuadrado"
   },
   "about": {
-    "sectionTag": "◈ 02 — Acerca de",
+    "sectionTag": "◈ 03 — Acerca de",
     "title": "Cómo funciona",
     "p1": "PUDRUS.XYZ es una suite creativa que corre localmente en tu navegador: tus imágenes nunca salen de tu dispositivo.",
     "p2": "Hecho con JavaScript puro. Sin frameworks ni cuentas.",
@@ -535,5 +536,16 @@
     "tag": "◈ Compartido con PUDRUS",
     "title": "Abrir con…",
     "empty": "No llegó nada. Compartí una imagen o un video desde la galería del teléfono y elegí PUDRUS."
+  },
+  "games": {
+    "sectionTag": "◈ 02 — Juegos",
+    "title": "<span class=\"games-drus\">DRUS</span> · entrená la cabeza",
+    "desc": "Juegos rápidos de lógica, memoria, atención y creatividad. Sin registro: tus récords quedan en tu navegador.",
+    "count": "10 juegos · un desafío del día, el mismo para todos",
+    "duelName": "Duelo",
+    "duel": "Jugá contra tus amigos, cada uno en su celular o pasándose uno.",
+    "drawName": "Trazos",
+    "draw": "Uno dibuja y los demás adivinan la palabra.",
+    "play": "Jugar"
   }
 }

@@ -6,7 +6,8 @@
     "menu": "Menu",
     "gallery": "Gallery",
     "themeLight": "Switch to the light theme",
-    "themeDark": "Switch to the dark theme"
+    "themeDark": "Switch to the dark theme",
+    "games": "Games"
   },
   "hero": {
     "tag": "◈ Creative Visual Suite",
@@ -21,7 +22,7 @@
     "install": "No install"
   },
   "work": {
-    "sectionTag": "◈ 03 — Work",
+    "sectionTag": "◈ 04 — Work",
     "title": "I create <span>visual work</span>",
     "p1": "I work at the intersection of digital art, visual identity, and interactive experiences.",
     "p2": "I collaborate on commissions for brands, artists, cultural projects, and experimental campaigns that need a strong, distinctive look.",
@@ -376,7 +377,7 @@
     "shapeSquare": "Square"
   },
   "about": {
-    "sectionTag": "◈ 02 — About",
+    "sectionTag": "◈ 03 — About",
     "title": "How it Works",
     "p1": "PUDRUS.XYZ is a creative suite that runs locally in your browser: your images never leave your device.",
     "p2": "Built with vanilla JavaScript. No frameworks, no accounts.",
@@ -535,5 +536,16 @@
     "tag": "◈ Shared with PUDRUS",
     "title": "Open with…",
     "empty": "Nothing was received. Share an image or a video from your phone's gallery and pick PUDRUS."
+  },
+  "games": {
+    "sectionTag": "◈ 02 — Games",
+    "title": "<span class=\"games-drus\">DRUS</span> · train your brain",
+    "desc": "Quick games of logic, memory, attention and creativity. No sign-up: your records stay in your browser.",
+    "count": "10 games · a daily challenge, the same for everyone",
+    "duelName": "Duel",
+    "duel": "Play against your friends, each one on their own phone, or taking turns on one.",
+    "drawName": "Trazos",
+    "draw": "One draws, the others guess the word (in Spanish for now).",
+    "play": "Play"
   }
 }

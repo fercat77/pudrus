@@ -571,3 +571,22 @@ footer a:hover { color: var(--c1); }
   html { scroll-behavior: auto; }
   *, *::before, *::after { animation: none !important; transition: none !important; }
 }
+
+/* ── HOME: GAMES (DRUS) ─────────────────────────────── */
+.games-drus { color: var(--c1); text-shadow: 0 0 18px rgba(var(--c1-rgb),0.45); }
+.games-card { display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr); gap: clamp(18px, 3vw, 40px); align-items: center; margin-top: clamp(16px, 3vh, 28px);
+  padding: clamp(16px, 2.4vw, 28px); border-radius: 16px; border: 1px solid rgba(var(--c1-rgb),0.35); background: linear-gradient(135deg, rgba(var(--c1-rgb),0.07), rgba(255,63,164,0.05));
+  color: var(--text); text-decoration: none; transition: border-color .2s, box-shadow .2s, transform .2s; }
+.games-card:hover, .games-card:focus-visible { border-color: var(--c1); box-shadow: var(--glow); transform: translateY(-2px); outline: none; }
+.games-art { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+.games-art span { display: flex; align-items: center; justify-content: center; aspect-ratio: 16 / 10; padding: 12%; border-radius: 10px; background: #0b0b14; border: 1px solid rgba(var(--line-rgb),0.12); }
+.games-art svg { width: 100%; height: 100%; }
+.games-tx { display: flex; flex-direction: column; gap: 12px; align-items: flex-start; }
+.games-count { font-size: 12px; letter-spacing: 2px; text-transform: uppercase; color: var(--c2); }
+.games-mode { display: flex; flex-direction: column; gap: 2px; line-height: 1.5; }
+.games-mode b { color: var(--head, #fff); font-size: 16px; }
+.games-mode span { color: var(--text); opacity: 0.85; font-size: 13px; }
+.games-go { margin-top: 4px; pointer-events: none; }
+@media (max-width: 720px) { .games-card { grid-template-columns: 1fr; } }
+:root[data-theme="light"] .games-card { background: linear-gradient(135deg, rgba(var(--c1-rgb),0.08), rgba(176,35,111,0.05)); box-shadow: 0 1px 3px rgba(43,47,53,0.1); }
+:root[data-theme="light"] .games-art span { border-color: transparent; }
