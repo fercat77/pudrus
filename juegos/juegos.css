@@ -394,3 +394,12 @@ body.juegos.duelmode main { padding-top: 0; }
   .ci .art { width: 30px !important; }
   .ci h3 { font-size: 12px !important; }
 }
+/* ── v7 (phones): never cut a card — on a real phone the visible height is often less than measured (browser bars,
+   Android's navigation bar, a bigger font setting). The cards get a fixed comfortable height and, if they don't
+   fit, the page scrolls a little instead of hiding the last row. ── */
+@media (max-width: 600px) {
+  body.juegos.hubmode { height: auto; min-height: 100vh; min-height: 100dvh; overflow: visible; }
+  body.juegos.hubmode main, body.juegos.hubmode .jg-hub { flex: none; }
+  body.juegos.hubmode .jg-grid { flex: none; grid-auto-rows: 74px; }
+}
+@media (max-width: 600px) and (max-height: 600px) { body.juegos.hubmode .jg-grid { grid-auto-rows: 60px; } }
