@@ -284,3 +284,29 @@ body.juegos.playmode footer { padding: 6px var(--gutter); }
 :root[data-theme="light"] .jg-card .best.none { color: var(--text2); }
 :root[data-theme="light"] .jg-result { background: rgba(43,47,53,0.45); }
 :root[data-theme="light"] .jg-card, :root[data-theme="light"] .jg-daily { box-shadow: 0 1px 3px rgba(43,47,53,0.1); }
+/* ── v6 (phones): the nav was counted twice (main + the screen itself), so everything moves up;
+   the cards show their whole name and «Sin jugar todavía» ── */
+body.juegos.hubmode main, body.juegos.playmode main { padding-top: 0; }
+@media (max-width: 600px) {
+  body.juegos .jg-head { margin-bottom: 10px; }
+  body.juegos .jg-head .section-title { font-size: clamp(20px, 2.9vh, 26px); }
+  body.juegos .jg-daily { gap: 12px; padding: 8px 12px; margin-bottom: 10px; }
+  body.juegos .jg-daily .ic { font-size: 22px; }
+  body.juegos .jg-daily .tx b { font-size: 14px; }
+  body.juegos .jg-daily .tx small { font-size: 9px; }
+}
+/* a short card: the picture on top and the name across the whole card, not squeezed beside the picture */
+@container (max-height: 130px) and (min-height: 70px) {
+  .ci { flex-direction: column !important; align-items: flex-start; justify-content: center; gap: 3px !important; padding: 6px 10px !important; }
+  .ci .art { height: min(28px, 32cqh) !important; width: auto !important; justify-content: flex-start; }
+  .ci .tx { flex: none !important; gap: 2px !important; width: 100%; }
+  .ci h3 { font-size: 14px !important; white-space: normal !important; overflow: visible !important; line-height: 1.15; }
+  .ci .best { font-size: 10px; white-space: normal !important; margin-top: 0 !important; }
+}
+/* a very short card stays in one row: a narrower picture, and the name may take two lines */
+@container (max-height: 69px) {
+  .ci .art { width: 34px !important; }
+  .ci h3 { font-size: 12.5px !important; white-space: normal !important; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; line-height: 1.1; }
+}
+/* light theme: the dark plate behind each picture must not eat the narrow picture of a one-row card */
+@container (max-height: 69px) { :root[data-theme="light"] .ci .art { padding: 0 4px !important; width: 40px !important; } }
