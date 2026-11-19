@@ -33,11 +33,14 @@
     e.textContent = t; e.classList.add('on'); clearTimeout(toastT); toastT = setTimeout(() => e.classList.remove('on'), 2600);
   }
   function btn(txt, cls, fn) { const b = el('button', 'jg-btn' + (cls ? ' ' + cls : ''), txt); b.addEventListener('click', fn); return b; }
-  function gamePicker(sel, onPick) {
+  const TZ = () => window.drusTrazos || null;   // «Trazos» (trazos.js): draw and guess, online only
+  const titleOf = id => (id === 'trazos' ? 'Trazos' : id === 'random' ? 'al azar' : (gameOf(id) || {}).title || '');
+  function gamePicker(sel, onPick, online) {
     const row = el('div', 'jg-dgames');
-    [...DUEL_GAMES, 'random'].forEach(id => {
-      const gm = gameOf(id), b = el('button', 'jg-dgame' + (id === sel ? ' on' : ''), id === 'random' ? '🎲 Al azar' : gm.title);
+    [...DUEL_GAMES, ...(online && TZ() ? ['trazos'] : []), 'random'].forEach(id => {
+      const gm = gameOf(id), b = el('button', 'jg-dgame' + (id === sel ? ' on' : '') + (id === 'trazos' ? ' tz' : ''), id === 'random' ? '🎲 Al azar' : id === 'trazos' ? '✏️ Trazos' : gm.title);
       if (gm) b.title = gm.desc;
+      if (id === 'trazos') b.title = 'Uno dibuja una palabra y los demás la adivinan escribiendo: todos dibujan una vez';
       b.addEventListener('click', () => { row.querySelectorAll('.jg-dgame').forEach(x => x.classList.toggle('on', x === b)); onPick(id); });
       row.append(b);
     });
@@ -156,6 +159,7 @@
   function hostMsg(c, m) {
     if (!m || typeof m !== 'object') return;
     const id = c.peer;
+    if (typeof m.t === 'string' && m.t.startsWith('tz-')) { if (S.phase === 'trazos' && TZ()) TZ().fromGuest(id, m); return; }
     if (m.t === 'hello') {
       if (S.conns.has(id)) return;
       if (S.players.length >= MAX) { hostSend(c, { t: 'full' }); setTimeout(() => c.close(), 300); return; }
@@ -167,6 +171,7 @@
       hostSend(c, { t: 'welcome', id, name });
       toast(`${name} entró a la sala`);
       update();
+      if (S.phase === 'trazos' && TZ()) TZ().joined(id);
     } else if (m.t === 'res' && S.phase === 'playing' && m.round === S.round && S.roundIds.includes(id) && !S.results[id]) {
       S.results[id] = num(m.score) ? { score: m.score, ms: num(m.ms) ? Math.max(0, m.ms) : 0, text: String(m.text || '').slice(0, 80) } : { score: null };
       announce(id);
@@ -180,6 +185,7 @@
     S.players = S.players.filter(x => x.id !== id);
     S.roundIds = S.roundIds.filter(x => x !== id);
     if (p) toast(`${p.name} salió`);
+    if (S.phase === 'trazos' && TZ()) { TZ().left(id); update(); return; }
     if (S.phase === 'playing') checkEnd(); else update();
   }
   function update() { hostAll(lobbyMsg()); if (!J.inDuelRound) render(); }
@@ -193,6 +199,7 @@
   function roundRows() { return S.roundIds.map(id => { const p = S.players.find(x => x.id === id), r = S.results[id]; return { id, name: p ? p.name : '?', score: r ? r.score : null, ms: r ? r.ms : 0, text: r ? r.text : '', wait: !r }; }); }
   function startRound() {
     if (S.players.length < 2) { toast('Esperá a que entre alguien más'); return; }
+    if (S.game === 'trazos' && TZ()) { S.round++; S.cur = 'trazos'; S.phase = 'trazos'; hostAll(lobbyMsg()); TZ().start(); return; }
     S.round++; S.cur = pickGame(S.game); S.results = {}; S.roundIds = S.players.map(p => p.id); S.phase = 'playing';
     const seed = Math.floor(Math.random() * 4294967296);
     hostAll({ t: 'start', round: S.round, game: S.cur, seed });
@@ -238,6 +245,7 @@
   }
   function guestMsg(m) {
     if (!m || typeof m !== 'object') return;
+    if (typeof m.t === 'string' && m.t.startsWith('tz-')) { if (TZ()) TZ().recv(m); return; }
     if (m.t === 'welcome' && typeof m.id === 'string') { S.me = m.id; if (cleanName(m.name) && cleanName(m.name) !== myName()) toast(`En esta sala sos «${cleanName(m.name)}»`); }
     else if (m.t === 'full') toast('La sala está llena (6 jugadores)');
     else if (m.t === 'lobby' && Array.isArray(m.players)) { S.lobby = sanitizeLobby(m); if (!J.inDuelRound) render(); }
@@ -254,10 +262,10 @@
   function sanitizeLobby(m) {
     const rows = a => (Array.isArray(a) ? a.slice(0, MAX) : []).map(r => ({ id: String(r.id || ''), name: cleanName(r.name) || '?', score: num(r.score) ? r.score : null, ms: num(r.ms) ? r.ms : 0, text: String(r.text || '').slice(0, 80), pos: num(r.pos) ? r.pos : null, add: num(r.add) ? r.add : 0, wait: !!r.wait }));
     return {
-      phase: ['lobby', 'playing', 'results'].includes(m.phase) ? m.phase : 'lobby', round: num(m.round) ? m.round : 0,
-      game: DUEL_GAMES.includes(m.game) || m.game === 'random' ? m.game : 'intruso', cur: DUEL_GAMES.includes(m.cur) ? m.cur : '',
+      phase: ['lobby', 'playing', 'results', 'trazos'].includes(m.phase) ? m.phase : 'lobby', round: num(m.round) ? m.round : 0,
+      game: DUEL_GAMES.includes(m.game) || m.game === 'random' || m.game === 'trazos' ? m.game : 'intruso', cur: DUEL_GAMES.includes(m.cur) || m.cur === 'trazos' ? m.cur : '',
       players: m.players.slice(0, MAX).map(p => ({ id: String(p.id || ''), name: cleanName(p.name) || '?', pts: num(p.pts) ? p.pts : 0, host: !!p.host })),
-      last: m.last && DUEL_GAMES.includes(m.last.game) ? { round: num(m.last.round) ? m.last.round : 0, game: m.last.game, rows: rows(m.last.rows) } : null,
+      last: m.last && (DUEL_GAMES.includes(m.last.game) || m.last.game === 'trazos') ? { round: num(m.last.round) ? m.last.round : 0, game: m.last.game, rows: rows(m.last.rows) } : null,
       wait: m.wait ? rows(m.wait) : null,
     };
   }
@@ -278,6 +286,7 @@
     const host = S.mode === 'host';
     const L = host ? lobbyMsg() : S.lobby;
     if (!L) { busy(host ? 'Creando la sala…' : 'Conectando…'); return; }
+    if (L.phase === 'trazos' && TZ()) { TZ().render(); return; }
     const b = frame(`Sala ${S.code} · ${L.players.length} jugador${L.players.length > 1 ? 'es' : ''}`);
     // the code, the link and the QR
     const inv = el('div', 'jg-dinvite');
@@ -300,16 +309,15 @@
       if (host) b.append(btn('Terminar la ronda ahora', '', () => { if (confirm('¿Terminar la ronda? Los que no terminaron quedan sin puntos.')) checkEnd(true); }));
     }
     if (L.last && L.phase !== 'playing') {
-      const g = gameOf(L.last.game);
-      b.append(el('h3', 'jg-dh', `Ronda ${L.last.round}${g ? ' · ' + g.title : ''}`), table(L.last.game, L.last.rows, S.me));
+      b.append(el('h3', 'jg-dh', `Ronda ${L.last.round} · ${titleOf(L.last.game)}${L.last.game === 'trazos' ? ' (puntos de la partida)' : ''}`), table(L.last.game, L.last.rows, S.me));
     }
     if (host && L.phase !== 'playing') {
-      b.append(el('h3', 'jg-dh', 'Próximo juego'), gamePicker(S.game, g => { S.game = g; hostAll(lobbyMsg()); }));
+      b.append(el('h3', 'jg-dh', 'Próximo juego'), gamePicker(S.game, g => { S.game = g; hostAll(lobbyMsg()); }, true));
       const go = btn(`▶ Jugar ronda ${S.round + 1}`, 'primary jg-dgo', startRound);
       if (L.players.length < 2) { go.disabled = true; b.append(go, el('p', 'jg-dnote', 'Esperando a que entre alguien más…')); } else b.append(go);
     } else if (!host && L.phase !== 'playing') {
-      const g = L.game === 'random' ? null : gameOf(L.game), hn = (L.players.find(p => p.host) || {}).name || 'quien creó la sala';
-      b.append(el('p', 'jg-dwait', `Esperando a que ${hn} empiece la ronda${g ? ` (${g.title})` : L.game === 'random' ? ' (juego al azar)' : ''}…`));
+      const hn = (L.players.find(p => p.host) || {}).name || 'quien creó la sala';
+      b.append(el('p', 'jg-dwait', `Esperando a que ${hn} empiece la ronda (${L.game === 'random' ? 'juego al azar' : titleOf(L.game)})…`));
     }
     b.append(btn('Salir de la sala', 'jg-dleave', () => { leave(); location.hash = ''; }));
   }
@@ -412,6 +420,17 @@
     leave(); location.hash = '';
   });
   addEventListener('pagehide', () => leave(true));
-  window.drusDuel = { show, get state() { return S; }, rankRows, DUEL_GAMES, _createRoom: createRoom, _joinRoom: joinRoom, _local: localSetup, _start: () => startRound() };
+  // what trazos.js uses: the room, sending, and the shared screen pieces
+  const api = { get S() { return S; }, hostAll: m => hostAll(m), hostSend: (id, m) => { const c = S && S.conns && S.conns.get(id); if (c) hostSend(c, m); },
+    toGuestHost: m => { if (S && S.conn && S.conn.open) S.conn.send(m); }, frame, toast, btn, cleanName, rankRows, table, totals, enter, render, lobbyMsg: () => lobbyMsg(),
+    finish(rows) {   // the end of a Trazos game: its points become a round of the room
+      if (!S || S.mode !== 'host') return;
+      const ranked = rankRows('trazos', rows);
+      ranked.forEach(r => { const p = S.players.find(x => x.id === r.id); if (p) p.pts += r.add; });
+      S.last = { round: S.round, game: 'trazos', rows: ranked };
+      S.phase = 'results';
+      hostAll(lobbyMsg()); render();
+    } };
+  window.drusDuel = { api, show, get state() { return S; }, rankRows, DUEL_GAMES, _createRoom: createRoom, _joinRoom: joinRoom, _local: localSetup, _start: () => startRound() };
   if (window.__drusDuelPending !== undefined) { const f = window.__drusDuelPending; delete window.__drusDuelPending; show(f); }
 })();

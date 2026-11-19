@@ -403,3 +403,44 @@ body.juegos.duelmode main { padding-top: 0; }
   body.juegos.hubmode .jg-grid { flex: none; grid-auto-rows: 74px; }
 }
 @media (max-width: 600px) and (max-height: 600px) { body.juegos.hubmode .jg-grid { grid-auto-rows: 60px; } }
+/* ── Trazos (draw and guess, in a Duelo room) ── */
+.jg-dgame.tz { border-color: rgba(var(--duel-rgb),0.5); }
+.jg-dgame.tz.on { border-color: var(--duel); color: var(--duel); box-shadow: 0 0 10px rgba(var(--duel-rgb),0.3); }
+.tz { display: flex; flex-direction: column; gap: 8px; }
+.tz-head { display: flex; align-items: center; gap: 10px; min-height: 34px; }
+.tz-who { color: var(--text2); font-size: 12px; white-space: nowrap; }
+.tz-mask { flex: 1; text-align: center; font-size: clamp(18px, 5vw, 26px); font-weight: 700; letter-spacing: .28em; color: var(--head); white-space: pre; overflow: hidden; text-overflow: ellipsis; }
+.tz-mask.known { color: var(--c1); letter-spacing: .08em; }
+.tz-mask.show { color: var(--duel); letter-spacing: .08em; }
+.tz-clock { font-variant-numeric: tabular-nums; color: var(--text); white-space: nowrap; min-width: 52px; text-align: right; }
+.tz-clock.low { color: #ff5470; }
+.tz-wrap { position: relative; width: 100%; aspect-ratio: 4 / 3; border-radius: 10px; overflow: hidden; border: 1px solid var(--border); background: #fff; }
+.tz-cv { position: absolute; inset: 0; width: 100%; height: 100%; display: block; touch-action: none; cursor: crosshair; }
+.tz-over { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; padding: 14px; text-align: center;
+  background: rgba(8,8,14,0.82); color: #fff; }
+.tz-over[hidden] { display: none; }
+.tz-over b { font-size: 16px; }
+.tz-over small { color: #aab; }
+.tz-over .tz-answer { font-size: clamp(26px, 8vw, 40px); color: #ff8acb; letter-spacing: .06em; }
+.tz-opts { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; }
+.tz-opts .jg-btn { font-size: 15px; padding: 10px 14px; }
+.tz-tools { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; justify-content: center; }
+.tz-tools[hidden], .tz-guess[hidden], .tz-chat[hidden] { display: none; }
+.tz-sw, .tz-sz { display: flex; gap: 4px; }
+.tz-col { width: 30px; height: 30px; border-radius: 50%; border: 2px solid var(--border); cursor: pointer; padding: 0; font-size: 13px; color: #555; }
+.tz-col.on { border-color: var(--c1); box-shadow: 0 0 0 2px rgba(var(--c1-rgb),0.45); }
+.tz-size, .tz-tool { width: 34px; height: 34px; border-radius: 8px; border: 1px solid var(--border); background: var(--bg2); color: var(--text); cursor: pointer; display: inline-flex; align-items: center; justify-content: center; padding: 0; font-size: 16px; }
+.tz-size i { display: block; border-radius: 50%; background: var(--text); }
+.tz-size.on { border-color: var(--c1); }
+.tz-guess { display: flex; gap: 8px; }
+.tz-chat { display: flex; flex-direction: column; gap: 2px; max-height: 120px; overflow: auto; font-size: 13px; padding: 6px 8px; border-radius: 8px; background: var(--bg2); border: 1px solid var(--border); }
+.tz-line b { color: var(--head); font-weight: 600; }
+.tz-line.ok, .tz-line.ok b { color: var(--c1); }
+.tz-line.near { color: var(--rec); }
+.tz-scores { display: flex; flex-wrap: wrap; gap: 6px; }
+.tz-pt { display: inline-flex; gap: 8px; align-items: baseline; padding: 5px 10px; border-radius: 16px; border: 1px solid var(--border); background: var(--bg2); font-size: 13px; }
+.tz-pt b { color: var(--head); font-weight: 600; }
+.tz-pt i { font-style: normal; color: var(--c1); }
+.tz-pt.drawer { border-color: rgba(var(--duel-rgb),0.6); }
+.tz-pt.ok { border-color: rgba(var(--c1-rgb),0.6); }
+.tz-pt.me b::after { content: ' (vos)'; color: var(--text2); font-weight: 400; }
