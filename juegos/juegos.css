@@ -446,3 +446,10 @@ body.juegos.duelmode main { padding-top: 0; }
 .tz-pt.me b::after { content: ' (vos)'; color: var(--text2); font-weight: 400; }
 /* English: «(you)» instead of «(vos)» next to your own name */
 html[lang="en"] .jg-drow.me .nm::after, html[lang="en"] .tz-pt.me b::after { content: ' (you)'; }
+
+/* ── colour-blind mode (body.cb): the switch on every start screen, and what it changes ── */
+.jg-cb { font: inherit; font-size: 12px; color: var(--text2); background: transparent; border: 1px dashed var(--border); border-radius: 18px; padding: 6px 12px; cursor: pointer; }
+.jg-cb:hover { color: var(--text); border-color: var(--text2); }
+.jg-cb.on { color: var(--c1); border-style: solid; border-color: rgba(var(--c1-rgb),0.6); }
+body.cb .st-opt { font-size: clamp(11px, 3.2vw, 14px); font-weight: 700; color: #050508; align-items: center; padding: 4px; text-align: center; }
+body.cb .sd-cell.bad { text-decoration: line-through 3px; text-decoration-color: #ff3355; background: repeating-linear-gradient(45deg, rgba(255,51,85,0.18) 0 4px, transparent 4px 8px); }

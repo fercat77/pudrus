@@ -23,6 +23,10 @@
   const store = (() => { try { return JSON.parse(localStorage.getItem(KEY) || '{}'); } catch (e) { return {}; } })();
   store.best = store.best || {}; store.days = store.days || []; store.daily = store.daily || {}; store.count = store.count || {};
   const save = () => { try { localStorage.setItem(KEY, JSON.stringify(store)); } catch (e) { /* private mode */ } };
+  // colour-blind mode: colours that every kind of colour blindness tells apart, and colour never the only clue
+  const CB = () => !!store.cb;
+  const paintCB = () => document.body.classList.toggle('cb', CB());
+  paintCB();
   function markPlayed() {
     const t = dayKey();
     if (!store.days.includes(t)) { store.days.push(t); store.days = store.days.slice(-400); }
@@ -187,7 +191,10 @@
         const id = 'h' + Math.random().toString(36).slice(2, 8);
         const fill = t.fill === 2 ? col : t.fill === 1 ? `url(#${id})` : 'none';
         const dots = Array.from({ length: t.dots }, (_, i) => `<circle cx="${(cx - (t.dots - 1) * 4.5 + i * 9).toFixed(1)}" cy="62" r="3" fill="${col}"/>`).join('');
-        return `<svg width="${s}" height="${s}" viewBox="0 0 70 70"><defs><pattern id="${id}" width="5" height="5" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><rect width="2" height="5" fill="${col}"/></pattern></defs><polygon points="${pts}" fill="${fill}" stroke="${col}" stroke-width="3" stroke-linejoin="round"/>${dots}</svg>`;
+        // colour-blind mode: each colour also has its own mark in the middle (none, a bar, a plus, a cross), on a dark plate so it reads on any fill
+        const mk = !CB() ? '' : ['', `<path d="M${cx - 6} ${cy}h12"/>`, `<path d="M${cx - 6} ${cy}h12M${cx} ${cy - 6}v12"/>`, `<path d="M${cx - 5} ${cy - 5}l10 10M${cx + 5} ${cy - 5}l-10 10"/>`][t.color];
+        const mark = mk ? `<circle cx="${cx}" cy="${cy}" r="9.5" fill="#050508" stroke="${col}" stroke-width="1.5"/><g stroke="#fff" stroke-width="3" stroke-linecap="round">${mk}</g>` : '';
+        return `<svg width="${s}" height="${s}" viewBox="0 0 70 70"><defs><pattern id="${id}" width="5" height="5" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><rect width="2" height="5" fill="${col}"/></pattern></defs><polygon points="${pts}" fill="${fill}" stroke="${col}" stroke-width="3" stroke-linejoin="round"/>${dots}${mark}</svg>`;
       }
       // what you SEE: a square turned 90° looks the same, so rotation counts modulo the figure's symmetry
       const keyOf = t => { const sym = 360 / t.sides; return [t.sides, Math.round((((t.rot % sym) + sym) % sym) * 10), t.dots, t.fill, t.color].join('|'); };
@@ -296,10 +303,12 @@
     how: tr('Con la consigna TINTA, tocá el color con el que está pintada la palabra. Con PALABRA, el color que la palabra dice. La consigna cambia sin aviso. 40 segundos: cada acierto suma, cada error resta. Teclado: 1 a 4.', 'With the rule INK, tap the colour the word is painted in. With WORD, the colour the word says. The rule changes without warning. 40 seconds: each right answer adds, each mistake takes away. Keyboard: 1 to 4.'),
     better: 'high', fmt: s => String(s),
     start(ctx) {
-      const COLS = EN ? [['RED', C.r], ['GREEN', C.g], ['BLUE', C.b], ['YELLOW', C.y]] : [['ROJO', C.r], ['VERDE', C.g], ['AZUL', C.b], ['AMARILLO', C.y]];
+      // colour-blind mode: blue, orange, white and grey differ in hue AND brightness for every kind of colour blindness
+      const COLS = CB() ? (EN ? [['BLUE', '#3f7fff'], ['ORANGE', '#ff9f1c'], ['WHITE', '#ffffff'], ['GREY', '#8c8c8c']] : [['AZUL', '#3f7fff'], ['NARANJA', '#ff9f1c'], ['BLANCO', '#ffffff'], ['GRIS', '#8c8c8c']])
+        : EN ? [['RED', C.r], ['GREEN', C.g], ['BLUE', C.b], ['YELLOW', C.y]] : [['ROJO', C.r], ['VERDE', C.g], ['AZUL', C.b], ['AMARILLO', C.y]];
       const INK = tr('TINTA', 'INK'), WORD = tr('PALABRA', 'WORD');
       const rule = el('div', 'st-rule ink', INK), word = el('div', 'st-word'), opts = el('div', 'st-opts'), msg = el('p', 'jg-msg');
-      COLS.forEach(([name, col], i) => { const b = el('button', 'st-opt', `${i + 1}`); b.style.background = col; b.title = name.toLowerCase(); b.addEventListener('click', () => answer(i)); opts.append(b); });
+      COLS.forEach(([name, col], i) => { const b = el('button', 'st-opt', CB() ? `${i + 1} · ${name}` : `${i + 1}`); b.style.background = col; b.title = name.toLowerCase(); b.addEventListener('click', () => answer(i)); opts.append(b); });
       ctx.stage.append(rule, word, opts, msg);
       let ok = 0, bad = 0, cur = null, mode = 'ink', sinceSwitch = 0, t0 = 0, rts = [], left = 40, over = false;
       function next() {
@@ -808,7 +817,12 @@
       st.append(row);
     }
     const goBtn = el('button', 'jg-btn primary', tr('Empezar', 'Start')); goBtn.addEventListener('click', go);
-    st.append(goBtn); stage.append(st); goBtn.focus();
+    const cbBtn = el('button', 'jg-cb');
+    const paintCbBtn = () => { cbBtn.textContent = (CB() ? '✓ ' : '') + tr('👁 Colores para daltonismo', '👁 Colour-blind friendly colours'); cbBtn.classList.toggle('on', CB()); cbBtn.setAttribute('aria-pressed', CB() ? 'true' : 'false'); };
+    cbBtn.title = tr('Colores que se distinguen con cualquier tipo de daltonismo, y el color nunca como única pista (queda guardado)', 'Colours that every kind of colour blindness tells apart, and colour never the only clue (it is remembered)');
+    cbBtn.addEventListener('click', () => { store.cb = !CB(); save(); paintCB(); paintCbBtn(); });
+    paintCbBtn();
+    st.append(goBtn, cbBtn); stage.append(st); goBtn.focus();
     function go() {
       stage.innerHTML = '';
       const rnd = isDaily ? mulberry(hashStr(dayKey() + ':' + gm.id)) : Math.random;
@@ -915,5 +929,5 @@
   }
   addEventListener('hashchange', route);
   route();
-  window.__juegos = { EN, tr, LOCALE, GAMES, store, save, open, mulberry, hashStr, runDuel, abortDuel, el, okSound, badSound, tone, get inDuelRound() { return !!duelRun; }, get test() { return testHook; } };
+  window.__juegos = { EN, tr, LOCALE, CB, GAMES, store, save, open, mulberry, hashStr, runDuel, abortDuel, el, okSound, badSound, tone, get inDuelRound() { return !!duelRun; }, get test() { return testHook; } };
 })();
