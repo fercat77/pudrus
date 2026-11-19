@@ -776,12 +776,14 @@
     });
   }
   $('#daily').addEventListener('click', () => { location.hash = dailyGame().id + '/hoy'; });
+  $('#duelBtn').addEventListener('click', () => { location.hash = 'duelo'; });
+  const hideDuel = () => { const d = $('#duel'); if (d) d.hidden = true; document.body.classList.remove('duelmode'); };
 
   let cleanup = null, current = null, isDaily = false, testHook = {}, option = null, run = null;
   const bestKey = gm => gm.id + (gm.options && option ? ':' + option : '');
   function open(id, daily) {
     const gm = byId(id); if (!gm) { showHub(); return; }
-    close(); current = gm; isDaily = !!daily;
+    close(); duelRun = null; hideDuel(); current = gm; isDaily = !!daily;
     hub.hidden = true; play.hidden = false; result.hidden = true; document.body.classList.remove('hubmode'); document.body.classList.add('playmode');
     $('#gTitle').textContent = gm.title + (isDaily ? ' · desafío del día' : '');
     $('#gTag').textContent = gm.tag;
@@ -809,7 +811,7 @@
     }
   }
   function close() { run = null; if (cleanup) { try { cleanup(); } catch (e) { /* ignore */ } cleanup = null; } }
-  function showHub() { close(); current = null; play.hidden = true; result.hidden = true; hub.hidden = false; document.body.classList.remove('playmode'); document.body.classList.add('hubmode'); document.title = 'DRUS — PUDRUS.XYZ'; paintHub(); }
+  function showHub() { close(); duelRun = null; hideDuel(); current = null; play.hidden = true; result.hidden = true; hub.hidden = false; document.body.classList.remove('playmode'); document.body.classList.add('hubmode'); document.title = 'DRUS — PUDRUS.XYZ'; paintHub(); }
   function finish(gm, r) {
     close(); markPlayed();
     let rec = false, prev;
@@ -836,15 +838,58 @@
   }
   $('#rAgain').addEventListener('click', () => { result.hidden = true; if (current) open(current.id, isDaily); });
   $('#rHub').addEventListener('click', () => { location.hash = ''; });
-  $('#back').addEventListener('click', () => { location.hash = ''; });
+  $('#back').addEventListener('click', () => { if (duelRun) abortDuel(); else location.hash = ''; });
   $('#helpBtn').addEventListener('click', () => { how.hidden = !how.hidden; });
-  addEventListener('keydown', e => { if (e.key === 'Escape') { if (!result.hidden) result.hidden = true; else if (!play.hidden) location.hash = ''; } });
+  addEventListener('keydown', e => { if (e.key === 'Escape') { if (!result.hidden) result.hidden = true; else if (!play.hidden) { if (duelRun) abortDuel(); else location.hash = ''; } } });
+  /* ── a round of a duel (duelo.js): the same board for everyone (the seed), no start screen and no records;
+     a 3-2-1 first, then the game; onDone(result, ms) when it ends, onAbort() if you leave it ── */
+  let duelRun = null;
+  function runDuel(id, seed, label, onDone, onAbort) {
+    const gm = byId(id); if (!gm) return false;
+    close(); current = gm; isDaily = false; option = null;
+    const d = duelRun = { onDone, onAbort, timers: [] };
+    hub.hidden = true; play.hidden = false; result.hidden = true; hideDuel();
+    document.body.classList.remove('hubmode'); document.body.classList.add('playmode');
+    $('#gTitle').textContent = gm.title + ' · ⚔ ' + (label || 'Duelo');
+    $('#gTag').textContent = gm.tag;
+    how.textContent = gm.how; how.hidden = true;
+    hud.innerHTML = ''; stage.innerHTML = '';
+    document.title = `${gm.title} · Duelo — DRUS — PUDRUS.XYZ`;
+    const cd = el('div', 'jg-start jg-count');
+    const num = el('div', 'big', '3'); cd.append(num, el('p', 'jg-rules', gm.how));
+    stage.append(cd);
+    [2, 1].forEach((n, i) => d.timers.push(setTimeout(() => { if (duelRun === d) { num.textContent = String(n); tone(440, 0.08, 'triangle'); } }, (i + 1) * 900)));
+    tone(440, 0.08, 'triangle');
+    d.timers.push(setTimeout(() => {
+      if (duelRun !== d) return;
+      tone(880, 0.14, 'triangle');
+      stage.innerHTML = '';
+      testHook = {};
+      const mine = run = {}, t0 = performance.now();
+      cleanup = gm.start({ test: testHook, option: null, stage, rnd: mulberry(seed >>> 0), daily: false,
+        hud: h => { if (run === mine) hud.innerHTML = h; },
+        done: r => { if (run !== mine) return; const ms = Math.round(performance.now() - t0); close(); if (duelRun === d) { duelRun = null; markPlayed(); onDone(r, ms); } } });
+    }, 2700));
+    return true;
+  }
+  function abortDuel() {
+    const d = duelRun; if (!d) return;
+    duelRun = null; d.timers.forEach(clearTimeout); close();
+    if (d.onAbort) d.onAbort();
+  }
   function route() {
     let h = ''; try { h = decodeURIComponent(location.hash.slice(1)); } catch (e) { h = ''; }
     const [id, flag] = h.split('/');
+    if (id === 'duelo') {   // the duel screen lives in duelo.js (it may load a moment later)
+      close(); duelRun = null; current = null; play.hidden = true; result.hidden = true; hub.hidden = true;
+      document.body.classList.remove('hubmode', 'playmode'); document.body.classList.add('duelmode');
+      document.title = 'Duelo — DRUS — PUDRUS.XYZ';
+      if (window.drusDuel) window.drusDuel.show(flag || ''); else window.__drusDuelPending = flag || '';
+      return;
+    }
     if (id && byId(id)) open(id, flag === 'hoy'); else showHub();
   }
   addEventListener('hashchange', route);
   route();
-  window.__juegos = { GAMES, store, open, mulberry, hashStr, get test() { return testHook; } };
+  window.__juegos = { GAMES, store, save, open, mulberry, hashStr, runDuel, abortDuel, el, okSound, badSound, tone, get inDuelRound() { return !!duelRun; }, get test() { return testHook; } };
 })();
