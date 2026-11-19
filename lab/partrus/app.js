@@ -890,7 +890,7 @@
     if (rec && rec.stopAt && now >= rec.stopAt) stopRec();
     const rsz = rec ? rec.size : size;   // while recording the particles are drawn at the video's size
     if (PP.ok && !sim.err) {
-      const cv = sim.frame(simT, bands, beat, rsz[0], rsz[1]);
+      const cv = sim.frame(simT, bands, beat, rsz[0], rsz[1], ptr ? { ptr } : undefined);
       if (rec && cv) composite(rec.c, rec.g, false);
     }
     if (rec) { const s = Math.floor((now - rec.t0) / 1000); $('#count').textContent = `● ${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}${rec.stopAt ? ' / ' + ex.dur + ' s' : ''}`; }
@@ -922,7 +922,25 @@
     const up = () => { on.removeEventListener('pointermove', mv); on.removeEventListener('pointerup', up); on.classList.remove('orbit'); };
     on.addEventListener('pointermove', mv); on.addEventListener('pointerup', up);
   }
-  stage.addEventListener('pointerdown', e => { if (e.button === 0 && outNode()) orbitStart(e, stage); });
+  // «Escudo»: the pointer over the drawing moves it — a mouse just by hovering, a finger by dragging (when the system has
+  // a shield that follows it; otherwise dragging turns the camera as always)
+  let ptr = null;
+  const shieldFollows = () => sys.nodes.some(n => n.type === 'shield' && PP.paramOf(n, 'follow') !== 'fixed');
+  function ptrAt(e) {
+    const r = PP.canvas.getBoundingClientRect(); if (!r.width || !r.height) return null;
+    const u = (e.clientX - r.left) / r.width, v = (e.clientY - r.top) / r.height;
+    if (u < 0 || u > 1 || v < 0 || v > 1) return null;
+    const o = outNode(), d = o ? Math.max(0.3, PP.valueOf(o, 'dist')) : 1;
+    return [(u * 2 - 1) * (r.width / r.height) * d, (1 - v * 2) * d, 1];
+  }
+  stage.addEventListener('pointermove', e => { ptr = ptrAt(e); });
+  stage.addEventListener('pointerleave', () => { ptr = null; });
+  stage.addEventListener('pointerup', e => { if (e.pointerType !== 'mouse') ptr = null; });
+  stage.addEventListener('pointerdown', e => {
+    if (e.button !== 0 || !outNode()) return;
+    if (e.pointerType !== 'mouse' && shieldFollows()) { ptr = ptrAt(e); stage.setPointerCapture(e.pointerId); return; }
+    orbitStart(e, stage);
+  });
   stage.addEventListener('wheel', e => {
     e.preventDefault();
     const o = outNode(); if (!o) return;
@@ -987,5 +1005,5 @@
   if (!store.get('partrus_view_v1')) requestAnimationFrame(fitView);
   requestAnimationFrame(loop);
 
-  window.__partrus = { setCam: v => setCam(v), get sys() { return sys; }, get sim() { return sim; }, addNode, removeNode, connect, saveToLibrary, setSystem, undo, redo, get libId() { return libId; }, get dirty() { return dirty; }, chainList, fitView, setAudio, tap, get bpm() { return bpm; } };
+  window.__partrus = { get ptr() { return ptr; }, setCam: v => setCam(v), get sys() { return sys; }, get sim() { return sim; }, addNode, removeNode, connect, saveToLibrary, setSystem, undo, redo, get libId() { return libId; }, get dirty() { return dirty; }, chainList, fitView, setAudio, tap, get bpm() { return bpm; } };
 })();

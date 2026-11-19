@@ -55,7 +55,7 @@ vec3 force(vec3 p, vec3 v, float t, float k1, float k2, float k3, float k4) {
     emit: { title: 'Emisor', cat: 'emit', unique: true, outputs: [POUT],
       help: 'De dónde nacen las partículas, hacia dónde salen y cuánto viven',
       inputs: [F('x', 'Posición X', 0, -2, 2), F('y', 'Posición Y', 0, -1.5, 1.5), F('z', 'Posición Z', 0, -6, 1), F('depth', 'Profundidad 3D', 0.5, 0, 1), F('size', 'Tamaño', 0.25, 0, 2), F('speed', 'Velocidad', 0.4, 0, 3),
-               F('chaos', 'Azar', 0.5, 0, 1), F('life', 'Vida (s)', 3, 0.2, 15), F('lifeVar', 'Vida variable', 0.5, 0, 1)],
+               F('chaos', 'Azar', 0.5, 0, 1), F('life', 'Vida (s)', 3, 0.2, 15), F('lifeVar', 'Vida variable', 0.5, 0, 1), F('weightVar', 'Peso variable', 0, 0, 1)],
       params: [{ k: 'shape', label: 'Forma', v: 'point', options: [['point', 'punto'], ['ring', 'anillo'], ['disc', 'disco'], ['line', 'línea'], ['box', 'rectángulo'], ['screen', 'toda la pantalla'], ['sphere', 'esfera 3D']] },
                { k: 'dir', label: 'Salen', v: 'out', options: DIRS },
                { k: 'count', label: 'Cantidad', v: '65536', options: COUNTS },
@@ -65,7 +65,7 @@ vec3 force(vec3 p, vec3 v, float t, float k1, float k2, float k3, float k4) {
       help: 'Las partículas nacen sobre una figura geométrica o un fractal',
       inputs: [F('x', 'Posición X', 0, -2, 2), F('y', 'Posición Y', 0, -1.5, 1.5), F('z', 'Posición Z', 0, -6, 1), F('depth', 'Profundidad 3D', 0, 0, 1), F('size', 'Tamaño', 0.8, 0.05, 3),
                F('a', 'Forma A', 0.5, 0, 1, { labels: GEO_A }), F('b', 'Forma B', 0.5, 0, 1, { labels: GEO_B }), F('rot', 'Giro (°)', 0, -180, 180), F('turn', 'Gira sola (°/s)', 0, -180, 180),
-               F('speed', 'Velocidad', 0, 0, 3), F('chaos', 'Azar', 0.2, 0, 1), F('life', 'Vida (s)', 8, 0.2, 30), F('lifeVar', 'Vida variable', 0.3, 0, 1)],
+               F('speed', 'Velocidad', 0, 0, 3), F('chaos', 'Azar', 0.2, 0, 1), F('life', 'Vida (s)', 8, 0.2, 30), F('lifeVar', 'Vida variable', 0.3, 0, 1), F('weightVar', 'Peso variable', 0, 0, 1)],
       params: [{ k: 'kind', label: 'Figura', v: 'rose', options: [['polygon', 'polígono'], ['star', 'estrella'], ['spiral', 'espiral'], ['rose', 'rosa'], ['lissa', 'Lissajous'], ['grid', 'grilla'],
                  ['knot', 'nudo 3D'], ['fibs', 'esfera de puntos 3D'], ['cube', 'cubo 3D'], ['sierp', 'fractal: Sierpinski'], ['carpet', 'fractal: alfombra'], ['fern', 'fractal: helecho'],
                  ['dragon', 'fractal: dragón'], ['tree', 'fractal: árbol'], ['clifford', 'atractor de Clifford'], ['dejong', 'atractor de De Jong'], ['glsl', 'código GLSL']] },
@@ -77,7 +77,7 @@ vec3 force(vec3 p, vec3 v, float t, float k1, float k2, float k3, float k4) {
     form: { title: 'Emisor de forma', cat: 'emit', unique: true, outputs: [POUT],
       help: 'Las partículas nacen sobre un texto, una imagen o lo que ve la cámara',
       inputs: [F('x', 'Posición X', 0, -2, 2), F('y', 'Posición Y', 0, -1.5, 1.5), F('z', 'Posición Z', 0, -6, 1), F('depth', 'Profundidad 3D', 0, 0, 1), F('size', 'Tamaño', 1.2, 0.05, 3), F('speed', 'Velocidad', 0, 0, 3),
-               F('chaos', 'Azar', 0.3, 0, 1), F('life', 'Vida (s)', 8, 0.2, 30), F('lifeVar', 'Vida variable', 0.3, 0, 1)],
+               F('chaos', 'Azar', 0.3, 0, 1), F('life', 'Vida (s)', 8, 0.2, 30), F('lifeVar', 'Vida variable', 0.3, 0, 1), F('weightVar', 'Peso variable', 0, 0, 1)],
       params: [{ k: 'src', label: 'Forma', v: 'text', options: [['text', 'texto'], ['image', 'imagen'], ['camera', 'cámara']] },
                { k: 'text', label: 'Texto', kind: 'text', v: 'PUDRUS', when: { src: 'text' } },
                { k: 'font', label: 'Letra', v: 'sans', options: FONT_OPTS, when: { src: 'text' } },
@@ -108,6 +108,9 @@ vec3 force(vec3 p, vec3 v, float t, float k1, float k2, float k3, float k4) {
     code: { title: 'Código GLSL', cat: 'force', inputs: [PIN, F('k1', 'Perilla 1', 0.5, 0, 1), F('k2', 'Perilla 2', 0.2, 0, 1), F('k3', 'Perilla 3', 0.3, 0, 1), F('k4', 'Perilla 4', 0, 0, 1)], outputs: [POUT],
       params: [{ k: 'code', label: 'Código', kind: 'code', v: CODE_FORCE }],
       help: 'Tu propia fuerza escrita en GLSL, con 4 perillas' },
+    shield: { title: 'Escudo', cat: 'force', inputs: [PIN, F('x', 'X', 0, -2, 2), F('y', 'Y', 0, -1.5, 1.5), F('z', 'Z', 0, -3, 1), F('radius', 'Tamaño', 0.35, 0.05, 1.5), F('str', 'Fuerza', 3, 0, 10), F('soft', 'Suavidad', 0.5, 0, 1)], outputs: [POUT],
+      params: [{ k: 'follow', label: 'Se mueve', v: 'pointer', options: [['pointer', 'con el mouse o el dedo (si no, X / Y)'], ['fixed', 'quieto en X / Y']] }],
+      help: 'Una esfera invisible que aparta las partículas: movela con el mouse o el dedo sobre la vista (en NODRUS, con X / Y)' },
     home: { title: 'Formar', cat: 'force', inputs: [PIN, F('str', 'Fuerza', 8, 0, 40), F('damp', 'Amortiguar', 3.5, 0, 15)], outputs: [POUT],
       help: 'Cada partícula vuelve a donde nació: el texto o la imagen se vuelve a armar' },
     cam: { title: 'Cámara', cat: 'force', inputs: [PIN, F('str', 'Fuerza', 2, -8, 8)], outputs: [POUT],
@@ -131,7 +134,8 @@ vec3 force(vec3 p, vec3 v, float t, float k1, float k2, float k3, float k4) {
       help: 'Copias girando alrededor del centro: mandalas y caleidoscopios' },
     out: { title: 'Salida', cat: 'out', unique: true, inputs: [PIN, F('trail', 'Estela', 0, 0, 0.99, { nl: true }), F('gain', 'Brillo', 1, 0, 4),
       F('yaw', 'Cámara: giro', 0, -180, 180), F('pitch', 'Cámara: inclinación', 0, -89, 89), F('dist', 'Cámara: distancia', 1, 0.3, 4), F('spin', 'Cámara: gira sola', 0, -90, 90),
-      F('sway', 'Cámara: vaivén (°)', 0, 0, 45), F('fog', 'Niebla', 0.5, 0, 1)], outputs: [],
+      F('sway', 'Cámara: vaivén (°)', 0, 0, 45), F('fog', 'Niebla', 0.5, 0, 1),
+      F('focus', 'Foco (profundidad)', 0, -2, 2), F('aperture', 'Desenfoque (bokeh)', 0, 0, 1), F('bloom', 'Resplandor', 0, 0, 2), F('grain', 'Grano', 0, 0, 1), F('lens', 'Lente', 0, 0, 1)], outputs: [],
       params: [{ k: 'blend', label: 'Mezcla', v: 'add', options: [['add', 'suman luz'], ['normal', 'normal (tapan)']] }],
       help: 'Lo que se ve (y lo que recibe NODRUS). La cámara 3D también se mueve arrastrando la vista' },
 
@@ -391,12 +395,12 @@ vec3 hsv(float h, float s, float v) { vec3 k = clamp(abs(fract(h + vec3(0.0, 2.0
     let look = null, sym = null;
     for (const n of chain.slice(1)) {
       const I = inputsOf(n), Q = P(n), id = n.id;
-      if (n.type === 'gravity') pre.push(`{ float ga = radians(${I.angle}); vel.xy += vec2(sin(ga), -cos(ga)) * ${I.str} * dt; }`);
+      if (n.type === 'gravity') pre.push(`{ float ga = radians(${I.angle}); vel.xy += vec2(sin(ga), -cos(ga)) * ${I.str} * pw * dt; }`);
       else if (n.type === 'turb') pre.push(`{ vec3 q = pos * ${I.scale} + vec3(0.0, 0.0, u_time * ${I.speed}); vec4 n1 = vnoised(q), n2 = vnoised(q * 2.03 + vec3(19.1, 7.3, 3.7));
-      vec3 g = n1.yzw + n2.yzw * 1.015; vel += vec3(g.y, -g.x, g.z * 0.25) * ${I.str} * dt;
+      vec3 g = n1.yzw + n2.yzw * 1.015; vel += vec3(g.y, -g.x, g.z * 0.25) * ${I.str} * dt / pw;
       // «Movimiento en Z»: a second flow (the curl of two more noises) that also swirls towards the front and the back
       if (${I.z3} > 0.0) { vec4 n3 = vnoised(q * 1.31 + vec3(5.2, 1.3, 8.7)), n4 = vnoised(q * 1.31 + vec3(2.9, 9.1, 4.4));
-        vel += vec3(-n4.w, n3.w, n4.y - n3.z) * 1.6 * ${I.z3} * ${I.str} * dt; } }`);
+        vel += vec3(-n4.w, n3.w, n4.y - n3.z) * 1.6 * ${I.z3} * ${I.str} * dt / pw; } }`);
       else if (n.type === 'attract') pre.push(`{ vec3 d = vec3(${I.x}, ${I.y}, 0.0) - pos; vel += d * (${I.str} * 0.35 / (dot(d, d) + 0.06)) * dt; }`);
       else if (n.type === 'vortex') pre.push(`{ vec2 d = pos.xy - vec2(${I.x}, ${I.y}); float r2v = dot(d, d) + 0.05; vel.xy += (vec2(-d.y, d.x) * ${I.str} * 0.2 / r2v - d * ${I.pull}) * dt; }`);
       else if (n.type === 'wave') pre.push(Q.dir === 'z' ? `{ float rl = length(pos.xy); vel.z += sin(rl * ${I.freq} - u_time * ${I.speed} + pos.x * 1.3) * ${I.str} * dt; }`
@@ -432,7 +436,11 @@ vec3 hsv(float h, float s, float v) { vec3 k = clamp(abs(fract(h + vec3(0.0, 2.0
       float gx = textureLod(u_mot, cu + vec2(ce.x, 0.0), 0.0).${ch} - textureLod(u_mot, cu - vec2(ce.x, 0.0), 0.0).${ch};
       float gy = textureLod(u_mot, cu - vec2(0.0, ce.y), 0.0).${ch} - textureLod(u_mot, cu + vec2(0.0, ce.y), 0.0).${ch};
       vel.xy -= vec2(gx, gy) * ${I.str} * 8.0 * dt; }`);
-      } else if (n.type === 'drag') pre.push(`vel *= exp(-max(0.0, ${I.amt}) * dt);`);
+      } else if (n.type === 'drag') pre.push(`vel *= exp(-max(0.0, ${I.amt}) * dt / pw);`);
+      else if (n.type === 'shield') pre.push(`{ vec3 sc = ${Q.follow === 'fixed' ? `vec3(${I.x}, ${I.y}, ${I.z})` : `(u_ptr.z > 0.5 ? vec3(u_ptr.xy, ${I.z}) : vec3(${I.x}, ${I.y}, ${I.z}))`};
+      vec3 d = pos - sc; float r = length(d) + 1e-4, R = max(${I.radius}, 0.02), s0 = R * (1.0 - clamp(${I.soft}, 0.0, 1.0) * 0.85);
+      vel += d / r * (1.0 - smoothstep(s0, R * 1.15, r)) * ${I.str} * 4.0 * dt / pw;
+      if (r < s0 * 0.7) pos = sc + d / r * s0 * 0.7; }`);   // a hard core: nothing passes through
       else if (n.type === 'bounds') {
         const B = `clamp(${I.bounce}, 0.0, 1.0)`;
         post.push({
@@ -453,6 +461,7 @@ uniform float u_npts, u_ptasp;
 uniform vec2 u_ptjit;
 uniform float u_dt, u_time, u_beat, u_aspect, u_frame, u_burst, u_scale, u_maxpt, u_kick, u_msize, u_hue, u_mgain, u_rtime;
 uniform vec4 u_cam;
+uniform vec3 u_ptr;
 uniform vec4 u_audio;
 ${uniforms.map(u => `uniform ${u.t === 'color' ? 'vec3' : 'float'} ${u.name};`).join('\n')}
 ${LIB}`;
@@ -480,6 +489,7 @@ void main() {
     if (!ok) { life = -1.0; pos = vec3(0.0, 0.0, -50.0); }   // nothing to be born on yet (empty text, camera starting): try again next frame
   } else if (age >= 0.0 && age < life) {
     if (u_kick > 0.5) vel += normalize(pos + vec3(1e-4, 0.0, 0.0)) * 1.8 / (1.0 + length(pos));   // «Explotar» from outside
+    float pw = 1.0 + (rnd4(idu, 0u, 7u).x - 0.5) * 1.6 * clamp(${EI.weightVar}, 0.0, 1.0);   // «Peso variable»: heavier ones fall faster, lighter ones float
     ${pre.join('\n    ')}
     pos += vel * dt;
     ${post.join('\n    ')}
@@ -513,11 +523,13 @@ void main() {
     pos.xy = mat2(cos(an), sin(an), -sin(an), cos(an)) * q; }`;
     const drawVS = `${head}
 out vec4 vCol;
+out float vBk;
 void main() {
   int i = gl_VertexID${cop > 1 ? ' / ' + cop : ''}, side = textureSize(u_pos, 0).x;
   ivec2 ij = ivec2(i % side, i / side);
   vec4 P = texelFetch(u_pos, ij, 0), V = texelFetch(u_vel, ij, 0);
   float age = P.w, life = V.w;
+  vBk = 0.0;
   if (age < 0.0 || age >= life) { gl_Position = vec4(2.0, 2.0, 2.0, 1.0); gl_PointSize = 0.0; vCol = vec4(0.0); return; }
   float t = age / life; vec3 pos = P.xyz;${symGLSL}
   vec4 rs = rnd4(uint(i), 0u, 9u);${LP.color === 'image' ? '\n  vec4 HH = texelFetch(u_home, ij, 0);' : ''}
@@ -539,6 +551,9 @@ void main() {
   al *= clamp(exp(clamp(${OI.fog}, 0.0, 1.0) * cq.z * 0.9), 0.0, ${OP.blend === 'normal' ? '1.0' : '1.6'});
   ${lifeCurve}
   float px = sz * u_scale;
+  // «Desenfoque»: the farther from the focus plane, the bigger and fainter (the same light spread over a disc)
+  float cocp = abs(cq.z - (${OI.focus})) * clamp(${OI.aperture}, 0.0, 1.0) * 30.0 * persp * u_scale; vBk = 0.0;
+  if (cocp > 0.5) { float p2 = min(px + cocp, u_maxpt); al *= max(0.025, pow(max(px, 1.0) / p2, 1.6)); vBk = clamp(cocp / p2 * 1.4, 0.0, 1.0); px = p2; }
   if (px < 1.0) { al *= max(px, 0.0); px = 1.0; }
   gl_PointSize = min(px, u_maxpt);
   vec3 col = ${colExpr};
@@ -555,10 +570,13 @@ void main() {
     const drawFS = `#version 300 es
 precision highp float;
 in vec4 vCol;
+in float vBk;
 out vec4 o;
 void main() {
   vec2 q = gl_PointCoord * 2.0 - 1.0; float r = length(q);
   float m = ${shapeExpr};
+  // a bokeh disc: flat, a crisp edge and a slightly brighter rim
+  if (vBk > 0.0) m = mix(m, (1.0 - smoothstep(0.86, 1.0, r)) * (0.78 + 0.35 * smoothstep(0.55, 0.95, r)), vBk);
   float a = vCol.a * m;
   if (a < 0.002) discard;
   o = vec4(vCol.rgb * a, a);
@@ -579,6 +597,40 @@ precision highp float; in vec2 uv; uniform sampler2D u_img; uniform float u_k; o
 precision highp float; in vec2 uv; uniform sampler2D u_img; out vec4 o;
 // premultiplied picture → canvas; the colour may pass the alpha (bright additive light), so the alpha grows to hold it
 void main() { vec4 c = texture(u_img, uv); vec3 rgb = clamp(c.rgb, 0.0, 1.0); o = vec4(rgb, max(clamp(c.a, 0.0, 1.0), max(rgb.r, max(rgb.g, rgb.b)))); }`;
+  // bloom: a quarter-size copy of the bright parts, blurred twice; then everything goes to the canvas with lens and grain
+  const DOWN_FS = `#version 300 es
+precision highp float; in vec2 uv; uniform sampler2D u_img; uniform vec2 u_px; out vec4 o;
+void main() {
+  vec3 c = vec3(0.0);
+  for (int i = 0; i < 4; i++) { vec2 d = vec2(i % 2 == 0 ? -1.0 : 1.0, i < 2 ? -1.0 : 1.0) * u_px; c += texture(u_img, uv + d).rgb; }
+  c *= 0.25; float m = max(c.r, max(c.g, c.b));
+  o = vec4(c * (0.3 + 0.7 * smoothstep(0.12, 0.9, m)), 1.0);
+}`;
+  const BLUR_FS = `#version 300 es
+precision highp float; in vec2 uv; uniform sampler2D u_img; uniform vec2 u_dir; out vec4 o;
+void main() {
+  vec3 c = texture(u_img, uv).rgb * 0.227;
+  c += (texture(u_img, uv + u_dir * 1.385).rgb + texture(u_img, uv - u_dir * 1.385).rgb) * 0.316;
+  c += (texture(u_img, uv + u_dir * 3.231).rgb + texture(u_img, uv - u_dir * 3.231).rgb) * 0.07;
+  o = vec4(c, 1.0);
+}`;
+  const POST_FS = `#version 300 es
+precision highp float; in vec2 uv; uniform sampler2D u_img, u_bloom; uniform float u_bk, u_grain, u_lens, u_seed; uniform vec2 u_res; out vec4 o;
+float hash(vec2 p) { p = fract(p * vec2(443.897, 441.423)); p += dot(p, p.yx + 19.19); return fract((p.x + p.y) * p.x); }
+void main() {
+  vec2 c = uv - 0.5; float r2 = dot(c, c);
+  vec2 base = 0.5 + c * (1.0 - u_lens * 0.07 * r2);          // a slight barrel
+  float ca = u_lens * 0.012 * r2;                               // colours parting at the edges
+  vec4 g = texture(u_img, base);
+  vec3 col = vec3(texture(u_img, base + c * ca).r, g.g, texture(u_img, base - c * ca).b);
+  vec3 bl = texture(u_bloom, base).rgb * u_bk;
+  col += bl;
+  col *= 1.0 - u_lens * 0.4 * smoothstep(0.12, 0.55, r2);       // a soft vignette
+  float lit = clamp(g.a + max(bl.r, max(bl.g, bl.b)), 0.0, 1.0);
+  col += (hash(uv * u_res + u_seed) - 0.5) * u_grain * 0.22 * lit;   // film grain where there is light (the rest stays transparent)
+  vec3 rgb = clamp(col, 0.0, 1.0);
+  o = vec4(rgb, max(clamp(g.a, 0.0, 1.0), max(rgb.r, max(rgb.g, rgb.b))));
+}`;
   const INIT_FS = `#version 300 es
 precision highp float; precision highp int;
 uniform float u_life, u_burst; uniform sampler2D u_dummy;
@@ -817,6 +869,7 @@ void main() {
     function freeColor() {
       const gl = P.gl;
       if (S.color) { S.color.tex.forEach(t => gl.deleteTexture(t)); S.color.fb.forEach(f => gl.deleteFramebuffer(f)); S.color = null; }
+      if (S.post) { S.post.tex.forEach(t => gl.deleteTexture(t)); S.post.fb.forEach(f => gl.deleteFramebuffer(f)); S.post = null; }
     }
     function alloc(side) {
       freeState();
@@ -960,6 +1013,7 @@ void main() {
       if (L.u_audio) gl.uniform4f(L.u_audio, audio[0] || 0, audio[1] || 0, audio[2] || 0, audio[3] || 0);
       if (L.u_burst) gl.uniform1f(L.u_burst, trigs.u_burst ? 1 : 0);
       if (L.u_kick) gl.uniform1f(L.u_kick, trigs.u_kick ? 1 : 0);
+      if (L.u_ptr) { const pt = (S.mods || NOMODS).ptr; gl.uniform3f(L.u_ptr, pt ? +pt[0] || 0 : 0, pt ? +pt[1] || 0 : 0, pt && pt[2] ? 1 : 0); }
       setUniforms(gl, L, S.comp, S.cur);
       S.comp.uniforms.forEach(u => { if (u.trig && L[u.name]) gl.uniform1f(L[u.name], trigs[u.name] ? 1 : 0); });
       gl.bindVertexArray(P.vao);
@@ -1035,22 +1089,56 @@ void main() {
       gl.disable(gl.BLEND);
       C.cur = dst;
     }
-    function show() {   // copies this system's picture to the shared canvas
+    // the Salida's finish knobs (their current values, published knobs from NODRUS included)
+    const outKnob = k => { const n = `u${S.comp.outId}_${k}`, v = S.cur && S.cur[n]; return typeof v === 'number' && Number.isFinite(v) ? v : 0; };
+    function show() {   // copies this system's picture to the shared canvas (with bloom, lens and grain if the Salida asks)
       const gl = P.gl, C = S.color;
       if (P.canvas.width !== C.w || P.canvas.height !== C.h) { P.canvas.width = C.w; P.canvas.height = C.h; }
-      gl.bindFramebuffer(gl.FRAMEBUFFER, null);
-      gl.viewport(0, 0, C.w, C.h);
       gl.disable(gl.BLEND);
-      gl.useProgram(P.blit.pr);
-      gl.activeTexture(gl.TEXTURE0); gl.bindTexture(gl.TEXTURE_2D, C.tex[C.cur]);
-      gl.uniform1i(P.blit.loc.u_img, 0);
       gl.bindVertexArray(P.vao);
-      gl.drawArrays(gl.TRIANGLES, 0, 6);
+      const bk = Math.max(0, Math.min(2, outKnob('bloom'))), grain = Math.max(0, Math.min(1, outKnob('grain'))), lens = Math.max(0, Math.min(1, outKnob('lens')));
+      if (bk > 0.001 || grain > 0.001 || lens > 0.001) {
+        if (!P.post) P.post = { down: program(QUAD_VS, DOWN_FS), blur: program(QUAD_VS, BLUR_FS), comp: program(QUAD_VS, POST_FS) };
+        const qw = Math.max(2, Math.round(C.w / 4)), qh = Math.max(2, Math.round(C.h / 4));
+        if (!S.post || S.post.w !== qw || S.post.h !== qh) {
+          if (S.post) { S.post.tex.forEach(t => gl.deleteTexture(t)); S.post.fb.forEach(f => gl.deleteFramebuffer(f)); }
+          const tex = [floatTex(qw, qh, true), floatTex(qw, qh, true)];
+          S.post = { w: qw, h: qh, tex, fb: [fbo([tex[0]]), fbo([tex[1]])] };
+        }
+        const Q = S.post, pass = (pr, src, dst, setup) => {
+          gl.bindFramebuffer(gl.FRAMEBUFFER, dst); gl.viewport(0, 0, Q.w, Q.h); gl.useProgram(pr.pr);
+          gl.activeTexture(gl.TEXTURE0); gl.bindTexture(gl.TEXTURE_2D, src); gl.uniform1i(pr.loc.u_img, 0);
+          setup(pr.loc); gl.drawArrays(gl.TRIANGLES, 0, 6);
+        };
+        if (bk > 0.001) {
+          pass(P.post.down, C.tex[C.cur], Q.fb[0], L => gl.uniform2f(L.u_px, 1.5 / C.w, 1.5 / C.h));
+          for (let k = 0; k < 2; k++) {   // two rounds: a wide, soft glow
+            pass(P.post.blur, Q.tex[0], Q.fb[1], L => gl.uniform2f(L.u_dir, (1 + k) / Q.w, 0));
+            pass(P.post.blur, Q.tex[1], Q.fb[0], L => gl.uniform2f(L.u_dir, 0, (1 + k) / Q.h));
+          }
+        }
+        gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+        gl.viewport(0, 0, C.w, C.h);
+        const pr = P.post.comp; gl.useProgram(pr.pr);
+        gl.activeTexture(gl.TEXTURE0); gl.bindTexture(gl.TEXTURE_2D, C.tex[C.cur]); gl.uniform1i(pr.loc.u_img, 0);
+        gl.activeTexture(gl.TEXTURE1); gl.bindTexture(gl.TEXTURE_2D, bk > 0.001 ? Q.tex[0] : P.black); gl.uniform1i(pr.loc.u_bloom, 1);
+        gl.uniform1f(pr.loc.u_bk, bk * 1.6); gl.uniform1f(pr.loc.u_grain, grain); gl.uniform1f(pr.loc.u_lens, lens);
+        gl.uniform1f(pr.loc.u_seed, (S.fno || 0) % 997 * 1.37); gl.uniform2f(pr.loc.u_res, C.w, C.h);
+        gl.drawArrays(gl.TRIANGLES, 0, 6);
+        gl.activeTexture(gl.TEXTURE0);
+      } else {
+        gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+        gl.viewport(0, 0, C.w, C.h);
+        gl.useProgram(P.blit.pr);
+        gl.activeTexture(gl.TEXTURE0); gl.bindTexture(gl.TEXTURE_2D, C.tex[C.cur]);
+        gl.uniform1i(P.blit.loc.u_img, 0);
+        gl.drawArrays(gl.TRIANGLES, 0, 6);
+      }
       P.shown = S; S.uploaded++;
     }
     /* advance to `time` and draw at w×h; returns the shared canvas (valid until another system draws) */
     /* mods (from NODRUS or the editor): speed, size, hue, glow, trail, yaw, pitch, zoom, spin (camera), boom (≥ 0.5 = explode),
-       pub {uniform: value} (published knobs), text / img (the form emitter's own text or picture) */
+       pub {uniform: value} (published knobs), text / img (the form emitter's own text or picture), ptr [x, y, on] (the pointer, for «Escudo») */
     function frame(time, audio, beat, w, h, mods) {
       S.used = performance.now();
       if (!P.ok || P.lost || !S.comp || !S.state) return null;
@@ -1259,6 +1347,28 @@ void main() {
       ['drag', { amt: 1.2 }],
       ['look', { size: 1.8, opacity: 0.6 }, { shape: 'soft', color: 'speed', life: 'fade' }],
       ['out', { trail: 0.5, gain: 1, sway: 10 }, { blend: 'add' }]]) },
+    // like a photograph: depth of field (bokeh), bloom, grain and a lens
+    { name: 'Bokeh', sys: build('Bokeh', [
+      ['emit', { depth: 1, speed: 0.04, chaos: 1, life: 12, lifeVar: 0.4, weightVar: 0.6 }, { shape: 'screen', dir: 'random', count: '16384' }],
+      ['turb', { str: 0.22, scale: 0.8, speed: 0.08, z3: 1 }],
+      ['drag', { amt: 0.7 }],
+      ['look', { size: 5, opacity: 0.9, a: '#ffb347', b: '#ff5fa2' }, { shape: 'soft', color: 'rand', life: 'fade' }],
+      ['out', { trail: 0, gain: 1.2, sway: 8, fog: 0.25, focus: 0, aperture: 0.9, bloom: 0.8, grain: 0.25, lens: 0.35 }, { blend: 'add' }]]) },
+    { name: 'Escudo (mové el mouse)', sys: build('Escudo (mové el mouse)', [
+      ['emit', { y: 1.06, size: 1.1, depth: 0.4, speed: 0.3, chaos: 0.3, life: 5, lifeVar: 0.4, weightVar: 0.8 }, { shape: 'line', dir: 'down', count: '65536' }],
+      ['gravity', { str: 0.5 }],
+      ['turb', { str: 0.25, scale: 1.5, speed: 0.2, z3: 0.5 }],
+      ['shield', { radius: 0.35, str: 4, soft: 0.5 }, { follow: 'pointer' }],
+      ['drag', { amt: 0.4 }],
+      ['look', { size: 2, opacity: 0.8, a: '#9fd8ff', b: '#ffffff' }, { shape: 'dot', color: 'speed', life: 'fade' }],
+      ['out', { trail: 0.4, gain: 1, fog: 0.4, focus: 0, aperture: 0.3, bloom: 0.5, grain: 0.15, lens: 0.2 }, { blend: 'add' }]]) },
+    { name: 'Polvo en la luz', sys: build('Polvo en la luz', [
+      ['emit', { depth: 1, speed: 0.02, chaos: 1, life: 14, lifeVar: 0.3, weightVar: 1 }, { shape: 'screen', dir: 'random', count: '65536' }],
+      ['turb', { str: 0.15, scale: 1.2, speed: 0.08, z3: 1 }],
+      ['gravity', { str: 0.03 }],
+      ['drag', { amt: 1 }],
+      ['look', { size: 2.2, opacity: 0.7, a: '#fff1c4', b: '#ffb35c' }, { shape: 'soft', color: 'rand', life: 'fade' }],
+      ['out', { trail: 0, gain: 1.1, sway: 10, fog: 0.4, focus: 0.3, aperture: 0.7, bloom: 0.9, grain: 0.3, lens: 0.4 }, { blend: 'add' }]]) },
   ];
   const blank = () => build('Nuevo sistema', [
     ['emit', {}, { shape: 'point', dir: 'out', count: '65536' }],
