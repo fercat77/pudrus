@@ -444,3 +444,5 @@ body.juegos.duelmode main { padding-top: 0; }
 .tz-pt.drawer { border-color: rgba(var(--duel-rgb),0.6); }
 .tz-pt.ok { border-color: rgba(var(--c1-rgb),0.6); }
 .tz-pt.me b::after { content: ' (vos)'; color: var(--text2); font-weight: 400; }
+/* English: «(you)» instead of «(vos)» next to your own name */
+html[lang="en"] .jg-drow.me .nm::after, html[lang="en"] .tz-pt.me b::after { content: ' (you)'; }

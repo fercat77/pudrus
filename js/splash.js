@@ -200,7 +200,7 @@
       const ta = seg(t, 1250, 1500) * (1 - out);
       if (ta > 0) {
         g.globalAlpha = ta; g.fillStyle = CY; g.font = FONT(Math.max(11, S * 0.42)); g.textAlign = 'center'; g.textBaseline = 'top';
-        g.fillText('ENTRENÁ LA CABEZA', W / 2, oy + gh * S + S * 0.9); g.globalAlpha = 1;
+        g.fillText((() => { try { return localStorage.getItem('pudrus_lang') === 'en' || (!localStorage.getItem('pudrus_lang') && /^en/.test(navigator.language || '')); } catch (e) { return false; } })() ? 'TRAIN YOUR BRAIN' : 'ENTRENÁ LA CABEZA', W / 2, oy + gh * S + S * 0.9); g.globalAlpha = 1;
       }
       if (t > 1250 && t < 1400) { g.fillStyle = `rgba(${P.gRgb},${0.12 * (1 - seg(t, 1250, 1400))})`; g.fillRect(0, 0, W, H); }
     };

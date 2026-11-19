@@ -545,7 +545,8 @@
     "duelName": "Duel",
     "duel": "Play against your friends, each one on their own phone, or taking turns on one.",
     "drawName": "Trazos",
-    "draw": "One draws, the others guess the word (in Spanish for now).",
-    "play": "Play"
+    "draw": "One draws, the others guess the word.",
+    "play": "Play",
+    "inkWord": "RED"
   }
 }

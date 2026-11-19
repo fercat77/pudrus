@@ -5,13 +5,13 @@
 (function () {
   'use strict';
   const D = window.drusDuel, J = window.__juegos; if (!D || !D.api || !J) return;
-  const A = D.api, el = J.el;
+  const A = D.api, el = J.el, tr = J.tr;
   const PICK_S = 15, DRAW_S = 80, SHOW_S = 5, MAXLEN = 40, MAXPTS = 6000;
   const COLORS = ['#111111', '#e53935', '#1e88e5', '#43a047', '#fdd835', '#fb8c00', '#8e24aa', '#6d4c41', '#ffffff'];
   const SIZES = [3, 8, 18];   // stroke widths in a 400-px-wide drawing
   const CW = 800, CH = 600;   // the drawing is 4:3 everywhere; points travel as 0–1
   // things you can draw (and say) — everyday, no brands
-  const WORDS = ('casa,árbol,sol,luna,estrella,nube,lluvia,arcoíris,montaña,río,playa,isla,volcán,flor,hoja,cactus,hongo,manzana,banana,pera,' +
+  const WORDS_ES = ('casa,árbol,sol,luna,estrella,nube,lluvia,arcoíris,montaña,río,playa,isla,volcán,flor,hoja,cactus,hongo,manzana,banana,pera,' +
     'uva,frutilla,sandía,limón,zanahoria,tomate,pizza,hamburguesa,helado,torta,pan,queso,huevo,mate,café,taza,cuchara,tenedor,botella,vaso,' +
     'perro,gato,pez,pájaro,vaca,caballo,chancho,oveja,conejo,ratón,elefante,jirafa,león,mono,serpiente,tortuga,araña,mariposa,abeja,caracol,' +
     'pulpo,ballena,tiburón,pingüino,búho,dinosaurio,dragón,robot,fantasma,sirena,auto,bicicleta,moto,avión,barco,tren,colectivo,cohete,' +
@@ -23,6 +23,8 @@
     'desierto,cascada,pirámide,ovni,planeta,tierra,telescopio,imán,batería,foco,enchufe,martillo,clavo,serrucho,tornillo,escoba,balde,' +
     'jabón,ducha,inodoro,cepillo de dientes,peine,espejo,cartera,billetera,moneda,dado,cartas,ajedrez,rompecabezas,cometa,hamaca,tobogán,' +
     'calesita,nadar,correr,saltar,dormir,bailar,cantar,llorar,reír,pescar,cocinar,leer,volar').split(',').map(s => s.trim()).filter(Boolean);
+  const WORDS_EN = ('house,tree,sun,moon,star,cloud,rain,rainbow,mountain,river,beach,island,volcano,flower,leaf,cactus,mushroom,apple,banana,pear,grapes,strawberry,watermelon,lemon,carrot,tomato,pizza,burger,ice cream,cake,bread,cheese,egg,coffee,cup,spoon,fork,bottle,glass,dog,cat,fish,bird,cow,horse,pig,sheep,rabbit,mouse,elephant,giraffe,lion,monkey,snake,turtle,spider,butterfly,bee,snail,octopus,whale,shark,penguin,owl,dinosaur,dragon,robot,ghost,mermaid,car,bicycle,motorbike,plane,boat,train,bus,rocket,balloon,umbrella,glasses,hat,shoe,shirt,trousers,glove,watch,key,padlock,door,window,ladder,chair,table,bed,lamp,television,phone,computer,headphones,guitar,piano,drum,trumpet,microphone,camera,book,pencil,scissors,ruler,backpack,letter,present,candle,crown,sword,shield,castle,bridge,lighthouse,tent,campfire,map,compass,anchor,ball,goal,racket,skateboard,trophy,medal,heart,eye,nose,mouth,hand,foot,tooth,brain,skeleton,baby,clown,pirate,witch,king,astronaut,firefighter,doctor,chef,snow,snowman,storm,lightning,tornado,fire,ice,traffic light,ambulance,hospital,school,church,city,farm,garden,forest,desert,waterfall,pyramid,ufo,planet,earth,telescope,magnet,battery,light bulb,plug,hammer,nail,saw,screw,broom,bucket,soap,shower,toilet,toothbrush,comb,mirror,handbag,wallet,coin,dice,cards,chess,puzzle,kite,hammock,slide,carousel,swim,run,jump,sleep,dance,sing,cry,laugh,fish,cook,read,fly').split(',').map(s => s.trim()).filter(Boolean);
+  const WORDS = [...new Set(J.EN ? WORDS_EN : WORDS_ES)];   // the words of whoever created the room (guesses go in that language)
   const norm = s => String(s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-z0-9 ]/g, '').replace(/\s+/g, ' ').trim();
   function lev(a, b) {   // edit distance (for «¡cerca!»)
     if (Math.abs(a.length - b.length) > 1) return 2;
@@ -133,11 +135,11 @@
         const add = [10, 8, 6, 5, 4][H.guessed.size] || 3;
         H.guessed.add(id);
         H.pts[id] = (H.pts[id] || 0) + add; H.pts[H.drawer] = (H.pts[H.drawer] || 0) + 3;
-        const line = { t: 'tz-chat', kind: 'ok', id, name: nameOf(id), text: `adivinó · +${add}`, pts: H.pts };
+        const line = { t: 'tz-chat', kind: 'ok', id, name: nameOf(id), add, pts: H.pts };
         H.chat.push(line); out(line);
         out({ t: 'tz-word', word: H.word }, id);
         if (allGuessed()) H.timers.push(setTimeout(reveal, 700));
-      } else if (w.length >= 4 && lev(g, w) === 1) out({ t: 'tz-chat', kind: 'near', name: '', text: `«${text}» está muy cerca` }, id);   // only them: the others must not read it
+      } else if (w.length >= 4 && lev(g, w) === 1) out({ t: 'tz-chat', kind: 'near', name: '', text }, id);   // only them: the others must not read it
       else { const line = { t: 'tz-chat', kind: 'guess', id, name: nameOf(id), text }; H.chat.push(line); if (H.chat.length > 40) H.chat.shift(); out(line); }
     }
   }
@@ -175,14 +177,14 @@
       case 'tz-clear': if (V) { V.strokes = []; paintAll(); } return;
       case 'tz-chat':
         if (!V) return;
-        V.chat.push({ kind: ['ok', 'near', 'guess'].includes(m.kind) ? m.kind : 'guess', name: A.cleanName(m.name), text: String(m.text || '').slice(0, 60) });
+        V.chat.push({ kind: ['ok', 'near', 'guess'].includes(m.kind) ? m.kind : 'guess', name: A.cleanName(m.name), text: String(m.text || '').slice(0, 60), add: num(m.add) ? m.add : 0 });
         if (V.chat.length > 30) V.chat.shift();
         if (m.kind === 'ok') { V.ok.add(String(m.id || '')); if (m.pts) V.pts = ptsOf(m.pts); (String(m.id) === myId() ? J.okSound : () => J.tone(880, 0.07, 'triangle'))(); }
         break;
       case 'tz-end': if (!V) return; V.phase = 'show'; V.word = String(m.word || '').slice(0, 40); V.pts = ptsOf(m.pts); V.until = T(m.left); V.opts = null; break;
       case 'tz-sync':
         V = { n: m.n | 0, total: m.total | 0, drawer: String(m.drawer || ''), dname: A.cleanName(m.dname) || '?', phase: ['pick', 'draw', 'show'].includes(m.phase) ? m.phase : 'pick', mask: String(m.mask || '').slice(0, 40), word: m.phase === 'show' ? String(m.mask || '') : '',
-          until: T(m.left), strokes: strokesOf(m.strokes), chat: (Array.isArray(m.chat) ? m.chat : []).slice(-12).map(c => ({ kind: c.kind === 'ok' ? 'ok' : 'guess', name: A.cleanName(c.name), text: String(c.text || '').slice(0, 60) })), pts: ptsOf(m.pts), opts: null, ok: new Set(), dom: V && V.dom };
+          until: T(m.left), strokes: strokesOf(m.strokes), chat: (Array.isArray(m.chat) ? m.chat : []).slice(-12).map(c => ({ kind: c.kind === 'ok' ? 'ok' : 'guess', name: A.cleanName(c.name), text: String(c.text || '').slice(0, 60), add: num(c.add) ? c.add : 0 })), pts: ptsOf(m.pts), opts: null, ok: new Set(), dom: V && V.dom };
         break;
       case 'tz-over': V = null; return;
       default: return;
@@ -255,20 +257,20 @@
     const over = el('div', 'tz-over'); wrap.append(cv, over);
     const tools = el('div', 'tz-tools');
     const sw = el('div', 'tz-sw');
-    COLORS.forEach(c => { const x = el('button', 'tz-col' + (c === pen.c ? ' on' : '')); x.style.background = c; x.title = c === '#ffffff' ? 'Goma' : 'Color'; if (c === '#ffffff') x.textContent = '⌫'; x.addEventListener('click', () => { pen.c = c; sw.querySelectorAll('.tz-col').forEach(y => y.classList.toggle('on', y === x)); }); sw.append(x); });
+    COLORS.forEach(c => { const x = el('button', 'tz-col' + (c === pen.c ? ' on' : '')); x.style.background = c; x.title = c === '#ffffff' ? tr('Goma', 'Eraser') : tr('Color', 'Colour'); if (c === '#ffffff') x.textContent = '⌫'; x.addEventListener('click', () => { pen.c = c; sw.querySelectorAll('.tz-col').forEach(y => y.classList.toggle('on', y === x)); }); sw.append(x); });
     const sz = el('div', 'tz-sz');
-    SIZES.forEach((s, i) => { const x = el('button', 'tz-size' + (i === pen.w ? ' on' : '')); const dot = el('i'); dot.style.width = dot.style.height = Math.max(4, s * 0.9) + 'px'; x.append(dot); x.title = ['Fino', 'Medio', 'Grueso'][i]; x.addEventListener('click', () => { pen.w = i; sz.querySelectorAll('.tz-size').forEach(y => y.classList.toggle('on', y === x)); }); sz.append(x); });
-    const undo = el('button', 'tz-tool', '↶'); undo.title = 'Deshacer';
+    SIZES.forEach((s, i) => { const x = el('button', 'tz-size' + (i === pen.w ? ' on' : '')); const dot = el('i'); dot.style.width = dot.style.height = Math.max(4, s * 0.9) + 'px'; x.append(dot); x.title = [tr('Fino', 'Thin'), tr('Medio', 'Medium'), tr('Grueso', 'Thick')][i]; x.addEventListener('click', () => { pen.w = i; sz.querySelectorAll('.tz-size').forEach(y => y.classList.toggle('on', y === x)); }); sz.append(x); });
+    const undo = el('button', 'tz-tool', '↶'); undo.title = tr('Deshacer', 'Undo');
     undo.addEventListener('click', () => { const mine = V && V.strokes.length ? V.strokes[V.strokes.length - 1] : null; if (!mine) return; V.strokes.pop(); paintAll(); act({ t: 'tz-undo', sid: mine.sid }); });
-    const clr = el('button', 'tz-tool', '🗑'); clr.title = 'Borrar todo';
+    const clr = el('button', 'tz-tool', '🗑'); clr.title = tr('Borrar todo', 'Clear all');
     clr.addEventListener('click', () => { if (!V || !V.strokes.length) return; V.strokes = []; paintAll(); act({ t: 'tz-clear' }); });
     tools.append(sw, sz, undo, clr);
-    const form = el('form', 'tz-guess'), inp = el('input', 'jg-dinput'); inp.maxLength = MAXLEN; inp.placeholder = 'Escribí lo que creés que es…'; inp.autocomplete = 'off'; inp.enterKeyHint = 'send';
-    const send = el('button', 'jg-btn primary', 'Enviar'); send.type = 'submit';
+    const form = el('form', 'tz-guess'), inp = el('input', 'jg-dinput'); inp.maxLength = MAXLEN; inp.placeholder = tr('Escribí lo que creés que es…', 'Type what you think it is…'); inp.autocomplete = 'off'; inp.enterKeyHint = 'send';
+    const send = el('button', 'jg-btn primary', tr('Enviar', 'Send')); send.type = 'submit';
     form.append(inp, send);
     form.addEventListener('submit', e => { e.preventDefault(); const t = inp.value.trim(); if (!t) return; act({ t: 'tz-guess', text: t }); inp.value = ''; inp.focus(); });
     const chat = el('div', 'tz-chat'), scores = el('div', 'tz-scores');
-    const leave = A.btn('Salir de la sala', 'jg-dleave', () => document.getElementById('dBack').click());   // asks, closes the connection, back to DRUS
+    const leave = A.btn(tr('Salir de la sala', 'Leave the room'), 'jg-dleave', () => document.getElementById('dBack').click());   // asks, closes the connection, back to DRUS
     root.append(head, wrap, tools, form, chat, scores, leave);
     b.append(root);
     V.dom = { root, who, mask, clock, cv, over, tools, form, inp, chat, scores };
@@ -284,40 +286,40 @@
   }
   function render() {
     if (!S()) return;
-    if (!V) { const b = A.frame('Trazos'); b.append(el('p', 'jg-dwait', 'Empezando Trazos…')); return; }
+    if (!V) { const b = A.frame('Trazos'); b.append(el('p', 'jg-dwait', tr('Empezando Trazos…', 'Starting Trazos…'))); return; }
     if (!V.dom || !V.dom.root.isConnected) mount();
     const d = V.dom, me = myId(), drawing = V.drawer === me;
-    document.querySelector('#dSub').textContent = `Trazos · turno ${V.n} de ${V.total}`;
-    d.who.textContent = drawing ? '✏️ Dibujás vos' : `✏️ Dibuja ${V.dname}`;
+    document.querySelector('#dSub').textContent = tr(`Trazos · turno ${V.n} de ${V.total}`, `Trazos · turn ${V.n} of ${V.total}`);
+    d.who.textContent = drawing ? tr('✏️ Dibujás vos', '✏️ You draw') : tr(`✏️ Dibuja ${V.dname}`, `✏️ ${V.dname} draws`);
     d.mask.textContent = V.phase === 'pick' ? '' : drawing || V.word ? (V.word || V.mask) : V.mask;
     d.mask.classList.toggle('known', !!V.word && V.phase !== 'show');
     d.mask.classList.toggle('show', V.phase === 'show');
-    d.mask.title = drawing ? 'Tu palabra (los demás ven las rayitas)' : '';
+    d.mask.title = drawing ? tr('Tu palabra (los demás ven las rayitas)', 'Your word (the others see the dashes)') : '';
     // the layer over the drawing: choosing a word, waiting, the answer
     d.over.textContent = ''; d.over.hidden = true;
     if (V.phase === 'pick') {
       d.over.hidden = false;
       if (drawing && V.opts) {
-        d.over.append(el('b', '', 'Elegí qué vas a dibujar'));
+        d.over.append(el('b', '', tr('Elegí qué vas a dibujar', 'Pick what you will draw')));
         const row = el('div', 'tz-opts');
-        V.opts.forEach((w, i) => { const x = el('button', 'jg-btn primary', w); x.addEventListener('click', () => { act({ t: 'tz-pick', i }); V.opts = null; d.over.textContent = 'Un momento…'; }); row.append(x); });
-        d.over.append(row, el('small', '', 'Si no elegís, va una al azar.'));
-      } else d.over.append(el('b', '', `${V.dname} está eligiendo qué dibujar…`));
+        V.opts.forEach((w, i) => { const x = el('button', 'jg-btn primary', w); x.addEventListener('click', () => { act({ t: 'tz-pick', i }); V.opts = null; d.over.textContent = tr('Un momento…', 'One moment…'); }); row.append(x); });
+        d.over.append(row, el('small', '', tr('Si no elegís, va una al azar.', 'If you don’t pick, one goes at random.')));
+      } else d.over.append(el('b', '', tr(`${V.dname} está eligiendo qué dibujar…`, `${V.dname} is choosing what to draw…`)));
     } else if (V.phase === 'show') {
       d.over.hidden = false;
-      d.over.append(el('small', '', 'Era'), el('b', 'tz-answer', V.word || '—'));
+      d.over.append(el('small', '', tr('Era', 'It was')), el('b', 'tz-answer', V.word || '—'));
     }
     d.tools.hidden = !(drawing && V.phase === 'draw');
     const canGuess = !drawing && V.phase === 'draw' && !V.word;
     d.form.hidden = drawing || V.phase === 'show' || V.phase === 'pick';
     d.inp.disabled = d.form.querySelector('button').disabled = !canGuess;
-    d.inp.placeholder = V.word && !drawing ? '¡Adivinaste! Esperá a los demás' : 'Escribí lo que creés que es…';
+    d.inp.placeholder = V.word && !drawing ? tr('¡Adivinaste! Esperá a los demás', 'You got it! Wait for the others') : tr('Escribí lo que creés que es…', 'Type what you think it is…');
     // the last guesses
     d.chat.textContent = '';
     V.chat.slice(-6).forEach(c => {
       const line = el('div', 'tz-line ' + c.kind);
-      if (c.kind === 'near') line.textContent = '¡Cerca! ' + c.text;
-      else { line.append(el('b', '', c.name + (c.kind === 'ok' ? ' ✓ ' : ': ')), document.createTextNode(c.text)); }
+      if (c.kind === 'near') line.textContent = tr(`¡Cerca! «${c.text}» está muy cerca`, `Close! «${c.text}» is very close`);
+      else { line.append(el('b', '', c.name + (c.kind === 'ok' ? ' ✓ ' : ': ')), document.createTextNode(c.kind === 'ok' ? tr(`adivinó · +${c.add}`, `guessed it · +${c.add}`) : c.text)); }
       d.chat.append(line);
     });
     d.chat.hidden = !V.chat.length;

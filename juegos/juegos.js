@@ -7,6 +7,10 @@
   const pad2 = n => String(n).padStart(2, '0');
   const dayKey = (d = new Date()) => `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`;
   const mmss = s => `${Math.floor(s / 60)}:${pad2(Math.floor(s % 60))}`;
+  // the site's language (the ES / EN selector of the nav): changing it reloads the page in the other language
+  const EN = (() => { let c = null; try { c = localStorage.getItem('pudrus_lang'); } catch (e) { /* private mode */ } if (!c) c = (navigator.language || 'es').slice(0, 2); return c === 'en'; })();
+  const tr = (es, en) => (EN ? en : es);
+  const LOCALE = EN ? 'en' : 'es';
   const C = { g: '#66ff33', c: '#00d4ff', m: '#ff3fa4', y: '#ffd23f', r: '#ff3355', b: '#3d7bff', dim: '#1d3a28' };
 
   /* ── seeded random (the daily challenge is the same for everyone) ── */
@@ -51,7 +55,7 @@
     circuito: `<svg viewBox="0 0 120 64"><g stroke="${C.g}" stroke-width="7" fill="none" stroke-linecap="round"><path d="M8 32h32v-20h32M72 12v40h40"/><path d="M40 32v20" stroke="${C.dim}"/></g><circle cx="8" cy="32" r="7" fill="${C.g}"/><rect x="104" y="44" width="14" height="14" fill="${C.g}"/></svg>`,
     quesigue: `<svg viewBox="0 0 150 64"><g fill="none" stroke-width="3"><polygon points="20,12 34,48 6,48" stroke="${C.g}"/><rect x="46" y="16" width="30" height="30" stroke="${C.c}" transform="rotate(20 61 31)"/><polygon points="102,10 120,24 113,46 91,46 84,24" stroke="${C.m}"/></g><text x="132" y="44" fill="${C.g}" font-size="34" font-family="monospace">?</text></svg>`,
     eco: `<svg viewBox="0 0 64 64"><rect x="4" y="4" width="26" height="26" rx="6" fill="${C.g}"/><rect x="34" y="4" width="26" height="26" rx="6" fill="none" stroke="${C.c}" stroke-width="3"/><rect x="4" y="34" width="26" height="26" rx="6" fill="none" stroke="${C.m}" stroke-width="3"/><rect x="34" y="34" width="26" height="26" rx="6" fill="none" stroke="${C.y}" stroke-width="3"/></svg>`,
-    interferencia: `<svg viewBox="0 0 150 64"><text x="4" y="44" font-family="monospace" font-weight="700" font-size="34" fill="${C.c}">ROJO</text><rect x="100" y="16" width="44" height="30" rx="5" fill="${C.c}"/></svg>`,
+    interferencia: `<svg viewBox="0 0 150 64"><text x="4" y="44" font-family="monospace" font-weight="700" font-size="34" fill="${C.c}">${EN ? 'RED' : 'ROJO'}</text><rect x="100" y="16" width="44" height="30" rx="5" fill="${C.c}"/></svg>`,
     garabato: `<svg viewBox="0 0 120 64"><path d="M8 50 C 20 0, 40 70, 56 26 S 90 6, 112 40" fill="none" stroke="${C.g}" stroke-width="4" stroke-linecap="round"/><path d="M60 30 q 8 -14 18 0 q -9 12 -18 0" fill="none" stroke="#fff" stroke-width="2.5"/><circle cx="70" cy="28" r="2.5" fill="#fff"/></svg>`,
     recorrido: `<svg viewBox="0 0 120 64"><path d="M12 12h32v40h32V12h32v40" fill="none" stroke="${C.g}" stroke-width="9" stroke-linejoin="round" stroke-linecap="round" opacity="0.9"/><g font-family="monospace" font-weight="700" font-size="12" text-anchor="middle"><circle cx="12" cy="12" r="10" fill="#050508" stroke="${C.g}" stroke-width="2.5"/><text x="12" y="16" fill="${C.g}">1</text><circle cx="76" cy="52" r="10" fill="#050508" stroke="${C.g}" stroke-width="2.5"/><text x="76" y="56" fill="${C.g}">2</text><circle cx="108" cy="52" r="10" fill="#050508" stroke="${C.c}" stroke-width="2.5"/><text x="108" y="56" fill="${C.c}">3</text></g></svg>`,
     sudoku: `<svg viewBox="0 0 64 64"><rect x="2" y="2" width="60" height="60" fill="none" stroke="${C.g}" stroke-width="2.5"/><path d="M22 2v60M42 2v60M2 22h60M2 42h60" stroke="${C.g}" stroke-width="1.5" opacity="0.6"/><g font-family="monospace" font-weight="700" font-size="14" text-anchor="middle"><text x="12" y="17" fill="#fff">5</text><text x="52" y="17" fill="${C.g}">3</text><text x="32" y="37" fill="#fff">9</text><text x="12" y="57" fill="${C.c}">7</text><text x="52" y="57" fill="#fff">1</text></g></svg>`,
@@ -66,8 +70,8 @@
   const GAMES = [];
 
   /* ── CIRCUITO: rotate the tiles until the current reaches every one ── */
-  GAMES.push({ id: 'circuito', title: 'Circuito', tag: 'Lógica', desc: 'Girá las piezas hasta que la corriente verde llegue a todas, sin cables sueltos.',
-    how: 'Tocá una pieza para girarla. La corriente sale del círculo del centro: el circuito está completo cuando todo se ilumina y no queda ninguna punta suelta. Tres tableros cada vez más grandes; cuenta el tiempo total. Teclado: flechas para moverte, Espacio para girar.',
+  GAMES.push({ id: 'circuito', title: tr('Circuito', 'Circuit'), tag: tr('Lógica', 'Logic'), desc: tr('Girá las piezas hasta que la corriente verde llegue a todas, sin cables sueltos.', 'Turn the pieces until the green current reaches all of them, with no loose wires.'),
+    how: tr('Tocá una pieza para girarla. La corriente sale del círculo del centro: el circuito está completo cuando todo se ilumina y no queda ninguna punta suelta. Tres tableros cada vez más grandes; cuenta el tiempo total. Teclado: flechas para moverte, Espacio para girar.', 'Tap a piece to turn it. The current comes out of the circle in the middle: the circuit is complete when everything lights up and no end is left loose. Three boards, each one bigger; the total time counts. Keyboard: arrows to move, Space to turn.'),
     better: 'low', fmt: s => mmss(s),
     start(ctx) {
       const SIZES = [4, 5, 6];
@@ -90,7 +94,7 @@
         orig = cells.slice();
         do { cells = orig.map(m => { let k = Math.floor(ctx.rnd() * 4); while (k--) m = rot(m); return m; }); } while (solved());
         moves = 0; size(); draw();
-        msg.textContent = `Tablero ${level + 1} de ${SIZES.length} · ${n}×${n}`;
+        msg.textContent = tr(`Tablero ${level + 1} de ${SIZES.length} · ${n}×${n}`, `Board ${level + 1} of ${SIZES.length} · ${n}×${n}`);
       }
       function powered() {
         const on = new Set([src]), q = [src];
@@ -143,7 +147,7 @@
       function checkWin() {
         if (!solved()) return;
         okSound(); level++;
-        if (level >= SIZES.length) { done = true; total = Math.round((performance.now() - t0) / 1000); setTimeout(() => ctx.done({ score: total, text: `Tres circuitos en ${mmss(total)}`, better: 'low' }), 500); }
+        if (level >= SIZES.length) { done = true; total = Math.round((performance.now() - t0) / 1000); setTimeout(() => ctx.done({ score: total, text: tr(`Tres circuitos en ${mmss(total)}`, `Three circuits in ${mmss(total)}`), better: 'low' }), 500); }
         else { done = true; setTimeout(() => { done = false; make(); }, 450); }
       }
       ctx.test.solve = () => { if (done) return; cells = orig.slice(); draw(); checkWin(); };
@@ -155,15 +159,15 @@
         else if ((k === ' ' || k === 'Enter') && cursor >= 0) { e.preventDefault(); turn(cursor); }
       };
       addEventListener('keydown', key);
-      const tick = setInterval(() => ctx.hud(`Tiempo<b>${mmss((performance.now() - t0) / 1000)}</b> Movidas<b>${moves}</b>`), 250);
+      const tick = setInterval(() => ctx.hud(`${tr('Tiempo', 'Time')}<b>${mmss((performance.now() - t0) / 1000)}</b> ${tr('Movidas', 'Moves')}<b>${moves}</b>`), 250);
       const rs = () => { size(); draw(); }; addEventListener('resize', rs);
       make();
       return () => { clearInterval(tick); cancelAnimationFrame(raf); removeEventListener('keydown', key); removeEventListener('resize', rs); };
     } });
 
   /* ── QUÉ SIGUE: find the hidden rule of the series ── */
-  GAMES.push({ id: 'quesigue', title: 'Qué sigue', tag: 'Lógica', desc: 'Una serie de figuras con una regla oculta. Elegí la que sigue antes de que se acabe el tiempo.',
-    how: 'Mirá cómo cambian las figuras de una a otra (lados, giro, puntos, relleno, color…) y elegí la quinta. Diez rondas: las primeras cambian una sola cosa, las últimas hasta tres a la vez. Responder rápido suma más. Teclado: 1 a 4.',
+  GAMES.push({ id: 'quesigue', title: tr('Qué sigue', 'What’s next'), tag: tr('Lógica', 'Logic'), desc: tr('Una serie de figuras con una regla oculta. Elegí la que sigue antes de que se acabe el tiempo.', 'A series of shapes with a hidden rule. Pick the next one before time runs out.'),
+    how: tr('Mirá cómo cambian las figuras de una a otra (lados, giro, puntos, relleno, color…) y elegí la quinta. Diez rondas: las primeras cambian una sola cosa, las últimas hasta tres a la vez. Responder rápido suma más. Teclado: 1 a 4.', 'Watch how the shapes change from one to the next (sides, turn, dots, fill, colour…) and pick the fifth. Ten rounds: the first ones change one thing only, the last ones up to three at once. Answering fast scores more. Keyboard: 1 to 4.'),
     better: 'high', fmt: s => String(s),
     start(ctx) {
       const COLS = [C.g, C.c, C.m, C.y];
@@ -213,21 +217,21 @@
         return { seq, ans, opts: shuffle(opts, ctx.rnd) };
       }
       function next() {
-        if (round >= ROUNDS) { clearInterval(timer); ctx.done({ score, text: `${score} puntos en ${ROUNDS} rondas`, better: 'high' }); return; }
+        if (round >= ROUNDS) { clearInterval(timer); ctx.done({ score, text: tr(`${score} puntos en ${ROUNDS} rondas`, `${score} points in ${ROUNDS} rounds`), better: 'high' }); return; }
         const q = series(); locked = false;
         row.innerHTML = ''; opts.innerHTML = '';
         q.seq.forEach(t => { const c = el('div', 'qs-cell'); c.innerHTML = shapeSVG(t); row.append(c); });
         row.append(el('div', 'qs-cell q', '?'));
         q.opts.forEach((t, i) => {
-          const c = el('button', 'qs-cell'); c.innerHTML = shapeSVG(t); c.title = `Opción ${i + 1}`;
+          const c = el('button', 'qs-cell'); c.innerHTML = shapeSVG(t); c.title = tr(`Opción ${i + 1}`, `Option ${i + 1}`);
           c.addEventListener('click', () => answer(c, t === q.ans, q));
           opts.append(c);
         });
         ctx.test.answer = q.opts.indexOf(q.ans);
-        left = TIME; msg.textContent = `Ronda ${round + 1} de ${ROUNDS}`;
+        left = TIME; msg.textContent = tr(`Ronda ${round + 1} de ${ROUNDS}`, `Round ${round + 1} of ${ROUNDS}`);
         clearInterval(timer);
         timer = setInterval(() => { left -= 0.1; fillBar.style.width = Math.max(0, left / TIME * 100) + '%'; if (left <= 0) answer(null, false, q); }, 100);
-        ctx.hud(`Puntos<b>${score}</b>`);
+        ctx.hud(`${tr('Puntos', 'Points')}<b>${score}</b>`);
       }
       function answer(btn, ok, q) {
         if (locked) return; locked = true; clearInterval(timer);
@@ -235,8 +239,8 @@
         score += gain;
         [...opts.children].forEach((c, i) => { if (q.opts[i] === q.ans) c.classList.add('right'); else if (c === btn) c.classList.add('wrong'); });
         if (ok) okSound(); else badSound();
-        msg.textContent = ok ? `¡Bien! +${gain}` : (btn ? 'No era esa' : 'Se acabó el tiempo');
-        ctx.hud(`Puntos<b>${score}</b>`);
+        msg.textContent = ok ? tr(`¡Bien! +${gain}`, `Nice! +${gain}`) : (btn ? tr('No era esa', 'Not that one') : tr('Se acabó el tiempo', 'Time’s up'));
+        ctx.hud(`${tr('Puntos', 'Points')}<b>${score}</b>`);
         round++; nextT = setTimeout(next, ok ? 650 : 1200);
       }
       const key = e => { const i = +e.key - 1; if (i >= 0 && i < 4 && opts.children[i]) opts.children[i].click(); };
@@ -246,12 +250,12 @@
     } });
 
   /* ── ECO: repeat the sequence of lights and sounds ── */
-  GAMES.push({ id: 'eco', title: 'Eco', tag: 'Memoria', desc: 'Una secuencia de luces y sonidos que crece una nota por vez. ¿Hasta dónde llegás?',
-    how: 'Mirá y escuchá la secuencia, después repetila tocando los cuadros en el mismo orden. Cada ronda suma una nota y va un poco más rápido. Un error termina la partida. Teclado: 1, 2, 3, 4.',
+  GAMES.push({ id: 'eco', title: tr('Eco', 'Echo'), tag: tr('Memoria', 'Memory'), desc: tr('Una secuencia de luces y sonidos que crece una nota por vez. ¿Hasta dónde llegás?', 'A sequence of lights and sounds that grows one note at a time. How far can you go?'),
+    how: tr('Mirá y escuchá la secuencia, después repetila tocando los cuadros en el mismo orden. Cada ronda suma una nota y va un poco más rápido. Un error termina la partida. Teclado: 1, 2, 3, 4.', 'Watch and listen to the sequence, then repeat it by tapping the squares in the same order. Each round adds a note and goes a little faster. One mistake ends the game. Keyboard: 1, 2, 3, 4.'),
     better: 'high', fmt: s => String(s),
     start(ctx) {
       const PADS = [[C.g, 262], [C.c, 330], [C.m, 392], [C.y, 523]];
-      const wrap = el('div', 'eco-pads locked'), msg = el('p', 'jg-msg', 'Mirá…');
+      const wrap = el('div', 'eco-pads locked'), msg = el('p', 'jg-msg', tr('Mirá…', 'Watch…'));
       const pads = PADS.map(([col, f], i) => { const b = el('button', 'eco-pad', String(i + 1)); b.style.setProperty('--pc', col); wrap.append(b); return b; });
       ctx.stage.append(wrap, msg);
       const seq = [], timers = [];
@@ -260,12 +264,12 @@
       const later = (f, ms) => timers.push(setTimeout(f, ms));
       function light(i, ms) { pads[i].classList.add('lit'); tone(PADS[i][1], ms / 1000 + 0.05, 'triangle', 0.14); later(() => pads[i].classList.remove('lit'), ms); }
       function play() {
-        listening = false; wrap.classList.add('locked'); msg.textContent = 'Mirá…';
+        listening = false; wrap.classList.add('locked'); msg.textContent = tr('Mirá…', 'Watch…');
         seq.push(Math.floor(ctx.rnd() * 4));
         const gap = Math.max(260, 560 - seq.length * 18);
         seq.forEach((p, k) => later(() => light(p, gap * 0.7), 500 + k * gap));
-        later(() => { listening = true; pos = 0; wrap.classList.remove('locked'); msg.textContent = 'Tu turno'; }, 500 + seq.length * gap);
-        ctx.hud(`Nivel<b>${seq.length}</b>`);
+        later(() => { listening = true; pos = 0; wrap.classList.remove('locked'); msg.textContent = tr('Tu turno', 'Your turn'); }, 500 + seq.length * gap);
+        ctx.hud(`${tr('Nivel', 'Level')}<b>${seq.length}</b>`);
       }
       function press(i) {
         if (!listening || over) return;
@@ -273,12 +277,12 @@
         if (i !== seq[pos]) {
           over = true; listening = false; badSound(); wrap.classList.add('flash-bad');
           const score = seq.length - 1;
-          msg.textContent = 'Uy, era otro';
-          later(() => ctx.done({ score, text: score ? `Repetiste ${score} nota${score > 1 ? 's' : ''} seguidas` : 'Ni una: ¡a practicar!', better: 'high' }), 900);
+          msg.textContent = tr('Uy, era otro', 'Oops, it was another one');
+          later(() => ctx.done({ score, text: score ? tr(`Repetiste ${score} nota${score > 1 ? 's' : ''} seguidas`, `You repeated ${score} note${score > 1 ? 's' : ''} in a row`) : tr('Ni una: ¡a practicar!', 'Not one: keep practising!'), better: 'high' }), 900);
           return;
         }
         pos++;
-        if (pos === seq.length) { listening = false; msg.textContent = '¡Bien!'; later(play, 700); }
+        if (pos === seq.length) { listening = false; msg.textContent = tr('¡Bien!', 'Nice!'); later(play, 700); }
       }
       pads.forEach((b, i) => b.addEventListener('pointerdown', e => { e.preventDefault(); press(i); }));
       const key = e => { const i = +e.key - 1; if (i >= 0 && i < 4) press(i); };
@@ -288,18 +292,19 @@
     } });
 
   /* ── INTERFERENCIA: answer the ink, not the word (and sometimes the other way round) ── */
-  GAMES.push({ id: 'interferencia', title: 'Interferencia', tag: 'Atención', desc: 'La palabra dice un color y está pintada de otro. Respondé rápido lo que pide la consigna.',
-    how: 'Con la consigna TINTA, tocá el color con el que está pintada la palabra. Con PALABRA, el color que la palabra dice. La consigna cambia sin aviso. 40 segundos: cada acierto suma, cada error resta. Teclado: 1 a 4.',
+  GAMES.push({ id: 'interferencia', title: tr('Interferencia', 'Interference'), tag: tr('Atención', 'Attention'), desc: tr('La palabra dice un color y está pintada de otro. Respondé rápido lo que pide la consigna.', 'The word says one colour and is painted in another. Answer what the rule asks, fast.'),
+    how: tr('Con la consigna TINTA, tocá el color con el que está pintada la palabra. Con PALABRA, el color que la palabra dice. La consigna cambia sin aviso. 40 segundos: cada acierto suma, cada error resta. Teclado: 1 a 4.', 'With the rule INK, tap the colour the word is painted in. With WORD, the colour the word says. The rule changes without warning. 40 seconds: each right answer adds, each mistake takes away. Keyboard: 1 to 4.'),
     better: 'high', fmt: s => String(s),
     start(ctx) {
-      const COLS = [['ROJO', C.r], ['VERDE', C.g], ['AZUL', C.b], ['AMARILLO', C.y]];
-      const rule = el('div', 'st-rule ink', 'TINTA'), word = el('div', 'st-word'), opts = el('div', 'st-opts'), msg = el('p', 'jg-msg');
+      const COLS = EN ? [['RED', C.r], ['GREEN', C.g], ['BLUE', C.b], ['YELLOW', C.y]] : [['ROJO', C.r], ['VERDE', C.g], ['AZUL', C.b], ['AMARILLO', C.y]];
+      const INK = tr('TINTA', 'INK'), WORD = tr('PALABRA', 'WORD');
+      const rule = el('div', 'st-rule ink', INK), word = el('div', 'st-word'), opts = el('div', 'st-opts'), msg = el('p', 'jg-msg');
       COLS.forEach(([name, col], i) => { const b = el('button', 'st-opt', `${i + 1}`); b.style.background = col; b.title = name.toLowerCase(); b.addEventListener('click', () => answer(i)); opts.append(b); });
       ctx.stage.append(rule, word, opts, msg);
       let ok = 0, bad = 0, cur = null, mode = 'ink', sinceSwitch = 0, t0 = 0, rts = [], left = 40, over = false;
       function next() {
         sinceSwitch++;
-        if (sinceSwitch > 4 && ctx.rnd() < 0.3) { mode = mode === 'ink' ? 'word' : 'ink'; sinceSwitch = 0; rule.textContent = mode === 'ink' ? 'TINTA' : 'PALABRA'; rule.className = 'st-rule ' + mode; }
+        if (sinceSwitch > 4 && ctx.rnd() < 0.3) { mode = mode === 'ink' ? 'word' : 'ink'; sinceSwitch = 0; rule.textContent = mode === 'ink' ? INK : WORD; rule.className = 'st-rule ' + mode; }
         const w = Math.floor(ctx.rnd() * 4); let ink = Math.floor(ctx.rnd() * 4);
         if (ctx.rnd() < 0.75) while (ink === w) ink = Math.floor(ctx.rnd() * 4);
         cur = { w, ink }; ctx.test.right = () => (mode === 'ink' ? cur.ink : cur.w); word.textContent = COLS[w][0]; word.style.color = COLS[ink][1]; t0 = performance.now();
@@ -309,7 +314,7 @@
         const right = mode === 'ink' ? cur.ink : cur.w;
         if (i === right) { ok++; rts.push(performance.now() - t0); tone(700, 0.05, 'triangle', 0.06); }
         else { bad++; badSound(); word.classList.remove('flash-bad'); void word.offsetWidth; word.classList.add('flash-bad'); }
-        ctx.hud(`Tiempo<b>${Math.ceil(left)}</b> Aciertos<b>${ok}</b> Errores<b>${bad}</b>`);
+        ctx.hud(`${tr('Tiempo', 'Time')}<b>${Math.ceil(left)}</b> ${tr('Aciertos', 'Right')}<b>${ok}</b> ${tr('Errores', 'Wrong')}<b>${bad}</b>`);
         next();
       }
       const key = e => { const i = +e.key - 1; if (i >= 0 && i < 4) answer(i); };
@@ -317,21 +322,22 @@
       next();
       const tick = setInterval(() => {
         left -= 0.1;
-        ctx.hud(`Tiempo<b>${Math.ceil(Math.max(0, left))}</b> Aciertos<b>${ok}</b> Errores<b>${bad}</b>`);
+        ctx.hud(`${tr('Tiempo', 'Time')}<b>${Math.ceil(Math.max(0, left))}</b> ${tr('Aciertos', 'Right')}<b>${ok}</b> ${tr('Errores', 'Wrong')}<b>${bad}</b>`);
         if (left <= 0 && !over) {
           over = true; clearInterval(tick);
           const score = Math.max(0, ok - bad), avg = rts.length ? Math.round(rts.reduce((a, b) => a + b, 0) / rts.length) : 0;
-          ctx.done({ score, text: `${ok} aciertos · ${bad} errores`, detail: avg ? `Tiempo de reacción promedio: ${avg} ms` : '', better: 'high' });
+          ctx.done({ score, text: tr(`${ok} aciertos · ${bad} errores`, `${ok} right · ${bad} wrong`), detail: avg ? tr(`Tiempo de reacción promedio: ${avg} ms`, `Average reaction time: ${avg} ms`) : '', better: 'high' });
         }
       }, 100);
       return () => { clearInterval(tick); removeEventListener('keydown', key); };
     } });
 
   /* ── GARABATO: turn a random scribble into a drawing ── */
-  const PROMPTS = ['un animal', 'una cara', 'un objeto de la cocina', 'algo que vuela', 'un personaje', 'un lugar', 'algo del mar', 'una máquina', 'una planta', 'algo que da miedo', 'un instrumento', 'un vehículo', 'algo de otro planeta', 'lo primero que veas'];
-  GAMES.push({ id: 'garabato', title: 'Garabato', tag: 'Creatividad', desc: 'Te doy un trazo al azar. En 90 segundos convertilo en un dibujo y guardalo.',
-    how: 'El trazo verde es el punto de partida: dibujá encima para transformarlo en otra cosa (si querés, seguí la pista). No hay respuesta correcta: lo que vale es animarse. Al terminar podés guardar la imagen.',
-    better: null, fmt: s => `${s} dibujo${s === 1 ? '' : 's'}`,
+  const PROMPTS = EN ? ['an animal', 'a face', 'a kitchen object', 'something that flies', 'a character', 'a place', 'something from the sea', 'a machine', 'a plant', 'something scary', 'an instrument', 'a vehicle', 'something from another planet', 'the first thing you see']
+    : ['un animal', 'una cara', 'un objeto de la cocina', 'algo que vuela', 'un personaje', 'un lugar', 'algo del mar', 'una máquina', 'una planta', 'algo que da miedo', 'un instrumento', 'un vehículo', 'algo de otro planeta', 'lo primero que veas'];
+  GAMES.push({ id: 'garabato', title: tr('Garabato', 'Scribble'), tag: tr('Creatividad', 'Creativity'), desc: tr('Te doy un trazo al azar. En 90 segundos convertilo en un dibujo y guardalo.', 'You get a random stroke. In 90 seconds turn it into a drawing and save it.'),
+    how: tr('El trazo verde es el punto de partida: dibujá encima para transformarlo en otra cosa (si querés, seguí la pista). No hay respuesta correcta: lo que vale es animarse. Al terminar podés guardar la imagen.', 'The green stroke is the starting point: draw over it to turn it into something else (follow the hint if you like). There is no right answer: what counts is giving it a go. When you finish you can save the picture.'),
+    better: null, fmt: s => tr(`${s} dibujo${s === 1 ? '' : 's'}`, `${s} drawing${s === 1 ? '' : 's'}`),
     start(ctx) {
       const W = 1200, H = 800;
       const prompt = el('p', 'gb-prompt'), wrap = el('div', 'gb-wrap'), cv = el('canvas', 'jg-canvas'), g = cv.getContext('2d');
@@ -339,13 +345,13 @@
       const tools = el('div', 'gb-tools');
       const COLS = ['#ffffff', C.c, C.m, C.y, C.g];
       let col = COLS[0], width = 6, strokes = [], cur = null, left = 90, over = false;
-      COLS.forEach(c => { const b = el('button', 'gb-col' + (c === col ? ' on' : '')); b.style.background = c; b.title = 'Color'; b.addEventListener('click', () => { col = c; tools.querySelectorAll('.gb-col').forEach(x => x.classList.toggle('on', x === b)); }); tools.append(b); });
-      [['fino', 3], ['medio', 6], ['grueso', 14]].forEach(([t, w]) => { const b = el('button', 'jg-btn' + (w === width ? ' on' : ''), t); b.addEventListener('click', () => { width = w; tools.querySelectorAll('.jg-btn[data-w]').forEach(x => x.classList.toggle('on', x === b)); }); b.dataset.w = w; tools.append(b); });
-      const undo = el('button', 'jg-btn', '↶ Deshacer'); undo.addEventListener('click', () => { strokes.pop(); draw(); });
-      const finish = el('button', 'jg-btn primary', 'Listo');
+      COLS.forEach(c => { const b = el('button', 'gb-col' + (c === col ? ' on' : '')); b.style.background = c; b.title = tr('Color', 'Colour'); b.addEventListener('click', () => { col = c; tools.querySelectorAll('.gb-col').forEach(x => x.classList.toggle('on', x === b)); }); tools.append(b); });
+      [[tr('fino', 'thin'), 3], [tr('medio', 'medium'), 6], [tr('grueso', 'thick'), 14]].forEach(([t, w]) => { const b = el('button', 'jg-btn' + (w === width ? ' on' : ''), t); b.addEventListener('click', () => { width = w; tools.querySelectorAll('.jg-btn[data-w]').forEach(x => x.classList.toggle('on', x === b)); }); b.dataset.w = w; tools.append(b); });
+      const undo = el('button', 'jg-btn', tr('↶ Deshacer', '↶ Undo')); undo.addEventListener('click', () => { strokes.pop(); draw(); });
+      const finish = el('button', 'jg-btn primary', tr('Listo', 'Done'));
       tools.append(undo, finish);
       ctx.stage.append(prompt, wrap, tools);
-      prompt.innerHTML = `Pista (opcional): convertilo en <b>${PROMPTS[Math.floor(ctx.rnd() * PROMPTS.length)]}</b>`;
+      prompt.innerHTML = `${tr('Pista (opcional): convertilo en', 'Hint (optional): turn it into')} <b>${PROMPTS[Math.floor(ctx.rnd() * PROMPTS.length)]}</b>`;
       // the scribble: a smooth random curve, sometimes closed
       const pts = [], k = 4 + Math.floor(ctx.rnd() * 4), closed = ctx.rnd() < 0.4;
       for (let i = 0; i < k; i++) pts.push([W * (0.2 + ctx.rnd() * 0.6), H * (0.2 + ctx.rnd() * 0.6)]);
@@ -370,68 +376,69 @@
       function end() {
         if (over) return; over = true; cur = null; clearInterval(tick);
         g.fillStyle = 'rgba(102,255,51,0.85)'; g.font = '600 22px "IBM Plex Mono", monospace'; g.textAlign = 'right';
-        g.fillText(`PUDRUS · garabato · ${dayKey()}`, W - 20, H - 20);
+        g.fillText(`PUDRUS · ${tr('garabato', 'scribble')} · ${dayKey()}`, W - 20, H - 20);
         const url = cv.toDataURL('image/png');
         store.count.garabato = (store.count.garabato || 0) + 1; save();
-        const box = el('div', 'gb-result'); const img = el('img'); img.src = url; img.alt = 'Tu garabato';
-        const dl = el('a', 'btn btn-primary', 'Guardar imagen'); dl.href = url; dl.download = `pudrus_garabato_${Date.now()}.png`;
+        const box = el('div', 'gb-result'); const img = el('img'); img.src = url; img.alt = tr('Tu garabato', 'Your scribble');
+        const dl = el('a', 'btn btn-primary', tr('Guardar imagen', 'Save picture')); dl.href = url; dl.download = `pudrus_garabato_${Date.now()}.png`;
         box.append(img);
-        ctx.done({ score: store.count.garabato, text: strokes.length ? '¡Listo! Ya es otra cosa.' : 'Lo dejaste como estaba: también vale.', detail: `Llevás ${store.count.garabato} garabato${store.count.garabato > 1 ? 's' : ''}`, better: null, extra: [box, dl] });
+        ctx.done({ score: store.count.garabato, text: strokes.length ? tr('¡Listo! Ya es otra cosa.', 'Done! Now it’s something else.') : tr('Lo dejaste como estaba: también vale.', 'You left it as it was: that counts too.'), detail: tr(`Llevás ${store.count.garabato} garabato${store.count.garabato > 1 ? 's' : ''}`, `${store.count.garabato} scribble${store.count.garabato > 1 ? 's' : ''} so far`), better: null, extra: [box, dl] });
       }
       finish.addEventListener('click', end);
       draw();
-      const tick = setInterval(() => { left -= 1; ctx.hud(`Tiempo<b>${Math.max(0, left)}</b>`); if (left <= 0) end(); }, 1000);
-      ctx.hud(`Tiempo<b>${left}</b>`);
+      const tick = setInterval(() => { left -= 1; ctx.hud(`${tr('Tiempo', 'Time')}<b>${Math.max(0, left)}</b>`); if (left <= 0) end(); }, 1000);
+      ctx.hud(`${tr('Tiempo', 'Time')}<b>${left}</b>`);
       return () => clearInterval(tick);
     } });
 
   /* ── MIL USOS: as many different uses for an everyday object as you can ── */
-  const OBJECTS = ['un ladrillo', 'un clip', 'una cuchara', 'una media', 'una botella vacía', 'un paraguas', 'un cubito de hielo', 'una rueda', 'un globo', 'un lápiz', 'una caja de cartón', 'un cordón', 'un peine', 'una tapita', 'un diario viejo', 'una escalera', 'una almohada', 'un balde', 'una linterna', 'un imán', 'una sartén', 'un espejo', 'una vela', 'un frasco', 'un CD', 'un tenedor', 'una bolsa de papel', 'un broche', 'una toalla', 'una cinta adhesiva', 'un botón', 'una maceta', 'una regla', 'un sombrero', 'una piedra', 'una hoja de árbol', 'una taza', 'un dado', 'una llave', 'un cubo de goma espuma'];
-  GAMES.push({ id: 'milusos', title: 'Mil usos', tag: 'Creatividad', desc: 'Un objeto común y 90 segundos: escribí todos los usos distintos que se te ocurran.',
-    how: 'Escribí un uso y apretá Enter; seguí con el próximo. Valen los raros, los absurdos y los geniales. Suma cada idea, y suma más si empiezan distinto (variedad). Sin juez: confiamos en vos.',
+  const OBJECTS_EN = ['a brick', 'a paper clip', 'a spoon', 'a sock', 'an empty bottle', 'an umbrella', 'an ice cube', 'a wheel', 'a balloon', 'a pencil', 'a cardboard box', 'a shoelace', 'a comb', 'a bottle cap', 'an old newspaper', 'a ladder', 'a pillow', 'a bucket', 'a torch', 'a magnet', 'a frying pan', 'a mirror', 'a candle', 'a jar', 'a CD', 'a fork', 'a paper bag', 'a clothes peg', 'a towel', 'a roll of tape', 'a button', 'a flowerpot', 'a ruler', 'a hat', 'a stone', 'a leaf', 'a mug', 'a die', 'a key', 'a foam cube'];
+  const OBJECTS = EN ? OBJECTS_EN : ['un ladrillo', 'un clip', 'una cuchara', 'una media', 'una botella vacía', 'un paraguas', 'un cubito de hielo', 'una rueda', 'un globo', 'un lápiz', 'una caja de cartón', 'un cordón', 'un peine', 'una tapita', 'un diario viejo', 'una escalera', 'una almohada', 'un balde', 'una linterna', 'un imán', 'una sartén', 'un espejo', 'una vela', 'un frasco', 'un CD', 'un tenedor', 'una bolsa de papel', 'un broche', 'una toalla', 'una cinta adhesiva', 'un botón', 'una maceta', 'una regla', 'un sombrero', 'una piedra', 'una hoja de árbol', 'una taza', 'un dado', 'una llave', 'un cubo de goma espuma'];
+  GAMES.push({ id: 'milusos', title: tr('Mil usos', 'A thousand uses'), tag: tr('Creatividad', 'Creativity'), desc: tr('Un objeto común y 90 segundos: escribí todos los usos distintos que se te ocurran.', 'An everyday object and 90 seconds: write every different use you can think of.'),
+    how: tr('Escribí un uso y apretá Enter; seguí con el próximo. Valen los raros, los absurdos y los geniales. Suma cada idea, y suma más si empiezan distinto (variedad). Sin juez: confiamos en vos.', 'Write a use and press Enter; go on with the next. Weird, absurd and brilliant ones all count. Every idea scores, and more if they start differently (variety). No judge: we trust you.'),
     better: 'high', fmt: s => String(s),
     start(ctx) {
       const obj = OBJECTS[Math.floor(ctx.rnd() * OBJECTS.length)];
-      const title = el('div', 'mu-obj'); title.innerHTML = `¿Para qué sirve <span>${obj}</span>?`;
-      const form = el('form', 'mu-form'), inp = el('input'), add = el('button', 'jg-btn primary', 'Sumar');
-      inp.placeholder = 'Escribí un uso y Enter'; inp.maxLength = 80; inp.autocomplete = 'off';
+      const title = el('div', 'mu-obj'); title.innerHTML = tr(`¿Para qué sirve <span>${obj}</span>?`, `What can you do with <span>${obj}</span>?`);
+      const form = el('form', 'mu-form'), inp = el('input'), add = el('button', 'jg-btn primary', tr('Sumar', 'Add'));
+      inp.placeholder = tr('Escribí un uso y Enter', 'Write a use and Enter'); inp.maxLength = 80; inp.autocomplete = 'off';
       form.append(inp, add);
-      const list = el('div', 'mu-list'), msg = el('p', 'jg-msg', 'Arrancá cuando quieras: el tiempo corre desde la primera idea');
-      const finish = el('button', 'jg-btn', 'Terminar');
+      const list = el('div', 'mu-list'), msg = el('p', 'jg-msg', tr('Arrancá cuando quieras: el tiempo corre desde la primera idea', 'Start whenever you like: the clock runs from the first idea'));
+      const finish = el('button', 'jg-btn', tr('Terminar', 'Finish'));
       ctx.stage.append(title, form, list, msg, finish);
       const ideas = []; let left = 90, started = false, over = false, tick = 0;
       const norm = s => s.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-z0-9ñ ]/g, '').trim();
-      const first = s => (norm(s).split(/\s+/).find(w => w.length > 2 && !['para', 'como', 'una', 'uno', 'los', 'las', 'con', 'que', 'del'].includes(w)) || norm(s));
+      const first = s => (norm(s).split(/\s+/).find(w => w.length > 2 && !['para', 'como', 'una', 'uno', 'los', 'las', 'con', 'que', 'del', 'the', 'for', 'and', 'use', 'make', 'with', 'into', 'from'].includes(w)) || norm(s));
       const scoreNow = () => { const flex = new Set(ideas.map(first)).size; return { n: ideas.length, flex, score: ideas.length * 10 + flex * 5 }; };
       form.addEventListener('submit', e => {
         e.preventDefault(); if (over) return;
         const v = inp.value.trim(); inp.value = '';
-        if (v.length < 3) { msg.textContent = 'Un poquito más largo'; return; }
-        if (ideas.some(x => norm(x) === norm(v))) { msg.textContent = 'Esa ya está'; return; }
+        if (v.length < 3) { msg.textContent = tr('Un poquito más largo', 'A little longer'); return; }
+        if (ideas.some(x => norm(x) === norm(v))) { msg.textContent = tr('Esa ya está', 'You already have that one'); return; }
         if (!started) { started = true; tick = setInterval(step, 1000); }
         ideas.push(v); tone(500 + ideas.length * 25, 0.07, 'triangle', 0.06);
         list.querySelectorAll('.new').forEach(x => x.classList.remove('new'));
         list.prepend(el('span', 'new', v));
-        const s = scoreNow(); msg.textContent = `${s.n} idea${s.n > 1 ? 's' : ''} · variedad ${s.flex}`;
-        ctx.hud(`Tiempo<b>${left}</b> Ideas<b>${s.n}</b>`);
+        const s = scoreNow(); msg.textContent = tr(`${s.n} idea${s.n > 1 ? 's' : ''} · variedad ${s.flex}`, `${s.n} idea${s.n > 1 ? 's' : ''} · variety ${s.flex}`);
+        ctx.hud(`${tr('Tiempo', 'Time')}<b>${left}</b> ${tr('Ideas', 'Ideas')}<b>${s.n}</b>`);
       });
-      function step() { left--; ctx.hud(`Tiempo<b>${Math.max(0, left)}</b> Ideas<b>${ideas.length}</b>`); if (left <= 0) end(); }
+      function step() { left--; ctx.hud(`${tr('Tiempo', 'Time')}<b>${Math.max(0, left)}</b> ${tr('Ideas', 'Ideas')}<b>${ideas.length}</b>`); if (left <= 0) end(); }
       function end() {
         if (over) return; over = true; clearInterval(tick);
         const s = scoreNow();
         const box = el('div', 'mu-list'); ideas.forEach(v => box.append(el('span', '', v)));
-        ctx.done({ score: s.score, text: `${s.n} usos para ${obj}`, detail: `Variedad: ${s.flex} ideas que arrancan distinto`, better: 'high', extra: [box], share: ideas.length ? `Usos para ${obj}:\n- ${ideas.join('\n- ')}` : '' });
+        ctx.done({ score: s.score, text: tr(`${s.n} usos para ${obj}`, `${s.n} uses for ${obj}`), detail: tr(`Variedad: ${s.flex} ideas que arrancan distinto`, `Variety: ${s.flex} ideas that start differently`), better: 'high', extra: [box], share: ideas.length ? `${tr('Usos para', 'Uses for')} ${obj}:\n- ${ideas.join('\n- ')}` : '' });
       }
       finish.addEventListener('click', end);
-      ctx.hud(`Tiempo<b>${left}</b> Ideas<b>0</b>`);
+      ctx.hud(`${tr('Tiempo', 'Time')}<b>${left}</b> ${tr('Ideas', 'Ideas')}<b>0</b>`);
       setTimeout(() => inp.focus(), 50);
       return () => clearInterval(tick);
     } });
 
   /* ── RECORRIDO: one line through every square, joining the numbers in order ──
      (a classic family of numbered-path puzzles; any path that follows the rules is a solution) */
-  GAMES.push({ id: 'recorrido', title: 'Recorrido', tag: 'Lógica', desc: 'Una sola línea que pasa por todos los casilleros y une los números en orden.',
-    how: 'Arrastrá desde el 1 y pasá por cada casillero una sola vez, tocando los números en orden (1, 2, 3…) hasta el último. Para corregir, volvé sobre la línea o tocá un casillero de la línea para cortarla ahí. Tres tableros; cuenta el tiempo total. Teclado: flechas para avanzar, Retroceso para deshacer.',
+  GAMES.push({ id: 'recorrido', title: tr('Recorrido', 'Path'), tag: tr('Lógica', 'Logic'), desc: tr('Una sola línea que pasa por todos los casilleros y une los números en orden.', 'A single line that goes through every square and joins the numbers in order.'),
+    how: tr('Arrastrá desde el 1 y pasá por cada casillero una sola vez, tocando los números en orden (1, 2, 3…) hasta el último. Para corregir, volvé sobre la línea o tocá un casillero de la línea para cortarla ahí. Tres tableros; cuenta el tiempo total. Teclado: flechas para avanzar, Retroceso para deshacer.', 'Drag from the 1 through every square exactly once, touching the numbers in order (1, 2, 3…) up to the last. To fix it, go back over the line or tap a square of the line to cut it there. Three boards; the total time counts. Keyboard: arrows to move on, Backspace to undo.'),
     better: 'low', fmt: s => mmss(s),
     start(ctx) {
       const SIZES = [5, 6, 7];
@@ -461,7 +468,7 @@
         const order = [...idx].sort((a, b) => a - b);
         nums = new Map(order.map((i, k) => [sol[i], k + 1])); maxNum = order.length;
         size(); draw();
-        msg.textContent = `Tablero ${level + 1} de ${SIZES.length} · ${n}×${n} · del 1 al ${maxNum}`;
+        msg.textContent = tr(`Tablero ${level + 1} de ${SIZES.length} · ${n}×${n} · del 1 al ${maxNum}`, `Board ${level + 1} of ${SIZES.length} · ${n}×${n} · from 1 to ${maxNum}`);
       }
       const lastNum = () => path.reduce((m, c) => Math.max(m, nums.get(c) || 0), 0);
       function size() { const st = ctx.stage, w = Math.min(st.clientWidth - 8 || 480, 520, (st.clientHeight || 560) - 52); S = Math.max(24, Math.floor(w / n)); const dpr = Math.min(2, devicePixelRatio || 1); cv.width = S * n * dpr; cv.height = S * n * dpr; cv.style.width = cv.style.height = S * n + 'px'; g.setTransform(dpr, 0, 0, dpr, 0, 0); }
@@ -507,7 +514,7 @@
       function check() {
         if (done || path.length !== N || nums.get(path[N - 1]) !== maxNum) return;
         okSound(); done = true; level++;
-        if (level >= SIZES.length) { const tot = Math.round((performance.now() - t0) / 1000); setTimeout(() => ctx.done({ score: tot, text: `Tres recorridos en ${mmss(tot)}`, better: 'low' }), 500); }
+        if (level >= SIZES.length) { const tot = Math.round((performance.now() - t0) / 1000); setTimeout(() => ctx.done({ score: tot, text: tr(`Tres recorridos en ${mmss(tot)}`, `Three paths in ${mmss(tot)}`), better: 'low' }), 500); }
         else setTimeout(() => { done = false; make(); }, 500);
       }
       const cellAt = e => { const r = cv.getBoundingClientRect(); const x = Math.floor((e.clientX - r.left) / S), y = Math.floor((e.clientY - r.top) / S); return x >= 0 && y >= 0 && x < n && y < n ? y * n + x : -1; };
@@ -516,7 +523,7 @@
         if (path.includes(c)) path.length = path.indexOf(c) + 1;
         else if (nums.get(c) === 1) path = [c];
         else if (path.length && adj(path[path.length - 1], c)) step(c);
-        else { msg.textContent = 'Empezá desde el 1 (o seguí desde la punta de la línea)'; return; }
+        else { msg.textContent = tr('Empezá desde el 1 (o seguí desde la punta de la línea)', 'Start from the 1 (or go on from the end of the line)'); return; }
         drawing = true; cv.setPointerCapture(e.pointerId); tone(400, 0.04, 'triangle', 0.04); draw(); check();
       });
       cv.addEventListener('pointermove', e => { if (!drawing || done) return; const c = cellAt(e); if (c < 0) return; const before = path.length; toward(c); if (path.length !== before) { tone(300 + path.length * 12, 0.03, 'triangle', 0.03); draw(); check(); } });
@@ -535,7 +542,7 @@
       };
       addEventListener('keydown', key);
       ctx.test.solve = () => { if (done) return; path = sol.slice(); draw(); check(); };
-      const tick = setInterval(() => ctx.hud(`Tiempo<b>${mmss((performance.now() - t0) / 1000)}</b> Casilleros<b>${path.length}/${N}</b>`), 250);
+      const tick = setInterval(() => ctx.hud(`${tr('Tiempo', 'Time')}<b>${mmss((performance.now() - t0) / 1000)}</b> ${tr('Casilleros', 'Squares')}<b>${path.length}/${N}</b>`), 250);
       const rs = () => { size(); draw(); }; addEventListener('resize', rs);
       make();
       return () => { clearInterval(tick); removeEventListener('keydown', key); removeEventListener('resize', rs); };
@@ -582,16 +589,16 @@
     }
     return { puzzle, solution };
   }
-  GAMES.push({ id: 'sudoku', title: 'Sudoku', tag: 'Lógica', desc: 'El clásico: completá la grilla para que cada fila, columna y caja tenga del 1 al 9.',
-    how: 'Elegí un casillero y escribí un número (teclado o botones). Cada fila, columna y caja de 3×3 lleva del 1 al 9 sin repetir; los choques se marcan en rojo. «Notas» sirve para anotar candidatos chiquitos. Cada sudoku tiene una sola solución. Teclado: flechas, 1–9, Retroceso para borrar, N para notas.',
+  GAMES.push({ id: 'sudoku', title: 'Sudoku', tag: tr('Lógica', 'Logic'), desc: tr('El clásico: completá la grilla para que cada fila, columna y caja tenga del 1 al 9.', 'The classic: fill the grid so every row, column and box has 1 to 9.'),
+    how: tr('Elegí un casillero y escribí un número (teclado o botones). Cada fila, columna y caja de 3×3 lleva del 1 al 9 sin repetir; los choques se marcan en rojo. «Notas» sirve para anotar candidatos chiquitos. Cada sudoku tiene una sola solución. Teclado: flechas, 1–9, Retroceso para borrar, N para notas.', 'Pick a square and type a number (keyboard or buttons). Every row, column and 3×3 box holds 1 to 9 with no repeats; clashes turn red. «Notes» lets you jot small candidates. Every sudoku has a single solution. Keyboard: arrows, 1–9, Backspace to erase, N for notes.'),
     better: 'low', fmt: s => mmss(s),
-    options: [['facil', 'Fácil', 40], ['medio', 'Medio', 32], ['dificil', 'Difícil', 26]], dailyOption: 'medio',
+    options: [['facil', tr('Fácil', 'Easy'), 40], ['medio', tr('Medio', 'Medium'), 32], ['dificil', tr('Difícil', 'Hard'), 26]], dailyOption: 'medio',
     start(ctx) {
       const opt = (this.options.find(o => o[0] === ctx.option) || this.options[1]);
       const { puzzle, solution } = sdMake(ctx.rnd, opt[2]);
       const val = puzzle.slice(), notes = Array.from({ length: 81 }, () => new Set());
       let sel = puzzle.findIndex(v => !v), noteMode = false, over = false, t0 = performance.now();
-      const grid = el('div', 'sd-grid'), padEl = el('div', 'sd-pad'), msg = el('p', 'jg-msg', `Nivel ${opt[1].toLowerCase()} · ${puzzle.filter(Boolean).length} pistas`);
+      const grid = el('div', 'sd-grid'), padEl = el('div', 'sd-pad'), msg = el('p', 'jg-msg', tr(`Nivel ${opt[1].toLowerCase()} · ${puzzle.filter(Boolean).length} pistas`, `${opt[1]} level · ${puzzle.filter(Boolean).length} clues`));
       const cells = val.map((v, i) => {
         const b = el('button', 'sd-cell' + (puzzle[i] ? ' given' : ''));
         const r = (i / 9) | 0, c = i % 9;
@@ -600,8 +607,8 @@
         grid.append(b); return b;
       });
       for (let d = 1; d <= 9; d++) { const b = el('button', 'jg-btn sd-num', String(d)); b.addEventListener('click', () => put(d)); padEl.append(b); }
-      const del = el('button', 'jg-btn', '⌫ Borrar'); del.addEventListener('click', () => put(0));
-      const nb = el('button', 'jg-btn', '✎ Notas'); nb.addEventListener('click', () => { noteMode = !noteMode; nb.classList.toggle('on', noteMode); });
+      const del = el('button', 'jg-btn', tr('⌫ Borrar', '⌫ Erase')); del.addEventListener('click', () => put(0));
+      const nb = el('button', 'jg-btn', tr('✎ Notas', '✎ Notes')); nb.addEventListener('click', () => { noteMode = !noteMode; nb.classList.toggle('on', noteMode); });
       padEl.append(del, nb);
       ctx.stage.append(grid, padEl, msg);
       const peers = i => { const r = (i / 9) | 0, c = i % 9, br = r - r % 3, bc = c - c % 3, s = new Set(); for (let k = 0; k < 9; k++) { s.add(r * 9 + k); s.add(k * 9 + c); s.add((br + ((k / 3) | 0)) * 9 + bc + k % 3); } s.delete(i); return s; };
@@ -630,7 +637,7 @@
         if (val.every(Boolean) && val.every((v, i) => ![...PEERS[i]].some(j => val[j] === v))) {
           over = true; okSound();
           const tot = Math.round((performance.now() - t0) / 1000);
-          setTimeout(() => ctx.done({ score: tot, text: `Sudoku ${opt[1].toLowerCase()} en ${mmss(tot)}`, better: 'low' }), 400);
+          setTimeout(() => ctx.done({ score: tot, text: tr(`Sudoku ${opt[1].toLowerCase()} en ${mmss(tot)}`, `${opt[1]} sudoku in ${mmss(tot)}`), better: 'low' }), 400);
         }
       }
       const key = e => {
@@ -649,14 +656,14 @@
       addEventListener('keydown', key);
       ctx.test.solve = () => { solution.forEach((v, i) => { if (!puzzle[i] && i !== sel) val[i] = v; }); if (!puzzle[sel]) { const d = solution[sel]; put(d); } else paint(); };
       ctx.test.solution = solution; ctx.test.puzzle = puzzle;
-      const tick = setInterval(() => ctx.hud(`Tiempo<b>${mmss((performance.now() - t0) / 1000)}</b> Faltan<b>${val.filter(v => !v).length}</b>`), 250);
+      const tick = setInterval(() => ctx.hud(`${tr('Tiempo', 'Time')}<b>${mmss((performance.now() - t0) / 1000)}</b> ${tr('Faltan', 'Left')}<b>${val.filter(v => !v).length}</b>`), 250);
       paint();
       return () => { clearInterval(tick); removeEventListener('keydown', key); };
     } });
 
   /* ── DESTELLOS: some squares flash, tap the same ones (spatial memory) ── */
-  GAMES.push({ id: 'destellos', title: 'Destellos', tag: 'Memoria', desc: 'Se encienden unas casillas un instante. Tocá las mismas. Cada ronda, una más.',
-    how: 'Mirá qué casillas se encienden y, cuando se apagan, tocá esas mismas en cualquier orden. Cada ronda suma una casilla y la grilla crece. Tenés tres vidas: un error cuesta una y te muestra las que eran.',
+  GAMES.push({ id: 'destellos', title: tr('Destellos', 'Flashes'), tag: tr('Memoria', 'Memory'), desc: tr('Se encienden unas casillas un instante. Tocá las mismas. Cada ronda, una más.', 'Some squares light up for a moment. Tap the same ones. One more every round.'),
+    how: tr('Mirá qué casillas se encienden y, cuando se apagan, tocá esas mismas en cualquier orden. Cada ronda suma una casilla y la grilla crece. Tenés tres vidas: un error cuesta una y te muestra las que eran.', 'Watch which squares light up and, when they go off, tap those same ones in any order. Each round adds a square and the grid grows. You have three lives: a mistake costs one and shows you the right ones.'),
     better: 'high', fmt: s => String(s),
     start(ctx) {
       let n = 4, k = 3, lives = 3, best = 0, targets = new Set(), found = new Set(), phase = 'show', over = false;
@@ -664,7 +671,7 @@
       ctx.stage.append(grid, msg);
       const timers = [];
       const later = (f, ms) => timers.push(setTimeout(f, ms));
-      function hud() { ctx.hud(`Casillas<b>${k}</b> Vidas<b>${'●'.repeat(lives)}${'○'.repeat(3 - lives)}</b>`); }
+      function hud() { ctx.hud(`${tr('Casillas', 'Squares')}<b>${k}</b> ${tr('Vidas', 'Lives')}<b>${'●'.repeat(lives)}${'○'.repeat(3 - lives)}</b>`); }
       function build() {
         grid.innerHTML = ''; grid.style.gridTemplateColumns = `repeat(${n}, 1fr)`;
         for (let i = 0; i < n * n; i++) { const b = el('button', 'ds-cell'); b.addEventListener('pointerdown', e => { e.preventDefault(); tap(i); }); grid.append(b); }
@@ -674,22 +681,22 @@
         targets = new Set(); found = new Set();
         while (targets.size < k) targets.add(Math.floor(ctx.rnd() * n * n));
         ctx.test.cells = [...targets];
-        phase = 'show'; grid.classList.add('locked'); msg.textContent = 'Mirá…'; hud();
+        phase = 'show'; grid.classList.add('locked'); msg.textContent = tr('Mirá…', 'Watch…'); hud();
         later(() => { targets.forEach(i => grid.children[i].classList.add('lit')); tone(520, 0.08, 'triangle', 0.05); }, 350);
-        later(() => { targets.forEach(i => grid.children[i].classList.remove('lit')); phase = 'play'; grid.classList.remove('locked'); msg.textContent = `Tocá las ${k} casillas`; }, 350 + 900 + k * 120);
+        later(() => { targets.forEach(i => grid.children[i].classList.remove('lit')); phase = 'play'; grid.classList.remove('locked'); msg.textContent = tr(`Tocá las ${k} casillas`, `Tap the ${k} squares`); }, 350 + 900 + k * 120);
       }
       function tap(i) {
         if (phase !== 'play' || over || found.has(i)) return;
         const c = grid.children[i];
         if (targets.has(i)) {
           found.add(i); c.classList.add('ok'); tone(600 + found.size * 40, 0.06, 'triangle', 0.05);
-          if (found.size === targets.size) { phase = 'wait'; best = k; okSound(); msg.textContent = '¡Bien!'; k++; later(round, 700); }
+          if (found.size === targets.size) { phase = 'wait'; best = k; okSound(); msg.textContent = tr('¡Bien!', 'Nice!'); k++; later(round, 700); }
           return;
         }
         lives--; c.classList.add('bad'); badSound(); hud();
         phase = 'wait'; targets.forEach(j => { if (!found.has(j)) grid.children[j].classList.add('miss'); });
-        if (lives <= 0) { over = true; msg.textContent = 'Sin vidas'; later(() => ctx.done({ score: best, text: best ? `Recordaste hasta ${best} casillas` : 'Ninguna ronda completa: ¡otra!', better: 'high' }), 1100); }
-        else { msg.textContent = 'Eran esas · otra vez'; later(round, 1300); }
+        if (lives <= 0) { over = true; msg.textContent = tr('Sin vidas', 'No lives left'); later(() => ctx.done({ score: best, text: best ? tr(`Recordaste hasta ${best} casillas`, `You remembered up to ${best} squares`) : tr('Ninguna ronda completa: ¡otra!', 'No round complete: another go!'), better: 'high' }), 1100); }
+        else { msg.textContent = tr('Eran esas · otra vez', 'It was those · again'); later(round, 1300); }
       }
       ctx.test.tap = i => tap(i); ctx.test.phase = () => phase;
       round();
@@ -697,12 +704,12 @@
     } });
 
   /* ── INTRUSO: all the figures are the same but one; find it fast ── */
-  GAMES.push({ id: 'intruso', title: 'Intruso', tag: 'Atención', desc: 'Todas las figuras son iguales menos una. Encontrala rápido: la grilla crece y la diferencia se achica.',
-    how: 'Tocá la figura distinta: puede estar girada, tener otro tono o ser un poco más chica. 45 segundos; cada acierto suma y agranda la grilla, cada error resta 3 segundos.',
+  GAMES.push({ id: 'intruso', title: tr('Intruso', 'Odd one out'), tag: tr('Atención', 'Attention'), desc: tr('Todas las figuras son iguales menos una. Encontrala rápido: la grilla crece y la diferencia se achica.', 'All the shapes are the same but one. Find it fast: the grid grows and the difference shrinks.'),
+    how: tr('Tocá la figura distinta: puede estar girada, tener otro tono o ser un poco más chica. 45 segundos; cada acierto suma y agranda la grilla, cada error resta 3 segundos.', 'Tap the different shape: it may be turned, have another shade or be a little smaller. 45 seconds; each find scores and grows the grid, each mistake takes 3 seconds.'),
     better: 'high', fmt: s => String(s),
     start(ctx) {
       let found = 0, left = 45, over = false, odd = -1;
-      const grid = el('div', 'it-grid'), msg = el('p', 'jg-msg', 'Encontrá la distinta');
+      const grid = el('div', 'it-grid'), msg = el('p', 'jg-msg', tr('Encontrá la distinta', 'Find the different one'));
       ctx.stage.append(grid, msg);
       const SHAPES = [
         'M50 10 L80 60 L62 60 L62 90 L38 90 L38 60 L20 60 Z',             // arrow
@@ -737,13 +744,13 @@
         if (over) return;
         if (i === odd) { found++; okSound(); round(); }
         else { left -= 3; badSound(); b.classList.add('bad'); grid.classList.remove('flash-bad'); void grid.offsetWidth; grid.classList.add('flash-bad'); }
-        ctx.hud(`Tiempo<b>${Math.max(0, Math.ceil(left))}</b> Encontradas<b>${found}</b>`);
+        ctx.hud(`${tr('Tiempo', 'Time')}<b>${Math.max(0, Math.ceil(left))}</b> ${tr('Encontradas', 'Found')}<b>${found}</b>`);
       }
       ctx.test.pick = i => pick(i, grid.children[i]);
       round();
       const tick = setInterval(() => {
-        left -= 0.1; ctx.hud(`Tiempo<b>${Math.max(0, Math.ceil(left))}</b> Encontradas<b>${found}</b>`);
-        if (left <= 0 && !over) { over = true; clearInterval(tick); ctx.done({ score: found, text: `${found} intrusos encontrados`, better: 'high' }); }
+        left -= 0.1; ctx.hud(`${tr('Tiempo', 'Time')}<b>${Math.max(0, Math.ceil(left))}</b> ${tr('Encontradas', 'Found')}<b>${found}</b>`);
+        if (left <= 0 && !over) { over = true; clearInterval(tick); ctx.done({ score: found, text: tr(`${found} intrusos encontrados`, `${found} odd ones found`), better: 'high' }); }
       }, 100);
       return () => clearInterval(tick);
     } });
@@ -754,20 +761,20 @@
   const dailyGame = () => GAMES[hashStr(dayKey()) % GAMES.length];
   function paintHub() {
     const n = streak();
-    $('#streak').innerHTML = n ? `<b>${n}</b> día${n > 1 ? 's' : ''} seguido${n > 1 ? 's' : ''}` : 'Jugá hoy para empezar una racha';
+    $('#streak').innerHTML = n ? tr(`<b>${n}</b> día${n > 1 ? 's' : ''} seguido${n > 1 ? 's' : ''}`, `<b>${n}</b> day${n > 1 ? 's' : ''} in a row`) : tr('Jugá hoy para empezar una racha', 'Play today to start a streak');
     const dg = dailyGame(), dd = store.daily[dayKey()];
     const d = $('#daily'); d.classList.toggle('done', !!dd);
-    d.innerHTML = `<span class="ic">◈</span><span class="tx"><small>Desafío del día · ${new Date().toLocaleDateString('es', { day: 'numeric', month: 'long' })}</small><b>${dg.title}</b> — el mismo para todos hoy${dd ? ` · tu resultado: ${dg.fmt(dd)}` : ''}</span><span class="go">${dd ? 'Otra vez →' : 'Jugar →'}</span>`;
+    d.innerHTML = `<span class="ic">◈</span><span class="tx"><small>${tr('Desafío del día', 'Daily challenge')} · ${new Date().toLocaleDateString(LOCALE, { day: 'numeric', month: 'long' })}</small><b>${dg.title}</b> — ${tr('el mismo para todos hoy', 'the same for everyone today')}${dd ? ` · ${tr('tu resultado', 'your result')}: ${dg.fmt(dd)}` : ''}</span><span class="go">${dd ? tr('Otra vez →', 'Again →') : tr('Jugar →', 'Play →')}</span>`;
     const grid = $('#grid'); grid.innerHTML = '';
     GAMES.forEach(gm => {
       const c = el('button', 'jg-card'); c.dataset.id = gm.id;
       let line;
       if (gm.options) {   // a record per level
         const got = gm.options.filter(([k]) => store.best[gm.id + ':' + k] !== undefined).map(([k, label]) => `${label} ${gm.fmt(store.best[gm.id + ':' + k])}`);
-        line = got.length ? `<div class="best">Récords: ${got.join(' · ')}</div>` : '<div class="best none">Sin jugar todavía</div>';
+        line = got.length ? `<div class="best">${tr('Récords', 'Records')}: ${got.join(' · ')}</div>` : `<div class="best none">${tr('Sin jugar todavía', 'Not played yet')}</div>`;
       } else {
         const best = gm.better ? store.best[gm.id] : store.count[gm.id];
-        line = `<div class="best${best === undefined ? ' none' : ''}">${best === undefined ? 'Sin jugar todavía' : (gm.better ? 'Récord: ' : '') + gm.fmt(best)}</div>`;
+        line = `<div class="best${best === undefined ? ' none' : ''}">${best === undefined ? tr('Sin jugar todavía', 'Not played yet') : (gm.better ? tr('Récord: ', 'Record: ') : '') + gm.fmt(best)}</div>`;
       }
       // .ci: the card's content, laid out by the card's OWN size (container queries) so nothing gets cut
       c.innerHTML = `<div class="ci"><div class="art">${ART[gm.id] || ''}</div><div class="tx"><div class="tag">${gm.tag}</div><h3>${gm.title}</h3><p>${gm.desc}</p>${line}</div></div>`;
@@ -785,7 +792,7 @@
     const gm = byId(id); if (!gm) { showHub(); return; }
     close(); duelRun = null; hideDuel(); current = gm; isDaily = !!daily;
     hub.hidden = true; play.hidden = false; result.hidden = true; document.body.classList.remove('hubmode'); document.body.classList.add('playmode');
-    $('#gTitle').textContent = gm.title + (isDaily ? ' · desafío del día' : '');
+    $('#gTitle').textContent = gm.title + (isDaily ? tr(' · desafío del día', ' · daily challenge') : '');
     $('#gTag').textContent = gm.tag;
     how.textContent = gm.how; how.hidden = true;
     hud.innerHTML = ''; stage.innerHTML = '';
@@ -800,7 +807,7 @@
       gm.options.forEach(([k, label]) => { const b = el('button', 'jg-btn' + (k === option ? ' on' : ''), label); b.addEventListener('click', () => { option = k; store.opt = store.opt || {}; store.opt[gm.id] = k; save(); row.querySelectorAll('.jg-btn').forEach(x => x.classList.toggle('on', x === b)); }); row.append(b); });
       st.append(row);
     }
-    const goBtn = el('button', 'jg-btn primary', 'Empezar'); goBtn.addEventListener('click', go);
+    const goBtn = el('button', 'jg-btn primary', tr('Empezar', 'Start')); goBtn.addEventListener('click', go);
     st.append(goBtn); stage.append(st); goBtn.focus();
     function go() {
       stage.innerHTML = '';
@@ -811,7 +818,7 @@
     }
   }
   function close() { run = null; if (cleanup) { try { cleanup(); } catch (e) { /* ignore */ } cleanup = null; } }
-  function showHub() { close(); duelRun = null; hideDuel(); current = null; play.hidden = true; result.hidden = true; hub.hidden = false; document.body.classList.remove('playmode'); document.body.classList.add('hubmode'); document.title = 'DRUS — PUDRUS.XYZ'; paintHub(); }
+  function showHub() { close(); duelRun = null; hideDuel(); current = null; play.hidden = true; result.hidden = true; hub.hidden = false; document.body.classList.remove('playmode'); document.body.classList.add('hubmode'); document.title = tr('DRUS — juegos de ingenio — PUDRUS.XYZ', 'DRUS — brain games — PUDRUS.XYZ'); paintHub(); }
   function finish(gm, r) {
     close(); markPlayed();
     let rec = false, prev;
@@ -822,18 +829,18 @@
     }
     if (isDaily && typeof r.score === 'number') { const t = dayKey(), old = store.daily[t]; if (old === undefined || !gm.better || (gm.better === 'high' ? r.score > old : r.score < old)) store.daily[t] = r.score; }
     save();
-    $('#rTag').textContent = isDaily ? '◈ Desafío del día' : '◈ ' + gm.title;
+    $('#rTag').textContent = isDaily ? tr('◈ Desafío del día', '◈ Daily challenge') : '◈ ' + gm.title;
     const sc = $('#rScore'); sc.textContent = gm.better ? gm.fmt(r.score) : '✓'; sc.classList.remove('glitch'); void sc.offsetWidth; sc.classList.add('glitch');
     $('#rLabel').textContent = r.text || '';
     const b = $('#rBest');
     b.className = 'jg-best' + (rec && prev !== undefined ? ' rec' : '');
-    b.textContent = !gm.better ? (r.detail || '') : rec ? (prev === undefined ? 'Primer récord' : `¡Nuevo récord! (antes ${gm.fmt(prev)})`) : `Récord: ${gm.fmt(store.best[bestKey(gm)])}`;
+    b.textContent = !gm.better ? (r.detail || '') : rec ? (prev === undefined ? tr('Primer récord', 'First record') : tr(`¡Nuevo récord! (antes ${gm.fmt(prev)})`, `New record! (before ${gm.fmt(prev)})`)) : `${tr('Récord', 'Record')}: ${gm.fmt(store.best[bestKey(gm)])}`;
     const ex = $('#rExtra'); ex.innerHTML = '';
     if (gm.better && r.detail) ex.append(el('p', 'jg-best', r.detail));
     (r.extra || []).forEach(x => ex.append(x));
-    const shareTxt = r.share || (isDaily && gm.better ? `PUDRUS · Juegos · desafío del ${new Date().toLocaleDateString('es')}: ${gm.title} ${gm.fmt(r.score)} ◈` : '');
-    const sh = $('#rShare'); sh.hidden = !shareTxt; sh.textContent = 'Copiar resultado';
-    sh.onclick = () => { if (navigator.clipboard) navigator.clipboard.writeText(shareTxt + (r.share ? '' : '\npudrus.xyz')).then(() => { sh.textContent = 'Copiado ✓'; }, () => {}); };
+    const shareTxt = r.share || (isDaily && gm.better ? tr(`PUDRUS · DRUS · desafío del ${new Date().toLocaleDateString(LOCALE)}: ${gm.title} ${gm.fmt(r.score)} ◈`, `PUDRUS · DRUS · daily challenge ${new Date().toLocaleDateString(LOCALE)}: ${gm.title} ${gm.fmt(r.score)} ◈`) : '');
+    const sh = $('#rShare'); sh.hidden = !shareTxt; sh.textContent = tr('Copiar resultado', 'Copy result');
+    sh.onclick = () => { if (navigator.clipboard) navigator.clipboard.writeText(shareTxt + (r.share ? '' : '\npudrus.xyz/juegos')).then(() => { sh.textContent = tr('Copiado ✓', 'Copied ✓'); }, () => {}); };
     result.hidden = false; $('#rAgain').focus();
   }
   $('#rAgain').addEventListener('click', () => { result.hidden = true; if (current) open(current.id, isDaily); });
@@ -850,11 +857,11 @@
     const d = duelRun = { onDone, onAbort, timers: [] };
     hub.hidden = true; play.hidden = false; result.hidden = true; hideDuel();
     document.body.classList.remove('hubmode'); document.body.classList.add('playmode');
-    $('#gTitle').textContent = gm.title + ' · ⚔ ' + (label || 'Duelo');
+    $('#gTitle').textContent = gm.title + ' · ⚔ ' + (label || tr('Duelo', 'Duel'));
     $('#gTag').textContent = gm.tag;
     how.textContent = gm.how; how.hidden = true;
     hud.innerHTML = ''; stage.innerHTML = '';
-    document.title = `${gm.title} · Duelo — DRUS — PUDRUS.XYZ`;
+    document.title = `${gm.title} · ${tr('Duelo', 'Duel')} — DRUS — PUDRUS.XYZ`;
     const cd = el('div', 'jg-start jg-count');
     const num = el('div', 'big', '3'); cd.append(num, el('p', 'jg-rules', gm.how));
     stage.append(cd);
@@ -877,13 +884,30 @@
     duelRun = null; d.timers.forEach(clearTimeout); close();
     if (d.onAbort) d.onAbort();
   }
+  // the page's own texts (the rest is built in this file)
+  if (EN) {
+    document.documentElement.lang = 'en';
+    const set = (sel, txt, attr) => { const e = $(sel); if (e) { if (attr) e.setAttribute(attr, txt); else e.textContent = txt; } };
+    set('#hub .section-tag', '◈ Brain games');
+    const h1 = $('#hub .section-title'); if (h1) h1.innerHTML = '<span>DRUS</span> · train your brain';
+    set('#hub .section-desc', 'One- to three-minute games: logic, memory, attention and creativity. No sign-up: your records stay in this browser.');
+    set('#streak', 'Days in a row playing', 'title');
+    set('#duelBtn', 'Play against your friends: each on their own phone, or passing one around', 'title');
+    set('#duelBtn b', 'Duel'); set('#duelBtn small', 'with friends');
+    set('#back', 'Back to the games (Esc)', 'title'); set('#helpBtn', 'How to play', 'title');
+    set('#rTag', '◈ Result'); set('#rAgain', 'Again'); set('#rShare', 'Copy result'); set('#rHub', 'Back');
+    set('#dBack', 'Leave the duel', 'title'); set('#duel .jg-title b', '⚔ Duel'); set('#dSub', '2 to 6 players');
+    const md = document.querySelector('meta[name="description"]'); if (md) md.setAttribute('content', 'DRUS: quick brain games (logic, memory, attention, creativity), a daily challenge, duels with friends and a draw-and-guess game. Free, no sign-up.');
+  }
+  const langSel = $('#langSelect');
+  if (langSel) langSel.addEventListener('change', () => { try { localStorage.setItem('pudrus_lang', langSel.value); } catch (e) { /* private mode */ } setTimeout(() => location.reload(), 30); });
   function route() {
     let h = ''; try { h = decodeURIComponent(location.hash.slice(1)); } catch (e) { h = ''; }
     const [id, flag] = h.split('/');
     if (id === 'duelo') {   // the duel screen lives in duelo.js (it may load a moment later)
       close(); duelRun = null; current = null; play.hidden = true; result.hidden = true; hub.hidden = true;
       document.body.classList.remove('hubmode', 'playmode'); document.body.classList.add('duelmode');
-      document.title = 'Duelo — DRUS — PUDRUS.XYZ';
+      document.title = `${tr('Duelo', 'Duel')} — DRUS — PUDRUS.XYZ`;
       if (window.drusDuel) window.drusDuel.show(flag || ''); else window.__drusDuelPending = flag || '';
       return;
     }
@@ -891,5 +915,5 @@
   }
   addEventListener('hashchange', route);
   route();
-  window.__juegos = { GAMES, store, save, open, mulberry, hashStr, runDuel, abortDuel, el, okSound, badSound, tone, get inDuelRound() { return !!duelRun; }, get test() { return testHook; } };
+  window.__juegos = { EN, tr, LOCALE, GAMES, store, save, open, mulberry, hashStr, runDuel, abortDuel, el, okSound, badSound, tone, get inDuelRound() { return !!duelRun; }, get test() { return testHook; } };
 })();

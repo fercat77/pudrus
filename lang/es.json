@@ -546,6 +546,7 @@
     "duel": "Jugá contra tus amigos, cada uno en su celular o pasándose uno.",
     "drawName": "Trazos",
     "draw": "Uno dibuja y los demás adivinan la palabra.",
-    "play": "Jugar"
+    "play": "Jugar",
+    "inkWord": "ROJO"
   }
 }
