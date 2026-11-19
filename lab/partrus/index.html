@@ -79,6 +79,7 @@
     <li><b>Emisor de forma</b>: las partículas nacen sobre un <b>texto</b>, una <b>imagen</b> (un PNG con transparencia, como tu logo, o una foto: lo claro o lo oscuro) o lo que ve la <b>cámara</b> (lo que se mueve, lo claro o lo oscuro). Agregarlo reemplaza al Emisor de la cadena.</li>
     <li><b>Fuerzas</b>: gravedad, turbulencia (humo), atractor, remolino, ola, explosión con el ritmo, frenado y bordes. <b>Formar</b> hace que cada partícula vuelva a donde nació: con una explosión, el logo estalla y se vuelve a armar. <b>Cámara</b>: lo que se mueve frente a la cámara las empuja. <b>Atractor extraño</b> (Lorenz, Aizawa, Thomas, Halvorsen): fluyen por un caos en 3D. <b>Código GLSL</b>: tu propia fuerza, con 4 perillas (✎ abre el editor, Ctrl+Enter aplica). <b>Escudo</b>: una esfera invisible que aparta las partículas; sigue al mouse (o al dedo) sobre la vista. «Peso variable» en los emisores hace que cada partícula pese distinto: las pesadas caen antes, las livianas flotan y el aire las lleva más. Se aplican en el orden de la cadena.</li>
     <li><b>Simetría</b>: copias que giran alrededor del centro, con espejo: mandalas y caleidoscopios.</li>
+    <li><b>Estudio</b>: un estudio de fotos alrededor de las partículas: fondo curvo sin esquinas, una luz que podés mover (Luz X / Y / Z, color e intensidad), <b>sombras suaves</b> en el piso y la pared (más difusas cuanto más lejos cae la sombra), <b>bruma</b> alrededor de la luz y un <b>haz</b> que baja y se desvanece. Las partículas cerca de la luz se iluminan. Con Estudio la imagen deja de ser transparente (en NODRUS tapa lo de abajo, según la mezcla). Inclinar la cámara hacia abajo deja ver el piso.</li>
     <li><b>Aspecto</b>: tamaño, forma, color y cómo cambian con la edad. «Colores de la imagen» pinta cada partícula con el color de la imagen o de la cámara donde nació.</li>
     <li><b>Salida</b>: la estela (las partículas dejan rastro), el brillo y la <b>cámara 3D</b>: arrastrá la vista para girarla e inclinarla, rueda para acercar o alejar, «gira sola» para que dé vueltas, «vaivén» para que se mueva un poco de lado a lado y se note la profundidad. ⟲ la vuelve al frente. «Niebla» apaga lo que queda lejos y aviva lo que está cerca. Como una foto: <b>«Foco»</b> y <b>«Desenfoque»</b> hacen que lo que está fuera de foco se vea como discos de luz (bokeh); <b>«Resplandor»</b> derrama la luz alrededor de lo brillante, <b>«Grano»</b> suma grano de película y <b>«Lente»</b> curva apenas los bordes, separa los colores en las orillas y oscurece las esquinas. La transparencia se mantiene (para NODRUS y Spout).</li>
     <li><b>En 3D</b>: «Profundidad 3D» en los emisores hace que las partículas nazcan en un volumen y salgan también hacia adelante y atrás; «Movimiento en Z» de la turbulencia las arremolina en profundidad; la Ola tiene «hacia adelante y atrás». Los sistemas que guardaste antes quedan como estaban (planos) hasta que subas esas perillas.</li>
@@ -98,7 +99,7 @@
   <div class="row"><button class="pa-btn" id="themeBtn">◐ Tema claro</button><button class="pa-btn" id="helpClose">Cerrar</button></div>
 </div></div>
 
-<script src="particles.js?v=10"></script>
+<script src="particles.js?v=11"></script>
 <script src="app.js?v=10"></script>
 </body>
 </html>

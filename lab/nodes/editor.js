@@ -973,7 +973,7 @@
       if (nxt && (nxt.type === 'look' || (nxt.type === 'out' && node.type !== 'look'))) {
         const add = el('select', 'pe-add');
         const o0 = el('option', '', '＋ Agregar fuerza o efecto…'); o0.value = ''; add.append(o0);
-        Object.entries(PP.DEFS).filter(([t, d]) => d.cat === 'force' || (t === 'sym' && !sys.nodes.some(m => m.type === 'sym'))).forEach(([t, d]) => { const o = el('option', '', d.title); o.value = t; o.title = d.help || ''; add.append(o); });
+        Object.entries(PP.DEFS).filter(([t, d]) => d.cat === 'force' || ((t === 'sym' || t === 'studio') && !sys.nodes.some(m => m.type === t))).forEach(([t, d]) => { const o = el('option', '', d.title); o.value = t; o.title = d.help || ''; add.append(o); });
         add.addEventListener('change', () => { if (!add.value) return; pedInsert(add.value); pedCommit(); pedRender(); });
         box.append(add);
       }

@@ -128,6 +128,11 @@ vec3 force(vec3 p, vec3 v, float t, float k1, float k2, float k3, float k4) {
                { k: 'life', label: 'Vida', v: 'fade', options: [['fade', 'aparece y se va'], ['shrink', 'se achica'], ['grow', 'crece'], ['twinkle', 'titila'], ['const', 'constante']] }],
       help: 'Tamaño, forma y color de cada partícula' },
 
+    // a photo studio: a seamless curved backdrop, one point light with soft shadows, haze and a beam (the picture becomes opaque)
+    studio: { title: 'Estudio', cat: 'look', unique: true, inputs: [PIN, F('lx', 'Luz X', 0.7, -2, 2), F('ly', 'Luz Y', 1.2, -1, 2.5), F('lz', 'Luz Z', 0.4, -3, 1.5), COL('lcol', 'Color de la luz', '#ffd29a'),
+      F('power', 'Intensidad', 1.3, 0, 4), F('shadow', 'Sombras', 0.7, 0, 1), F('soft', 'Sombra suave', 0.5, 0, 1), F('haze', 'Bruma', 0.35, 0, 1), F('beam', 'Haz de luz', 0.5, 0, 1),
+      COL('bg', 'Color del estudio', '#3a3a42'), F('floor', 'Piso (altura)', -1, -1.6, 0), F('wall', 'Pared (distancia)', -2.6, -6, -1), F('litp', 'Luz sobre las partículas', 0.6, 0, 1)], outputs: [POUT],
+      help: 'Un estudio de fotos: fondo curvo, una luz con sombras suaves, bruma y un haz. La imagen deja de ser transparente' },
     sym: { title: 'Simetría', cat: 'look', unique: true, inputs: [PIN, F('rot', 'Giro (°)', 0, -180, 180), F('turn', 'Gira sola (°/s)', 0, -180, 180)], outputs: [POUT],
       params: [{ k: 'n', label: 'Copias', v: '6', options: [['2', '2'], ['3', '3'], ['4', '4'], ['5', '5'], ['6', '6'], ['8', '8'], ['10', '10'], ['12', '12']] },
                { k: 'mirror', label: 'Espejo', v: 'yes', options: [['yes', 'sí (caleidoscopio)'], ['no', 'no (sólo gira)']] }],
@@ -392,7 +397,7 @@ vec3 hsv(float h, float s, float v) { vec3 k = clamp(abs(fract(h + vec3(0.0, 2.0
     const pre = [], post = [], triggers = [];
     let usesCam = emit.type === 'form' && EP.src === 'camera';
     if (EP.burst !== 'cont') triggers.push({ u: 'u_burst', mode: EP.burst });
-    let look = null, sym = null;
+    let look = null, sym = null, studio = null;
     for (const n of chain.slice(1)) {
       const I = inputsOf(n), Q = P(n), id = n.id;
       if (n.type === 'gravity') pre.push(`{ float ga = radians(${I.angle}); vel.xy += vec2(sin(ga), -cos(ga)) * ${I.str} * pw * dt; }`);
@@ -428,6 +433,7 @@ vec3 hsv(float h, float s, float v) { vec3 k = clamp(abs(fract(h + vec3(0.0, 2.0
         userCode(id, Q.code, 'force');
         pre.push(`vel += f${id}_force(pos, vel, u_time, ${I.k1}, ${I.k2}, ${I.k3}, ${I.k4}) * dt;`);
       } else if (n.type === 'sym') sym = { I, P: Q };
+      else if (n.type === 'studio') studio = { I, P: Q, id };
       else if (n.type === 'home') pre.push(`{ vec3 d = home.xyz - pos; vel += d * ${I.str} * dt; vel *= exp(-max(0.0, ${I.damp}) * dt); }`);
       else if (n.type === 'cam') {
         usesCam = true;
@@ -556,7 +562,9 @@ void main() {
   if (cocp > 0.5) { float p2 = min(px + cocp, u_maxpt); al *= max(0.025, pow(max(px, 1.0) / p2, 1.6)); vBk = clamp(cocp / p2 * 1.4, 0.0, 1.0); px = p2; }
   if (px < 1.0) { al *= max(px, 0.0); px = 1.0; }
   gl_PointSize = min(px, u_maxpt);
-  vec3 col = ${colExpr};
+  vec3 col = ${colExpr};${studio ? `
+  { vec3 Ld = vec3(${studio.I.lx}, ${studio.I.ly}, ${studio.I.lz}) - pos; float lit = ${studio.I.power} / (1.0 + 0.7 * dot(Ld, Ld));   // «Estudio»: near the light, brighter and warmer
+    col *= mix(vec3(1.0), vec3(0.35) + ${studio.I.lcol} * lit * 1.4, clamp(${studio.I.litp}, 0.0, 1.0)); }` : ''}
   if (u_hue != 0.0) col = max(hueShift(col, u_hue), 0.0);
   vCol = vec4(col * max(0.0, ${OI.gain}) * u_mgain, al);
 }`;
@@ -581,8 +589,41 @@ void main() {
   if (a < 0.002) discard;
   o = vec4(vCol.rgb * a, a);
 }`;
+    const shadowVS = !studio ? null : `${head}
+out float vA;
+void main() {
+  int i = gl_VertexID${cop > 1 ? ' / ' + cop : ''}, side = textureSize(u_pos, 0).x;
+  ivec2 ij = ivec2(i % side, i / side);
+  vec4 P = texelFetch(u_pos, ij, 0), V = texelFetch(u_vel, ij, 0);
+  float age = P.w, life = V.w; vA = 0.0;
+  if (age < 0.0 || age >= life) { gl_Position = vec4(2.0, 2.0, 2.0, 1.0); gl_PointSize = 0.0; return; }
+  float t = age / life; vec3 pos = P.xyz;${symGLSL}
+  ${VALUES}
+  vec3 Lp = vec3(${studio.I.lx}, ${studio.I.ly}, ${studio.I.lz}), d = pos - Lp;
+  float FY = ${studio.I.floor}, WZ = ${studio.I.wall}, best = 1e9;
+  if (d.y < -1e-4) { float k = (FY - Lp.y) / d.y; vec3 q = Lp + d * k; if (k > 1.0 && q.z > WZ) best = k; }
+  if (d.z < -1e-4) { float k = (WZ - Lp.z) / d.z; vec3 q = Lp + d * k; if (k > 1.0 && k < best && q.y > FY) best = k; }
+  if (best > 1e8) { gl_Position = vec4(2.0, 2.0, 2.0, 1.0); gl_PointSize = 0.0; return; }
+  vec3 hp = Lp + d * best;
+  float gap = length(d) * (best - 1.0);
+  float sw = max(${OI.sway}, 0.0);
+  float yaw = radians(${OI.yaw} + u_cam.x + (${OI.spin} + u_cam.w) * u_rtime + sw * sin(u_rtime * 0.37)),
+        pitch = radians(clamp(${OI.pitch} + u_cam.y + sw * 0.45 * sin(u_rtime * 0.23 + 1.0), -89.0, 89.0));
+  float cy = cos(yaw), sy = sin(yaw), cp = cos(pitch), sp = sin(pitch);
+  vec3 cq = vec3(cy * hp.x + sy * hp.z, hp.y, -sy * hp.x + cy * hp.z);
+  cq = vec3(cq.x, cp * cq.y - sp * cq.z, sp * cq.y + cp * cq.z);
+  float dz = 2.5 * max(0.1, ${OI.dist} * u_cam.z) - cq.z;
+  if (dz < 0.25) { gl_Position = vec4(2.0, 2.0, 2.0, 1.0); gl_PointSize = 0.0; return; }
+  float persp = 2.5 / dz;
+  gl_Position = vec4(cq.x * persp / u_aspect, cq.y * persp, 0.0, 1.0);
+  float core = max(1.5, max(0.0, ${LI.size}) * u_msize * persp * u_scale);
+  float px = clamp(core + gap / max(length(d), 0.15) * (4.0 + 46.0 * clamp(${studio.I.soft}, 0.0, 1.0)) * persp * u_scale * 6.0, 1.0, u_maxpt);
+  float fade = smoothstep(0.0, 0.08, t) * (1.0 - smoothstep(0.8, 1.0, t));
+  vA = clamp(${LI.opacity}, 0.0, 1.0) * clamp(${studio.I.shadow}, 0.0, 1.0) * fade * min(1.0, 2.2 * core * core / (px * px));
+  gl_PointSize = px;
+}`;
     return {
-      sim, drawVS, drawFS, uniforms, triggers, burst,
+      sim, drawVS, drawFS, uniforms, triggers, burst, shadowVS, studioId: studio ? studio.id : 0,
       count: +EP.count, side: Math.round(Math.sqrt(+EP.count)), copies: cop, codeMarks,
       blend: OP.blend, outId: out.id, emitId: emit.id, form: emit.type === 'form', usesCam, imgColor: LP.color === 'image',
     };
@@ -630,6 +671,56 @@ void main() {
   col += (hash(uv * u_res + u_seed) - 0.5) * u_grain * 0.22 * lit;   // film grain where there is light (the rest stays transparent)
   vec3 rgb = clamp(col, 0.0, 1.0);
   o = vec4(rgb, max(clamp(g.a, 0.0, 1.0), max(rgb.r, max(rgb.g, rgb.b))));
+}`;
+  const SHADOW_FS = `#version 300 es
+precision highp float; in float vA; out vec4 o;
+void main() { vec2 q = gl_PointCoord * 2.0 - 1.0; float r = dot(q, q); if (r > 1.0) discard; float k = (1.0 - r); o = vec4(vA * k * k); }`;
+  const STUDIO_FS = `#version 300 es
+precision highp float; in vec2 uv;
+uniform sampler2D u_img, u_bloom, u_shadow;
+uniform float u_bk, u_grain, u_lens, u_seed, u_aspect, u_power, u_haze, u_beam, u_shad, u_floor, u_wall, u_normal;
+uniform vec2 u_res; uniform vec3 u_cam, u_L, u_lcol, u_bg;
+out vec4 o;
+float hash(vec2 p) { p = fract(p * vec2(443.897, 441.423)); p += dot(p, p.yx + 19.19); return fract((p.x + p.y) * p.x); }
+vec3 unrot(vec3 q, float cy, float sy, float cp, float sp) { vec3 v = vec3(q.x, cp * q.y + sp * q.z, -sp * q.y + cp * q.z); return vec3(cy * v.x - sy * v.z, v.y, sy * v.x + cy * v.z); }
+void main() {
+  vec2 c = uv - 0.5; float r2 = dot(c, c);
+  vec2 base = 0.5 + c * (1.0 - u_lens * 0.07 * r2); float ca = u_lens * 0.012 * r2;
+  vec2 nd = base * 2.0 - 1.0;
+  float cy = cos(u_cam.x), sy = sin(u_cam.x), cp = cos(u_cam.y), sp = sin(u_cam.y);
+  vec3 ro = unrot(vec3(0.0, 0.0, u_cam.z), cy, sy, cp, sp), rd = normalize(unrot(vec3(nd.x * u_aspect / 2.5, nd.y / 2.5, -1.0), cy, sy, cp, sp));
+  // the seamless backdrop: floor (y = F), wall (z = W) and a curve of radius R joining them
+  float R = 0.9, F = u_floor, W = u_wall, th = 1e9; vec3 n = vec3(0.0);
+  if (rd.y < 0.0) { float t = (F - ro.y) / rd.y; vec3 p = ro + rd * t; if (t > 0.0 && p.z >= W + R) { th = t; n = vec3(0.0, 1.0, 0.0); } }
+  if (rd.z < 0.0) { float t = (W - ro.z) / rd.z; vec3 p = ro + rd * t; if (t > 0.0 && t < th && p.y >= F + R) { th = t; n = vec3(0.0, 0.0, 1.0); } }
+  if (th > 1e8) {
+    vec2 o2 = vec2(ro.y - (F + R), ro.z - (W + R)), d2 = rd.yz; float a = dot(d2, d2), b = dot(o2, d2), cc = dot(o2, o2) - R * R, disc = b * b - a * cc;
+    if (disc > 0.0 && a > 1e-6) { float t = (-b + sqrt(disc)) / a; vec3 p = ro + rd * t; if (t > 0.0 && p.y <= F + R + 1e-3 && p.z <= W + R + 1e-3) { th = t; n = normalize(vec3(0.0, F + R - p.y, W + R - p.z)); } }
+  }
+  vec3 scene = u_bg * 0.18;
+  if (th < 1e8) {
+    vec3 p = ro + rd * th, Lv = u_L - p; float dl = length(Lv);
+    float lit = u_power * max(dot(n, Lv / dl), 0.0) / (1.0 + 0.35 * dl * dl);
+    float sh = exp(-texture(u_shadow, base).r * 2.5 * u_shad);
+    float pool = smoothstep(0.8, 0.95, -normalize(p - u_L).y) * u_beam;   // where the beam lands
+    scene = u_bg * (0.22 + lit * u_lcol * 1.6 * sh) + u_lcol * pool * u_power * 0.3 * sh / (1.0 + 0.3 * dl * dl);
+  } else th = 30.0;
+  // haze: the light scattered by the air along this ray (point light, closed form)
+  vec3 v = u_L - ro; float tc = dot(v, rd), h = length(v - rd * tc) + 0.06;
+  float ins = (atan((th - tc) / h) - atan(-tc / h)) / h;
+  scene += u_lcol * ins * u_haze * u_power * 0.07;
+  // the beam: the same air inside a cone going down from the light, fading as it falls
+  vec3 dc = ro + rd * clamp(tc, 0.0, th) - u_L;
+  float cone = smoothstep(0.8, 0.93, -normalize(dc).y);
+  scene += u_lcol * ins * cone * exp(-max(0.0, -dc.y) * 0.45) * u_beam * u_power * 0.16;
+  // the particles on top (their light adds, or they cover in «normal» mixing)
+  vec4 g = texture(u_img, base);
+  vec3 pr = vec3(texture(u_img, base + c * ca).r, g.g, texture(u_img, base - c * ca).b);
+  vec3 col = u_normal > 0.5 ? scene * (1.0 - clamp(g.a, 0.0, 1.0)) + pr : scene + pr;
+  col += texture(u_bloom, base).rgb * u_bk;
+  col *= 1.0 - u_lens * 0.4 * smoothstep(0.12, 0.55, r2);
+  col += (hash(uv * u_res + u_seed) - 0.5) * u_grain * 0.12;
+  o = vec4(clamp(col, 0.0, 1.0), 1.0);
 }`;
   const INIT_FS = `#version 300 es
 precision highp float; precision highp int;
@@ -694,7 +785,7 @@ void main() {
   function programsFor(comp, key) {
     let e = pool.progs.get(key);
     if (!e) {
-      e = { sim: program(QUAD_VS, comp.sim), draw: program(comp.drawVS, comp.drawFS), users: 0 };
+      e = { sim: program(QUAD_VS, comp.sim), draw: program(comp.drawVS, comp.drawFS), shadow: comp.shadowVS ? program(comp.shadowVS, SHADOW_FS) : null, users: 0 };
       pool.progs.set(key, e);
     }
     return e;
@@ -870,6 +961,7 @@ void main() {
       const gl = P.gl;
       if (S.color) { S.color.tex.forEach(t => gl.deleteTexture(t)); S.color.fb.forEach(f => gl.deleteFramebuffer(f)); S.color = null; }
       if (S.post) { S.post.tex.forEach(t => gl.deleteTexture(t)); S.post.fb.forEach(f => gl.deleteFramebuffer(f)); S.post = null; }
+      if (S.shadow) { gl.deleteTexture(S.shadow.tex); gl.deleteFramebuffer(S.shadow.fb); S.shadow = null; }
     }
     function alloc(side) {
       freeState();
@@ -1065,29 +1157,46 @@ void main() {
         gl.bindVertexArray(P.vao);
         gl.drawArrays(gl.TRIANGLES, 0, 6);
       } else { gl.clearColor(0, 0, 0, 0); gl.clear(gl.COLOR_BUFFER_BIT); }
-      const pr = S.progs.draw, L = pr.loc;
-      gl.useProgram(pr.pr);
-      bindState(L, st.cur);
-      bindShape(L);
-      if (L.u_time) gl.uniform1f(L.u_time, time);
-      if (L.u_beat) gl.uniform1f(L.u_beat, beat);
-      if (L.u_aspect) gl.uniform1f(L.u_aspect, aspect);
-      if (L.u_scale) gl.uniform1f(L.u_scale, h / 720);
       const num = (x, d) => (Number.isFinite(+x) && x !== undefined && x !== null ? +x : d);
-      if (L.u_msize) gl.uniform1f(L.u_msize, Math.max(0, num(M.size, 1)));
-      if (L.u_hue) gl.uniform1f(L.u_hue, num(M.hue, 0));
-      if (L.u_mgain) gl.uniform1f(L.u_mgain, Math.max(0, num(M.glow, 1)));
-      if (L.u_rtime) gl.uniform1f(L.u_rtime, S.rclock || 0);
-      if (L.u_cam) gl.uniform4f(L.u_cam, num(M.yaw, 0), num(M.pitch, 0), Math.max(0.1, num(M.zoom, 1)), num(M.spin, 0));
-      if (L.u_maxpt) gl.uniform1f(L.u_maxpt, P.maxPt);
-      if (L.u_audio) gl.uniform4f(L.u_audio, audio[0] || 0, audio[1] || 0, audio[2] || 0, audio[3] || 0);
-      setUniforms(gl, L, S.comp, S.cur);
+      const pointUniforms = (pr, scaleH) => {
+        const L = pr.loc;
+        gl.useProgram(pr.pr);
+        bindState(L, st.cur);
+        bindShape(L);
+        if (L.u_time) gl.uniform1f(L.u_time, time);
+        if (L.u_beat) gl.uniform1f(L.u_beat, beat);
+        if (L.u_aspect) gl.uniform1f(L.u_aspect, aspect);
+        if (L.u_scale) gl.uniform1f(L.u_scale, scaleH / 720);
+        if (L.u_msize) gl.uniform1f(L.u_msize, Math.max(0, num(M.size, 1)));
+        if (L.u_hue) gl.uniform1f(L.u_hue, num(M.hue, 0));
+        if (L.u_mgain) gl.uniform1f(L.u_mgain, Math.max(0, num(M.glow, 1)));
+        if (L.u_rtime) gl.uniform1f(L.u_rtime, S.rclock || 0);
+        if (L.u_cam) gl.uniform4f(L.u_cam, num(M.yaw, 0), num(M.pitch, 0), Math.max(0.1, num(M.zoom, 1)), num(M.spin, 0));
+        if (L.u_maxpt) gl.uniform1f(L.u_maxpt, P.maxPt);
+        if (L.u_audio) gl.uniform4f(L.u_audio, audio[0] || 0, audio[1] || 0, audio[2] || 0, audio[3] || 0);
+        setUniforms(gl, L, S.comp, S.cur);
+      };
+      pointUniforms(S.progs.draw, h);
       gl.enable(gl.BLEND);
       if (S.comp.blend === 'normal') gl.blendFunc(gl.ONE, gl.ONE_MINUS_SRC_ALPHA); else gl.blendFunc(gl.ONE, gl.ONE);
       gl.bindVertexArray(P.empty);
       gl.drawArrays(gl.POINTS, 0, S.comp.count * (S.comp.copies || 1));
-      gl.disable(gl.BLEND);
       C.cur = dst;
+      // «Estudio»: the shadows, at half size (they are soft anyway), fresh every frame
+      if (S.progs.shadow) {
+        const sw2 = Math.max(2, Math.round(w / 2)), sh2 = Math.max(2, Math.round(h / 2));
+        if (!S.shadow || S.shadow.w !== sw2 || S.shadow.h !== sh2) {
+          if (S.shadow) { gl.deleteTexture(S.shadow.tex); gl.deleteFramebuffer(S.shadow.fb); }
+          const tex = floatTex(sw2, sh2, true); S.shadow = { w: sw2, h: sh2, tex, fb: fbo([tex]) };
+        }
+        gl.bindFramebuffer(gl.FRAMEBUFFER, S.shadow.fb);
+        gl.viewport(0, 0, sw2, sh2);
+        gl.clearColor(0, 0, 0, 0); gl.clear(gl.COLOR_BUFFER_BIT);
+        pointUniforms(S.progs.shadow, sh2);
+        gl.blendFunc(gl.ONE, gl.ONE);
+        gl.drawArrays(gl.POINTS, 0, S.comp.count * (S.comp.copies || 1));
+      }
+      gl.disable(gl.BLEND);
     }
     // the Salida's finish knobs (their current values, published knobs from NODRUS included)
     const outKnob = k => { const n = `u${S.comp.outId}_${k}`, v = S.cur && S.cur[n]; return typeof v === 'number' && Number.isFinite(v) ? v : 0; };
@@ -1097,8 +1206,10 @@ void main() {
       gl.disable(gl.BLEND);
       gl.bindVertexArray(P.vao);
       const bk = Math.max(0, Math.min(2, outKnob('bloom'))), grain = Math.max(0, Math.min(1, outKnob('grain'))), lens = Math.max(0, Math.min(1, outKnob('lens')));
-      if (bk > 0.001 || grain > 0.001 || lens > 0.001) {
+      const studio = !!(S.comp.studioId && S.progs.shadow && S.shadow);
+      if (studio || bk > 0.001 || grain > 0.001 || lens > 0.001) {
         if (!P.post) P.post = { down: program(QUAD_VS, DOWN_FS), blur: program(QUAD_VS, BLUR_FS), comp: program(QUAD_VS, POST_FS) };
+        if (studio && !P.studio) P.studio = program(QUAD_VS, STUDIO_FS);
         const qw = Math.max(2, Math.round(C.w / 4)), qh = Math.max(2, Math.round(C.h / 4));
         if (!S.post || S.post.w !== qw || S.post.h !== qh) {
           if (S.post) { S.post.tex.forEach(t => gl.deleteTexture(t)); S.post.fb.forEach(f => gl.deleteFramebuffer(f)); }
@@ -1119,10 +1230,28 @@ void main() {
         }
         gl.bindFramebuffer(gl.FRAMEBUFFER, null);
         gl.viewport(0, 0, C.w, C.h);
-        const pr = P.post.comp; gl.useProgram(pr.pr);
+        const pr = studio ? P.studio : P.post.comp; gl.useProgram(pr.pr);
         gl.activeTexture(gl.TEXTURE0); gl.bindTexture(gl.TEXTURE_2D, C.tex[C.cur]); gl.uniform1i(pr.loc.u_img, 0);
         gl.activeTexture(gl.TEXTURE1); gl.bindTexture(gl.TEXTURE_2D, bk > 0.001 ? Q.tex[0] : P.black); gl.uniform1i(pr.loc.u_bloom, 1);
-        gl.uniform1f(pr.loc.u_bk, bk * 1.6); gl.uniform1f(pr.loc.u_grain, grain); gl.uniform1f(pr.loc.u_lens, lens);
+        gl.uniform1f(pr.loc.u_bk, bk * (studio ? 1.0 : 1.6)); gl.uniform1f(pr.loc.u_grain, grain); gl.uniform1f(pr.loc.u_lens, lens);
+        if (studio) {   // the same camera as the particles (knobs, NODRUS macros, «gira sola», «vaivén»)
+          const M = S.mods || NOMODS, nm = (x, d) => (Number.isFinite(+x) && x !== undefined && x !== null ? +x : d);
+          const kv = (id, k, d) => { const v = S.cur && S.cur[`u${id}_${k}`]; return v !== undefined ? v : d; };
+          const o = k => +kv(S.comp.outId, k, 0) || 0, rt = S.rclock || 0, sw = Math.max(0, o('sway'));
+          const yaw = (o('yaw') + nm(M.yaw, 0) + (o('spin') + nm(M.spin, 0)) * rt + sw * Math.sin(rt * 0.37)) * Math.PI / 180;
+          const pitch = Math.max(-89, Math.min(89, o('pitch') + nm(M.pitch, 0) + sw * 0.45 * Math.sin(rt * 0.23 + 1))) * Math.PI / 180;
+          const dist = 2.5 * Math.max(0.1, (+kv(S.comp.outId, 'dist', 1) || 1) * Math.max(0.1, nm(M.zoom, 1)));
+          const st = k => +kv(S.comp.studioId, k, 0) || 0, col = (k, d) => { const v = kv(S.comp.studioId, k, d); return Array.isArray(v) ? v : d; };
+          const L2 = pr.loc;
+          gl.activeTexture(gl.TEXTURE2); gl.bindTexture(gl.TEXTURE_2D, S.shadow.tex); gl.uniform1i(L2.u_shadow, 2);
+          gl.uniform3f(L2.u_cam, yaw, pitch, dist); gl.uniform1f(L2.u_aspect, C.w / C.h);
+          gl.uniform3f(L2.u_L, st('lx'), st('ly'), st('lz'));
+          const lc = col('lcol', [1, 0.82, 0.6]), bg = col('bg', [0.23, 0.23, 0.26]);
+          gl.uniform3f(L2.u_lcol, lc[0], lc[1], lc[2]); gl.uniform3f(L2.u_bg, bg[0], bg[1], bg[2]);
+          gl.uniform1f(L2.u_power, Math.max(0, st('power'))); gl.uniform1f(L2.u_haze, Math.max(0, st('haze'))); gl.uniform1f(L2.u_beam, Math.max(0, st('beam')));
+          gl.uniform1f(L2.u_shad, Math.max(0, st('shadow'))); gl.uniform1f(L2.u_floor, st('floor')); gl.uniform1f(L2.u_wall, st('wall'));
+          gl.uniform1f(L2.u_normal, S.comp.blend === 'normal' ? 1 : 0);
+        }
         gl.uniform1f(pr.loc.u_seed, (S.fno || 0) % 997 * 1.37); gl.uniform2f(pr.loc.u_res, C.w, C.h);
         gl.drawArrays(gl.TRIANGLES, 0, 6);
         gl.activeTexture(gl.TEXTURE0);
@@ -1369,6 +1498,32 @@ void main() {
       ['drag', { amt: 1 }],
       ['look', { size: 2.2, opacity: 0.7, a: '#fff1c4', b: '#ffb35c' }, { shape: 'soft', color: 'rand', life: 'fade' }],
       ['out', { trail: 0, gain: 1.1, sway: 10, fog: 0.4, focus: 0.3, aperture: 0.7, bloom: 0.9, grain: 0.3, lens: 0.4 }, { blend: 'add' }]]) },
+    // «Estudio»: a backdrop, one light, soft shadows, haze and a beam
+    { name: 'Estudio: fuente', sys: build('Estudio: fuente', [
+      ['emit', { y: -0.98, size: 0.02, depth: 0.3, speed: 1.55, chaos: 0.35, life: 3.2, lifeVar: 0.3, weightVar: 0.7 }, { shape: 'point', dir: 'up', count: '16384' }],
+      ['gravity', { str: 0.85 }],
+      ['bounds', { bounce: 0.35 }, { mode: 'floor' }],
+      ['drag', { amt: 0.2 }],
+      ['look', { size: 3, opacity: 0.9, a: '#9fe3ff', b: '#ffffff' }, { shape: 'soft', color: 'speed', life: 'fade' }],
+      ['studio', { lx: 0.8, ly: 1.4, lz: 0.6, power: 1.4, shadow: 0.8, soft: 0.45, haze: 0.3, beam: 0.35 }],
+      ['out', { trail: 0.2, gain: 1, pitch: 14, dist: 1.2, sway: 6, fog: 0.2, bloom: 0.45, grain: 0.18, lens: 0.25 }, { blend: 'add' }]]) },
+    { name: 'Estudio: polvo y haz', sys: build('Estudio: polvo y haz', [
+      ['emit', { depth: 1, speed: 0.02, chaos: 1, life: 14, lifeVar: 0.3, weightVar: 1 }, { shape: 'screen', dir: 'random', count: '65536' }],
+      ['turb', { str: 0.15, scale: 1.2, speed: 0.08, z3: 1 }],
+      ['gravity', { str: 0.03 }],
+      ['drag', { amt: 1 }],
+      ['look', { size: 1.6, opacity: 0.32, a: '#fff1c4', b: '#ffb35c' }, { shape: 'soft', color: 'rand', life: 'fade' }],
+      ['studio', { lx: -0.3, ly: 1.5, lz: -0.6, power: 1.25, shadow: 0.5, soft: 0.8, haze: 0.4, beam: 0.7, bg: '#2c2a2e' }],
+      ['out', { trail: 0, gain: 1, pitch: 10, sway: 8, fog: 0.3, focus: 0.2, aperture: 0.5, bloom: 0.6, grain: 0.3, lens: 0.4 }, { blend: 'add' }]]) },
+    { name: 'Estudio: lluvia', sys: build('Estudio: lluvia', [
+      ['emit', { y: 1.06, size: 1.1, depth: 0.9, speed: 0.25, chaos: 0.2, life: 4, lifeVar: 0.4, weightVar: 0.6 }, { shape: 'line', dir: 'down', count: '16384' }],
+      ['gravity', { str: 0.7 }],
+      ['shield', { radius: 0.3, str: 4, soft: 0.5 }, { follow: 'pointer' }],
+      ['bounds', { bounce: 0.3 }, { mode: 'floor' }],
+      ['drag', { amt: 0.25 }],
+      ['look', { size: 2.2, opacity: 0.75, a: '#bfe6ff', b: '#ffffff' }, { shape: 'dot', color: 'speed', life: 'fade' }],
+      ['studio', { lx: 0.6, ly: 1.6, lz: 0.2, power: 1.3, shadow: 0.6, soft: 0.6, haze: 0.4, beam: 0.6, bg: '#30333a' }],
+      ['out', { trail: 0.35, gain: 1, pitch: 12, sway: 5, fog: 0.3, bloom: 0.4, grain: 0.2, lens: 0.3 }, { blend: 'add' }]]) },
   ];
   const blank = () => build('Nuevo sistema', [
     ['emit', {}, { shape: 'point', dir: 'out', count: '65536' }],
