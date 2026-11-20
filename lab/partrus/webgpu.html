@@ -1,0 +1,364 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="robots" content="noindex, nofollow">
+  <title>PARTRUS · prueba WebGPU</title>
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600;700&display=swap">
+  <style>
+    :root { --bg: #0a0a10; --panel: #15151d; --panel2: #1d1d27; --line: #2b2b38; --text: #d8dbe6; --dim: #8a8ea3; --accent: #66ff33; --m: #ff3fa4; --c: #00d4ff; }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body { background: var(--bg); color: var(--text); font: 13px/1.5 'IBM Plex Mono', ui-monospace, Menlo, Consolas, monospace; }
+    body { max-width: 1100px; margin: 0 auto; padding: 16px; display: flex; flex-direction: column; gap: 12px; }
+    header { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+    header h1 { font-size: 16px; letter-spacing: .08em; color: #fff; }
+    header h1 span { color: #ff8a3d; }
+    header a { color: var(--dim); text-decoration: none; margin-left: auto; }
+    header a:hover { color: var(--accent); }
+    .intro { color: var(--dim); }
+    .bar { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; padding: 10px; border-radius: 10px; background: var(--panel); border: 1px solid var(--line); }
+    .bar b { color: var(--dim); font-weight: 400; margin-right: 2px; }
+    .seg { display: inline-flex; gap: 3px; }
+    button { font: inherit; color: var(--text); background: var(--panel2); border: 1px solid var(--line); border-radius: 7px; padding: 6px 10px; cursor: pointer; }
+    button:hover { border-color: var(--accent); }
+    button.on { border-color: var(--accent); color: var(--accent); }
+    button:disabled { opacity: .35; cursor: default; border-color: var(--line); }
+    button.go { background: var(--accent); color: #050508; border-color: var(--accent); font-weight: 700; }
+    .stage { position: relative; aspect-ratio: 16 / 9; border-radius: 10px; overflow: hidden; background: #000; border: 1px solid var(--line); }
+    .stage canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+    .hud { position: absolute; left: 10px; top: 10px; padding: 8px 12px; border-radius: 8px; background: rgba(0,0,0,0.6); font-variant-numeric: tabular-nums; pointer-events: none; }
+    .hud b { color: #fff; }
+    .hud .eng { color: var(--accent); }
+    .msg { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; text-align: center; padding: 30px; color: #ffb3c0; }
+    .info { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 8px; color: var(--dim); }
+    .info div { padding: 8px 10px; border-radius: 8px; background: var(--panel); border: 1px solid var(--line); }
+    .info b { color: var(--text); font-weight: 600; }
+    table { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; }
+    th, td { text-align: right; padding: 7px 10px; border-bottom: 1px solid var(--line); }
+    th:first-child, td:first-child { text-align: left; }
+    th { color: var(--dim); font-weight: 400; }
+    td.win { color: var(--accent); font-weight: 700; }
+    td.na { color: #555; }
+    .verdict { padding: 12px; border-radius: 10px; border: 1px solid rgba(102,255,51,0.4); background: rgba(102,255,51,0.06); line-height: 1.6; }
+    .verdict:empty { display: none; }
+    #results:empty { display: none; }
+  </style>
+</head>
+<body>
+<header>
+  <h1>PART<span>RUS</span> · prueba WebGPU</h1>
+  <a href="./">← volver a PARTRUS</a>
+</header>
+<p class="intro">El mismo sistema de partículas (nacen en toda la pantalla, turbulencia y frenado) en el motor actual de PARTRUS (WebGL2, la simulación en texturas) y en un motor nuevo con WebGPU (compute shaders). «Placa» es cuánto tarda la placa de video en cada cuadro: menos es mejor, y no depende de la frecuencia de la pantalla.</p>
+<div class="bar">
+  <b>Motor</b><span class="seg" id="eng"><button data-v="gl" class="on">WebGL2 (actual)</button><button data-v="gpu">WebGPU (nuevo)</button></span>
+  <b>Partículas</b><span class="seg" id="cnt"></span>
+  <b>Tamaño</b><span class="seg" id="size"><button data-v="1">1</button><button data-v="1.5" class="on">1,5</button><button data-v="3">3</button></span>
+  <button class="go" id="bench">▶ Comparar automáticamente</button>
+</div>
+<div class="stage" id="stage">
+  <canvas id="gpuCanvas"></canvas>
+  <div class="hud" id="hud">—</div>
+</div>
+<div class="info" id="info"></div>
+<div id="results"></div>
+<div class="verdict" id="verdict"></div>
+
+<script src="particles.js?v=11"></script>
+<script>
+(function () {
+  'use strict';
+  const $ = s => document.querySelector(s);
+  const PP = window.PudrusParticles;
+  const COUNTS = [262144, 1048576, 2097152, 4194304, 8388608];
+  const GL_MAX = 1048576;   // the WebGL engine keeps particles in a square texture: 1024 × 1024 at most
+  const fmtN = n => (n >= 1048576 ? (n / 1048576) + (n === 1048576 ? ' millón' : ' millones') : Math.round(n / 1000) + ' mil');
+  const state = { eng: 'gl', count: 262144, size: 1.5 };
+  const stage = $('#stage'), gpuCanvas = $('#gpuCanvas'), hud = $('#hud');
+
+  /* ── the same system for both: born all over the screen, turbulence, drag ── */
+  const PARAMS = { speed: 0.05, chaos: 1, life: 6, lifeVar: 0.5, turbStr: 0.8, turbScale: 1.5, turbSpeed: 0.3, drag: 1, opacity: 0.55 };
+  function glSystem(count, size) {
+    const n = (id, type, v, p) => ({ id, type, x: 0, y: 0, v: v || {}, p: p || {} });
+    return PP.sane({ v: 2, name: 'prueba', nodes: [
+      n(1, 'emit', { speed: PARAMS.speed, chaos: PARAMS.chaos, life: PARAMS.life, lifeVar: PARAMS.lifeVar, depth: 0 }, { shape: 'screen', dir: 'random', count: String(count) }),
+      n(2, 'turb', { str: PARAMS.turbStr, scale: PARAMS.turbScale, speed: PARAMS.turbSpeed, z3: 0 }),
+      n(3, 'drag', { amt: PARAMS.drag }),
+      n(4, 'look', { size, opacity: PARAMS.opacity, a: '#66ff33', b: '#00d4ff' }, { shape: 'soft', color: 'speed', life: 'fade' }),
+      n(5, 'out', { trail: 0, gain: 1, fog: 0 }, { blend: 'add' }),
+    ], links: [{ a: 1, ao: 'out', b: 2, bi: 'in' }, { a: 2, ao: 'out', b: 3, bi: 'in' }, { a: 3, ao: 'out', b: 4, bi: 'in' }, { a: 4, ao: 'out', b: 5, bi: 'in' }] });
+  }
+
+  /* ── WebGL2: the current engine (PARTRUS), timed with EXT_disjoint_timer_query_webgl2 when the browser has it ── */
+  const GL = { sim: null, key: '', tq: null, queries: [], gpuMs: [] };
+  function glFrame(t, w, h) {
+    const key = state.count + '|' + state.size;
+    if (!GL.sim) GL.sim = PP.createSim();
+    if (GL.key !== key) { GL.sim.setSpec(glSystem(state.count, state.size)); GL.sim.reset(); GL.key = key; }
+    const gl = PP.canvas.getContext('webgl2');
+    if (GL.tq === null) GL.tq = gl.getExtension('EXT_disjoint_timer_query_webgl2') || false;
+    let q = null;
+    if (GL.tq && GL.queries.length < 4) { q = gl.createQuery(); gl.beginQuery(GL.tq.TIME_ELAPSED_EXT, q); }
+    const cv = GL.sim.frame(t, [0, 0, 0, 0], 0, w, h);
+    if (q) { gl.endQuery(GL.tq.TIME_ELAPSED_EXT); GL.queries.push(q); }
+    // finished queries (a few frames later)
+    while (GL.queries.length && gl.getQueryParameter(GL.queries[0], gl.QUERY_RESULT_AVAILABLE)) {
+      const q0 = GL.queries.shift();
+      if (!gl.getParameter(GL.tq.GPU_DISJOINT_EXT)) GL.gpuMs.push(gl.getQueryParameter(q0, gl.QUERY_RESULT) / 1e6);
+      gl.deleteQuery(q0);
+    }
+    return cv;
+  }
+
+  /* ── WebGPU: the new engine. One compute pass moves every particle (a storage buffer), one render pass draws
+     each as a small soft quad (instanced). Timed with timestamp queries. ── */
+  const WGSL = `
+struct P { pos: vec4f, vel: vec4f };          // pos.w = age, vel.w = life
+struct U { dt: f32, time: f32, aspect: f32, count: u32, size: f32, frame: u32, h: f32, pad: f32 };
+@group(0) @binding(0) var<storage, read_write> ps: array<P>;
+@group(0) @binding(1) var<uniform> u: U;
+fn pcg(v0: u32) -> u32 { var v = v0 * 747796405u + 2891336453u; let w = ((v >> ((v >> 28u) + 4u)) ^ v) * 277803737u; return (w >> 22u) ^ w; }
+fn rnd(a: u32, b: u32, c: u32) -> f32 { return f32(pcg(a ^ pcg(b ^ pcg(c)))) / 4294967295.0; }
+fn h3(c: vec3i) -> f32 {
+  var n = (u32(c.x) * 0x8da6b343u) ^ (u32(c.y) * 0xd8163841u) ^ (u32(c.z) * 0xcb1ab31fu);
+  n = (n ^ (n >> 16u)) * 0x7feb352du; n = (n ^ (n >> 15u)) * 0x846ca68bu; n = n ^ (n >> 16u);
+  return f32(n) / 4294967295.0;
+}
+fn vnoised(x: vec3f) -> vec4f {   // value noise and its gradient (the same as PARTRUS)
+  let i = vec3i(floor(x)); let f = fract(x);
+  let uu = f * f * (3.0 - 2.0 * f); let du = 6.0 * f * (1.0 - f);
+  let a = h3(i); let b = h3(i + vec3i(1, 0, 0)); let c = h3(i + vec3i(0, 1, 0)); let d = h3(i + vec3i(1, 1, 0));
+  let e = h3(i + vec3i(0, 0, 1)); let g = h3(i + vec3i(1, 0, 1)); let hh = h3(i + vec3i(0, 1, 1)); let k = h3(i + vec3i(1, 1, 1));
+  let k1 = b - a; let k2 = c - a; let k3 = e - a; let k4 = a - b - c + d; let k5 = a - c - e + hh; let k6 = a - b - e + g; let k7 = -a + b + c - d + e - g - hh + k;
+  let v = a + k1 * uu.x + k2 * uu.y + k3 * uu.z + k4 * uu.x * uu.y + k5 * uu.y * uu.z + k6 * uu.z * uu.x + k7 * uu.x * uu.y * uu.z;
+  let dv = du * vec3f(k1 + k4 * uu.y + k6 * uu.z + k7 * uu.y * uu.z, k2 + k5 * uu.z + k4 * uu.x + k7 * uu.z * uu.x, k3 + k6 * uu.x + k5 * uu.y + k7 * uu.x * uu.y);
+  return vec4f(v, dv);
+}
+@compute @workgroup_size(256) fn sim(@builtin(global_invocation_id) id: vec3u) {
+  let i = id.x; if (i >= u.count) { return; }
+  var p = ps[i]; var pos = p.pos.xyz; var vel = p.vel.xyz; var age = p.pos.w; var life = p.vel.w;
+  let dt = u.dt;
+  age += dt;
+  if (age >= life || life <= 0.0) {
+    let r = vec4f(rnd(i, u.frame, 1u), rnd(i, u.frame, 2u), rnd(i, u.frame, 3u), rnd(i, u.frame, 4u));
+    pos = vec3f((r.x * 2.0 - 1.0) * u.aspect * 1.02, (r.y * 2.0 - 1.0) * 1.02, 0.0);
+    let ang = r.z * 6.2831853;
+    vel = vec3f(cos(ang), sin(ang), 0.0) * ${PARAMS.speed} * (1.0 + (r.w - 0.5) * 1.5);
+    life = ${PARAMS.life} * (1.0 + (rnd(i, u.frame, 5u) * 2.0 - 1.0) * ${PARAMS.lifeVar} * 0.8);
+    age = select(0.0, -rnd(i, 9u, 6u) * life, p.vel.w <= 0.0);   // the very first time: born at different moments
+  } else if (age >= 0.0) {
+    let q = pos * ${PARAMS.turbScale} + vec3f(0.0, 0.0, u.time * ${PARAMS.turbSpeed});
+    let n1 = vnoised(q); let n2 = vnoised(q * 2.03 + vec3f(19.1, 7.3, 3.7));
+    let g = n1.yzw + n2.yzw * 1.015;
+    vel += vec3f(g.y, -g.x, g.z * 0.25) * ${PARAMS.turbStr} * dt;
+    vel *= exp(-${PARAMS.drag} * dt);
+    pos += vel * dt;
+  }
+  ps[i] = P(vec4f(pos, age), vec4f(vel, life));
+}
+struct VO { @builtin(position) pos: vec4f, @location(0) q: vec2f, @location(1) col: vec4f };
+@group(0) @binding(0) var<storage, read> rs: array<P>;
+@vertex fn vs(@builtin(vertex_index) vi: u32, @builtin(instance_index) ii: u32) -> VO {
+  var o: VO;
+  let p = rs[ii]; let age = p.pos.w; let life = p.vel.w;
+  var corners = array<vec2f, 6>(vec2f(-1.0, -1.0), vec2f(1.0, -1.0), vec2f(-1.0, 1.0), vec2f(-1.0, 1.0), vec2f(1.0, -1.0), vec2f(1.0, 1.0));
+  let c = corners[vi];
+  if (age < 0.0 || age >= life) { o.pos = vec4f(2.0, 2.0, 2.0, 1.0); o.q = c; o.col = vec4f(0.0); return o; }
+  let t = age / life;
+  var px = u.size * u.h / 720.0; var al = ${PARAMS.opacity};
+  if (px < 1.0) { al *= px; px = 1.0; }
+  al *= smoothstep(0.0, 0.08, t) * (1.0 - smoothstep(0.65, 1.0, t));
+  let hs = px / u.h;   // half the size, in clip units (vertical)
+  o.pos = vec4f(p.pos.x / u.aspect + c.x * hs / u.aspect, p.pos.y + c.y * hs, 0.0, 1.0);
+  o.q = c;
+  let sp = clamp(length(p.vel.xyz) / 1.2, 0.0, 1.0);
+  o.col = vec4f(mix(vec3f(0.4, 1.0, 0.2), vec3f(0.0, 0.83, 1.0), sp), al);
+  return o;
+}
+@fragment fn fs(i: VO) -> @location(0) vec4f {
+  let r = length(i.q);
+  let m = exp(-r * r * 4.0) * (1.0 - smoothstep(0.85, 1.0, r));
+  let a = i.col.a * m;
+  if (a < 0.002) { discard; }
+  return vec4f(i.col.rgb * a, a);
+}`;
+  const G = { ok: false, err: '', device: null, ctx: null, count: 0, buf: null, ubuf: null, gpuMs: [], pending: false };
+  async function gpuInit() {
+    if (!navigator.gpu) { G.err = 'Este navegador no tiene WebGPU (probá con Chrome o Edge actualizados, o el programa NODRUS).'; return; }
+    try {
+      const adapter = await navigator.gpu.requestAdapter({ powerPreference: 'high-performance' });
+      if (!adapter) { G.err = 'WebGPU no encontró una placa de video que pueda usar.'; return; }
+      const ts = adapter.features.has('timestamp-query');
+      const need = COUNTS[COUNTS.length - 1] * 32;
+      const device = await adapter.requestDevice({
+        requiredFeatures: ts ? ['timestamp-query'] : [],
+        requiredLimits: { maxStorageBufferBindingSize: Math.min(adapter.limits.maxStorageBufferBindingSize, need), maxBufferSize: Math.min(adapter.limits.maxBufferSize, need) },
+      });
+      G.maxCount = Math.floor(Math.min(device.limits.maxStorageBufferBindingSize, device.limits.maxBufferSize) / 32);
+      const ctx = gpuCanvas.getContext('webgpu'), format = navigator.gpu.getPreferredCanvasFormat();
+      ctx.configure({ device, format, alphaMode: 'premultiplied' });
+      const mod = device.createShaderModule({ code: WGSL });
+      const info = await mod.getCompilationInfo();
+      const errs = info.messages.filter(m => m.type === 'error');
+      if (errs.length) { G.err = 'Error en el shader: ' + errs.map(m => `línea ${m.lineNum}: ${m.message}`).join(' · '); return; }
+      const simLayout = device.createBindGroupLayout({ entries: [{ binding: 0, visibility: GPUShaderStage.COMPUTE, buffer: { type: 'storage' } }, { binding: 1, visibility: GPUShaderStage.COMPUTE, buffer: { type: 'uniform' } }] });
+      const drawLayout = device.createBindGroupLayout({ entries: [{ binding: 0, visibility: GPUShaderStage.VERTEX, buffer: { type: 'read-only-storage' } }, { binding: 1, visibility: GPUShaderStage.VERTEX, buffer: { type: 'uniform' } }] });
+      G.simPipe = device.createComputePipeline({ layout: device.createPipelineLayout({ bindGroupLayouts: [simLayout] }), compute: { module: mod, entryPoint: 'sim' } });
+      G.drawPipe = device.createRenderPipeline({
+        layout: device.createPipelineLayout({ bindGroupLayouts: [drawLayout] }),
+        vertex: { module: mod, entryPoint: 'vs' },
+        fragment: { module: mod, entryPoint: 'fs', targets: [{ format, blend: { color: { srcFactor: 'one', dstFactor: 'one', operation: 'add' }, alpha: { srcFactor: 'one', dstFactor: 'one', operation: 'add' } } }] },
+        primitive: { topology: 'triangle-list' },
+      });
+      G.ubuf = device.createBuffer({ size: 32, usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST });
+      if (ts) {
+        G.qset = device.createQuerySet({ type: 'timestamp', count: 4 });
+        G.qres = device.createBuffer({ size: 32, usage: GPUBufferUsage.QUERY_RESOLVE | GPUBufferUsage.COPY_SRC });
+        G.qread = device.createBuffer({ size: 32, usage: GPUBufferUsage.COPY_DST | GPUBufferUsage.MAP_READ });
+      }
+      Object.assign(G, { ok: true, device, ctx, simLayout, drawLayout, ts, adapterInfo: adapter.info || {} });
+      device.lost.then(i => { G.ok = false; G.err = 'Se perdió la placa de video: ' + (i.message || i.reason); });
+    } catch (e) { G.err = 'No se pudo iniciar WebGPU: ' + (e && e.message || e); }
+  }
+  function gpuAlloc(count) {
+    if (G.buf) G.buf.destroy();
+    G.buf = G.device.createBuffer({ size: count * 32, usage: GPUBufferUsage.STORAGE });   // zeros: life 0 → born on the first frame
+    G.simBind = G.device.createBindGroup({ layout: G.simLayout, entries: [{ binding: 0, resource: { buffer: G.buf } }, { binding: 1, resource: { buffer: G.ubuf } }] });
+    G.drawBind = G.device.createBindGroup({ layout: G.drawLayout, entries: [{ binding: 0, resource: { buffer: G.buf } }, { binding: 1, resource: { buffer: G.ubuf } }] });
+    G.count = count; G.frame = 0;
+  }
+  function gpuFrame(t, dt, w, h) {
+    if (!G.ok) return;
+    if (G.count !== state.count) gpuAlloc(state.count);
+    if (gpuCanvas.width !== w || gpuCanvas.height !== h) { gpuCanvas.width = w; gpuCanvas.height = h; }
+    const u = new ArrayBuffer(32), f = new Float32Array(u), ui = new Uint32Array(u);
+    f[0] = Math.min(0.05, Math.max(0, dt)); f[1] = t; f[2] = w / h; ui[3] = G.count; f[4] = state.size; ui[5] = ++G.frame; f[6] = h;
+    G.device.queue.writeBuffer(G.ubuf, 0, u);
+    const enc = G.device.createCommandEncoder();
+    const timing = G.ts && !G.pending;
+    const cp = enc.beginComputePass(timing ? { timestampWrites: { querySet: G.qset, beginningOfPassWriteIndex: 0, endOfPassWriteIndex: 1 } } : undefined);
+    cp.setPipeline(G.simPipe); cp.setBindGroup(0, G.simBind); cp.dispatchWorkgroups(Math.ceil(G.count / 256)); cp.end();
+    const rp = enc.beginRenderPass({ colorAttachments: [{ view: G.ctx.getCurrentTexture().createView(), loadOp: 'clear', storeOp: 'store', clearValue: { r: 0, g: 0, b: 0, a: 0 } }],
+      ...(timing ? { timestampWrites: { querySet: G.qset, beginningOfPassWriteIndex: 2, endOfPassWriteIndex: 3 } } : {}) });
+    rp.setPipeline(G.drawPipe); rp.setBindGroup(0, G.drawBind); rp.draw(6, G.count); rp.end();
+    if (timing) { enc.resolveQuerySet(G.qset, 0, 4, G.qres, 0); enc.copyBufferToBuffer(G.qres, 0, G.qread, 0, 32); }
+    G.device.queue.submit([enc.finish()]);
+    if (timing) {
+      G.pending = true;
+      G.qread.mapAsync(GPUMapMode.READ).then(() => {
+        const v = new BigUint64Array(G.qread.getMappedRange());
+        const ms = Number(v[3] - v[0]) / 1e6; G.simMs = Number(v[1] - v[0]) / 1e6; G.drawMs = Number(v[3] - v[2]) / 1e6;
+        G.qread.unmap(); G.pending = false;
+        if (ms > 0 && ms < 1000) G.gpuMs.push(ms);
+      }).catch(() => { G.pending = false; });
+    }
+  }
+
+  /* ── the loop, the numbers, the switches ── */
+  let last = performance.now(), t = 0, fpsN = 0, fpsT = performance.now(), fps = 0, frameMs = [];
+  function sizeNow() { const r = stage.getBoundingClientRect(), dpr = Math.min(2, devicePixelRatio || 1); return [Math.round(r.width * dpr), Math.round(r.height * dpr)]; }
+  function loop(now) {
+    requestAnimationFrame(loop);
+    const dt = Math.min(0.05, (now - last) / 1000); frameMs.push(now - last); if (frameMs.length > 120) frameMs.shift();
+    last = now; t += dt;
+    const [w, h] = sizeNow();
+    if (state.eng === 'gl') {
+      const cv = glFrame(t, w, h);
+      if (cv && cv.parentNode !== stage) { cv.style.cssText = 'position:absolute;inset:0;width:100%;height:100%'; stage.insertBefore(cv, hud); }
+    } else gpuFrame(t, dt, w, h);
+    PP.canvas.style.visibility = state.eng === 'gl' ? 'visible' : 'hidden';
+    gpuCanvas.style.visibility = state.eng === 'gpu' ? 'visible' : 'hidden';
+    fpsN++;
+    if (now - fpsT > 500) { fps = fpsN * 1000 / (now - fpsT); fpsN = 0; fpsT = now; paintHud(); }
+  }
+  const avg = a => (a.length ? a.reduce((x, y) => x + y, 0) / a.length : NaN);
+  const recentGpu = () => { const a = state.eng === 'gl' ? GL.gpuMs : G.gpuMs; return avg(a.slice(-30)); };
+  function paintHud() {
+    const g = recentGpu();
+    hud.innerHTML = `<span class="eng">${state.eng === 'gl' ? 'WebGL2 (actual)' : 'WebGPU (nuevo)'}</span> · <b>${fmtN(state.count)}</b> partículas<br>` +
+      `<b>${fps.toFixed(0)}</b> fps · cuadro <b>${avg(frameMs).toFixed(1)}</b> ms · placa <b>${Number.isFinite(g) ? g.toFixed(2) + ' ms' : 'sin medir'}</b>` +
+      (state.eng === 'gpu' && G.simMs ? `<br>simulación ${G.simMs.toFixed(2)} ms · dibujo ${G.drawMs.toFixed(2)} ms` : '');
+  }
+  function paintControls() {
+    const cnt = $('#cnt'); cnt.textContent = '';
+    COUNTS.forEach(n => {
+      const b = document.createElement('button'); b.textContent = fmtN(n); b.dataset.v = n;
+      const glNo = state.eng === 'gl' && n > GL_MAX, gpuNo = state.eng === 'gpu' && G.maxCount && n > G.maxCount;
+      b.disabled = glNo || gpuNo || (state.eng === 'gpu' && !G.ok);
+      if (glNo) b.title = 'El motor actual llega hasta 1 millón (las partículas viven en una textura de 1024 × 1024)';
+      b.classList.toggle('on', n === state.count);
+      b.addEventListener('click', () => { state.count = n; paintControls(); resetStats(); });
+      cnt.append(b);
+    });
+    document.querySelectorAll('#eng button').forEach(b => { b.classList.toggle('on', b.dataset.v === state.eng); if (b.dataset.v === 'gpu') b.disabled = !G.ok; });
+    document.querySelectorAll('#size button').forEach(b => b.classList.toggle('on', +b.dataset.v === state.size));
+  }
+  function resetStats() { GL.gpuMs = []; G.gpuMs = []; frameMs = []; }
+  document.querySelectorAll('#eng button').forEach(b => b.addEventListener('click', () => {
+    state.eng = b.dataset.v; if (state.eng === 'gl' && state.count > GL_MAX) state.count = GL_MAX; paintControls(); resetStats();
+  }));
+  document.querySelectorAll('#size button').forEach(b => b.addEventListener('click', () => { state.size = +b.dataset.v; paintControls(); resetStats(); }));
+
+  /* the automatic comparison: every count on both engines, a few seconds each */
+  const sleep = ms => new Promise(r => setTimeout(r, ms));
+  async function bench() {
+    const btn = $('#bench'); btn.disabled = true;
+    const rows = [];
+    for (const n of COUNTS) {
+      const row = { n };
+      for (const eng of ['gl', 'gpu']) {
+        if ((eng === 'gl' && n > GL_MAX) || (eng === 'gpu' && (!G.ok || (G.maxCount && n > G.maxCount)))) { row[eng] = null; continue; }
+        state.eng = eng; state.count = n; paintControls(); btn.textContent = `Midiendo ${eng === 'gl' ? 'WebGL2' : 'WebGPU'} · ${fmtN(n)}…`;
+        await sleep(1200); resetStats(); const f0 = performance.now(), n0 = fpsTotal;
+        await sleep(2800);
+        const secs = (performance.now() - f0) / 1000;
+        row[eng] = { fps: (fpsTotal - n0) / secs, gpu: avg((eng === 'gl' ? GL.gpuMs : G.gpuMs).slice(-60)) };
+      }
+      rows.push(row);
+    }
+    showResults(rows);
+    btn.disabled = false; btn.textContent = '▶ Comparar automáticamente';
+    window.__bench = rows;
+  }
+  let fpsTotal = 0; (function count() { fpsTotal++; requestAnimationFrame(count); })();
+  function showResults(rows) {
+    const cell = (x, other, k) => {
+      if (!x) return '<td class="na">—</td>';
+      const v = x[k], o = other && other[k];
+      const better = o !== undefined && Number.isFinite(v) && Number.isFinite(o) && (k === 'gpu' ? v < o * 0.9 : v > o * 1.1);
+      return `<td class="${better ? 'win' : ''}">${Number.isFinite(v) ? (k === 'gpu' ? v.toFixed(2) + ' ms' : v.toFixed(0)) : 'sin medir'}</td>`;
+    };
+    let h = '<table><tr><th>Partículas</th><th>WebGL2 · fps</th><th>WebGL2 · placa</th><th>WebGPU · fps</th><th>WebGPU · placa</th></tr>';
+    rows.forEach(r => { h += `<tr><td>${fmtN(r.n)}</td>${cell(r.gl, r.gpu, 'fps')}${cell(r.gl, r.gpu, 'gpu')}${cell(r.gpu, r.gl, 'fps')}${cell(r.gpu, r.gl, 'gpu')}</tr>`; });
+    $('#results').innerHTML = h + '</table>';
+    // in words
+    const both = rows.filter(r => r.gl && r.gpu && Number.isFinite(r.gl.gpu) && Number.isFinite(r.gpu.gpu));
+    const big = rows.filter(r => r.gpu && !r.gl);
+    let v = '';
+    if (both.length) {
+      const ratio = avg(both.map(r => r.gl.gpu / r.gpu.gpu));
+      v += ratio > 1.15 ? `Con la misma cantidad, WebGPU necesitó en promedio <b>${ratio.toFixed(1)} veces menos tiempo de placa</b> que el motor actual. ` : ratio < 0.87 ? `Con la misma cantidad, el motor actual fue más rápido (${(1 / ratio).toFixed(1)} veces). ` : 'Con la misma cantidad, los dos motores tardaron parecido. ';
+    } else if (rows.some(r => r.gl)) v += 'Este navegador no deja medir el tiempo de placa de WebGL2, así que la comparación pareja es por fps. ';
+    if (big.length) { const top = big[big.length - 1]; v += `WebGPU además movió <b>${fmtN(top.n)}</b> de partículas a ${top.gpu.fps.toFixed(0)} fps, donde el motor actual no llega (su tope es 1 millón).`; }
+    $('#verdict').innerHTML = v;
+  }
+  $('#bench').addEventListener('click', bench);
+
+  (async () => {
+    await gpuInit();
+    const gl = PP.ok ? PP.canvas.getContext('webgl2') : null, dbg = gl && gl.getExtension('WEBGL_debug_renderer_info');
+    const glName = gl ? (dbg ? gl.getParameter(dbg.UNMASKED_RENDERER_WEBGL) : 'WebGL2') : 'sin WebGL2';
+    const ai = G.adapterInfo || {};
+    $('#info').innerHTML = `<div>WebGL2: <b>${glName.replace(/</g, '')}</b>${gl && !gl.getExtension('EXT_disjoint_timer_query_webgl2') ? ' · este navegador no deja medir su tiempo de placa' : ''}</div>` +
+      `<div>WebGPU: <b>${G.ok ? `${ai.vendor || '?'} ${ai.architecture || ''}`.trim() + (G.ts ? ' · mide el tiempo de placa' : '') : G.err}</b></div>`;
+    if (!G.ok) { const m = document.createElement('div'); m.className = 'msg'; m.style.pointerEvents = 'none'; m.style.alignItems = 'flex-end'; m.textContent = G.err; stage.append(m); }
+    paintControls();
+    requestAnimationFrame(loop);
+    window.__gpuBench = { G, GL, state, bench };
+  })();
+})();
+</script>
+</body>
+</html>
