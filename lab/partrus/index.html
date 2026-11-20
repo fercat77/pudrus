@@ -60,6 +60,7 @@
 </main>
 <footer class="pa-status" id="status">
   <span id="stFps">— fps</span>
+  <span id="stEngine" class="pa-eng" role="button" tabindex="0">WebGL2</span>
   <span id="stAudio">sonido apagado</span>
   <span class="pa-meter" id="meter"><i></i><i></i><i></i><i></i></span>
   <span id="stLib"></span>
@@ -78,6 +79,7 @@
     <li><b>Emisor geométrico</b>: polígono, estrella, espiral, rosa, Lissajous, grilla, nudo 3D, esfera de puntos, cubo, fractales (Sierpinski 2D y 3D, alfombra, helecho, dragón, árbol), atractores de Clifford y De Jong, o tu propio <b>código GLSL</b>. «Forma A» y «Forma B» cambian según la figura (lados, pétalos, vueltas…).</li>
     <li><b>Emisor de forma</b>: las partículas nacen sobre un <b>texto</b>, una <b>imagen</b> (un PNG con transparencia, como tu logo, o una foto: lo claro o lo oscuro) o lo que ve la <b>cámara</b> (lo que se mueve, lo claro o lo oscuro). Agregarlo reemplaza al Emisor de la cadena.</li>
     <li><b>Fuerzas</b>: gravedad, turbulencia (humo), atractor, remolino, ola, explosión con el ritmo, frenado y bordes. <b>Formar</b> hace que cada partícula vuelva a donde nació: con una explosión, el logo estalla y se vuelve a armar. <b>Cámara</b>: lo que se mueve frente a la cámara las empuja. <b>Atractor extraño</b> (Lorenz, Aizawa, Thomas, Halvorsen): fluyen por un caos en 3D. <b>Código GLSL</b>: tu propia fuerza, con 4 perillas (✎ abre el editor, Ctrl+Enter aplica). <b>Escudo</b>: una esfera invisible que aparta las partículas; sigue al mouse (o al dedo) sobre la vista. «Peso variable» en los emisores hace que cada partícula pese distinto: las pesadas caen antes, las livianas flotan y el aire las lleva más. Se aplican en el orden de la cadena.</li>
+    <li><b>Fluido</b>: las partículas viajan dentro de un fluido simulado (como humo o tinta) que se arremolina solo y se revuelve con el mouse, el ritmo o los graves. «Arrastre» es cuánto las lleva, «Remolinos» cuánto se mueve solo, «Revolver» la fuerza de los empujones y «Calma» cuánto tarda en aquietarse.</li>
     <li><b>Simetría</b>: copias que giran alrededor del centro, con espejo: mandalas y caleidoscopios.</li>
     <li><b>Estudio</b>: un estudio de fotos alrededor de las partículas: fondo curvo sin esquinas, una luz que podés mover (Luz X / Y / Z, color e intensidad), <b>sombras suaves</b> en el piso y la pared (más difusas cuanto más lejos cae la sombra), <b>bruma</b> alrededor de la luz y un <b>haz</b> que baja y se desvanece. Las partículas cerca de la luz se iluminan. Con Estudio la imagen deja de ser transparente (en NODRUS tapa lo de abajo, según la mezcla). Inclinar la cámara hacia abajo deja ver el piso.</li>
     <li><b>Aspecto</b>: tamaño, forma, color y cómo cambian con la edad. «Colores de la imagen» pinta cada partícula con el color de la imagen o de la cámara donde nació.</li>
@@ -85,6 +87,8 @@
     <li><b>En 3D</b>: «Profundidad 3D» en los emisores hace que las partículas nazcan en un volumen y salgan también hacia adelante y atrás; «Movimiento en Z» de la turbulencia las arremolina en profundidad; la Ola tiene «hacia adelante y atrás». Los sistemas que guardaste antes quedan como estaban (planos) hasta que subas esas perillas.</li>
     <li><b>Valores</b>: LFO, Audio y Pulso. Conectalos a cualquier perilla (cable gris) para que se mueva sola o con la música.</li>
   </ul>
+  <h3>Motor</h3>
+  <p>PARTRUS usa <b>WebGPU</b> (el motor nuevo, más rápido y sin el tope del millón de partículas) cuando el navegador lo tiene y el sistema usa sólo lo que ya corre ahí; si no, el motor de siempre (<b>WebGL2</b>). La barra de abajo dice cuál está dibujando; un clic ahí elige «siempre WebGL2» (y otro vuelve a automático). Todavía van en WebGL2: el Emisor de forma, la fuerza Cámara, el Código GLSL propio, la figura «código GLSL», los colores de la imagen y el Estudio.</p>
   <h3>Manejo</h3>
   <ul>
     <li>Las fuerzas y el aspecto nuevos se meten solos en la cadena, antes de la Salida. Para sacar uno, borralo: la cadena se vuelve a unir.</li>
@@ -99,7 +103,8 @@
   <div class="row"><button class="pa-btn" id="themeBtn">◐ Tema claro</button><button class="pa-btn" id="helpClose">Cerrar</button></div>
 </div></div>
 
-<script src="particles.js?v=11"></script>
-<script src="app.js?v=10"></script>
+<script src="particles.js?v=12"></script>
+<script src="gpu.js?v=1"></script>
+<script src="app.js?v=11"></script>
 </body>
 </html>

@@ -39,14 +39,23 @@
   /* ── the particles ── */
   const sim = PP.createSim();
   const frame = $('#frame');
-  if (PP.ok) frame.append(PP.canvas);
+  // the picture: the canvas of whichever engine draws this system (WebGPU or WebGL2), swapped in when it changes
+  let shown = PP.ok ? PP.canvas : null, cssW = 0, cssH = 0;
+  if (shown) frame.append(shown);
   else { const m = el('div', 'pa-msg', '⚠ ' + PP.error + '. Probá con Chrome o Edge actualizados.'); $('#stage').append(m); }
+  function showCanvas(cv) {
+    if (!cv || cv === shown) return;
+    if (shown && shown.parentNode === frame) shown.remove();
+    shown = cv; frame.append(cv);
+    if (cssW) { cv.style.width = cssW + 'px'; cv.style.height = cssH + 'px'; }
+  }
   function applySim() {
     sim.setSpec(JSON.stringify(sys));   // a fresh string: the engine skips a spec it has already seen (same object)
     const e = $('#err');
     e.hidden = !sim.err; e.textContent = sim.err ? '⚠ ' + sim.err : '';
     const n = sim.count;
-    $('#count').textContent = n ? `${{ 16384: '16 mil', 65536: '65 mil', 262144: '262 mil', 1048576: '1 millón' }[n] || n} partículas` : '';
+    $('#count').textContent = n ? `${{ 16384: '16 mil', 65536: '65 mil', 262144: '262 mil', 1048576: '1 millón', 2097152: '2 millones', 4194304: '4 millones', 8388608: '8 millones' }[n] || n} partículas` : '';
+    paintEngine();
   }
 
   /* ── saving, history, the live link to NODRUS ── */
@@ -703,7 +712,8 @@
     if (h > r.height) { h = r.height; w = h * a; }
     w = Math.max(2, Math.floor(w)); h = Math.max(2, Math.floor(h));
     frame.style.width = w + 'px'; frame.style.height = h + 'px';
-    if (PP.ok) { PP.canvas.style.width = w + 'px'; PP.canvas.style.height = h + 'px'; }
+    cssW = w; cssH = h;
+    if (shown) { shown.style.width = w + 'px'; shown.style.height = h + 'px'; }
     const dpr = Math.min(2, devicePixelRatio || 1), ph = Math.min(1080, Math.round(h * dpr));
     return [Math.max(2, Math.round(ph * a)), Math.max(2, ph)];
   }
@@ -785,7 +795,7 @@
   function composite(c, g, transparent) {   // the particles over black (a video has no transparency)
     g.globalCompositeOperation = 'copy';
     if (transparent) g.clearRect(0, 0, c.width, c.height); else { g.fillStyle = '#000'; g.fillRect(0, 0, c.width, c.height); g.globalCompositeOperation = 'source-over'; }
-    g.drawImage(PP.canvas, 0, 0, c.width, c.height);
+    g.drawImage(shown, 0, 0, c.width, c.height);
     g.globalCompositeOperation = 'source-over';
   }
   function takePhoto(transparent) {
@@ -793,6 +803,7 @@
     const [w, h] = expSize();
     const cv = sim.frame(simT, audio.bands, beatNow(), w, h);   // one frame at the full export size (time does not move)
     if (!cv) return;
+    showCanvas(cv);
     const c = document.createElement('canvas'); c.width = w; c.height = h;
     composite(c, c.getContext('2d'), transparent);
     c.toBlob(b => { if (b) { saveBlob(b, fileTag() + (transparent ? '_transparente' : '') + '.png'); toast(`📷 Foto guardada · ${w}×${h}${transparent ? ' · fondo transparente' : ''}`); } }, 'image/png');
@@ -891,6 +902,7 @@
     const rsz = rec ? rec.size : size;   // while recording the particles are drawn at the video's size
     if (PP.ok && !sim.err) {
       const cv = sim.frame(simT, bands, beat, rsz[0], rsz[1], ptr ? { ptr } : undefined);
+      showCanvas(cv);
       if (rec && cv) composite(rec.c, rec.g, false);
     }
     if (rec) { const s = Math.floor((now - rec.t0) / 1000); $('#count').textContent = `● ${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}${rec.stopAt ? ' / ' + ex.dur + ' s' : ''}`; }
@@ -898,7 +910,7 @@
     const bi = Math.floor(beat);
     if (bi !== lastBeatI) { lastBeatI = bi; const t = $('#btnTap'); t.classList.add('beat'); setTimeout(() => t.classList.remove('beat'), 90); }
     fpsN++;
-    if (now - fpsT > 1000) { $('#stFps').textContent = Math.round(fpsN * 1000 / (now - fpsT)) + ' fps · ' + size[0] + '×' + size[1]; fpsN = 0; fpsT = now; }
+    if (now - fpsT > 1000) { $('#stFps').textContent = Math.round(fpsN * 1000 / (now - fpsT)) + ' fps · ' + size[0] + '×' + size[1]; fpsN = 0; fpsT = now; paintEngine(); }
   }
   $('#btnRestart').addEventListener('click', () => sim.reset());
   $('#btnKick').addEventListener('click', () => sim.kick());
@@ -927,7 +939,7 @@
   let ptr = null;
   const shieldFollows = () => sys.nodes.some(n => n.type === 'shield' && PP.paramOf(n, 'follow') !== 'fixed');
   function ptrAt(e) {
-    const r = PP.canvas.getBoundingClientRect(); if (!r.width || !r.height) return null;
+    const r = (shown || PP.canvas).getBoundingClientRect(); if (!r.width || !r.height) return null;
     const u = (e.clientX - r.left) / r.width, v = (e.clientY - r.top) / r.height;
     if (u < 0 || u > 1 || v < 0 || v > 1) return null;
     const o = outNode(), d = o ? Math.max(0.3, PP.valueOf(o, 'dist')) : 1;
@@ -1005,5 +1017,16 @@
   if (!store.get('partrus_view_v1')) requestAnimationFrame(fitView);
   requestAnimationFrame(loop);
 
-  window.__partrus = { get ptr() { return ptr; }, setCam: v => setCam(v), get sys() { return sys; }, get sim() { return sim; }, addNode, removeNode, connect, saveToLibrary, setSystem, undo, redo, get libId() { return libId; }, get dirty() { return dirty; }, chainList, fitView, setAudio, tap, get bpm() { return bpm; } };
+  // which engine is drawing (click: automatic ⇄ WebGL2 only)
+  function paintEngine() {
+    const e = $('#stEngine'); if (!e) return;
+    const G = window.PudrusParticlesGPU, gpu = sim.engine === 'webgpu';
+    e.textContent = gpu ? '⚡ WebGPU' : PP.engineMode === 'gl' ? 'WebGL2 (elegido)' : 'WebGL2';
+    e.classList.toggle('ok', gpu);
+    e.title = gpu ? 'Este sistema corre en WebGPU (el motor nuevo). Clic: usar siempre WebGL2'
+      : PP.engineMode === 'gl' ? 'Elegiste WebGL2. Clic: volver a automático (WebGPU cuando se pueda)'
+      : !G || !G.ready ? 'Este navegador no tiene WebGPU: corre en WebGL2' : 'Este sistema usa algo que todavía va en WebGL2 (forma, cámara, código GLSL o Estudio). Clic: usar siempre WebGL2';
+  }
+  $('#stEngine') && $('#stEngine').addEventListener('click', () => { PP.setEngine(PP.engineMode === 'gl' ? 'auto' : 'gl'); applySim(); setTimeout(paintEngine, 300); toast(PP.engineMode === 'gl' ? 'Motor: siempre WebGL2' : 'Motor: automático (WebGPU cuando se puede)'); });
+  window.__partrus = { get ptr() { return ptr; }, get engine() { return sim.engine; }, setCam: v => setCam(v), get sys() { return sys; }, get sim() { return sim; }, addNode, removeNode, connect, saveToLibrary, setSystem, undo, redo, get libId() { return libId; }, get dirty() { return dirty; }, chainList, fitView, setAudio, tap, get bpm() { return bpm; } };
 })();

@@ -20,6 +20,8 @@ module.exports = async function run({ app, mainWin, base, port, startSpout, stop
     await wait(2500);
     out.gpu = { pref: require("electron").app && process.execPath, webgl: await js('(() => { const g = document.createElement("canvas").getContext("webgl2", { powerPreference: "high-performance" }); const x = g && g.getExtension("WEBGL_debug_renderer_info"); return x ? g.getParameter(x.UNMASKED_RENDERER_WEBGL) : ""; })()'),
       devices: await app.getGPUInfo('complete').then(i => (i.gpuDevice || []).map(d => `${d.vendorId.toString(16)}:${d.deviceId.toString(16)}${d.active ? ' (activa)' : ''}`)).catch(e => String(e)) };
+    out.webgpu = await js('(async () => { try { const a = navigator.gpu && await navigator.gpu.requestAdapter(); return a ? ((a.info && a.info.vendor) || "sí") : "no"; } catch (e) { return "error: " + e.message; } })()');
+    out.particlesEngine = await js('new Promise(r => setTimeout(() => r(window.PudrusParticlesGPU ? (window.PudrusParticlesGPU.ready ? "webgpu listo" : "webgpu: " + window.PudrusParticlesGPU.err) : "sin gpu.js"), 1500))');
     out.editor = await js('({ editor: !!window.__nodesEditor, desktop: !!window.nodrusDesktop, deskBtn: !document.getElementById("btnDesk").hidden, title: document.title })');
 
     // 1) Spout: start, count frames, receive them back with a Spout receiver

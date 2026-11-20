@@ -27,7 +27,8 @@
   };
 
   const DIRS = [['out', 'hacia afuera'], ['up', 'hacia arriba'], ['down', 'hacia abajo'], ['left', 'a la izquierda'], ['right', 'a la derecha'], ['random', 'al azar'], ['spin', 'girando'], ['front', 'hacia la cámara'], ['back', 'hacia el fondo'], ['still', 'quietas']];
-  const COUNTS = [['16384', '16 mil'], ['65536', '65 mil'], ['262144', '262 mil'], ['1048576', '1 millón']];
+  // more than a million: only the WebGPU engine (the WebGL2 one keeps them in a 1024 × 1024 texture, so it stops there)
+  const COUNTS = [['16384', '16 mil'], ['65536', '65 mil'], ['262144', '262 mil'], ['1048576', '1 millón'], ['2097152', '2 millones (WebGPU)'], ['4194304', '4 millones (WebGPU)'], ['8388608', '8 millones (WebGPU)']];
   const BURSTS = [['cont', 'continua'], ['beat', 'ráfaga cada tiempo'], ['2', 'ráfaga cada 2 tiempos'], ['bar', 'ráfaga cada compás'], ['bass', 'ráfaga con los graves']];
   const FONT_OPTS = [['sans', 'sans negrita'], ['display', 'display'], ['serif', 'serif'], ['mono', 'mono'], ['hand', 'manuscrita']];
   // what «Forma A» / «Forma B» mean for each figure (missing = that knob is hidden)
@@ -111,6 +112,9 @@ vec3 force(vec3 p, vec3 v, float t, float k1, float k2, float k3, float k4) {
     shield: { title: 'Escudo', cat: 'force', inputs: [PIN, F('x', 'X', 0, -2, 2), F('y', 'Y', 0, -1.5, 1.5), F('z', 'Z', 0, -3, 1), F('radius', 'Tamaño', 0.35, 0.05, 1.5), F('str', 'Fuerza', 3, 0, 10), F('soft', 'Suavidad', 0.5, 0, 1)], outputs: [POUT],
       params: [{ k: 'follow', label: 'Se mueve', v: 'pointer', options: [['pointer', 'con el mouse o el dedo (si no, X / Y)'], ['fixed', 'quieto en X / Y']] }],
       help: 'Una esfera invisible que aparta las partículas: movela con el mouse o el dedo sobre la vista (en NODRUS, con X / Y)' },
+    fluid: { title: 'Fluido', cat: 'force', inputs: [PIN, F('str', 'Arrastre', 0.6, 0, 1), F('speed', 'Velocidad', 1, 0, 3), F('swirl', 'Remolinos', 1, 0, 4), F('stir', 'Revolver', 1, 0, 4), F('fade', 'Calma', 0.4, 0, 4)], outputs: [POUT],
+      params: [{ k: 'with', label: 'Lo revuelve', v: 'all', options: [['all', 'el mouse, el ritmo y los graves'], ['beat', 'el mouse y el ritmo'], ['bass', 'el mouse y los graves'], ['pointer', 'sólo el mouse (o el dedo)']] }],
+      help: 'Las partículas viajan dentro de un fluido simulado (como humo o tinta) que se arremolina solo y se revuelve con el mouse, el ritmo o los graves. Completo con WebGPU; sin WebGPU, una versión aproximada' },
     home: { title: 'Formar', cat: 'force', inputs: [PIN, F('str', 'Fuerza', 8, 0, 40), F('damp', 'Amortiguar', 3.5, 0, 15)], outputs: [POUT],
       help: 'Cada partícula vuelve a donde nació: el texto o la imagen se vuelve a armar' },
     cam: { title: 'Cámara', cat: 'force', inputs: [PIN, F('str', 'Fuerza', 2, -8, 8)], outputs: [POUT],
@@ -443,6 +447,8 @@ vec3 hsv(float h, float s, float v) { vec3 k = clamp(abs(fract(h + vec3(0.0, 2.0
       float gy = textureLod(u_mot, cu - vec2(0.0, ce.y), 0.0).${ch} - textureLod(u_mot, cu + vec2(0.0, ce.y), 0.0).${ch};
       vel.xy -= vec2(gx, gy) * ${I.str} * 8.0 * dt; }`);
       } else if (n.type === 'drag') pre.push(`vel *= exp(-max(0.0, ${I.amt}) * dt / pw);`);
+      else if (n.type === 'fluid') pre.push(`{ vec3 q = vec3(pos.x * 0.8 + u_time * 0.07, pos.y * 0.8 - u_time * 0.05, u_time * 0.05); vec4 n1 = vnoised(q * 1.6), n2 = vnoised(q * 3.1 + vec3(7.0));
+      vec2 fv = (vec2(n1.z, -n1.y) + vec2(n2.z, -n2.y) * 0.5) * 0.35 * ${I.swirl}; vel.xy += (fv * ${I.speed} - vel.xy) * clamp(${I.str} * dt * 6.0 / pw, 0.0, 1.0); }`);
       else if (n.type === 'shield') pre.push(`{ vec3 sc = ${Q.follow === 'fixed' ? `vec3(${I.x}, ${I.y}, ${I.z})` : `(u_ptr.z > 0.5 ? vec3(u_ptr.xy, ${I.z}) : vec3(${I.x}, ${I.y}, ${I.z}))`};
       vec3 d = pos - sc; float r = length(d) + 1e-4, R = max(${I.radius}, 0.02), s0 = R * (1.0 - clamp(${I.soft}, 0.0, 1.0) * 0.85);
       vel += d / r * (1.0 - smoothstep(s0, R * 1.15, r)) * ${I.str} * 4.0 * dt / pw;
@@ -948,7 +954,7 @@ void main() {
   const NOMODS = {};
   const kicks = new Map();   // node key (or '*' for all) → count: «Explotar» from NODRUS or a SYNDRUS drop
   function kick(key) { kicks.set(key, (kicks.get(key) || 0) + 1); }
-  function createSim(opts) {
+  function createGLSim(opts) {
     const maxCount = opts && opts.maxCount;
     const P = getPool();
     const S = { spec: null, json: null, comp: null, key: '', progs: null, err: '', state: null, color: null, last: null, fno: 0,
@@ -984,7 +990,8 @@ void main() {
         let comp = null;
         try {
           comp = compile(sys);
-          if (maxCount && comp.count > maxCount) { comp.count = maxCount; comp.side = Math.round(Math.sqrt(maxCount)); }
+          const cap = Math.min(maxCount || 1048576, 1048576);
+          if (comp.count > cap) { comp.count = cap; comp.side = Math.round(Math.sqrt(cap)); }
           const progs = programsFor(comp, key);
           if (!S.state || S.state.side !== comp.side || (S.comp && S.comp.burst !== comp.burst)) { S.comp = comp; alloc(comp.side); }
           S.comp = comp; S.progs = progs; S.key = key; S.err = '';
@@ -1317,9 +1324,46 @@ void main() {
     function kickNow() { S.kreq = 1; }
     function free() { freeState(); freeColor(); freeShape(); P.sims.delete(S); if (P.shown === S) P.shown = null; S.comp = null; }
     if (P.ok) P.sims.add(S);
-    Object.assign(S, { setSpec, frame, reset, free, kick: kickNow });
+    Object.assign(S, { setSpec, frame, reset, free, kick: kickNow, engine: 'webgl2' });
     Object.defineProperty(S, 'count', { get: () => (S.comp ? S.comp.count : 0) });   // a live getter (Object.assign would copy its value once)
     return S;
+  }
+  /* the engine: «auto» = WebGPU (gpu.js) for every system it can run, WebGL2 for the rest; «gl» = always WebGL2 */
+  const ENGINE_KEY = 'partrus_engine';
+  let engineMode = (() => { try { return localStorage.getItem(ENGINE_KEY) === 'gl' ? 'gl' : 'auto'; } catch (e) { return 'auto'; } })(), engineVer = 0;
+  function setEngine(m) { engineMode = m === 'gl' ? 'gl' : 'auto'; engineVer++; try { localStorage.setItem(ENGINE_KEY, engineMode); } catch (e) { /* private mode */ } }
+  const hybrids = new Set();
+  function createSim(opts) {
+    const gl = createGLSim(opts);
+    const GPU = window.PudrusParticlesGPU;
+    if ((opts && opts.maxCount) || !GPU) return gl;   // small thumbnails stay on WebGL2
+    const H = { gl, gpu: null, active: gl, used: 0, owned: null, _key: null, lastSpec: undefined, ver: '', fail: new Set() };
+    Object.defineProperty(H, 'ownKey', { get: () => H._key, set: v => { H._key = v; gl.ownKey = v; if (H.gpu) H.gpu.ownKey = v; } });
+    H.setSpec = spec => {
+      const ver = GPU.version + ':' + engineMode + ':' + engineVer;
+      if (spec === H.lastSpec && ver === H.ver) return H.active.setSpec(spec);
+      H.lastSpec = spec; H.ver = ver;
+      const sys = sane(spec), key = sys ? structureKey(sys) : '';
+      if (sys && engineMode !== 'gl' && GPU.ready && !H.fail.has(key) && GPU.supports(sys)) {
+        if (!H.gpu) { H.gpu = GPU.createSim(); H.gpu.ownKey = H._key; }
+        const ok = H.gpu.setSpec(spec);
+        if (!H.gpu.err) { H.active = H.gpu; return ok; }
+        console.warn('PARTRUS · WebGPU no pudo con este sistema (sigue con WebGL2):', H.gpu.err); H.fail.add(key);
+      }
+      H.active = gl;
+      return gl.setSpec(spec);
+    };
+    H.frame = (...a) => {
+      H.used = performance.now();
+      if (H.active === H.gpu && H.gpu.err) { H.fail.add(H.gpu.key); console.warn('PARTRUS · WebGPU:', H.gpu.err); H.active = gl; H.lastSpec = undefined; if (H.gpu.json) gl.setSpec(H.gpu.json); }
+      return H.active.frame(...a);
+    };
+    H.reset = () => { gl.reset(); if (H.gpu) H.gpu.reset(); };
+    H.kick = () => H.active.kick();
+    H.free = () => { gl.free(); if (H.gpu) H.gpu.free(); hybrids.delete(H); };
+    ['err', 'count', 'uploaded', 'engine', 'values', 'cur', 'spec'].forEach(k => Object.defineProperty(H, k, { get: () => H.active[k] }));
+    hybrids.add(H);
+    return H;
   }
 
   /* ── NODRUS: one system per (renderer, node); systems nobody draws for a few seconds are freed ── */
@@ -1329,6 +1373,7 @@ void main() {
     if (now - lastSweep < 2000 || !pool || !pool.ok) return;
     lastSweep = now;
     pool.sims.forEach(s => { if (s.owned && now - s.used > 4000) { s.owned.delete(s.ownKey); s.free(); } });
+    hybrids.forEach(s => { if (s.owned && now - s.used > 4000) { s.owned.delete(s.ownKey); s.free(); } });
   }
   function source(owner, key, spec, time, audio, beat, w, h, mods) {
     const P = getPool();
@@ -1524,6 +1569,23 @@ void main() {
       ['look', { size: 2.2, opacity: 0.75, a: '#bfe6ff', b: '#ffffff' }, { shape: 'dot', color: 'speed', life: 'fade' }],
       ['studio', { lx: 0.6, ly: 1.6, lz: 0.2, power: 1.3, shadow: 0.6, soft: 0.6, haze: 0.4, beam: 0.6, bg: '#30333a' }],
       ['out', { trail: 0.35, gain: 1, pitch: 12, sway: 5, fog: 0.3, bloom: 0.4, grain: 0.2, lens: 0.3 }, { blend: 'add' }]]) },
+    // WebGPU: a simulated fluid, and many more particles (without WebGPU they run approximated / up to a million)
+    { name: 'Fluido', sys: build('Fluido', [
+      ['emit', { speed: 0, chaos: 0, life: 12, lifeVar: 0.5 }, { shape: 'screen', dir: 'still', count: '262144' }],
+      ['fluid', { str: 0.7, speed: 1, swirl: 1.2, stir: 1.5, fade: 0.3 }, { with: 'all' }],
+      ['look', { size: 2, opacity: 0.75, a: '#3a7bff', b: '#ff3fa4' }, { shape: 'soft', color: 'speed', life: 'fade' }],
+      ['out', { trail: 0.6, gain: 1, bloom: 0.5, grain: 0.1 }, { blend: 'add' }]]) },
+    { name: 'Tinta en el agua', sys: build('Tinta en el agua', [
+      ['emit', { size: 0.08, speed: 0.25, chaos: 0.5, life: 10, lifeVar: 0.4 }, { shape: 'ring', dir: 'out', count: '1048576' }],
+      ['fluid', { str: 0.9, speed: 1, swirl: 0.8, stir: 1, fade: 0.2 }, { with: 'all' }],
+      ['look', { size: 1.2, opacity: 0.22, a: '#00d4ff', b: '#ff3fa4' }, { shape: 'soft', color: 'age', life: 'fade' }],
+      ['out', { trail: 0.3, gain: 1, bloom: 0.45, grain: 0.12 }, { blend: 'add' }]]) },
+    { name: 'Polvo de estrellas (4 millones)', sys: build('Polvo de estrellas (4 millones)', [
+      ['emit', { depth: 1, speed: 0.04, chaos: 1, life: 10, lifeVar: 0.5 }, { shape: 'screen', dir: 'random', count: '4194304' }],
+      ['turb', { str: 0.5, scale: 1.2, speed: 0.15, z3: 0.5 }],
+      ['drag', { amt: 0.8 }],
+      ['look', { size: 1, opacity: 0.22 }, { shape: 'dot', color: 'angle', life: 'fade' }],
+      ['out', { trail: 0, gain: 1, sway: 6, fog: 0.3, bloom: 0.6, grain: 0.15, lens: 0.2 }, { blend: 'add' }]]) },
   ];
   const blank = () => build('Nuevo sistema', [
     ['emit', {}, { shape: 'point', dir: 'out', count: '65536' }],
@@ -1577,7 +1639,7 @@ void main() {
 
   window.PudrusParticles = {
     DEFS, CATS, PRESETS, blank, sane, isEmitter, labelOf, FONTS, get cameraState() { return pool && pool.cam ? pool.cam.st : 'off'; }, compile, structureKey, valueOf, paramOf, isChain,
-    createSim, source, resolve, kick, publishedInputs, library, saveLibrary, LIB_KEY,
+    createSim, source, resolve, kick, publishedInputs, library, saveLibrary, LIB_KEY, _kicks: kicks, setEngine, get engineMode() { return engineMode; },
     get ok() { return getPool().ok; }, get error() { return getPool().err; }, get canvas() { return getPool().canvas; },
     channel: 'pudrus-partrus',
   };
