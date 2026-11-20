@@ -1640,6 +1640,8 @@ void main() {
   window.PudrusParticles = {
     DEFS, CATS, PRESETS, blank, sane, isEmitter, labelOf, FONTS, get cameraState() { return pool && pool.cam ? pool.cam.st : 'off'; }, compile, structureKey, valueOf, paramOf, isChain,
     createSim, source, resolve, kick, publishedInputs, library, saveLibrary, LIB_KEY, _kicks: kicks, setEngine, get engineMode() { return engineMode; },
+    // for the WebGPU engine: the same points for texts, pictures and the camera (one camera per page)
+    _shape: { textShape, imageShape, camPoints, camData, CAM_W, CAM_H, MAXP, camTick() { if (getPool().ok) camTick(); }, get cam() { return pool && pool.cam ? pool.cam : null; } },
     get ok() { return getPool().ok; }, get error() { return getPool().err; }, get canvas() { return getPool().canvas; },
     channel: 'pudrus-partrus',
   };

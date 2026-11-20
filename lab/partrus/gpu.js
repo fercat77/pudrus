@@ -8,7 +8,7 @@
   'use strict';
   const PP = window.PudrusParticles; if (!PP) return;
   const { DEFS, sane, valueOf, paramOf, isEmitter } = PP;
-  const SUPPORTED = new Set(['emit', 'geo', 'gravity', 'turb', 'attract', 'vortex', 'wave', 'explode', 'strange', 'home', 'drag', 'bounds', 'shield', 'fluid', 'look', 'sym', 'out', 'lfo', 'audio', 'pulse']);
+  const SUPPORTED = new Set(['emit', 'geo', 'form', 'gravity', 'turb', 'attract', 'vortex', 'wave', 'explode', 'strange', 'home', 'drag', 'bounds', 'shield', 'fluid', 'cam', 'look', 'studio', 'sym', 'out', 'lfo', 'audio', 'pulse']);
   const MAX_SLOTS = 120;
   const fl = x => { const s = String(+x); return /[.e]/.test(s) ? s : s + '.0'; };
   const hexRgb = h => [1, 3, 5].map(i => parseInt(h.slice(i, i + 2), 16) / 255);
@@ -19,8 +19,7 @@
     if (!G.ready || !sys) return false;
     for (const n of sys.nodes) {
       if (!SUPPORTED.has(n.type)) return false;
-      if (n.type === 'geo' && paramOf(n, 'kind') === 'glsl') return false;
-      if (n.type === 'look' && paramOf(n, 'color') === 'image') return false;
+      if (n.type === 'geo' && paramOf(n, 'kind') === 'glsl') return false;   // written in GLSL by hand: only the WebGL2 engine
     }
     const em = sys.nodes.find(n => isEmitter(n.type));
     return !!em && +paramOf(em, 'count') <= G.maxCount;
@@ -56,10 +55,13 @@ fn hueShift(c: vec3f, h: f32) -> vec3f { let k = vec3f(0.57735); let a = h * TAU
 fn hsv(h: f32, s: f32, v: f32) -> vec3f { let k = clamp(abs(fract(h + vec3f(0.0, 2.0, 1.0) / 3.0) * 6.0 - 3.0) - 1.0, vec3f(0.0), vec3f(1.0)); return v * mix(vec3f(1.0), k, s); }
 fn rot2(a: f32) -> mat2x2f { return mat2x2f(cos(a), sin(a), -sin(a), cos(a)); }
 struct P { pos: vec4f, vel: vec4f, home: vec4f };
-struct U { g0: vec4f, g1: vec4f, g2: vec4f, g3: vec4f, cam: vec4f, audio: vec4f, ptr: vec4f, fl: vec4f, v: array<vec4f, ${MAX_SLOTS}> };
+struct U { g0: vec4f, g1: vec4f, g2: vec4f, g3: vec4f, cam: vec4f, audio: vec4f, ptr: vec4f, fl: vec4f, fs: vec4f, v: array<vec4f, ${MAX_SLOTS}> };
 @group(0) @binding(1) var<uniform> U_: U;
 `;
   // g0 = dt, time, beat, aspect · g1 = frame, burst, kick, msize · g2 = hue, mgain, rtime, scale · g3 = maxpt, life (init), count, -
+  // fl = fluid W, H, picture w, h · fs = a form emitter's points: how many, their aspect, jitter x, y
+  // bindings: 0 particles · 1 uniforms · 2 fluid · 3 form points · 4 camera motion · 5 sampler · 6 the form's picture
+  const HDR = 9;
   const GLOB = `
   let u_dt = U_.g0.x; let u_time = U_.g0.y; let u_beat = U_.g0.z; let u_aspect = U_.g0.w;
   let u_burst = U_.g1.y; let u_kick = U_.g1.z; let u_msize = U_.g1.w;
@@ -128,6 +130,15 @@ struct U { g0: vec4f, g1: vec4f, g2: vec4f, g3: vec4f, cam: vec4f, audio: vec4f,
       screen: 'pos = vec3f((r.x * 2.0 - 1.0) * A * 1.02, (r.y * 2.0 - 1.0) * 1.02, 0.0); o = vec3f(cos(r.z * TAU), sin(r.z * TAU), 0.0);',
       sphere: 'let zz = r.y * 2.0 - 1.0; let ang = r.x * TAU; let rr = sqrt(1.0 - zz * zz); o = vec3f(rr * cos(ang), rr * sin(ang), zz); pos = c + o * S;',
     }[EP.shape];
+    // «Emisor de forma»: born on one of the points of a text, a picture or the camera (uploaded by the engine)
+    const formShape = `let np = U_.fs.x;
+    let pidx = u32(min(r.x * np, max(np - 1.0, 0.0)));
+    let puv = clamp(PTS[pidx] + (r.yz - 0.5) * U_.fs.zw, vec2f(0.0), vec2f(1.0));
+    o = vec3f(puv.x - 0.5, 0.5 - puv.y, 0.0);
+    pos = c + vec3f(o.x * S * U_.fs.y, o.y * S, 0.0);
+    o = normalize(o + vec3f(0.0, 0.0001, 0.0));
+    hw = floor(puv.x * 4095.0) * 4096.0 + floor(puv.y * 4095.0);
+    ok = np > 0.5;`;
     const it = (n, body) => `for (var i = 0u; i < ${n}u; i++) { let h = rnd4(idu, fr, 40u + i).x; ${body} }`;
     const GEO = {
       polygon: `let N = floor(3.0 + GA * 9.0); let k = floor(r.x * N); let a0 = TAU * k / N + 1.5707963; let a1 = a0 + TAU / N;
@@ -185,7 +196,7 @@ struct U { g0: vec4f, g1: vec4f, g2: vec4f, g3: vec4f, cam: vec4f, audio: vec4f,
     const EMIT = `
     let c = vec3f(${EI.x}, ${EI.y}, ${EI.z}); var o = vec3f(0.0); let S = ${EI.size};
     let r3 = rnd4(idu, fr, 3u); let D3 = clamp(${EI.depth}, 0.0, 1.0);
-    { ${emit.type === 'geo' ? geoShape : shape} }
+    { ${emit.type === 'form' ? formShape : emit.type === 'geo' ? geoShape : shape} }
     if (D3 > 0.0) {
       pos.z += (r3.x * 2.0 - 1.0) * D3 * ${depthSpread};
       o = normalize(o + vec3f(0.0, 0.0, (r3.y * 2.0 - 1.0) * D3 * 1.6) + vec3f(1e-5, 0.0, 0.0));
@@ -197,7 +208,8 @@ struct U { g0: vec4f, g1: vec4f, g2: vec4f, g3: vec4f, cam: vec4f, audio: vec4f,
 
     // forces
     const pre = [], post = [], triggers = [];
-    let look = null, sym = null, fluid = null;
+    let look = null, sym = null, fluid = null, studio = null;
+    let usesCam = emit.type === 'form' && EP.src === 'camera', camForce = false;   // the camera runs for both; only the force reads its motion map
     if (EP.burst !== 'cont') triggers.push({ u: 'u_burst', mode: EP.burst });
     for (const n of chain.slice(1)) {
       const I = inputsOf(n), Q = P(n), id = n.id;
@@ -245,12 +257,26 @@ struct U { g0: vec4f, g1: vec4f, g2: vec4f, g3: vec4f, cam: vec4f, audio: vec4f,
           wrap: `if (abs(pos.x) > A) { pos.x -= sign(pos.x) * 2.0 * A; } if (abs(pos.y) > 1.0) { pos.y -= sign(pos.y) * 2.0; }`,
           kill: `if (abs(pos.x) > A + 0.05 || abs(pos.y) > 1.05) { age = life + 1.0; }`,
         }[Q.mode]);
-      } else if (n.type === 'look') look = { I, P: Q };
+      } else if (n.type === 'cam') {
+        // «Cámara»: pushed away from what moves (or from the light) in the camera's small motion map
+        usesCam = true; camForce = true;
+        const ch = Q.mode === 'bright' ? 'g' : 'r';
+        pre.push(`{ let cu = vec2f(pos.x / (2.0 * A) + 0.5, 0.5 - pos.y * 0.5); let ce = vec2f(1.5 / 160.0, 1.5 / 90.0);
+      let gx = textureSampleLevel(MOT, SMP, cu + vec2f(ce.x, 0.0), 0.0).${ch} - textureSampleLevel(MOT, SMP, cu - vec2f(ce.x, 0.0), 0.0).${ch};
+      let gy = textureSampleLevel(MOT, SMP, cu - vec2f(0.0, ce.y), 0.0).${ch} - textureSampleLevel(MOT, SMP, cu + vec2f(0.0, ce.y), 0.0).${ch};
+      vel = vec3f(vel.xy - vec2f(gx, gy) * ${I.str} * 8.0 * dt, vel.z); }`);
+      } else if (n.type === 'studio') studio = { I, P: Q, id };
+      else if (n.type === 'look') look = { I, P: Q };
       else if (n.type === 'sym') sym = { I, P: Q };
     }
     const OI = inputsOf(out), OP = P(out);
     const burst = EP.burst !== 'cont';
-    const head = (sl) => `${LIB}${fluid ? `@group(0) @binding(2) var<storage, read> FV: array<vec2f>;
+    const form = emit.type === 'form', imgColor = !!(look && look.P.color === 'image');
+    const head = (sl) => `${LIB}${form ? `@group(0) @binding(3) var<storage, read> PTS: array<vec2f>;
+` : ''}${camForce || imgColor ? `@group(0) @binding(5) var SMP: sampler;
+` : ''}${camForce ? `@group(0) @binding(4) var MOT: texture_2d<f32>;
+` : ''}${imgColor ? `@group(0) @binding(6) var IMG: texture_2d<f32>;
+` : ''}${fluid ? `@group(0) @binding(2) var<storage, read> FV: array<vec2f>;
 fn fluidAt(x: i32, y: i32) -> vec2f { let W = i32(U_.fl.x); let H = i32(U_.fl.y); return FV[clamp(y, 0, H - 1) * W + clamp(x, 0, W - 1)]; }
 fn fluidVel(p: vec2f, A: f32) -> vec2f {   // the fluid's velocity under a point (bilinear)
   let W = U_.fl.x; let H = U_.fl.y;
@@ -279,9 +305,10 @@ fn fluidVel(p: vec2f, A: f32) -> vec2f {   // the fluid's velocity under a point
   let age0 = age; age += dt;
   let spawn = ${burst ? 'u_burst > 0.5' : '(age0 < 0.0 && age >= 0.0) || age >= life'};
   if (spawn) {
-    let r = rnd4(idu, fr, 1u); let r2 = rnd4(idu, fr, 2u); let hw = -1.0;
+    let r = rnd4(idu, fr, 1u); let r2 = rnd4(idu, fr, 2u); var hw = -1.0; var ok = true;
     ${EMIT}
     age = 0.0; home = vec4f(pos, hw);
+    if (!ok) { life = -1.0; pos = vec3f(0.0, 0.0, -50.0); }   // nothing to be born on yet (empty text, camera starting): again next frame
   } else if (age >= 0.0 && age < life) {
     if (u_kick > 0.5) { vel += normalize(pos + vec3f(1e-4, 0.0, 0.0)) * 1.8 / (1.0 + length(pos)); }
     let pw = 1.0 + (rnd4(idu, 0u, 7u).x - 0.5) * 1.6 * clamp(${EI.weightVar}, 0.0, 1.0);
@@ -300,6 +327,7 @@ fn fluidVel(p: vec2f, A: f32) -> vec2f {   // the fluid's velocity under a point
     const colExpr = {
       a: `${LI.a}`, age: `mix(${LI.a}, ${LI.b}, t)`, speed: `mix(${LI.a}, ${LI.b}, clamp(length(V.xyz) / 1.2, 0.0, 1.0))`, rand: `mix(${LI.a}, ${LI.b}, rs.x)`,
       rainbow: `hsv(fract(rs.x + u_time * 0.05), 0.75, 1.0)`, angle: `hsv(fract(atan2(pos.y, pos.x) / TAU + u_time * 0.05), 0.75, 1.0)`,
+      image: `select(${LI.a}, textureSampleLevel(IMG, SMP, vec2f(floor(Pp.home.w / 4096.0), Pp.home.w % 4096.0) / 4095.0, 0.0).rgb, Pp.home.w >= 0.0)`,
     }[LP.color] || `${LI.a}`;
     const lifeCurve = {
       fade: 'al *= smoothstep(0.0, 0.08, t) * (1.0 - smoothstep(0.65, 1.0, t));',
@@ -354,7 +382,9 @@ struct VO { @builtin(position) cpos: vec4f, @location(0) q: vec2f, @location(1) 
   if (cocp > 0.5) { let p2 = min(px + cocp, u_maxpt); al *= max(0.025, pow(max(px, 1.0) / p2, 1.6)); o.bk = clamp(cocp / p2 * 1.4, 0.0, 1.0); px = p2; }
   if (px < 1.0) { al *= max(px, 0.0); px = 1.0; }
   px = min(px, u_maxpt);
-  var col = ${colExpr};
+  var col = ${colExpr};${studio ? `
+  { let Ld = vec3f(${studio.I.lx}, ${studio.I.ly}, ${studio.I.lz}) - pos; let lit = ${studio.I.power} / (1.0 + 0.7 * dot(Ld, Ld));   // «Estudio»: near the light, brighter and warmer
+    col *= mix(vec3f(1.0), vec3f(0.35) + ${studio.I.lcol} * lit * 1.4, clamp(${studio.I.litp}, 0.0, 1.0)); }` : ''}
   if (u_hue != 0.0) { col = max(hueShift(col, u_hue), vec3f(0.0)); }
   o.col = vec4f(col * max(0.0, ${OI.gain}) * u_mgain, al);
   let res = U_.fl.zw;   // the picture's size in pixels
@@ -368,8 +398,48 @@ struct VO { @builtin(position) cpos: vec4f, @location(0) q: vec2f, @location(1) 
   let a = v.col.a * m;
   if (a < 0.002) { discard; }
   return vec4f(v.col.rgb * a, a);
-}`;
-    return { sim, draw, slots, triggers, burst, count: +EP.count, copies: cop, blend: OP.blend, outId: out.id, emitId: emit.id, fluid };
+}${studio ? `
+// «Estudio»: each particle's shadow on the floor or the wall (the light → the particle → where that ray lands), soft splats
+struct SO { @builtin(position) cpos: vec4f, @location(0) q: vec2f, @location(1) a: f32 };
+@vertex fn svs(@builtin(vertex_index) vi: u32, @builtin(instance_index) ii: u32) -> SO {
+  var o: SO;
+  var corners = array<vec2f, 6>(vec2f(-1.0, -1.0), vec2f(1.0, -1.0), vec2f(-1.0, 1.0), vec2f(-1.0, 1.0), vec2f(1.0, -1.0), vec2f(1.0, 1.0));
+  let cn = corners[vi]; o.q = cn; o.a = 0.0; o.cpos = vec4f(2.0, 2.0, 2.0, 1.0);
+  let i = ii${cop > 1 ? ` / ${cop}u` : ''};
+  let Pp = RS[i]; let V = Pp.vel;
+  let age = Pp.pos.w; let life = V.w;
+  if (age < 0.0 || age >= life) { return o; }
+  ${GLOB}
+  ${uniLets}
+  let t = age / life; var pos = Pp.pos.xyz;${symW}
+  ${VALUES}
+  let Lp = vec3f(${studio.I.lx}, ${studio.I.ly}, ${studio.I.lz}); let d = pos - Lp;
+  let FY = ${studio.I.floor}; let WZ = ${studio.I.wall}; var best = 1e9;
+  if (d.y < -1e-4) { let k = (FY - Lp.y) / d.y; let q = Lp + d * k; if (k > 1.0 && q.z > WZ) { best = k; } }
+  if (d.z < -1e-4) { let k = (WZ - Lp.z) / d.z; let q = Lp + d * k; if (k > 1.0 && k < best && q.y > FY) { best = k; } }
+  if (best > 1e8) { return o; }
+  let hp = Lp + d * best;
+  let gap = length(d) * (best - 1.0);
+  let sw = max(${OI.sway}, 0.0);
+  let yaw = radians(${OI.yaw} + u_cam.x + (${OI.spin} + u_cam.w) * u_rtime + sw * sin(u_rtime * 0.37));
+  let pitch = radians(clamp(${OI.pitch} + u_cam.y + sw * 0.45 * sin(u_rtime * 0.23 + 1.0), -89.0, 89.0));
+  let cy = cos(yaw); let sy = sin(yaw); let cp = cos(pitch); let sp = sin(pitch);
+  var cq = vec3f(cy * hp.x + sy * hp.z, hp.y, -sy * hp.x + cy * hp.z);
+  cq = vec3f(cq.x, cp * cq.y - sp * cq.z, sp * cq.y + cp * cq.z);
+  let dz = 2.5 * max(0.1, ${OI.dist} * u_cam.z) - cq.z;
+  if (dz < 0.25) { return o; }
+  let persp = 2.5 / dz;
+  let core = max(1.5, max(0.0, ${LI.size}) * u_msize * persp * u_scale);
+  let px = clamp(core + gap / max(length(d), 0.15) * (4.0 + 46.0 * clamp(${studio.I.soft}, 0.0, 1.0)) * persp * u_scale * 6.0, 1.0, u_maxpt);
+  let fade = smoothstep(0.0, 0.08, t) * (1.0 - smoothstep(0.8, 1.0, t));
+  o.a = clamp(${LI.opacity}, 0.0, 1.0) * clamp(${studio.I.shadow}, 0.0, 1.0) * fade * min(1.0, 2.2 * core * core / (px * px));
+  let res = U_.fl.zw;
+  o.cpos = vec4f(cq.x * persp / u_aspect + cn.x * px / res.x, cq.y * persp + cn.y * px / res.y, 0.0, 1.0);
+  return o;
+}
+@fragment fn sfs(v: SO) -> @location(0) vec4f { let r = dot(v.q, v.q); if (r > 1.0) { discard; } let k = 1.0 - r; return vec4f(v.a * k * k); }` : ''}`;
+    return { sim, draw, slots, triggers, burst, count: +EP.count, copies: cop, blend: OP.blend, outId: out.id, emitId: emit.id, fluid,
+      form, usesCam, camForce, imgColor, studioId: studio ? studio.id : 0 };
   }
 
   /* ── the fixed passes: trails, bloom, lens, grain, the canvas; and the fluid ── */
@@ -409,6 +479,49 @@ fn hash(p0: vec2f) -> f32 { var p = fract(p0 * vec2f(443.897, 441.423)); p += do
   col += (hash(v.uv * pu.b.zw + pu.a.w) - 0.5) * pu.a.y * 0.22 * lit;
   let rgb = clamp(col, vec3f(0.0), vec3f(1.0));
   return vec4f(rgb, max(clamp(g.a, 0.0, 1.0), max(rgb.r, max(rgb.g, rgb.b))));
+}`;
+  // «Estudio»: the backdrop (floor, wall and the curve between them), the light with the particles' shadows, haze and the beam,
+  // then the particles on top (the same as particles.js STUDIO_FS; here uv.y grows downwards)
+  const STUDIO = `
+struct SU { cam: vec4f, L: vec4f, lcol: vec4f, bg: vec4f, e: vec4f };   // cam = yaw, pitch, dist, aspect · L = light, power · lcol = colour, haze · bg = colour, beam · e = shadow, floor, wall, normal
+@group(0) @binding(4) var shadowT: texture_2d<f32>;
+@group(0) @binding(5) var<uniform> su: SU;
+fn unrot(q: vec3f, cy: f32, sy: f32, cp: f32, sp: f32) -> vec3f { let v = vec3f(q.x, cp * q.y + sp * q.z, -sp * q.y + cp * q.z); return vec3f(cy * v.x - sy * v.z, v.y, sy * v.x + cy * v.z); }
+@fragment fn studio(v: VO) -> @location(0) vec4f {
+  let c = v.uv - 0.5; let r2 = dot(c, c); let lens = pu.a.z;
+  let base = 0.5 + c * (1.0 - lens * 0.07 * r2); let ca = lens * 0.012 * r2;
+  let nd = vec2f(base.x * 2.0 - 1.0, 1.0 - base.y * 2.0);
+  let cy = cos(su.cam.x); let sy = sin(su.cam.x); let cp = cos(su.cam.y); let sp = sin(su.cam.y);
+  let ro = unrot(vec3f(0.0, 0.0, su.cam.z), cy, sy, cp, sp); let rd = normalize(unrot(vec3f(nd.x * su.cam.w / 2.5, nd.y / 2.5, -1.0), cy, sy, cp, sp));
+  let R = 0.9; let FY = su.e.y; let WZ = su.e.z; var th = 1e9; var n = vec3f(0.0);
+  if (rd.y < 0.0) { let t = (FY - ro.y) / rd.y; let p = ro + rd * t; if (t > 0.0 && p.z >= WZ + R) { th = t; n = vec3f(0.0, 1.0, 0.0); } }
+  if (rd.z < 0.0) { let t = (WZ - ro.z) / rd.z; let p = ro + rd * t; if (t > 0.0 && t < th && p.y >= FY + R) { th = t; n = vec3f(0.0, 0.0, 1.0); } }
+  if (th > 1e8) {
+    let o2 = vec2f(ro.y - (FY + R), ro.z - (WZ + R)); let d2 = rd.yz; let a = dot(d2, d2); let b = dot(o2, d2); let cc = dot(o2, o2) - R * R; let disc = b * b - a * cc;
+    if (disc > 0.0 && a > 1e-6) { let t = (-b + sqrt(disc)) / a; let p = ro + rd * t; if (t > 0.0 && p.y <= FY + R + 1e-3 && p.z <= WZ + R + 1e-3) { th = t; n = normalize(vec3f(0.0, FY + R - p.y, WZ + R - p.z)); } }
+  }
+  let Lc = su.L.xyz; let power = su.L.w; let lcol = su.lcol.rgb; let haze = su.lcol.w; let bg = su.bg.rgb; let beam = su.bg.w;
+  var scene = bg * 0.18;
+  let sh = exp(-textureSampleLevel(shadowT, smp, base, 0.0).r * 2.5 * su.e.x);
+  if (th < 1e8) {
+    let p = ro + rd * th; let Lv = Lc - p; let dl = length(Lv);
+    let lit = power * max(dot(n, Lv / dl), 0.0) / (1.0 + 0.35 * dl * dl);
+    let spot = smoothstep(0.8, 0.95, -normalize(p - Lc).y) * beam;   // where the beam lands
+    scene = bg * (0.22 + lit * lcol * 1.6 * sh) + lcol * spot * power * 0.3 * sh / (1.0 + 0.3 * dl * dl);
+  } else { th = 30.0; }
+  let vv = Lc - ro; let tc = dot(vv, rd); let hh = length(vv - rd * tc) + 0.06;
+  let ins = (atan((th - tc) / hh) - atan(-tc / hh)) / hh;
+  scene += lcol * ins * haze * power * 0.07;
+  let dc = ro + rd * clamp(tc, 0.0, th) - Lc;
+  let cone = smoothstep(0.8, 0.93, -normalize(dc).y);
+  scene += lcol * ins * cone * exp(-max(0.0, -dc.y) * 0.45) * beam * power * 0.16;
+  let g = textureSampleLevel(img, smp, base, 0.0);
+  let pr = vec3f(textureSampleLevel(img, smp, base + c * ca, 0.0).r, g.g, textureSampleLevel(img, smp, base - c * ca, 0.0).b);
+  var col = select(scene + pr, scene * (1.0 - clamp(g.a, 0.0, 1.0)) + pr, su.e.w > 0.5);
+  col += textureSampleLevel(bloomT, smp, base, 0.0).rgb * pu.a.x;
+  col *= 1.0 - lens * 0.4 * smoothstep(0.12, 0.55, r2);
+  col += (hash(v.uv * pu.b.zw + pu.a.w) - 0.5) * pu.a.y * 0.12;
+  return vec4f(clamp(col, vec3f(0.0), vec3f(1.0)), 1.0);
 }`;
   // «Fluido»: stable fluids on a small grid (velocity advected by itself, kept without divergence by a pressure solve)
   const FLUID = `
@@ -470,17 +583,20 @@ fn vn(p: vec2f) -> f32 { let i = floor(p); let f = fract(p); let u = f * f * (3.
       const canvas = document.createElement('canvas'); canvas.width = 2; canvas.height = 2;
       const ctx = canvas.getContext('webgpu'), format = navigator.gpu.getPreferredCanvasFormat();
       ctx.configure({ device, format, alphaMode: 'premultiplied' });
-      const postMod = device.createShaderModule({ code: POST });
+      const postMod = device.createShaderModule({ code: POST + STUDIO });
       const ci = await postMod.getCompilationInfo();
       if (ci.messages.some(m => m.type === 'error')) throw new Error('POST: ' + ci.messages.map(m => m.lineNum + ': ' + m.message).join(' · '));
       const fp = (entry, fmt, blend) => device.createRenderPipeline({ layout: 'auto', vertex: { module: postMod, entryPoint: 'fvs' }, fragment: { module: postMod, entryPoint: entry, targets: [{ format: fmt, ...(blend ? { blend } : {}) }] }, primitive: { topology: 'triangle-list' } });
       const fade = { color: { srcFactor: 'zero', dstFactor: 'constant', operation: 'add' }, alpha: { srcFactor: 'zero', dstFactor: 'constant', operation: 'add' } };
       Object.assign(G, {
         device, canvas, ctx, format, sampler: device.createSampler({ magFilter: 'linear', minFilter: 'linear', addressModeU: 'clamp-to-edge', addressModeV: 'clamp-to-edge' }),
-        pFade: fp('zero', 'rgba16float', fade), pDown: fp('down', 'rgba16float'), pBlur: fp('blur', 'rgba16float'), pPost: fp('post', format), pBlit: fp('blit', format),
+        pFade: fp('zero', 'rgba16float', fade), pDown: fp('down', 'rgba16float'), pBlur: fp('blur', 'rgba16float'), pPost: fp('post', format), pBlit: fp('blit', format), pStudio: fp('studio', format),
         fluidMod: device.createShaderModule({ code: FLUID }), progs: new Map(),
         black: device.createTexture({ size: [1, 1], format: 'rgba16float', usage: GPUTextureUsage.TEXTURE_BINDING }),
+        white: device.createTexture({ size: [1, 1], format: 'rgba8unorm', usage: GPUTextureUsage.TEXTURE_BINDING | GPUTextureUsage.COPY_DST }),
       });
+      device.queue.writeTexture({ texture: G.white }, new Uint8Array([255, 255, 255, 255]), { bytesPerRow: 4 }, [1, 1]);
+      device.addEventListener('uncapturederror', e => { const m = String(e.error && e.error.message || e.error); if (!G.gpuErr || !/previous error/.test(m)) { if (m !== G.gpuErr) console.warn('PARTRUS WebGPU:', m); G.gpuErr = m; } });   // validation errors do not throw
       device.lost.then(i => { G.ready = false; G.err = 'se perdió la placa: ' + (i.message || ''); G.version++; });
       G.ready = true; G.version++;
     } catch (e) { G.err = String(e && e.message || e); G.ready = false; }
@@ -501,6 +617,8 @@ fn vn(p: vec2f) -> f32 { let i = floor(p); let f = fract(p); let u = f * f * (3.
       init: dev.createComputePipeline({ layout: 'auto', compute: { module: simMod, entryPoint: 'init' } }),
       sim: dev.createComputePipeline({ layout: 'auto', compute: { module: simMod, entryPoint: 'sim' } }),
       draw: dev.createRenderPipeline({ layout: 'auto', vertex: { module: drawMod, entryPoint: 'vs' }, fragment: { module: drawMod, entryPoint: 'fs', targets: [{ format: 'rgba16float', blend: target }] }, primitive: { topology: 'triangle-list' } }),
+      shadow: !code.studioId ? null : dev.createRenderPipeline({ layout: 'auto', vertex: { module: drawMod, entryPoint: 'svs' }, fragment: { module: drawMod, entryPoint: 'sfs',
+        targets: [{ format: 'rgba16float', blend: { color: { srcFactor: 'one', dstFactor: 'one', operation: 'add' }, alpha: { srcFactor: 'one', dstFactor: 'one', operation: 'add' } } }] }, primitive: { topology: 'triangle-list' } }),
     };
     G.progs.set(code.key, e);
     if (G.progs.size > 24) G.progs.delete(G.progs.keys().next().value);
@@ -510,16 +628,22 @@ fn vn(p: vec2f) -> f32 { let i = floor(p); let f = fract(p); let u = f * f * (3.
   /* ── one system ── */
   function createSim() {
     const S = { err: '', comp: null, progs: null, key: '', json: null, obj: undefined, values: {}, cur: {}, np: 0, side: 0, state: null, last: null, clock: 0, rclock: 0,
-      fno: 0, trig: {}, used: 0, uploaded: 0, mods: null, color: null, post: null, ownKey: null, pending: null, life: 3, trail0: 0, fluid: null };
+      fno: 0, trig: {}, used: 0, uploaded: 0, mods: null, color: null, post: null, ownKey: null, pending: null, life: 3, trail0: 0, fluid: null,
+      shape: {}, pts: null, img: null, mot: null, motVer: -1, shadow: null };
     const dev = () => G.device;
     function freeAll() {
       if (S.state) { S.state.destroy(); S.state = null; }
       if (S.color) { S.color.tex.destroy(); S.color = null; }
       if (S.post) { S.post.a.destroy(); S.post.b.destroy(); S.post = null; }
       if (S.fluid) { Object.values(S.fluid.bufs).forEach(b => b.destroy()); S.fluid = null; }
+      if (S.pts) { S.pts.destroy(); S.pts = null; }
+      if (S.img) { S.img.destroy(); S.img = null; }
+      if (S.mot) { S.mot.destroy(); S.mot = null; }
+      if (S.shadow) { S.shadow.tex.destroy(); S.shadow = null; }
+      S.shape = {}; S.motVer = -1;
     }
     // uniforms: one buffer per system (the frame's globals and every knob)
-    const UB = new Float32Array(8 * 4 + MAX_SLOTS * 4);
+    const UB = new Float32Array(HDR * 4 + MAX_SLOTS * 4), UBS = new Float32Array(UB.length);
     function setSpec(spec) {
       if (!G.ready) { S.err = 'WebGPU no está listo'; return false; }
       if (spec === S.obj) return !S.err;
@@ -535,7 +659,7 @@ fn vn(p: vec2f) -> f32 { let i = floor(p); let f = fract(p); let u = f * f * (3.
         try {
           const comp = compile(sys);
           comp.key = comp.sim + '\n/*draw*/\n' + comp.draw;
-          S.comp = comp; S.key = key; S.err = ''; S.progs = null;
+          S.comp = comp; S.key = key; S.err = ''; S.progs = null; S.shape = {}; S.binds = null;
           S.pending = programsFor(comp).then(p => { if (S.comp === comp) { S.progs = p; S.binds = null; } }, e => { if (S.comp === comp) S.err = String(e && e.message || e); });
           if (!S.state || S.np !== comp.count || (S.burst !== comp.burst)) {
             if (S.state) S.state.destroy();
@@ -581,8 +705,9 @@ fn vn(p: vec2f) -> f32 { let i = floor(p); let f = fract(p); let u = f * f * (3.
       const a = S.audio || [0, 0, 0, 0]; UB.set([a[0] || 0, a[1] || 0, a[2] || 0, a[3] || 0], 20);
       const pt = M.ptr; UB.set([pt ? +pt[0] || 0 : 0, pt ? +pt[1] || 0 : 0, pt && pt[2] ? 1 : 0, 0], 24);
       UB.set([S.fluid ? S.fluid.W : 1, S.fluid ? S.fluid.H : 1, w, h], 28);
+      const sh = S.shape; UB.set([sh.n || 0, sh.asp || 1, sh.jit ? sh.jit[0] : 0, sh.jit ? sh.jit[1] : 0], 32);
       for (const s of S.comp.slots) {
-        const o = 32 + s.i * 4;
+        const o = HDR * 4 + s.i * 4;
         if (s.trig) { UB[o] = trigs[s.name] ? 1 : 0; continue; }
         const x = S.cur[s.name];
         if (Array.isArray(x)) UB.set(x, o); else UB[o] = +x || 0;
@@ -592,13 +717,70 @@ fn vn(p: vec2f) -> f32 { let i = floor(p); let f = fract(p); let u = f * f * (3.
       if (S.binds) return S.binds;
       const d = dev(), p = S.progs;
       if (!S.ubuf) S.ubuf = d.createBuffer({ size: UB.byteLength, usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST });
-      const extra = S.fluid ? [{ binding: 2, resource: { buffer: S.fluid.bufs.v0 } }] : [];
+      const c = S.comp, extra = [], dextra = [];   // 'auto' layouts: exactly what each entry point uses
+      if (S.fluid) extra.push({ binding: 2, resource: { buffer: S.fluid.bufs.v0 } });
+      if (c.form) extra.push({ binding: 3, resource: { buffer: S.pts } });
+      if (c.camForce) extra.push({ binding: 4, resource: S.mot.createView() }, { binding: 5, resource: G.sampler });
+      if (c.imgColor) dextra.push({ binding: 5, resource: G.sampler }, { binding: 6, resource: (S.img || G.white).createView() });
+      const base = ub => [{ binding: 0, resource: { buffer: S.state } }, { binding: 1, resource: { buffer: ub } }];
+      if (p.shadow && !S.ubufS) S.ubufS = d.createBuffer({ size: UB.byteLength, usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST });
       S.binds = {
-        init: d.createBindGroup({ layout: p.init.getBindGroupLayout(0), entries: [{ binding: 0, resource: { buffer: S.state } }, { binding: 1, resource: { buffer: S.ubuf } }] }),
-        sim: d.createBindGroup({ layout: p.sim.getBindGroupLayout(0), entries: [{ binding: 0, resource: { buffer: S.state } }, { binding: 1, resource: { buffer: S.ubuf } }, ...extra] }),
-        draw: d.createBindGroup({ layout: p.draw.getBindGroupLayout(0), entries: [{ binding: 0, resource: { buffer: S.state } }, { binding: 1, resource: { buffer: S.ubuf } }] }),
+        init: d.createBindGroup({ layout: p.init.getBindGroupLayout(0), entries: base(S.ubuf) }),
+        sim: d.createBindGroup({ layout: p.sim.getBindGroupLayout(0), entries: [...base(S.ubuf), ...extra] }),
+        draw: d.createBindGroup({ layout: p.draw.getBindGroupLayout(0), entries: [...base(S.ubuf), ...dextra] }),
+        shadow: p.shadow ? d.createBindGroup({ layout: p.shadow.getBindGroupLayout(0), entries: base(S.ubufS) }) : null,
       };
       return S.binds;
+    }
+    /* a «form» emitter's points (a storage buffer), the picture its colours come from, the camera's motion map */
+    const SH = PP._shape;
+    function ensurePts() { if (!S.pts) { S.pts = dev().createBuffer({ size: SH.MAXP * 8, usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST }); S.binds = null; } }
+    function putPts(shp) { const n = Math.min(SH.MAXP, shp.n || 0); if (n) dev().queue.writeBuffer(S.pts, 0, shp.uv, 0, n * 2); }
+    function putImg(cv) {
+      let src = cv; const mx = Math.min(4096, dev().limits.maxTextureDimension2D);
+      if (cv.width > mx || cv.height > mx) {   // a huge picture: only its colours are needed, smaller is fine
+        const k = mx / Math.max(cv.width, cv.height); src = document.createElement('canvas');
+        src.width = Math.max(1, Math.round(cv.width * k)); src.height = Math.max(1, Math.round(cv.height * k));
+        src.getContext('2d').drawImage(cv, 0, 0, src.width, src.height);
+      }
+      if (!S.img || S.img.width !== src.width || S.img.height !== src.height) {
+        if (S.img) S.img.destroy();
+        S.img = dev().createTexture({ size: [src.width, src.height], format: 'rgba8unorm', usage: GPUTextureUsage.TEXTURE_BINDING | GPUTextureUsage.COPY_DST | GPUTextureUsage.RENDER_ATTACHMENT });
+        S.binds = null;
+      }
+      dev().queue.copyExternalImageToTexture({ source: src }, { texture: S.img }, [src.width, src.height]);
+    }
+    function prepShape() {
+      const c = S.comp;
+      if (c.usesCam) {
+        if (!S.mot) { S.mot = dev().createTexture({ size: [SH.CAM_W, SH.CAM_H], format: 'rg8unorm', usage: GPUTextureUsage.TEXTURE_BINDING | GPUTextureUsage.COPY_DST }); S.binds = null; }
+        SH.camTick();
+        const C = SH.cam;
+        if (C && C.st === 'ok' && C.ver !== S.motVer && !SH.camData.first) {
+          dev().queue.writeTexture({ texture: S.mot }, SH.camData.rg, { bytesPerRow: SH.CAM_W * 2 }, [SH.CAM_W, SH.CAM_H]);
+          S.motVer = C.ver;
+        }
+      }
+      if (!c.form) { S.shape = {}; return; }
+      ensurePts();
+      const em = S.spec.nodes.find(x => x.id === c.emitId), src = paramOf(em, 'src');
+      if (src === 'camera') {
+        const C = SH.cam, mode = paramOf(em, 'cam'), ver = C ? C.ver : 0;
+        if (S.shape.kind !== 'cam' || S.shape.mode !== mode || S.shape.ver !== ver) {
+          const pts = C ? SH.camPoints(mode) : { n: 0 };
+          putPts(pts);
+          S.shape = { kind: 'cam', mode, ver, n: pts.n, asp: 16 / 9, jit: [1 / SH.CAM_W, 1 / SH.CAM_H] };
+          if (c.imgColor && SH.camData.cv) putImg(SH.camData.cv);
+        }
+        return;
+      }
+      // NODRUS can put its own text or picture on a system (the node's text field / a dropped PNG)
+      const M = S.mods || {}, txt = typeof M.text === 'string' && M.text.trim() ? M.text : paramOf(em, 'text'), img = M.img || paramOf(em, 'img');
+      const key = src === 'image' ? 'i' + paramOf(em, 'pick') + img : 't' + paramOf(em, 'font') + '|' + txt;
+      if (S.shape.key === key && S.shape.ready) return;
+      const shp = src === 'image' ? SH.imageShape(img, paramOf(em, 'pick')) : SH.textShape(txt, paramOf(em, 'font'));
+      S.shape = { kind: 'pic', key, ready: shp.ready, n: shp.ready ? shp.n || 0 : 0, asp: shp.asp || 1, jit: shp.jit || [0, 0] };
+      if (shp.ready && shp.canvas) { putPts(shp); if (c.imgColor) putImg(shp.canvas); }
     }
     function ensureFluid(aspect) {
       const W = Math.round(Math.min(256, Math.max(64, 128 * aspect))), H = 128;
@@ -662,6 +844,7 @@ fn vn(p: vec2f) -> f32 { let i = floor(p); let f = fract(p); let u = f * f * (3.
       const aspect = w / h;
       if (M.pub) { let cur = null; for (const k in M.pub) if (k in S.values && Number.isFinite(M.pub[k])) { cur = cur || Object.assign({}, S.values); cur[k] = M.pub[k]; } S.cur = cur || S.values; } else S.cur = S.values;
       if (S.comp.fluid) ensureFluid(aspect);
+      prepShape();
       if (S.wantInit && S.last !== null) { const now = performance.now(); if (!(now - (S.initAt || 0) < 120)) { S.wantInit = false; S.initAt = now; S.last = null; S.quick = true; } }
       const B = binds();
       const submitSim = (dt, t, trigs) => {
@@ -718,13 +901,27 @@ fn vn(p: vec2f) -> f32 { let i = floor(p); let f = fract(p); let u = f * f * (3.
       const rp = enc.beginRenderPass({ colorAttachments: [{ view: S.color.view, loadOp: clear ? 'clear' : 'load', storeOp: 'store', clearValue: { r: 0, g: 0, b: 0, a: 0 } }] });
       rp.setPipeline(S.progs.draw); rp.setBindGroup(0, B.draw); rp.draw(6, S.np * S.comp.copies); rp.end();
       S.color.fresh = false;
+      // «Estudio»: the shadows, at half size (they are soft anyway), fresh every frame
+      if (S.progs.shadow) {
+        const w2 = Math.max(2, Math.round(w / 2)), h2 = Math.max(2, Math.round(h / 2));
+        if (!S.shadow || S.shadow.w !== w2 || S.shadow.h !== h2) {
+          if (S.shadow) S.shadow.tex.destroy();
+          const tex = d.createTexture({ size: [w2, h2], format: 'rgba16float', usage: GPUTextureUsage.RENDER_ATTACHMENT | GPUTextureUsage.TEXTURE_BINDING });
+          S.shadow = { w: w2, h: h2, tex, view: tex.createView() };
+        }
+        UBS.set(UB); UBS[11] = h2 / 720; UBS[30] = w2; UBS[31] = h2;   // the same uniforms at half size
+        d.queue.writeBuffer(S.ubufS, 0, UBS);
+        const sp = enc.beginRenderPass({ colorAttachments: [{ view: S.shadow.view, loadOp: 'clear', storeOp: 'store', clearValue: { r: 0, g: 0, b: 0, a: 0 } }] });
+        sp.setPipeline(S.progs.shadow); sp.setBindGroup(0, B.shadow); sp.draw(6, S.np * S.comp.copies); sp.end();
+      }
       // to the shared canvas (with bloom, lens and grain when the Salida asks)
       if (G.canvas.width !== w || G.canvas.height !== h) { G.canvas.width = w; G.canvas.height = h; }
       const view = G.ctx.getCurrentTexture().createView();
       const bk = Math.max(0, Math.min(2, outKnob('bloom'))), grain = Math.max(0, Math.min(1, outKnob('grain'))), lens = Math.max(0, Math.min(1, outKnob('lens')));
       if (!S.pub) S.pub = { b0: d.createBuffer({ size: 32, usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST }), b1: d.createBuffer({ size: 32, usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST }), b2: d.createBuffer({ size: 32, usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST }), b3: d.createBuffer({ size: 32, usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST }) };
       const fullPass = (pipe, target, bindG) => { const p = enc.beginRenderPass({ colorAttachments: [{ view: target, loadOp: 'clear', storeOp: 'store', clearValue: { r: 0, g: 0, b: 0, a: 0 } }] }); p.setPipeline(pipe); p.setBindGroup(0, bindG); p.draw(3); p.end(); };
-      if (bk > 0.001 || grain > 0.001 || lens > 0.001) {
+      const studio = !!(S.comp.studioId && S.progs.shadow && S.shadow);
+      if (studio || bk > 0.001 || grain > 0.001 || lens > 0.001) {
         let bloomView = G.black.createView();
         if (bk > 0.001) {
           const qw = Math.max(2, Math.round(w / 4)), qh = Math.max(2, Math.round(h / 4));
@@ -743,18 +940,34 @@ fn vn(p: vec2f) -> f32 { let i = floor(p); let f = fract(p); let u = f * f * (3.
           fullPass(G.pBlur, Q.av, postBind(G.pBlur, Q.bv, null, S.pub.b2));
           bloomView = Q.av;
         }
-        d.queue.writeBuffer(S.pub.b3, 0, new Float32Array([bk * 1.6, grain, lens, (S.fno % 997) * 1.37, 0, 0, w, h]));
-        fullPass(G.pPost, view, postBind(G.pPost, S.color.view, bloomView, S.pub.b3));
+        d.queue.writeBuffer(S.pub.b3, 0, new Float32Array([bk * (studio ? 1.0 : 1.6), grain, lens, (S.fno % 997) * 1.37, 0, 0, w, h]));
+        if (studio) {   // the same camera as the particles (knobs, NODRUS macros, «gira sola», «vaivén»)
+          const nm = (x, df) => (Number.isFinite(+x) && x !== undefined && x !== null ? +x : df);
+          const kv = (id, k, df) => { const v = S.cur && S.cur[`u${id}_${k}`]; return v !== undefined ? v : df; };
+          const o = k => +kv(S.comp.outId, k, 0) || 0, rt = S.rclock || 0, sw = Math.max(0, o('sway'));
+          const yaw = (o('yaw') + nm(M.yaw, 0) + (o('spin') + nm(M.spin, 0)) * rt + sw * Math.sin(rt * 0.37)) * Math.PI / 180;
+          const pitch = Math.max(-89, Math.min(89, o('pitch') + nm(M.pitch, 0) + sw * 0.45 * Math.sin(rt * 0.23 + 1))) * Math.PI / 180;
+          const dist = 2.5 * Math.max(0.1, (+kv(S.comp.outId, 'dist', 1) || 1) * Math.max(0.1, nm(M.zoom, 1)));
+          const st = k => +kv(S.comp.studioId, k, 0) || 0, col = (k, df) => { const v = kv(S.comp.studioId, k, df); return Array.isArray(v) ? v : df; };
+          const lc = col('lcol', [1, 0.82, 0.6]), bg = col('bg', [0.23, 0.23, 0.26]);
+          if (!S.sub) S.sub = d.createBuffer({ size: 80, usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST });
+          d.queue.writeBuffer(S.sub, 0, new Float32Array([yaw, pitch, dist, w / h, st('lx'), st('ly'), st('lz'), Math.max(0, st('power')),
+            lc[0], lc[1], lc[2], Math.max(0, st('haze')), bg[0], bg[1], bg[2], Math.max(0, st('beam')),
+            Math.max(0, st('shadow')), st('floor'), st('wall'), S.comp.blend === 'normal' ? 1 : 0]));
+          const g = d.createBindGroup({ layout: G.pStudio.getBindGroupLayout(0), entries: [{ binding: 0, resource: G.sampler }, { binding: 1, resource: S.color.view }, { binding: 2, resource: bloomView },
+            { binding: 3, resource: { buffer: S.pub.b3 } }, { binding: 4, resource: S.shadow.view }, { binding: 5, resource: { buffer: S.sub } }] });
+          fullPass(G.pStudio, view, g);
+        } else fullPass(G.pPost, view, postBind(G.pPost, S.color.view, bloomView, S.pub.b3));
       } else fullPass(G.pBlit, view, postBind(G.pBlit, S.color.view, null, S.pub.b3));
       d.queue.submit([enc.finish()]);
       S.uploaded++; S.shownOnce = true;
       return G.canvas;
     }
-    Object.assign(S, { setSpec, frame, reset() { S.last = null; S.trig = {}; }, kick() { S.kreq = 1; }, free() { freeAll(); if (S.ubuf) S.ubuf.destroy(); }, engine: 'webgpu' });
+    Object.assign(S, { setSpec, frame, reset() { S.last = null; S.trig = {}; }, kick() { S.kreq = 1; }, free() { freeAll(); if (S.ubuf) S.ubuf.destroy(); if (S.ubufS) S.ubufS.destroy(); if (S.sub) S.sub.destroy(); }, engine: 'webgpu' });
     Object.defineProperty(S, 'count', { get: () => (S.comp ? S.comp.count : 0) });   // S.np: the buffer's particles
     return S;
   }
 
-  window.PudrusParticlesGPU = { get ready() { return G.ready; }, get version() { return G.version; }, get err() { return G.err; }, get canvas() { return G.canvas; }, get maxCount() { return G.maxCount; }, supports, createSim, compile, init: () => G.initP };
+  window.PudrusParticlesGPU = { get ready() { return G.ready; }, get version() { return G.version; }, get err() { return G.err; }, get canvas() { return G.canvas; }, get maxCount() { return G.maxCount; }, get gpuErr() { return G.gpuErr || ''; }, supports, createSim, compile, init: () => G.initP };
   G.initP = init();
 })();

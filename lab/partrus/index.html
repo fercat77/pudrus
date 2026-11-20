@@ -88,7 +88,7 @@
     <li><b>Valores</b>: LFO, Audio y Pulso. Conectalos a cualquier perilla (cable gris) para que se mueva sola o con la música.</li>
   </ul>
   <h3>Motor</h3>
-  <p>PARTRUS usa <b>WebGPU</b> (el motor nuevo, más rápido y sin el tope del millón de partículas) cuando el navegador lo tiene y el sistema usa sólo lo que ya corre ahí; si no, el motor de siempre (<b>WebGL2</b>). La barra de abajo dice cuál está dibujando; un clic ahí elige «siempre WebGL2» (y otro vuelve a automático). Todavía van en WebGL2: el Emisor de forma, la fuerza Cámara, el Código GLSL propio, la figura «código GLSL», los colores de la imagen y el Estudio.</p>
+  <p>PARTRUS usa <b>WebGPU</b> (el motor nuevo, más rápido y sin el tope del millón de partículas) cuando el navegador lo tiene y el sistema usa sólo lo que ya corre ahí; si no, el motor de siempre (<b>WebGL2</b>). La barra de abajo dice cuál está dibujando; un clic ahí elige «siempre WebGL2» (y otro vuelve a automático). Sólo el Código GLSL propio y la figura «código GLSL» siguen en WebGL2 (están escritos en GLSL); todo lo demás corre en los dos motores.</p>
   <h3>Manejo</h3>
   <ul>
     <li>Las fuerzas y el aspecto nuevos se meten solos en la cadena, antes de la Salida. Para sacar uno, borralo: la cadena se vuelve a unir.</li>
@@ -103,8 +103,8 @@
   <div class="row"><button class="pa-btn" id="themeBtn">◐ Tema claro</button><button class="pa-btn" id="helpClose">Cerrar</button></div>
 </div></div>
 
-<script src="particles.js?v=12"></script>
-<script src="gpu.js?v=1"></script>
-<script src="app.js?v=11"></script>
+<script src="particles.js?v=13"></script>
+<script src="gpu.js?v=2"></script>
+<script src="app.js?v=12"></script>
 </body>
 </html>

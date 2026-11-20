@@ -1025,7 +1025,7 @@
     e.classList.toggle('ok', gpu);
     e.title = gpu ? 'Este sistema corre en WebGPU (el motor nuevo). Clic: usar siempre WebGL2'
       : PP.engineMode === 'gl' ? 'Elegiste WebGL2. Clic: volver a automático (WebGPU cuando se pueda)'
-      : !G || !G.ready ? 'Este navegador no tiene WebGPU: corre en WebGL2' : 'Este sistema usa algo que todavía va en WebGL2 (forma, cámara, código GLSL o Estudio). Clic: usar siempre WebGL2';
+      : !G || !G.ready ? 'Este navegador no tiene WebGPU: corre en WebGL2' : 'Este sistema usa código GLSL propio, que sólo corre en WebGL2. Clic: usar siempre WebGL2';
   }
   $('#stEngine') && $('#stEngine').addEventListener('click', () => { PP.setEngine(PP.engineMode === 'gl' ? 'auto' : 'gl'); applySim(); setTimeout(paintEngine, 300); toast(PP.engineMode === 'gl' ? 'Motor: siempre WebGL2' : 'Motor: automático (WebGPU cuando se puede)'); });
   window.__partrus = { get ptr() { return ptr; }, get engine() { return sim.engine; }, setCam: v => setCam(v), get sys() { return sys; }, get sim() { return sim; }, addNode, removeNode, connect, saveToLibrary, setSystem, undo, redo, get libId() { return libId; }, get dirty() { return dirty; }, chainList, fitView, setAudio, tap, get bpm() { return bpm; } };
