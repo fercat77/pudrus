@@ -123,10 +123,14 @@
     list.forEach(b => {
       const li = el('li');
       const who = el('small', '', b.medio);
-      if (key === 'sci' && b.publicado) who.append(el('span', 'nx-when', ago(b.publicado)));
+      if (key !== 'briefs' && b.publicado) who.append(el('span', 'nx-when', ago(b.publicado)));
       li.append(who);
-      const a = el('a', '', b.titulo); a.href = safeUrl(b.url); a.target = '_blank'; a.rel = 'noopener noreferrer';
-      li.append(a); ol.append(li);
+      const a = el('a', '', head(b.titulo)); a.href = safeUrl(b.url); a.target = '_blank'; a.rel = 'noopener noreferrer';
+      if (b.original) a.title = b.original;   // the outlet's own headline
+      const body = el('div'); body.append(a);
+      if (b.idioma === 'en') body.append(el('span', 'nx-lang', t('inEnglish', 'en inglés')));
+      if (b.resumen) body.append(el('p', 'nx-bsum', b.resumen));
+      li.append(body); ol.append(li);
     });
   }
 
@@ -172,6 +176,9 @@
     const sci = data.ciencia || [];
     $('sci-box').hidden = !sci.length;
     if (sci.length) briefs(sci, 'sci');
+    const int = data.interior || [];
+    $('int-box').hidden = !int.length;
+    if (int.length) briefs(int, 'int');
     meter(all);
   }
 

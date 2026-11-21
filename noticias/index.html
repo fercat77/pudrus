@@ -26,7 +26,7 @@
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600;700&display=swap">
   <script src="../js/theme.js"></script>
   <link rel="stylesheet" href="../css/style.css">
-  <link rel="stylesheet" href="../css/noticias.css?v=2">
+  <link rel="stylesheet" href="../css/noticias.css?v=3">
 </head>
 <body class="home">
 
@@ -64,8 +64,14 @@
 
   <section class="nx-box nx-sci" aria-labelledby="nxSci" data-nx-sci-box>
     <h2 class="nx-h2" id="nxSci" data-i18n="news.sci">Ciencia</h2>
-    <p class="nx-sub" data-i18n="news.sciDesc">Lo último de las secciones y sitios de ciencia, con el título de cada medio y el link a la nota.</p>
-    <ol class="nx-briefs" data-nx-sci></ol>
+    <p class="nx-sub" data-i18n="news.sciDesc">Lo último de las secciones y sitios de ciencia de acá y del mundo. Las notas en inglés llevan el título traducido.</p>
+    <ol class="nx-briefs nx-sci-list" data-nx-sci></ol>
+  </section>
+
+  <section class="nx-box nx-sci" aria-labelledby="nxInt" data-nx-int-box>
+    <h2 class="nx-h2" id="nxInt" data-i18n="news.int">Del interior</h2>
+    <p class="nx-sub" data-i18n="news.intDesc">Lo que publican los diarios de las provincias.</p>
+    <ol class="nx-briefs" data-nx-int></ol>
   </section>
 
   <div class="nx-cols">
@@ -84,14 +90,14 @@
   <section class="nx-box nx-about" aria-labelledby="nxHow">
     <h2 class="nx-h2" id="nxHow" data-i18n="news.how">Cómo se arma esta portada</h2>
     <ol class="nx-steps">
-      <li><b data-i18n="news.s1t">Juntar</b><span data-i18n="news.s1">Tres veces por día (mañana, mediodía y noche) leemos los RSS de nueve diarios argentinos y de sitios de ciencia: solo títulos, bajadas y links.</span></li>
+      <li><b data-i18n="news.s1t">Juntar</b><span data-i18n="news.s1">Tres veces por día leemos los RSS de nueve diarios nacionales, seis del interior y once sitios de ciencia: solo títulos, bajadas y links.</span></li>
       <li><b data-i18n="news.s2t">Agrupar</b><span data-i18n="news.s2">Una IA junta las notas que cuentan el mismo hecho. Si lo publicaron dos medios o más, es una historia; si no, una breve.</span></li>
-      <li><b data-i18n="news.s3t">Escribir</b><span data-i18n="news.s3">La IA escribe un título que dice qué pasó y un resumen propio, solo con lo que dicen las fuentes. Una persona lo revisa antes de publicarlo.</span></li>
+      <li><b data-i18n="news.s3t">Escribir y verificar</b><span data-i18n="news.s3">La IA escribe un título que dice qué pasó y un resumen propio, solo con lo que dicen las fuentes. Una segunda pasada lo compara frase por frase con las fuentes: si encuentra un error, se reescribe; si sigue mal, no se publica.</span></li>
       <li><b data-i18n="news.s4t">Medir</b><span data-i18n="news.s4">Cada título original suma puntos por las señales de sensacionalismo que tiene, hasta 10.</span></li>
     </ol>
     <h3 class="nx-h3" data-i18n="news.signals">Señales que suman puntos</h3>
     <ul class="nx-signals" data-nx-signals></ul>
-    <p class="nx-fine" data-i18n="news.fine">Los puntajes son una estimación automática y pueden equivocarse. Los resúmenes los escribe una IA con revisión humana. No copiamos el texto de las notas: cada fuente tiene su link al original. Sin publicidad.</p>
+    <p class="nx-fine" data-i18n="news.fine">Los puntajes son una estimación automática y pueden equivocarse. Los títulos y resúmenes los escribe una IA y los verifica otra pasada de IA contra las fuentes, sin revisión humana: ante la duda, abrí las notas originales. No copiamos el texto de las notas: cada fuente tiene su link. Sin publicidad.</p>
   </section>
 </main>
 
@@ -104,7 +110,7 @@
 </footer>
 
 <script src="../js/i18n.js"></script>
-<script src="../js/noticias.js?v=3"></script>
+<script src="../js/noticias.js?v=4"></script>
 <script src="../js/nav.js"></script>
 <script src="/js/pwa.js"></script>
 </body>

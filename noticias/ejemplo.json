@@ -240,7 +240,8 @@
       "titulo": "Un grupo de investigación midió cuánto crece un glaciar de ejemplo en invierno",
       "medio": "Revista Ciencia Ejemplo",
       "url": "#",
-      "publicado": "2026-11-20T18:00:00-03:00"
+      "publicado": "2026-11-20T18:00:00-03:00",
+      "resumen": "Midieron el avance del hielo durante tres inviernos con sensores en la superficie."
     },
     {
       "titulo": "Describen una especie nueva de rana en una reserva de Villa Ejemplo",
@@ -258,7 +259,22 @@
       "titulo": "Un telescopio escolar fotografió el paso de un cometa de ejemplo",
       "medio": "Revista Ciencia Ejemplo",
       "url": "#",
-      "publicado": "2026-11-16T21:00:00-03:00"
+      "publicado": "2026-11-16T21:00:00-03:00",
+      "idioma": "en"
+    }
+  ],
+  "interior": [
+    {
+      "titulo": "Inauguran un puente peatonal sobre el arroyo de Villa Ejemplo",
+      "medio": "El Diario del Sur",
+      "url": "#",
+      "publicado": "2026-11-21T10:00:00-03:00"
+    },
+    {
+      "titulo": "La cosecha de ejemplo superó lo previsto en la región",
+      "medio": "La Voz del Valle",
+      "url": "#",
+      "publicado": "2026-11-21T09:00:00-03:00"
     }
   ]
 }

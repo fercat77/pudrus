@@ -559,15 +559,15 @@
     "meterDesc": "Average sensationalism of their headlines on this page, from 0 to 10.",
     "how": "How this front page is made",
     "s1t": "Collect",
-    "s1": "Three times a day (morning, noon and night) we read the RSS feeds of nine Argentine papers and of science sites: only headlines, standfirsts and links.",
+    "s1": "Three times a day we read the RSS feeds of nine national papers, six from the provinces and eleven science sites: only headlines, standfirsts and links.",
     "s2t": "Group",
     "s2": "An AI groups the notes that tell the same event. If two or more outlets published it, it's a story; otherwise, a brief.",
-    "s3t": "Write",
-    "s3": "The AI writes a headline that says what happened and its own summary, using only what the sources say. A person reviews it before it goes up.",
+    "s3t": "Write and check",
+    "s3": "The AI writes a headline that says what happened and its own summary, using only what the sources say. A second pass compares it sentence by sentence with the sources: if it finds a mistake, it is rewritten; if it is still wrong, it is not published.",
     "s4t": "Measure",
     "s4": "Each original headline scores points for the sensationalism signals it has, up to 10.",
     "signals": "Signals that add points",
-    "fine": "Scores are an automatic estimate and can be wrong. Summaries are written by an AI and reviewed by a person. We don't copy the articles: every source links to the original. No ads. Stories are in Spanish.",
+    "fine": "Scores are an automatic estimate and can be wrong. Headlines and summaries are written by an AI and checked against the sources by another AI pass, with no human review: when in doubt, open the original articles. We don't copy the articles: every source links to the original. No ads. Stories are in Spanish.",
     "now": "just now",
     "agoMin": "{n} min ago",
     "agoH": "{n} h ago",
@@ -583,7 +583,10 @@
     "empty": "No stories published yet. Come back in a while.",
     "error": "The news couldn't be loaded. Try again in a while.",
     "sci": "Science",
-    "sciDesc": "The latest from science sections and sites, with each outlet's headline and the link to the article.",
-    "agoD": "{n} days ago"
+    "sciDesc": "The latest from science sections and sites, here and abroad. Articles in English carry a translated headline.",
+    "agoD": "{n} days ago",
+    "int": "From the provinces",
+    "intDesc": "What the provincial papers are publishing.",
+    "inEnglish": "in English"
   }
 }
