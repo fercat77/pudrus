@@ -70,6 +70,7 @@ void main() {
     em += (1.0 - smoothstep(0.0, 0.04 + fv * 1.5, h - v)) * 0.9;
     if (pw == 0) { em += line(vUV.x / CS, 0.01) * 0.5; em += line(v, 0.008) * 0.07; }
     else em += pattern(pw, melt(vec2(vUV.x, v) / CS), 0.014) * (0.32 + 0.5 * pow(0.5 + 0.5 * sin(v * 1.2 - u_time * 1.6 + vUV.x * 0.15), 10.0));   // with a slow glow climbing the walls
+    if (kind > 3.5) em *= 0.3;   // a fold's far back wall: only a backdrop
   }
   vec3 N = normalize(vN), V = normalize(u_eye - vP), col = vec3(0.012, 0.014, 0.022);
   for (int i = 0; i < 16; i++) {
@@ -253,6 +254,7 @@ void main() {
     return s.v;
   }
   const plus = () => box(0.12, 0.42, 0.12, 0, 0, 0, box(0.42, 0.12, 0.12)).v;
+  const avatar = () => { const s = box(0.2, 0.32, 0.14, 0, 0.95, 0); box(0.15, 0.15, 0.15, 0, 1.5, 0, s); box(0.07, 0.3, 0.08, -0.1, 0.32, 0, s); box(0.07, 0.3, 0.08, 0.1, 0.32, 0, s); box(0.24, 0.05, 0.05, 0.28, 1.08, 0, s); return s.v; };
   const gun = () => { const s = box(0.045, 0.05, 0.26, 0, 0, -0.06); box(0.03, 0.03, 0.1, 0, 0.065, -0.2, s); box(0.035, 0.07, 0.04, 0, -0.08, 0.1, s); box(0.05, 0.012, 0.18, 0, 0.0, -0.06, s); return s.v; };
 
   /* ═══════════════ levels ═══════════════ */
@@ -324,6 +326,18 @@ void main() {
     });
     const pickups = [];
     for (let k = 0; k < 2 + Math.floor(level / 2); k++) { const r = rooms[1 + Math.floor(rnd() * (n - 1))]; const c = free(r); if (c.length) { const [x, y] = c[Math.floor(rnd() * c.length)]; pickups.push({ x: (x + 0.5) * CS, z: (y + 0.5) * CS }); } }
+    // a «fold» (level 3 on): one core sits in a side-scrolling zone, reached through a portal on a wall of its room
+    let portal = null;
+    if (level >= 3 && rnd() < 0.8) {
+      const k = coreRooms[Math.floor(rnd() * coreRooms.length)], r = rooms[k], cand = [];
+      const side = (x, y, ox, oy, nx, nz) => { if (!grid[y * W + x] && grid[oy * W + ox] === 1 && !corr[oy * W + ox]) cand.push({ x, y, nx, nz }); };
+      for (let x = r.x; x < r.x + r.w; x++) { side(x, r.y, x, r.y - 1, 0, 1); side(x, r.y + r.h - 1, x, r.y + r.h, 0, -1); }
+      for (let y = r.y; y < r.y + r.h; y++) { side(r.x, y, r.x - 1, y, 1, 0); side(r.x + r.w - 1, y, r.x + r.w, y, -1, 0); }
+      if (cand.length) {
+        const c = cand[Math.floor(rnd() * cand.length)], fx = (c.x + 0.5) * CS, fz = (c.y + 0.5) * CS;
+        portal = { room: k, fx, fz, x: fx - c.nx * (CS / 2 - 0.03), z: fz - c.nz * (CS / 2 - 0.03), nx: c.nx, nz: c.nz, pat: r.pw };
+      }
+    }
     // now and then (never on level 1) a strange one waits in a quiet room
     let npc = null;
     const quiet = rooms.map((r, k) => k).filter(k => k > 0 && !coreRooms.includes(k));
@@ -335,7 +349,53 @@ void main() {
         npc = { x: (x + 0.5) * CS, z: (y + 0.5) * CS, name: pick(NAMES), lines: [pick(OPEN), ...mids], gift: pick(GIFTS), hue: rnd() };
       }
     }
-    return { W, H, grid, ceil, rid, rooms, exitRoom, coreRooms, enemies, pickups, npc, start: rooms[0], corrPat: [pickOf(FP, rnd), pickOf(WP, rnd)] };
+    return { W, H, grid, ceil, rid, rooms, exitRoom, coreRooms, enemies, pickups, npc, portal, start: rooms[0], corrPat: [pickOf(FP, rnd), pickOf(WP, rnd)] };
+  }
+  // the fold's course: platforms laid out in the style of its room's pattern (hexagons: staggered; triangles: stairs; spirals: a tower…)
+  function genFold(level, rnd, pat) {
+    const style = ['flat', 'flat', 'diag', 'hex', 'steps', 'float', 'tower', 'hex'][pat] || 'flat';
+    const P = [], en = [];
+    const slab = (x0, x1, top, pillar) => P.push({ x0, x1, y0: pillar ? top - 16 : top - 0.9, y1: top });
+    slab(-12, 6, 0, true);
+    let x = 6, y = 0;
+    const n = 7 + Math.min(9, level);
+    for (let i = 0; i < n; i++) {
+      let gap = 1.4 + rnd() * Math.min(3.2, 1.4 + level * 0.25), w = 2.5 + rnd() * 3.5, dy = (rnd() - 0.5) * 2;
+      if (style === 'hex') { dy = i % 2 ? 1.4 : -1.2; w = 2.4; gap = 1.4 + rnd() * 1.6; }
+      else if (style === 'diag') dy = i % 4 === 3 ? -2.6 : 1.3;
+      else if (style === 'steps') { dy = rnd() < 0.7 ? 1.2 : -2; gap = 1 + rnd() * 1.5; w = 2 + rnd() * 1.5; }
+      else if (style === 'float') { w = 1.6 + rnd() * 1.2; dy = (rnd() - 0.5) * 3.4; }
+      else if (style === 'tower') { gap = 0.8 + rnd() * 0.8; w = 2; dy = 1.7 * (Math.floor(i / 4) % 2 ? -1 : 1); }
+      dy = Math.max(-3, Math.min(1.8, dy)); if (dy > 0.8) gap = Math.min(gap, 3);   // always reachable (a jump, at most with the dash)
+      y = Math.max(-2, Math.min(10, y + dy));
+      x += gap; slab(x, x + w, y, style === 'flat' || style === 'steps' ? rnd() < 0.6 : rnd() < 0.2);
+      if (i > 0 && rnd() < 0.35 + level * 0.03) {
+        const type = rnd() < 0.4 ? 'shoot' : level >= 4 && rnd() < 0.35 ? 'phase' : 'drone';
+        en.push({ type, x: x + w / 2, y: y + (type === 'shoot' ? 1.3 : 2.6) });
+      }
+      x += w;
+    }
+    x += 2; slab(x, x + 15, y, true);
+    const core = { x: x + 10.5, y: y + 2.6 };
+    en.push({ type: 'drone', x: x + 6, y: y + 3 }, { type: level >= 5 ? 'phase' : 'drone', x: x + 9, y: y + 4.5 });
+    const ys = P.map(p => p.y1);
+    return { P, en, core, end: x + 15, style, minY: Math.min(...ys), maxY: Math.max(...ys) };
+  }
+  function foldMesh(Fd, slot) {
+    const v = [], push = (p, n, uv, inf) => v.push(p[0], p[1], p[2], n[0], n[1], n[2], uv[0], uv[1], inf[0], inf[1], inf[2], 0);
+    const quad = (a, b, c, d, n, ua, ub, uc, ud, inf) => { push(a, n, ua, inf); push(b, n, ub, inf); push(c, n, uc, inf); push(a, n, ua, inf); push(c, n, uc, inf); push(d, n, ud, inf); };
+    const Z0 = -1.4, Z1 = 1.4;
+    for (const q of Fd.P) {
+      const { x0, x1, y0, y1 } = q, h = y1 - y0;
+      quad([x0, y1, Z0], [x0, y1, Z1], [x1, y1, Z1], [x1, y1, Z0], [0, 1, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0, slot]);   // the top (the room's floor pattern)
+      quad([x0, y0, Z1], [x1, y0, Z1], [x1, y1, Z1], [x0, y1, Z1], [0, 0, 1], [x0, 0], [x1, 0], [x1, h], [x0, h], [h, 2, slot]);   // the front (its wall pattern)
+      quad([x0, y0, Z0], [x0, y0, Z1], [x0, y1, Z1], [x0, y1, Z0], [-1, 0, 0], [Z0, 0], [Z1, 0], [Z1, h], [Z0, h], [h, 2, slot]);
+      quad([x1, y0, Z1], [x1, y0, Z0], [x1, y1, Z0], [x1, y1, Z1], [1, 0, 0], [Z1, 0], [Z0, 0], [Z0, h], [Z1, h], [h, 2, slot]);
+      quad([x0, y0, Z0], [x1, y0, Z0], [x1, y0, Z1], [x0, y0, Z1], [0, -1, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 1, slot]);
+    }
+    const X0 = -18, X1 = Fd.end + 14, Y0 = Fd.minY - 18, Y1 = Fd.maxY + 16, BZ = -6;   // far behind: one huge wall with the pattern
+    quad([X0, Y0, BZ], [X1, Y0, BZ], [X1, Y1, BZ], [X0, Y1, BZ], [0, 0, 1], [X0, 0], [X1, 0], [X1, Y1 - Y0], [X0, Y1 - Y0], [Y1 - Y0, 4, slot]);
+    return new Float32Array(v);
   }
   function bfs(grid, W, H, sx, sy) {
     const d = new Int32Array(W * H).fill(1e9), q = new Int32Array(W * H); let h = 0, t = 0;
@@ -376,8 +436,8 @@ void main() {
   const GAME = {
     id: 'nucleo', solo: true, title: tr('Núcleo', 'Core'), tag: tr('Acción', 'Action'),
     desc: tr('Una estructura de neón que se arma distinta cada vez. Apagá sus núcleos y escapá.', 'A neon structure built anew every time. Shut down its cores and get out.'),
-    how: tr('Cada nivel tiene núcleos escondidos: destruilos todos (cada uno que cae deja su sala a oscuras) y llegá a la salida, que se abre al final. Cada nivel es más grande y con más enemigos. Compu: W A S D para moverte, mouse para mirar, clic para disparar, Shift o Espacio para el impulso, Esc para pausar, M para el sonido. Celular: palanca a la izquierda para moverte, arrastrá a la derecha para mirar, botones para disparar y para el impulso. Los rojos te persiguen, los naranjas disparan de lejos (esquivá sus esferas), los amarillos se parten en dos y los violetas atraviesan las paredes. Cuanto más hondo, más rara se pone la estructura. A veces aparece alguien que no ataca: acercate y apretá E para hablar.',
-      'Every level hides cores: destroy them all (each one that falls blacks out its room) and reach the exit, which opens at the end. Every level is bigger and has more enemies. Computer: W A S D to move, mouse to look, click to shoot, Shift or Space to dash, Esc to pause, M for sound. Phone: stick on the left to move, drag on the right to look, buttons to shoot and to dash. Red ones chase you, orange ones shoot from afar (dodge their orbs), yellow ones split in two and violet ones go through walls. The deeper you go, the stranger the structure gets. Now and then someone appears who doesn’t attack: go up to them and press E to talk.'),
+    how: tr('Cada nivel tiene núcleos escondidos: destruilos todos (cada uno que cae deja su sala a oscuras) y llegá a la salida, que se abre al final. Cada nivel es más grande y con más enemigos. Compu: W A S D para moverte, mouse para mirar, clic para disparar, Shift o Espacio para el impulso, Esc para pausar, M para el sonido. Celular: palanca a la izquierda para moverte, arrastrá a la derecha para mirar, botones para disparar y para el impulso. Los rojos te persiguen, los naranjas disparan de lejos (esquivá sus esferas), los amarillos se parten en dos y los violetas atraviesan las paredes. Cuanto más hondo, más rara se pone la estructura. A veces aparece alguien que no ataca: acercate y apretá E para hablar. Desde el nivel 3, algún núcleo está dentro de un pliegue (un portal magenta en una pared): adentro el mundo se ve de costado, con plataformas; A D para moverte, W o Espacio para saltar (más alto si lo mantenés), Shift para el impulso (también en el aire) y el mouse para apuntar.',
+      'Every level hides cores: destroy them all (each one that falls blacks out its room) and reach the exit, which opens at the end. Every level is bigger and has more enemies. Computer: W A S D to move, mouse to look, click to shoot, Shift or Space to dash, Esc to pause, M for sound. Phone: stick on the left to move, drag on the right to look, buttons to shoot and to dash. Red ones chase you, orange ones shoot from afar (dodge their orbs), yellow ones split in two and violet ones go through walls. The deeper you go, the stranger the structure gets. Now and then someone appears who doesn’t attack: go up to them and press E to talk. From level 3, a core may sit inside a fold (a magenta portal on a wall): inside, the world is seen from the side, with platforms; A D to move, W or Space to jump (higher if you hold it), Shift to dash (in the air too) and the mouse to aim.'),
     better: 'high', fmt: n => Number(n).toLocaleString(J.LOCALE),
     start: ctx => run(ctx),
   };
@@ -414,7 +474,8 @@ void main() {
     }
     const ENTL = [[0, 3], [1, 3], [2, 4]];
     const MESH = { octa: meshVao(new Float32Array(octa()), ENTL), cube: meshVao(new Float32Array(box(1, 1, 1).v), ENTL), ico: meshVao(new Float32Array(icosa()), ENTL),
-      ring: meshVao(new Float32Array(ring(1, 0.12, 40)), ENTL), plus: meshVao(new Float32Array(plus()), ENTL), gun: meshVao(new Float32Array(gun()), ENTL) };
+      ring: meshVao(new Float32Array(ring(1, 0.12, 40)), ENTL), plus: meshVao(new Float32Array(plus()), ENTL), gun: meshVao(new Float32Array(gun()), ENTL),
+      avatar: meshVao(new Float32Array(avatar()), ENTL) };
     let levelGL = null;
     // the particles (sparks, shots, orbs): one dynamic buffer
     const PMAX = 6000, pData = new Float32Array(PMAX * 8), pVao = gl.createVertexArray(), pBuf = gl.createBuffer();
@@ -484,6 +545,8 @@ void main() {
       pickup() { osc('sine', 660, 660, 0.09, 0.15); setTimeout(() => A && osc('sine', 990, 990, 0.14, 0.15), 70); },
       dash() { noise(0.22, 0.25, 'bandpass', 400, 2400, sfx, A.currentTime, 2); },
       orb() { osc('sine', 300, 600, 0.18, 0.08); },
+      fold() { osc('sine', 1400, 90, 0.7, 0.18); osc('triangle', 90, 900, 0.7, 0.1); noise(0.6, 0.18, 'bandpass', 300, 3000, sfx, A.currentTime, 2); },
+      jump() { osc('square', 260, 520, 0.09, 0.05); },
       blink() { osc('sine', 1600, 180, 0.14, 0.09); noise(0.1, 0.08, 'bandpass', 2500, 600, sfx, A.currentTime, 3); },
       talk() { osc('triangle', 520 + Math.random() * 200, 520 + Math.random() * 200, 0.03, 0.025); },
       npc() { [0, 3, 7, 10, 14].forEach((s, i) => setTimeout(() => A && osc('sine', 330 * 2 ** (s / 12), 330 * 2 ** (s / 12), 0.5, 0.07), i * 120)); },
@@ -531,12 +594,13 @@ void main() {
     function big(msg, sub) { bigEl.innerHTML = ''; bigEl.append(el('b', null, msg)); if (sub) bigEl.append(el('small', null, sub)); bigEl.classList.add('on'); }
     // touch controls
     const tc = touch ? el('div', 'nc-touch') : null;
-    let stick = null, look = null; const fireBtn = el('button', 'nc-fire', '◉'), dashBtn = el('button', 'nc-dashbtn', '»'), stickEl = el('div', 'nc-stick'), knob = el('i');
-    if (tc) { stickEl.append(knob); tc.append(stickEl, fireBtn, dashBtn); wrap.append(tc); }
+    let stick = null, look = null; const fireBtn = el('button', 'nc-fire', '◉'), dashBtn = el('button', 'nc-dashbtn', '»'), jumpBtn = el('button', 'nc-jumpbtn', '▲'), stickEl = el('div', 'nc-stick'), knob = el('i');
+    if (tc) { stickEl.append(knob); tc.append(stickEl, fireBtn, dashBtn, jumpBtn); wrap.append(tc); }
+    jumpBtn.hidden = true;
 
     /* ── state ── */
     const seed = Math.floor(ctx.rnd() * 4294967296);
-    const S = { level: 1, score: 0, kills: 0, hp: 100, t: 0, state: 'play', M: null, psy: 0, errat: 0, npc: null, canTalk: false, talk: null, enemies: [], bolts: [], orbs: [], parts: [], flashes: [], pickups: [], cores: [], exit: null, seen: null, roomGlow: [], flow: null, flowCell: -1, endT: 0 };
+    const S = { level: 1, score: 0, kills: 0, hp: 100, t: 0, state: 'play', M: null, psy: 0, errat: 0, npc: null, canTalk: false, talk: null, mode: '3d', portal: null, fold: null, fx: 0, enemies: [], bolts: [], orbs: [], parts: [], flashes: [], pickups: [], cores: [], exit: null, seen: null, roomGlow: [], flow: null, flowCell: -1, endT: 0 };
     const pl = { x: 0, z: 0, vx: 0, vz: 0, yaw: 0, pitch: 0, dashT: 0, dashCd: 0, hurtT: 0, shake: 0, fireCd: 0, recoil: 0, bob: 0, roll: 0, fov: 1.32 };
     const K = {}; let firing = false, mx = 0, my = 0;
     const EYE = 1.6;
@@ -576,6 +640,14 @@ void main() {
       // deeper = stranger: the psychedelia (level 4 → 10) and how erratic the enemies get (level 3 → 9)
       S.psy = Math.max(0, Math.min(1, (S.level - 3) / 7)); S.errat = Math.max(0, Math.min(1, (S.level - 2) / 7));
       S.npc = M.npc ? { ...M.npc, t: 0, gone: false, fade: 1 } : null; S.canTalk = false; S.talk = null;
+      // the fold: its course is laid out now (its core is one of this level's cores), its mesh when you go in
+      S.mode = '3d'; S.fold = null; S.portal = null;
+      if (M.portal) {
+        const Fd = genFold(S.level, J.mulberry((seed + S.level * 131) >>> 0), M.portal.pat);
+        const c = S.cores.find(c => c.room === M.portal.room);
+        if (c) { Object.assign(c, { fold: true, x: Fd.core.x, y: Fd.core.y, z: 0, hp: 12 + S.level * 3, max: 12 + S.level * 3 });   // a shorter fight: getting there is the challenge
+         S.portal = { ...M.portal, F: Fd, done: false, t: 0 }; }
+      }
       pl.x = (M.start.cx + 0.5) * CS; pl.z = (M.start.cy + 0.5) * CS; pl.vx = pl.vz = 0; pl.pitch = 0;
       // look along the first corridor out of the start room
       let best = 0, bl = -1; for (let k = 0; k < 4; k++) { const a = k * Math.PI / 2, dx = Math.sin(a), dz = -Math.cos(a); let l = 0; while (l < 30 && !solidAt(pl.x + dx * l, pl.z + dz * l)) l += 0.5; if (l > bl) { bl = l; best = a; } } pl.yaw = best;
@@ -584,7 +656,7 @@ void main() {
     }
     function revealRoom(k) { const M = S.M, r = M.rooms[k]; for (let y = r.y - 1; y <= r.y + r.h; y++) for (let x = r.x - 1; x <= r.x + r.w; x++) if (x >= 0 && y >= 0 && x < M.W && y < M.H) S.seen[y * M.W + x] = 1; }
     const coresLeft = () => S.cores.filter(c => c.alive).length;
-    function paintCores() { const n = S.cores.length, left = coresLeft(); coresEl.innerHTML = ''; coresEl.append(el('span', null, left ? tr('Núcleos', 'Cores') : tr('Salida abierta', 'Exit open'))); S.cores.forEach(c => coresEl.append(el('i', c.alive ? 'on' : ''))); coresEl.classList.toggle('open', !left); coresEl.title = `${n - left}/${n}`; }
+    function paintCores() { const n = S.cores.length, left = coresLeft(); coresEl.innerHTML = ''; coresEl.append(el('span', null, left ? tr('Núcleos', 'Cores') : tr('Salida abierta', 'Exit open'))); S.cores.forEach(c => coresEl.append(el('i', (c.alive ? 'on' : '') + (c.fold ? ' fold' : '')))); coresEl.classList.toggle('open', !left); coresEl.title = `${n - left}/${n}`; }
     function paintHud() { ctx.hud(`${tr('Nivel', 'Level')}<b>${S.level}</b> ${tr('Puntos', 'Points')}<b>${S.score.toLocaleString(J.LOCALE)}</b>`); }
 
     /* ── effects ── */
@@ -603,7 +675,10 @@ void main() {
       const down = e.type === 'keydown', k = e.code;
       if (k === 'Escape' && down && S.state === 'play') { pause(true); e.stopImmediatePropagation(); e.preventDefault(); return; }
       if (['KeyW', 'KeyA', 'KeyS', 'KeyD', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'ShiftLeft', 'ShiftRight', 'Space'].includes(k)) { K[k] = down; e.preventDefault(); }
-      if (down && (k === 'ShiftLeft' || k === 'ShiftRight' || k === 'Space')) dash();
+      if (S.mode === 'fold') {   // in a fold: W / ↑ / Space jump, Shift dashes
+        if (k === 'Space' || k === 'KeyW' || k === 'ArrowUp') { if (down && !e.repeat) f2.buf = 0.13; f2.held = down; }
+        if (down && (k === 'ShiftLeft' || k === 'ShiftRight')) dash2();
+      } else if (down && (k === 'ShiftLeft' || k === 'ShiftRight' || k === 'Space')) dash();
       if (down && k === 'Escape' && S.state === 'talk') { endTalk(); e.stopImmediatePropagation(); e.preventDefault(); return; }
       if (down && (k === 'KeyE' || k === 'KeyF' || (k === 'Space' && S.state === 'talk') || (k === 'Enter' && S.state === 'talk'))) { if (S.state === 'talk') advance(); else if (S.state === 'play' && S.canTalk) talk(); }
       if (down && k === 'KeyM') setMute(!muted);
@@ -612,7 +687,7 @@ void main() {
     addEventListener('keydown', onKey, true); addEventListener('keyup', onKey, true);
     const onMove = e => { if (!locked() || S.state !== 'play') return; mx += e.movementX; my += e.movementY; };
     document.addEventListener('mousemove', onMove);
-    cv.addEventListener('mousedown', e => { if (touch) return; if (S.state === 'talk') { advance(); return; } if (S.state === 'pause') { pause(false); return; } if (!locked()) { lock(); return; } if (e.button === 0) firing = true; if (e.button === 2) dash(); });
+    cv.addEventListener('mousedown', e => { if (touch) return; if (S.state === 'talk') { advance(); return; } if (S.state === 'pause') { pause(false); return; } if (!locked()) { lock(); return; } if (e.button === 0) firing = true; if (e.button === 2) { if (S.mode === 'fold') dash2(); else dash(); } });
     const onUp = e => { if (e.button === 0) firing = false; };
     document.addEventListener('mouseup', onUp);
     cv.addEventListener('contextmenu', e => e.preventDefault());
@@ -630,7 +705,7 @@ void main() {
       const pts = new Map();
       const rect = () => wrap.getBoundingClientRect();
       tc.addEventListener('pointerdown', e => {
-        if (e.target === fireBtn || e.target === dashBtn) return;
+        if (e.target === fireBtn || e.target === dashBtn || e.target === jumpBtn) return;
         const R = rect(), x = e.clientX - R.left, y = e.clientY - R.top;
         if (S.state === 'pause') { pause(false); return; }
         if (S.state === 'talk') { advance(); return; }
@@ -651,7 +726,9 @@ void main() {
       let fl = null;
       fireBtn.addEventListener('pointermove', e => { if (!firing) { fl = null; return; } if (fl) { mx += (e.clientX - fl[0]) * 1.6; my += (e.clientY - fl[1]) * 1.6; } fl = [e.clientX, e.clientY]; });
       fireBtn.addEventListener('pointerup', () => { fl = null; });
-      dashBtn.addEventListener('pointerdown', e => { e.stopPropagation(); e.preventDefault(); dash(); });
+      dashBtn.addEventListener('pointerdown', e => { e.stopPropagation(); e.preventDefault(); if (S.mode === 'fold') dash2(); else dash(); });
+      jumpBtn.addEventListener('pointerdown', e => { e.stopPropagation(); e.preventDefault(); f2.buf = 0.13; f2.held = true; try { jumpBtn.setPointerCapture(e.pointerId); } catch (er) { /* ignore */ } });
+      ['pointerup', 'pointercancel'].forEach(t => jumpBtn.addEventListener(t, () => { f2.held = false; }));
     }
     function pause(on) {
       if (S.state === 'dead' || S.state === 'over') return;
@@ -691,7 +768,8 @@ void main() {
     function hurt(d, fx, fz) {
       if (S.state !== 'play') return;
       S.hp = Math.max(0, S.hp - d); pl.hurtT = 0.5; pl.shake = Math.min(1, pl.shake + 0.45); play('hurt');
-      if (fx !== undefined) { const dx = pl.x - fx, dz = pl.z - fz, l = Math.hypot(dx, dz) || 1; pl.vx += dx / l * 6; pl.vz += dz / l * 6; }
+      if (S.mode === 'fold') { if (fx !== undefined) { f2.vx += Math.sign(f2.x - fx || 1) * 7; f2.vy = Math.max(f2.vy, 5); } }
+      else if (fx !== undefined) { const dx = pl.x - fx, dz = pl.z - fz, l = Math.hypot(dx, dz) || 1; pl.vx += dx / l * 6; pl.vz += dz / l * 6; }
       if (S.hp <= 0) die();
     }
     function die() {
@@ -703,20 +781,25 @@ void main() {
       e.dead = true; S.kills++; S.score += PTS[e.type]; paintHud();
       const c = COL[e.type]; burst(e.x, e.y, e.z, [c[0] * 2.5, c[1] * 2.5, c[2] * 2.5], e.type === 'mini' ? 18 : 36, 6, 0.8); flash(e.x, e.y, e.z, [c[0] * 4, c[1] * 4, c[2] * 4], 9, 0.35);
       play('boom', false); pl.shake = Math.min(1, pl.shake + 0.12);
-      if (e.type === 'split') for (let k = 0; k < 2; k++) { const m = spawnEnemy('mini', e.x + (k ? 0.5 : -0.5), e.z, true); m.vx = (k ? 1 : -1) * 5; }
-      if (Math.random() < 0.12) S.pickups.push({ x: e.x, z: e.z, t: 0 });
+      if (e.type === 'split') for (let k = 0; k < 2; k++) { const m = spawnEnemy('mini', e.x + (k ? 0.5 : -0.5), e.z, true); m.vx = (k ? 1 : -1) * 5; m.y = e.y; m.vy = 0; }
+      if (S.mode === '3d' && Math.random() < 0.12) S.pickups.push({ x: e.x, z: e.z, t: 0 });
     }
     function hitCore(c) {
       c.hp--; c.flash = 1; play('hit');
       const frac = c.hp / c.max;
       if (c.hp > 0 && frac < 0.75 - c.calls * 0.25) {   // it calls defenders as it weakens
-        c.calls++; for (let k = 0; k < 1 + Math.min(2, Math.floor(S.level / 2)); k++) { const a = Math.random() * Math.PI * 2; const e = spawnEnemy(S.level >= 3 && k === 0 ? 'split' : 'drone', c.x + Math.cos(a) * 1.6, c.z + Math.sin(a) * 1.6, true); collide(e, e.r); }
+        c.calls++; for (let k = 0; k < 1 + Math.min(2, Math.floor(S.level / 2)); k++) {
+          const a = Math.random() * Math.PI * 2;
+          if (c.fold) { const e = spawnEnemy('drone', c.x - 2 - k * 1.5, 0, true); e.y = c.y + 1 + k; e.z = 0; e.vy = 0; continue; }
+          const e = spawnEnemy(S.level >= 3 && k === 0 ? 'split' : 'drone', c.x + Math.cos(a) * 1.6, c.z + Math.sin(a) * 1.6, true); collide(e, e.r);
+        }
         toast(tr('El núcleo llama defensores', 'The core calls defenders'), 1.6);
       }
       if (c.hp <= 0) {
         c.alive = false; S.score += 500; paintHud(); play('core'); pl.shake = 1;
         burst(c.x, c.y, c.z, [2.6, 2.4, 1.6], 160, 10, 1.6, 0.16); flash(c.x, c.y, c.z, [8, 7, 5], 22, 1.2);
         S.roomTarget[c.room] = 0.1;   // «apagón»: its room goes dark
+        if (c.fold && S.fold) { S.fold.outT = 1.8; }   // and the fold comes undone
         const left = coresLeft(); paintCores();
         if (!left) { S.exit.open = true; play('open'); toast(tr('Todos los núcleos apagados: ¡la salida se abrió!', 'All cores down: the exit is open!'), 3.5); }
         else toast(tr(`Núcleo apagado · quedan ${left}`, `Core down · ${left} left`));
@@ -725,6 +808,142 @@ void main() {
     function nextLevel() {
       S.state = 'trans'; S.endT = 1.6; S.score += 1000 * S.level; paintHud(); play('level');
       big(tr(`Nivel ${S.level + 1}`, `Level ${S.level + 1}`), tr('La estructura se rearma…', 'The structure rebuilds itself…'));
+    }
+
+    /* ── folds: a side-scrolling zone (same world, one dimension less) ── */
+    const f2 = { x: 0, y: 0, vx: 0, vy: 0, ground: false, coyote: 0, buf: 0, held: false, face: 1, ax: 4, ay: 0.5, dashT: 0, airDash: true, sx: 0, sy: 0, run: 0 };
+    let foldGL = null;
+    function enterFold() {
+      const Pt = S.portal; if (!Pt || Pt.done) return;
+      const slot = Math.min(14, Pt.room);
+      if (foldGL) { gl.deleteBuffer(foldGL.buf); gl.deleteVertexArray(foldGL.vao); }
+      foldGL = meshVao(foldMesh(Pt.F, slot), [[0, 3], [1, 3], [2, 2], [3, 4]]);
+      S.fold = { F: Pt.F, saved: { enemies: S.enemies, bolts: S.bolts, orbs: S.orbs, parts: S.parts, flashes: S.flashes }, tr: 0, outT: 0, cam: [0, 1.5] };
+      S.enemies = []; S.bolts = []; S.orbs = []; S.parts = []; S.flashes = [];
+      Pt.F.en.forEach(q => { const e = spawnEnemy(q.type, q.x, 0, false); e.y = e.hy = q.y; e.hx = q.x; e.z = 0; e.vy = 0; });
+      Object.assign(f2, { x: 0, y: 0, vx: 0, vy: 0, ground: true, coyote: 0, buf: 0, held: false, face: 1, ax: 4, ay: 0.5, dashT: 0, airDash: true, sx: 0, sy: 0 });
+      S.fold.cam = [f2.x + 2, f2.y + 1.5];
+      S.mode = 'fold'; firing = false; S.fx = 1; play('fold');
+      S.canTalk = false; promptEl.hidden = true; jumpBtn.hidden = !touch; mapCv.style.visibility = 'hidden';
+      toast(touch ? tr('Un pliegue: la estructura perdió una dimensión', 'A fold: the structure lost a dimension')
+        : tr('Un pliegue · A D moverse · W o Espacio saltar · Shift impulso · mouse apuntar', 'A fold · A D move · W or Space jump · Shift dash · mouse aims'), 4);
+    }
+    function exitFold() {
+      const Pt = S.portal, Fo = S.fold; if (!Fo) return;
+      S.enemies = Fo.saved.enemies; S.bolts = Fo.saved.bolts; S.orbs = Fo.saved.orbs; S.parts = Fo.saved.parts; S.flashes = Fo.saved.flashes;
+      S.mode = '3d'; S.fold = null; Pt.done = true; S.fx = 1; play('fold');
+      pl.x = Pt.fx + Pt.nx * 0.6; pl.z = Pt.fz + Pt.nz * 0.6; pl.vx = pl.vz = 0; pl.yaw = Math.atan2(Pt.nx, -Pt.nz); pl.pitch = 0;
+      jumpBtn.hidden = true; mapCv.style.visibility = ''; cross.style.left = cross.style.top = '';
+      toast(coresLeft() ? tr('El pliegue se deshizo', 'The fold came undone') : tr('Todos los núcleos apagados: ¡la salida se abrió!', 'All cores down: the exit is open!'), 2.5);
+    }
+    function dash2() {
+      if (S.state !== 'play' || S.mode !== 'fold' || pl.dashCd > 0 || (!f2.ground && !f2.airDash)) return;
+      if (!f2.ground) f2.airDash = false;
+      f2.dashT = 0.16; f2.vx = f2.face * 17; f2.vy = 0; pl.dashCd = 0.7; play('dash');
+      burst(f2.x, f2.y + 0.8, 0, [0.3, 0.8, 1.6], 14, 2.5, 0.4, 0.08);
+    }
+    const inPlat = (x, y) => { const P = S.fold.F.P; for (let i = 0; i < P.length; i++) { const q = P[i]; if (x > q.x0 && x < q.x1 && y > q.y0 && y < q.y1) return true; } return false; };
+    function fire2() {
+      const ox = f2.x + f2.face * 0.35, oy = f2.y + 1.08;
+      let dx = f2.ax, dy = f2.ay;
+      if (touch) {   // on a phone it aims by itself at the nearest thing in front
+        let best = null, bd = 16;
+        for (const e of S.enemies) { if (e.dead || (e.type === 'phase' && Math.abs(e.z) > 0.8)) continue; const ex = e.x - ox, ey = e.y - oy, d = Math.hypot(ex, ey); if (d < bd && ex * f2.face > -0.5) { bd = d; best = [ex, ey]; } }
+        S.cores.forEach(c => { if (c.fold && c.alive) { const ex = c.x - ox, ey = c.y - oy, d = Math.hypot(ex, ey); if (d < bd && ex * f2.face > 0) { bd = d; best = [ex, ey]; } } });
+        [dx, dy] = best || [f2.face, 0];
+      }
+      const l = Math.hypot(dx, dy) || 1; dx /= l; dy /= l; dy += (Math.random() - 0.5) * 0.02;
+      S.bolts.push({ x: ox, y: oy, z: 0, vx: dx * 40, vy: dy * 40, vz: 0, life: 1 });
+      pl.fireCd = 0.125; pl.shake = Math.min(1, pl.shake + 0.06);
+      flash(ox, oy, 0.6, [0.4, 1.4, 2.4], 5, 0.06); play('shot');
+    }
+    function updateFold(dt) {
+      const Fo = S.fold, Fd = Fo.F;
+      Fo.tr = Math.min(1, Fo.tr + dt / 1.0);
+      if (Fo.outT > 0) { Fo.outT -= dt; if (Fo.outT <= 0) { exitFold(); return; } }
+      // aim: the mouse moves a sight around you
+      if (!touch) { f2.ax += mx * 0.012; f2.ay -= my * 0.012; const l = Math.hypot(f2.ax, f2.ay); if (l > 5) { f2.ax *= 5 / l; f2.ay *= 5 / l; } }
+      mx = my = 0;
+      const ready = Fo.tr >= 1;
+      let mv = ready ? (K.KeyD || K.ArrowRight ? 1 : 0) - (K.KeyA || K.ArrowLeft ? 1 : 0) + (stick ? stick.dx : 0) : 0;
+      mv = Math.max(-1, Math.min(1, mv));
+      if (Math.abs(mv) > 0.2) f2.face = Math.sign(mv); else if (!touch && Math.abs(f2.ax) > 0.3) f2.face = Math.sign(f2.ax);
+      pl.dashCd = Math.max(0, pl.dashCd - dt);
+      if (f2.dashT > 0) { f2.dashT -= dt; }
+      else {
+        const acc = f2.ground ? 70 : 38; f2.vx += (mv * 8 - f2.vx) * Math.min(1, acc * dt / 8);
+        f2.vy -= 30 * dt; if (!f2.held && f2.vy > 3) f2.vy -= 45 * dt;   // let go early: a shorter jump
+        f2.vy = Math.max(f2.vy, -24);
+      }
+      f2.coyote = f2.ground ? 0.1 : Math.max(0, f2.coyote - dt); f2.buf = Math.max(0, f2.buf - dt);
+      if (ready && f2.buf > 0 && (f2.ground || f2.coyote > 0)) { f2.vy = 11.5; f2.buf = 0; f2.coyote = 0; f2.ground = false; play('jump'); burst(f2.x, f2.y + 0.05, 0, [0.4, 1.2, 2], 8, 2, 0.3, 0.06); }
+      // move and collide (the body: 0.6 wide, 1.7 tall), one axis at a time
+      const P = Fd.P, hw = 0.3, hh = 1.7;
+      f2.x += f2.vx * dt;
+      for (const q of P) if (f2.x + hw > q.x0 && f2.x - hw < q.x1 && f2.y + hh > q.y0 && f2.y < q.y1) { if (f2.vx > 0) f2.x = q.x0 - hw; else if (f2.vx < 0) f2.x = q.x1 + hw; f2.vx = 0; }
+      f2.y += f2.vy * dt; f2.ground = false;
+      for (const q of P) if (f2.x + hw > q.x0 && f2.x - hw < q.x1 && f2.y + hh > q.y0 && f2.y < q.y1) {
+        if (f2.vy <= 0 && f2.y - f2.vy * dt >= q.y1 - 0.05) { f2.y = q.y1; f2.ground = true; f2.airDash = true; f2.sx = Math.max(q.x0 + 0.6, Math.min(q.x1 - 0.6, f2.x)); f2.sy = q.y1; }
+        else if (f2.vy > 0) f2.y = q.y0 - hh;
+        f2.vy = 0;
+      }
+      f2.x = Math.max(-11, Math.min(Fd.end - 0.5, f2.x));
+      if (f2.y < Fd.minY - 10) {   // into the void: it hurts, and you are back on the last platform
+        hurt(12); f2.x = f2.sx; f2.y = f2.sy + 0.2; f2.vx = f2.vy = 0; S.fx = 0.6;
+      }
+      f2.run += Math.abs(f2.vx) * dt;
+      pl.fireCd -= dt; if (firing && ready && pl.fireCd <= 0) fire2();
+      pl.hurtT = Math.max(0, pl.hurtT - dt); pl.recoil = Math.max(0, pl.recoil - dt * 8);
+      // the camera follows, a little ahead
+      Fo.cam[0] += (f2.x + f2.face * 2.2 - Fo.cam[0]) * Math.min(1, dt * 4); Fo.cam[1] += (f2.y + 1.6 - Fo.cam[1]) * Math.min(1, dt * 3);
+      // enemies, in the plane
+      const er = S.errat; let near = 0;
+      for (const e of S.enemies) {
+        if (e.dead) continue;
+        e.t += dt; e.flash = Math.max(0, e.flash - dt * 6); e.cd -= dt;
+        const tx = f2.x, ty = f2.y + 1, dx = tx - e.x, dy = ty - e.y, d = Math.hypot(dx, dy), ph = e.type === 'phase';
+        if (!e.awake) { if (Math.abs(dx) < 15 && Math.abs(dy) < 10) e.awake = true; else continue; }
+        near++;
+        if (ph) e.z = Math.sin(e.t * 1.3 + e.seed) * 2.4;   // in and out of the plane
+        const inPlane = !ph || Math.abs(e.z) < 0.8;
+        if (e.type === 'shoot') {
+          e.x = e.hx + Math.sin(e.t * 0.8 + e.seed) * 1.2 * (0.4 + er); e.y = e.hy + Math.sin(e.t * 2.1) * 0.3;
+          if (e.cd <= 0 && d < 15) {
+            e.cd = Math.max(0.9, 1.8 - S.level * 0.08);
+            const a0 = Math.atan2(dy, dx); (er > 0.35 ? [-0.25, 0, 0.25] : [0]).forEach(a => S.orbs.push({ x: e.x, y: e.y, z: 0, vx: Math.cos(a0 + a) * 8, vy: Math.sin(a0 + a) * 8, vz: 0, life: 4, wob: 0 }));
+            play('orb');
+          }
+        } else {
+          let ang = Math.atan2(dy, dx);
+          if (er > 0 || ph) ang += Math.max(er, ph ? 0.6 : 0) * (Math.sin(e.t * 1.7 + e.seed) * 0.9 + Math.sin(e.t * 4.3 + e.seed * 2) * 0.45);
+          const sp = (e.type === 'mini' ? 6 : e.type === 'drone' ? 3.8 + S.level * 0.15 : 3.1) * (1 + er * 0.8 * Math.max(0, Math.sin(e.t * 2.1 + e.seed)));
+          e.vx += (Math.cos(ang) * sp - e.vx) * Math.min(1, dt * 4); e.vy = (e.vy || 0) + (Math.sin(ang) * sp - (e.vy || 0)) * Math.min(1, dt * 4);
+          for (const o of S.enemies) { if (o === e || o.dead) continue; const ox = e.x - o.x, oy = e.y - o.y, od = Math.hypot(ox, oy), m = e.r + o.r + 0.2; if (od < m && od > 1e-3) { e.vx += ox / od * (m - od) * 60 * dt; e.vy += oy / od * (m - od) * 60 * dt; } }
+          e.x += e.vx * dt; e.y += e.vy * dt;
+          if (er > 0.15 && Math.random() < dt * 0.3 * er) { const a = Math.random() * Math.PI * 2, r = 2 + Math.random() * 2; const c = COL[e.type]; burst(e.x, e.y, e.z, [c[0] * 2, c[1] * 2, c[2] * 2], 12, 3, 0.4, 0.08); e.x += Math.cos(a) * r; e.y += Math.sin(a) * r; play('blink'); }
+          if (inPlane && d < e.r + 0.75 && e.cd <= 0) { e.cd = 0.75; hurt(e.type === 'mini' ? 6 : 11, e.x); }
+        }
+      }
+      S.enemies = S.enemies.filter(e => !e.dead);
+      MU.int += (Math.min(1, near / 3) - MU.int) * Math.min(1, dt * 0.8);
+      // shots and orbs in the plane
+      for (const b of S.bolts) {
+        for (let s = 0; s < 3 && b.life > 0; s++) {
+          b.x += b.vx * dt / 3; b.y += b.vy * dt / 3;
+          if (inPlat(b.x, b.y)) { b.life = 0; burst(b.x - b.vx * 0.004, b.y - b.vy * 0.004, 0, [0.5, 1.6, 2.6], 8, 3, 0.35, 0.07); flash(b.x, b.y, 0.5, [0.4, 1.2, 2], 4, 0.12); break; }
+          for (const e of S.enemies) { if (e.dead || (e.type === 'phase' && Math.abs(e.z) > 0.8)) continue; if ((b.x - e.x) ** 2 + (b.y - e.y) ** 2 < (e.r + 0.2) ** 2) { b.life = 0; e.awake = true; e.flash = 1; e.hp--; play('hit'); burst(b.x, b.y, 0, [2, 2, 2], 6, 3, 0.25, 0.06); if (e.hp <= 0) killEnemy(e); hitMark(); break; } }
+          if (b.life <= 0) break;
+          for (const c of S.cores) { if (!c.fold || !c.alive) continue; if ((b.x - c.x) ** 2 + (b.y - c.y) ** 2 < 1.15 ** 2) { b.life = 0; hitCore(c); burst(b.x, b.y, 0, [2.4, 2.2, 1.4], 8, 3, 0.3, 0.07); hitMark(); break; } }
+        }
+        b.life -= dt;
+      }
+      S.bolts = S.bolts.filter(b => b.life > 0);
+      for (const o of S.orbs) {
+        o.x += o.vx * dt; o.y += o.vy * dt; o.life -= dt;
+        if (inPlat(o.x, o.y)) { o.life = 0; burst(o.x, o.y, 0, [2.4, 0.9, 0.2], 10, 2.5, 0.4, 0.08); continue; }
+        if (o.x > f2.x - 0.4 && o.x < f2.x + 0.4 && o.y > f2.y && o.y < f2.y + 1.7) { o.life = 0; hurt(9 + S.level, o.x); burst(o.x, o.y, 0, [2.4, 0.9, 0.2], 14, 3, 0.4, 0.08); }
+      }
+      S.orbs = S.orbs.filter(o => o.life > 0);
     }
 
     /* ── the strange ones: talk, the words come letter by letter, a gift at the end, and they dissolve ── */
@@ -749,7 +968,7 @@ void main() {
       if (!n.gone) {
         n.gone = true; const g = n.gift[0];
         if (g === 'heal') S.hp = Math.min(100, S.hp + 30);
-        else if (g === 'map') S.cores.forEach(c => { if (c.alive) revealRoom(c.room); });
+        else if (g === 'map') S.cores.forEach(c => { if (c.alive) revealRoom(c.room); });   // (a core in a fold: its portal's room)
         else if (g === 'calm') S.enemies.forEach(e => { e.awake = false; e.calmT = 9; });
         else if (g === 'score') { S.score += 750; paintHud(); }
         toast(L2([n.gift[3], n.gift[4]]), 3); play('pickup');
@@ -800,7 +1019,10 @@ void main() {
         if (S.state === 'trans' && S.endT <= 0) { S.level++; S.hp = Math.min(100, S.hp + 30); loadLevel(); S.state = 'play'; bigEl.classList.remove('on'); toast(tr(`Nivel ${S.level}: ${S.cores.length} núcleos`, `Level ${S.level}: ${S.cores.length} cores`)); }
         if (S.state === 'dead' && S.endT <= 0) { S.state = 'over'; ctx.done({ score: S.score, text: tr(`Llegaste al nivel ${S.level}`, `You reached level ${S.level}`), detail: tr(`${S.kills} enemigos · ${S.level - 1} niveles completos`, `${S.kills} enemies · ${S.level - 1} levels cleared`), better: 'high' }); }
       }
-      if (S.state === 'play') {
+      S.fx = Math.max(0, S.fx - dt * 2.2);
+      if (S.portal) S.portal.t += dt;
+      if (S.state === 'play' && S.mode === 'fold') updateFold(dt);
+      if (S.state === 'play' && S.mode === '3d') {
         // looking
         const sens = touch ? 0.0042 : 0.0022;
         pl.yaw += mx * sens; pl.pitch = Math.max(-1.45, Math.min(1.45, pl.pitch - my * sens)); mx = my = 0;
@@ -818,7 +1040,7 @@ void main() {
         }
         pl.x += pl.vx * dt; pl.z += pl.vz * dt;
         collide(pl, 0.38);
-        S.cores.forEach(c => { if (!c.alive) return; const dx = pl.x - c.x, dz = pl.z - c.z, d = Math.hypot(dx, dz); if (d < 1.3 && d > 0) { pl.x = c.x + dx / d * 1.3; pl.z = c.z + dz / d * 1.3; } });
+        S.cores.forEach(c => { if (!c.alive || c.fold) return; const dx = pl.x - c.x, dz = pl.z - c.z, d = Math.hypot(dx, dz); if (d < 1.3 && d > 0) { pl.x = c.x + dx / d * 1.3; pl.z = c.z + dz / d * 1.3; } });
         const sp = Math.hypot(pl.vx, pl.vz);
         pl.bob += dt * sp * 1.6;
         pl.roll += ((-st * 0.035) - pl.roll) * Math.min(1, dt * 8);
@@ -834,6 +1056,7 @@ void main() {
         // pickups and the exit
         S.pickups = S.pickups.filter(p => { p.t += dt; if (Math.hypot(p.x - pl.x, p.z - pl.z) < 1.1 && S.hp < 100) { S.hp = Math.min(100, S.hp + 25); play('pickup'); toast(tr('+25 de energía', '+25 energy'), 1.2); burst(p.x, 1, p.z, [0.6, 2.4, 0.5], 24, 3, 0.6); return false; } return true; });
         if (S.exit.open && Math.hypot(S.exit.x - pl.x, S.exit.z - pl.z) < 1.4) nextLevel();
+        if (S.portal && !S.portal.done && Math.hypot(S.portal.fx - pl.x, S.portal.fz - pl.z) < 1.0) { enterFold(); return; }
         // a strange one near you, in front of you: you can talk
         const n = S.npc; let can = false;
         if (n && !n.gone) { const dx = n.x - pl.x, dz = n.z - pl.z, d = Math.hypot(dx, dz); can = d < 2.9 && (dx * Math.sin(pl.yaw) - dz * Math.cos(pl.yaw)) / (d || 1) > 0.5; }
@@ -842,7 +1065,7 @@ void main() {
       pl.shake = Math.max(0, pl.shake - dt * 1.8);
       // enemies
       let near = 0;
-      if (S.state === 'play') for (const e of S.enemies) {
+      if (S.state === 'play' && S.mode === '3d') for (const e of S.enemies) {
         if (e.dead) continue;
         e.t += dt; e.flash = Math.max(0, e.flash - dt * 6); e.cd -= dt;
         const dx = pl.x - e.x, dz = pl.z - e.z, d = Math.hypot(dx, dz), ph = e.type === 'phase';
@@ -882,10 +1105,10 @@ void main() {
         e.y = Math.max(0.6, Math.min(top - 0.6, (e.type === 'shoot' ? 2.2 : e.type === 'mini' ? 1.1 : 1.35) + Math.sin(e.t * 2.3) * 0.22 + swoop));
         if (e.type !== 'shoot' && d < e.r + 0.55 && e.cd <= 0) { e.cd = 0.75; hurt(e.type === 'mini' ? 6 : e.type === 'split' ? 15 : 11, e.x, e.z); }
       }
-      S.enemies = S.enemies.filter(e => !e.dead);
-      MU.int += (Math.min(1, near / 4) - MU.int) * Math.min(1, dt * 0.8);
+      if (S.mode === '3d') { S.enemies = S.enemies.filter(e => !e.dead); MU.int += (Math.min(1, near / 4) - MU.int) * Math.min(1, dt * 0.8); }
       // the shots
       if (S.state !== 'pause') {
+        if (S.mode === '3d') {
         for (const b of S.bolts) {
           const n = 3;
           for (let s = 0; s < n && b.life > 0; s++) {
@@ -893,7 +1116,7 @@ void main() {
             if (solidAt(b.x, b.z) || b.y < 0.02 || b.y > ceilAt(b.x, b.z)) { b.life = 0; burst(b.x - b.vx * 0.004, b.y - b.vy * 0.004, b.z - b.vz * 0.004, [0.5, 1.6, 2.6], 8, 3, 0.35, 0.07); flash(b.x, b.y, b.z, [0.4, 1.2, 2], 4, 0.12); break; }
             for (const e of S.enemies) { if (e.dead) continue; const dx = b.x - e.x, dy = b.y - e.y, dz = b.z - e.z; if (dx * dx + dy * dy + dz * dz < (e.r + 0.18) ** 2) { b.life = 0; e.awake = true; e.flash = 1; e.hp--; play('hit'); burst(b.x, b.y, b.z, [2, 2, 2], 6, 3, 0.25, 0.06); if (e.hp <= 0) killEnemy(e); hitMark(); break; } }
             if (b.life <= 0) break;
-            for (const c of S.cores) { if (!c.alive) continue; const dx = b.x - c.x, dy = b.y - c.y, dz = b.z - c.z; if (dx * dx + dy * dy + dz * dz < 1.05 ** 2) { b.life = 0; hitCore(c); burst(b.x, b.y, b.z, [2.4, 2.2, 1.4], 8, 3, 0.3, 0.07); hitMark(); break; } }
+            for (const c of S.cores) { if (!c.alive || c.fold) continue; const dx = b.x - c.x, dy = b.y - c.y, dz = b.z - c.z; if (dx * dx + dy * dy + dz * dz < 1.05 ** 2) { b.life = 0; hitCore(c); burst(b.x, b.y, b.z, [2.4, 2.2, 1.4], 8, 3, 0.3, 0.07); hitMark(); break; } }
           }
           b.life -= dt;
         }
@@ -906,7 +1129,9 @@ void main() {
           if (S.state === 'play' && dx * dx + dy * dy + dz * dz < 0.55 ** 2) { o.life = 0; hurt(9 + S.level, o.x, o.z); burst(o.x, o.y, o.z, [2.4, 0.9, 0.2], 14, 3, 0.4, 0.08); }
         }
         S.orbs = S.orbs.filter(o => o.life > 0);
-        for (const p of S.parts) { p.x += p.vx * dt; p.y += p.vy * dt; p.z += p.vz * dt; p.vy -= p.g * dt; const k = Math.exp(-dt * 2.5); p.vx *= k; p.vz *= k; if (p.y < 0.02) { p.y = 0.02; p.vy = Math.abs(p.vy) * 0.4; } p.life -= dt; }
+        }
+        const floor = S.mode === '3d';
+        for (const p of S.parts) { p.x += p.vx * dt; p.y += p.vy * dt; p.z += p.vz * dt; p.vy -= p.g * dt; const k = Math.exp(-dt * 2.5); p.vx *= k; p.vz *= k; if (floor && p.y < 0.02) { p.y = 0.02; p.vy = Math.abs(p.vy) * 0.4; } p.life -= dt; }
         S.parts = S.parts.filter(p => p.life > 0);
         S.flashes.forEach(f => { f.life -= dt; }); S.flashes = S.flashes.filter(f => f.life > 0);
         S.cores.forEach(c => { c.t += dt; c.flash = Math.max(0, c.flash - dt * 6); });
@@ -927,17 +1152,28 @@ void main() {
       // the camera (with bob, recoil, shake and the tilt while strafing)
       const sh = pl.shake * pl.shake, sp = Math.hypot(pl.vx, pl.vz);
       const yaw = pl.yaw + (Math.random() - 0.5) * sh * 0.05, pitch = pl.pitch + (Math.random() - 0.5) * sh * 0.05 + pl.recoil * 0.012;
-      const B = basis(yaw, pitch, pl.roll), eye = [pl.x, EYE + Math.sin(pl.bob * 2) * 0.05 * Math.min(1, sp / 7), pl.z];
-      const proj = persp(pl.fov, W / H, 0.05, 140), vp = mul(proj, viewM(eye, B));
+      let B = basis(yaw, pitch, pl.roll), eye = [pl.x, EYE + Math.sin(pl.bob * 2) * 0.05 * Math.min(1, sp / 7), pl.z], fov = pl.fov;
+      const FO = S.mode === 'fold' ? S.fold : null;
+      if (FO) {   // a fold: seen from the side (going in, the camera turns from your eyes to there)
+        const k = FO.tr * FO.tr * (3 - 2 * FO.tr), cx = FO.cam[0], cy = FO.cam[1], D = touch ? 10 : 13;
+        const ey = [cx * k + (f2.x - 0.4) * (1 - k), (cy + 1.4) * k + (f2.y + 1.6) * (1 - k), D * k];
+        const jit = (Math.random() - 0.5) * sh * 0.04;
+        B = basis(Math.PI / 2 * (1 - k) + jit, Math.atan2(-1.4, D) * k + jit, (1 - k) * 0.5 * Math.sin(k * Math.PI));
+        eye = ey; fov = 1.32 * (1 - k) + 0.95 * k;
+      }
+      const proj = persp(fov, W / H, 0.05, 160), vp = mul(proj, viewM(eye, B));
       // the lights: the 16 nearest of everything that glows
       const lights = [];
       S.flashes.forEach(f => lights.push([f.x, f.y, f.z, f.r * (0.5 + 0.5 * f.life / f.max), f.col[0] * f.life / f.max, f.col[1] * f.life / f.max, f.col[2] * f.life / f.max]));
       S.bolts.forEach(b => lights.push([b.x, b.y, b.z, 3.5, 0.2, 0.6, 1.1]));
       S.orbs.forEach(o => lights.push([o.x, o.y, o.z, 4, 1.6, 0.5, 0.1]));
-      S.cores.forEach(c => { if (c.alive) { const p = 1 + 0.35 * Math.sin(c.t * 3); lights.push([c.x, c.y, c.z, 9, 1.0 * p, 0.85 * p, 0.5 * p]); } });
-      if (S.exit.open) { const p = 1 + 0.4 * Math.sin(S.exit.t * 4); lights.push([S.exit.x, 1.6, S.exit.z, 12, 0.6 * p, 2.4 * p, 2.6 * p]); }
+      const here = c => c.alive && !!c.fold === !!FO;   // the cores of the world you are in
+      S.cores.forEach(c => { if (here(c)) { const p = 1 + 0.35 * Math.sin(c.t * 3); lights.push([c.x, c.y, c.z, 9, 1.0 * p, 0.85 * p, 0.5 * p]); } });
+      if (!FO && S.portal && !S.portal.done) { const q = S.portal, p = 1 + 0.3 * Math.sin(q.t * 3); lights.push([q.x + q.nx * 0.6, 1.7, q.z + q.nz * 0.6, 6, 1.4 * p, 0.4 * p, 1.6 * p]); }
+      if (FO) lights.push([f2.x, f2.y + 1.2, 1.2, 4, 0.25, 0.6, 0.9]);
+      if (!FO && S.exit.open) { const p = 1 + 0.4 * Math.sin(S.exit.t * 4); lights.push([S.exit.x, 1.6, S.exit.z, 12, 0.6 * p, 2.4 * p, 2.6 * p]); }
       S.enemies.forEach(e => { if (e.awake) { const c = COL[e.type]; lights.push([e.x, e.y, e.z, 3.5, c[0] * 0.8, c[1] * 0.8, c[2] * 0.8]); } });
-      if (S.npc && !S.npc.gone) { const c = hsv((S.npc.hue + S.npc.t * 0.08) % 1, 0.5, 1); lights.push([S.npc.x, 1.7, S.npc.z, 5, c[0] * 0.55, c[1] * 0.55, c[2] * 0.55]); }
+      if (!FO && S.npc && !S.npc.gone) { const c = hsv((S.npc.hue + S.npc.t * 0.08) % 1, 0.5, 1); lights.push([S.npc.x, 1.7, S.npc.z, 5, c[0] * 0.55, c[1] * 0.55, c[2] * 0.55]); }
       lights.forEach(l => { l.d = (l[0] - eye[0]) ** 2 + (l[2] - eye[2]) ** 2; });
       lights.sort((a, b) => a.d - b.d);
       const LP = new Float32Array(64), LC = new Float32Array(64), NL = Math.min(16, lights.length);
@@ -956,7 +1192,8 @@ void main() {
       gl.uniformMatrix4fv(p.L.u_vp, false, vp); gl.uniform3fv(p.L.u_eye, eye); gl.uniform1f(p.L.u_time, S.t);
       gl.uniform4fv(p.L.u_lp, LP); gl.uniform4fv(p.L.u_lc, LC); gl.uniform1i(p.L.u_nl, NL); gl.uniform4fv(p.L.u_rc, RC); gl.uniform4fv(p.L.u_rp, RP);
       gl.uniform1f(p.L.u_psy, S.psy); gl.uniform1f(p.L.u_warp, Math.max(0, (S.level - 4) / 6) * 0.26 * Math.min(1, S.psy * 2));
-      gl.bindVertexArray(levelGL.vao); gl.drawArrays(gl.TRIANGLES, 0, levelGL.n);
+      const geo = FO ? foldGL : levelGL;
+      gl.bindVertexArray(geo.vao); gl.drawArrays(gl.TRIANGLES, 0, geo.n);
       // things
       gl.disable(gl.CULL_FACE);
       p = P.ent; gl.useProgram(p.p); gl.uniformMatrix4fv(p.L.u_vp, false, vp); gl.uniform3fv(p.L.u_eye, eye); gl.uniform1f(p.L.u_fog, 1); gl.uniform1f(p.L.u_time, S.t);
@@ -978,14 +1215,22 @@ void main() {
       }
       wob(PS * 0.12, PS > 0 ? S.t * 0.1 * PS : 0);
       for (const c of S.cores) {
-        if (!c.alive) continue;
+        if (!here(c)) continue;
         const pu = 1 + 0.06 * Math.sin(c.t * 3);
         draw(MESH.octa, modelM(c.x, c.y, c.z, 0.85 * pu, c.t * 0.8, 0), [1, 0.86, 0.45], 1.2, 0.15, c.flash);
         draw(MESH.octa, modelM(c.x, c.y, c.z, 0.45, -c.t * 2.2, c.t), [1, 1, 1], 1.6, 0.6, c.flash);
         draw(MESH.ring, modelM(c.x, c.y, c.z, 1.25, c.t * 1.4, Math.PI / 2 + 0.3 * Math.sin(c.t)), [1, 0.86, 0.45], 0.8, 0.05, 0);
       }
+      // you, in a fold
+      if (FO) draw(MESH.avatar, modelM(f2.x, f2.y + (f2.ground ? Math.abs(Math.sin(f2.run * 2.2)) * 0.06 : 0), 0, 1, f2.face > 0 ? 0 : Math.PI, 0), [0.35, 0.9, 1], 1.1, 0.12, pl.hurtT > 0 ? pl.hurtT : 0);
+      // a portal into a fold: two rings on the wall, magenta
+      if (!FO && S.portal && !S.portal.done) {
+        const q = S.portal, a = Math.atan2(q.nx, q.nz), pu = 1 + 0.05 * Math.sin(q.t * 4);
+        draw(MESH.ring, modelM(q.x, 1.8, q.z, 1.2 * pu, a, 0), [1, 0.35, 0.95], 1.5, 0.05, 0);
+        draw(MESH.ring, modelM(q.x + q.nx * 0.05, 1.8, q.z + q.nz * 0.05, 0.85, a, q.t * 1.5), [0.6, 0.9, 1], 1.1, 0.05, 0);
+      }
       // a strange one: rings turning around a small light, iridescent
-      if (S.npc && S.npc.fade > 0.01) {
+      if (!FO && S.npc && S.npc.fade > 0.01) {
         const n = S.npc, f = n.fade, c1 = hsv((n.hue + n.t * 0.08) % 1, 0.55, 1), c2 = hsv((n.hue + 0.33 + n.t * 0.08) % 1, 0.55, 1), y = 1.7 + Math.sin(n.t * 1.3) * 0.15;
         wob(0.06, 0);
         draw(MESH.ring, modelM(n.x, y, n.z, 0.95 * f, n.t * 0.7, 0.4), c1, 1.1 * f, 0.05, 0);
@@ -994,8 +1239,8 @@ void main() {
         draw(MESH.ico, modelM(n.x, y, n.z, 0.22 * f, n.t * 2, n.t), [1, 1, 1], 1.4 * f, 0.6, 0);
         wob(PS * 0.12, PS > 0 ? S.t * 0.1 * PS : 0);
       }
-      for (const q of S.pickups) draw(MESH.plus, modelM(q.x, 0.9 + Math.sin(q.t * 3) * 0.12, q.z, 0.9, q.t * 1.6, 0), [0.35, 1, 0.3], 1.2, 0.1, 0);
-      { const X = S.exit, op = X.open, pu = op ? 1 + 0.05 * Math.sin(X.t * 4) : 1;
+      if (!FO) for (const q of S.pickups) draw(MESH.plus, modelM(q.x, 0.9 + Math.sin(q.t * 3) * 0.12, q.z, 0.9, q.t * 1.6, 0), [0.35, 1, 0.3], 1.2, 0.1, 0);
+      if (!FO) { const X = S.exit, op = X.open, pu = op ? 1 + 0.05 * Math.sin(X.t * 4) : 1;
         draw(MESH.ring, modelM(X.x, 1.6, X.z, 1.35 * pu, X.t * (op ? 0.8 : 0.15), 0), op ? [0.4, 1, 1] : [0.25, 0.3, 0.4], op ? 1.6 : 0.35, 0.05, 0);
         draw(MESH.ring, modelM(X.x, 1.6, X.z, 1.0 * pu, -X.t * (op ? 1.3 : 0.2), 0), op ? [0.4, 1, 1] : [0.25, 0.3, 0.4], op ? 1.2 : 0.25, 0.05, 0); }
       // light: shots, orbs, sparks, the exit's glow
@@ -1004,18 +1249,20 @@ void main() {
       S.bolts.forEach(b => { for (let k = 0; k < 5; k++) pt(b.x - b.vx * 0.005 * k, b.y - b.vy * 0.005 * k, b.z - b.vz * 0.005 * k, 0.13 - k * 0.018, 0.7, 2.2, 3.4, 1 - k * 0.17); });
       S.orbs.forEach(o => { pt(o.x, o.y, o.z, 0.7, 3, 1.1, 0.25, 1); pt(o.x, o.y, o.z, 0.3, 3, 2.5, 2, 1); });
       S.parts.forEach(q => { const a = q.life / q.max; pt(q.x, q.y, q.z, q.size, q.col[0], q.col[1], q.col[2], a); });
-      S.cores.forEach(c => { if (c.alive) pt(c.x, c.y, c.z, 1.7, 1.2, 1, 0.6, 0.28 + 0.1 * Math.sin(c.t * 3)); });
-      if (S.exit.open) pt(S.exit.x, 1.6, S.exit.z, 3.2, 0.3, 1.4, 1.6, 0.8 + 0.3 * Math.sin(S.exit.t * 4));
-      if (S.npc && S.npc.fade > 0.01) { const n = S.npc; for (let k = 0; k < 10; k++) { const a = n.t * 0.9 + k * 0.628, c = hsv((n.hue + k * 0.1 + n.t * 0.1) % 1, 0.6, 1); pt(n.x + Math.cos(a) * 1.3, 1.7 + Math.sin(a * 2.3) * 0.6, n.z + Math.sin(a) * 1.3, 0.09, c[0] * 2.5, c[1] * 2.5, c[2] * 2.5, n.fade); } }
+      S.cores.forEach(c => { if (here(c)) pt(c.x, c.y, c.z, 1.7, 1.2, 1, 0.6, 0.28 + 0.1 * Math.sin(c.t * 3)); });
+      if (!FO && S.portal && !S.portal.done) { const q = S.portal; for (let k = 0; k < 14; k++) { const a = q.t * 1.2 + k * 0.449, r = 0.3 + 0.8 * ((k * 0.37 + q.t * 0.25) % 1), px = Math.cos(a) * r, py = Math.sin(a) * r; pt(q.x + q.nx * 0.15 - q.nz * px, 1.8 + py, q.z + q.nz * 0.15 + q.nx * px, 0.1, 2.6, 0.7, 2.6, 0.9); } }
+      if (FO) { pt(f2.x + f2.face * 0.5, f2.y + 1.08, 0, 0.12, 0.6, 1.6, 2.4, 0.6); }
+      if (!FO && S.exit.open) pt(S.exit.x, 1.6, S.exit.z, 3.2, 0.3, 1.4, 1.6, 0.8 + 0.3 * Math.sin(S.exit.t * 4));
+      if (!FO && S.npc && S.npc.fade > 0.01) { const n = S.npc; for (let k = 0; k < 10; k++) { const a = n.t * 0.9 + k * 0.628, c = hsv((n.hue + k * 0.1 + n.t * 0.1) % 1, 0.6, 1); pt(n.x + Math.cos(a) * 1.3, 1.7 + Math.sin(a * 2.3) * 0.6, n.z + Math.sin(a) * 1.3, 0.09, c[0] * 2.5, c[1] * 2.5, c[2] * 2.5, n.fade); } }
       if (n) {
-        p = P.pts; gl.useProgram(p.p); gl.uniformMatrix4fv(p.L.u_vp, false, vp); gl.uniform1f(p.L.u_ph, H / (2 * Math.tan(pl.fov / 2)));
+        p = P.pts; gl.useProgram(p.p); gl.uniformMatrix4fv(p.L.u_vp, false, vp); gl.uniform1f(p.L.u_ph, H / (2 * Math.tan(fov / 2)));
         gl.bindBuffer(gl.ARRAY_BUFFER, pBuf); gl.bufferSubData(gl.ARRAY_BUFFER, 0, pData, 0, n * 8);
         gl.enable(gl.BLEND); gl.blendFunc(gl.ONE, gl.ONE); gl.depthMask(false);
         gl.bindVertexArray(pVao); gl.drawArrays(gl.POINTS, 0, n);
         gl.depthMask(true); gl.disable(gl.BLEND);
       }
       // the weapon, in front of the camera
-      if (S.state === 'play' || S.state === 'pause') {
+      if (!FO && (S.state === 'play' || S.state === 'pause' || S.state === 'talk')) {
         gl.clear(gl.DEPTH_BUFFER_BIT);
         p = P.ent; gl.useProgram(p.p);
         gl.uniformMatrix4fv(p.L.u_vp, false, persp(1.1, W / H, 0.01, 10)); gl.uniform3fv(p.L.u_eye, [0, 0, 0]); gl.uniform1f(p.L.u_fog, 0);
@@ -1042,15 +1289,20 @@ void main() {
       const fade = S.state === 'trans' ? Math.max(0, Math.min(1, Math.abs(S.endT - 0.8) / 0.8)) : S.state === 'dead' || S.state === 'over' ? Math.max(0.25, S.endT / 1.6) : 1;
       pass(P.comp, null, W, H, [scene, RT.a], L => {
         gl.uniform1i(L.u_img, 0); gl.uniform1i(L.u_bloom, 1); gl.uniform1f(L.u_hurt, Math.min(1, pl.hurtT * 2) + (S.state === 'dead' ? 0.6 : 0) + (S.hp < 30 && S.state === 'play' ? 0.18 + 0.12 * Math.sin(S.t * 6) : 0));
-        gl.uniform1f(L.u_time, S.t % 100); gl.uniform1f(L.u_ab, 0.012 + S.psy * 0.03 * (1 + Math.sin(S.t * 0.7)) + pl.hurtT * 0.05 + (pl.dashT > 0 ? 0.04 : 0)); gl.uniform1f(L.u_bk, 1.1); gl.uniform1f(L.u_fade, fade); gl.uniform2f(L.u_res, W, H);
+        gl.uniform1f(L.u_time, S.t % 100); gl.uniform1f(L.u_ab, S.fx * 0.12 + 0.012 + S.psy * 0.03 * (1 + Math.sin(S.t * 0.7)) + pl.hurtT * 0.05 + (pl.dashT > 0 ? 0.04 : 0)); gl.uniform1f(L.u_bk, 1.1); gl.uniform1f(L.u_fade, fade * (1 + S.fx * 1.4)); gl.uniform2f(L.u_res, W, H);
       });
       gl.activeTexture(gl.TEXTURE0);
       // the HUD
       hpFill.style.width = S.hp + '%'; hpNum.textContent = Math.ceil(S.hp); hpBox.classList.toggle('low', S.hp < 30);
       dashFill.style.width = (100 - pl.dashCd / 0.9 * 100) + '%';
       if (hitT > 0) { hitT -= dt; if (hitT <= 0) cross.classList.remove('hit'); }
+      if (FO) {   // the sight: where the shots go (on a phone, ahead of you)
+        const ax = touch ? f2.face * 3 : f2.ax, ay = touch ? 0 : f2.ay, wx = f2.x + ax, wy = f2.y + 1.08 + ay;
+        const c4 = [vp[0] * wx + vp[4] * wy + vp[12], vp[1] * wx + vp[5] * wy + vp[13], vp[3] * wx + vp[7] * wy + vp[15]];
+        if (c4[2] > 0) { cross.style.left = ((c4[0] / c4[2]) * 0.5 + 0.5) * 100 + '%'; cross.style.top = (0.5 - (c4[1] / c4[2]) * 0.5) * 100 + '%'; }
+      }
       const layout = touch ? 't' : 'd'; if (layout !== lastLayout) { wrap.classList.toggle('touch', touch); lastLayout = layout; }
-      if ((S.mapT = (S.mapT || 0) - dt) <= 0) { S.mapT = 0.12; drawMap(); }
+      if (!FO && (S.mapT = (S.mapT || 0) - dt) <= 0) { S.mapT = 0.12; drawMap(); }
       // a heavier picture than the device can carry: draw it smaller (and back up when there is room)
       if (dt > 1 / 40) { slowT += dt; fastT = 0; if (slowT > 1.5 && scale > 0.5) { scale = Math.max(0.5, scale * 0.85); slowT = 0; } }
       else if (dt < 1 / 70) { fastT += dt; slowT = 0; if (fastT > 4 && scale < 1) { scale = Math.min(1, scale * 1.1); fastT = 0; } }
@@ -1069,7 +1321,8 @@ void main() {
         g.fillRect(Wm / 2 + (i - cx) * s, Wm / 2 + (j - cz) * s, s, s);
       }
       const dot = (x, z, col, r) => { const px = Wm / 2 + (x / CS - cx) * s, pz = Wm / 2 + (z / CS - cz) * s; g.fillStyle = col; g.beginPath(); g.arc(px, pz, r, 0, Math.PI * 2); g.fill(); return [px, pz]; };
-      S.cores.forEach(c => { if (c.alive && S.seen[Math.floor(c.z / CS) * M.W + Math.floor(c.x / CS)]) dot(c.x, c.z, '#ffd23f', 3.5); });
+      S.cores.forEach(c => { if (c.alive && !c.fold && S.seen[Math.floor(c.z / CS) * M.W + Math.floor(c.x / CS)]) dot(c.x, c.z, '#ffd23f', 3.5); });
+      if (S.portal && !S.portal.done && S.seen[Math.floor(S.portal.fz / CS) * M.W + Math.floor(S.portal.fx / CS)]) dot(S.portal.x, S.portal.z, '#ff5af0', 4);
       if (S.npc && !S.npc.gone && S.seen[Math.floor(S.npc.z / CS) * M.W + Math.floor(S.npc.x / CS)]) dot(S.npc.x, S.npc.z, '#e9b8ff', 3);
       if (S.exit.open) {   // the exit always shows (on the rim when it is far)
         let ex = (S.exit.x / CS - cx) * s, ez = (S.exit.z / CS - cz) * s; const l = Math.hypot(ex, ez), m = Wm / 2 - 8; if (l > m) { ex *= m / l; ez *= m / l; }
@@ -1107,6 +1360,7 @@ void main() {
       aimAt(x, y, z) { const dx = x - pl.x, dy = y - EYE, dz = z - pl.z; pl.yaw = Math.atan2(dx, -dz); pl.pitch = Math.atan2(dy, Math.hypot(dx, dz)); },
       hurt, nextLevel, talk, advance, endTalk,
       setLevel(n) { S.level = n; loadLevel(); },
+      get f2() { return f2; }, enterFold, exitFold, jump() { f2.buf = 0.13; f2.held = true; },
       setPat(f, w) { S.M.rooms.forEach(r => { r.pf = f; r.pw = w; }); S.M.corrPat = [f, w]; },
     });
 
