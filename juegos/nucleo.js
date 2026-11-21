@@ -757,7 +757,13 @@ void main() {
           if (!isSolid(i, j)) continue;
           const x0 = i * CS, z0 = j * CS, nx = Math.max(x0, Math.min(o.x, x0 + CS)), nz = Math.max(z0, Math.min(o.z, z0 + CS));
           const dx = o.x - nx, dz = o.z - nz, d2 = dx * dx + dz * dz;
-          if (d2 < r * r) { if (d2 > 1e-9) { const d = Math.sqrt(d2), k = (r - d) / d; o.x += dx * k; o.z += dz * k; } else { o.x += (o.x < x0 + CS / 2 ? -r : r); } }
+          if (d2 < r * r) {
+            if (d2 > 1e-9) { const d = Math.sqrt(d2), k = (r - d) / d; o.x += dx * k; o.z += dz * k; }
+            else {   // the centre is inside the cell: out by the nearest side that leads to an open cell
+              const opts = [[o.x - x0, -1, 0, i - 1, j], [x0 + CS - o.x, 1, 0, i + 1, j], [o.z - z0, 0, -1, i, j - 1], [z0 + CS - o.z, 0, 1, i, j + 1]].filter(q => !isSolid(q[3], q[4])).sort((a, b) => a[0] - b[0]);
+              const q = opts[0] || [o.x - x0, -1, 0]; o.x += q[1] * (q[0] + r); o.z += q[2] * (q[0] + r);
+            }
+          }
         }
       }
     }
@@ -766,7 +772,7 @@ void main() {
     // the weapons: «Pulso» (fast, precise) and «Abanico» (a fan of 8, slow, devastating up close, pushes back)
     const WEAPONS = [
       { name: tr('Pulso', 'Pulse'), rate: 0.125, pellets: 1, spread: 0.012, speed: 48, life: 1.2, col: [0.3, 0.85, 1], hot: [0.7, 2.2, 3.4], shake: 0.06, recoil: 1, push: 0, mesh: 'gun' },
-      { name: tr('Abanico', 'Fan'), rate: 0.62, pellets: 8, spread: 0.2, speed: 40, life: 0.38, col: [1, 0.42, 0.85], hot: [3.2, 1.0, 2.6], shake: 0.28, recoil: 2.2, push: 3.5, mesh: 'fan' },
+      { name: tr('Abanico', 'Fan'), rate: 0.55, pellets: 8, spread: 0.14, speed: 44, life: 0.42, dmg: 1.7, coreDmg: 1.15, col: [1, 0.42, 0.85], hot: [3.2, 1.0, 2.6], shake: 0.28, recoil: 2.2, push: 4.5, mesh: 'fan' },
       { name: tr('Rayo', 'Beam'), beam: true, rate: 0.1, range: 22, col: [0.35, 1, 0.55], hot: [1.0, 3.2, 1.6], shake: 0.012, recoil: 0.25, push: 0, mesh: 'beamgun', find: tr('un rayo continuo: mantené apretado', 'a continuous beam: hold to fire') },
       { name: tr('Rebote', 'Bounce'), rate: 0.22, pellets: 1, spread: 0.01, speed: 28, life: 2.4, bounce: 4, col: [1, 0.85, 0.25], hot: [3.2, 2.6, 0.8], shake: 0.1, recoil: 1.3, push: 1.2, mesh: 'bouncer', find: tr('rebota en paredes, piso y techo', 'it bounces off walls, floor and ceiling') },
     ];
@@ -1077,8 +1083,8 @@ void main() {
       if (e.type === 'split') for (let k = 0; k < 2; k++) { const m = spawnEnemy('mini', e.x + (k ? 0.5 : -0.5), e.z, true); m.vx = (k ? 1 : -1) * 5; m.y = e.y; m.vy = 0; }
       if (S.mode === '3d' && Math.random() < 0.12) S.pickups.push({ x: e.x, z: e.z, t: 0 });
     }
-    function hitCore(c) {
-      c.hp -= DMG(); c.flash = 1; play('hit');
+    function hitCore(c, k = 1) {
+      c.hp -= DMG() * k; c.flash = 1; play('hit');
       const frac = c.hp / c.max;
       if (c.hp > 0 && frac < 0.75 - c.calls * 0.25) {   // it calls defenders as it weakens
         c.calls++; for (let k = 0; k < 1 + Math.min(2, Math.floor(S.level / 2)); k++) {
@@ -1106,10 +1112,10 @@ void main() {
 
     /* ── hitting things (shared by bolts and the beam) ── */
     function hitEnemy(e) { e.awake = true; e.flash = 1; e.hp -= DMG(); if (e.hp <= 0 && !e.dead) killEnemy(e); }
-    function hitTarget(h, p) {
+    function hitTarget(h, p, k = 1) {
       if (h.e) { hitEnemy(h.e); burst(p[0], p[1], p[2], [2, 2, 2], 4, 3, 0.2, 0.05); }
       else if (h.c) { hitCore(h.c); burst(p[0], p[1], p[2], [2.4, 2.2, 1.4], 5, 3, 0.25, 0.06); }
-      else if (h.boss) hitBoss(p, h.body);
+      else if (h.boss) hitBoss(p, h.body, k);
       else if (h.shield) { play('clang'); burst(p[0], p[1], p[2], [1.2, 2, 2.6], 6, 3, 0.25, 0.06); return; }
       hitMark();
     }
@@ -1182,9 +1188,9 @@ void main() {
       if ((x - Bo.x) ** 2 + (y - Bo.y) ** 2 + (z - Bo.z) ** 2 < R * R) return { boss: true };
       return null;
     }
-    function hitBoss(p, body) {
+    function hitBoss(p, body, k = 1) {
       const Bo = S.boss; if (!Bo.alive) return;
-      const d = DMG(); Bo.flash = 1; Bo.awake = true;
+      const d = DMG() * k; Bo.flash = 1; Bo.awake = true;
       if (body) {
         if (!body.alive) return;
         body.hp -= d; body.flash = 1;
@@ -1537,8 +1543,11 @@ void main() {
       if (ready && f2.buf > 0 && (f2.ground || f2.coyote > 0) && !(f2.crouch && wantDown)) { f2.crouch = false; f2.vy = 11.5; f2.buf = 0; f2.coyote = 0; f2.ground = false; play('jump'); burst(f2.x, f2.y + 0.05, 0, [0.4, 1.2, 2], 8, 2, 0.3, 0.06); }
       // move and collide (the body: 0.6 wide, 1.7 tall), one axis at a time
       const P = Fd.P, hw = 0.3, hh = bodyH2();
-      f2.x += f2.vx * dt;
-      for (const q of P) if (f2.x + hw > q.x0 && f2.x - hw < q.x1 && f2.y + hh > q.y0 && f2.y < q.y1) { if (f2.vx > 0) f2.x = q.x0 - hw; else if (f2.vx < 0) f2.x = q.x1 + hw; f2.vx = 0; }
+      const nx = Math.max(1, Math.ceil(Math.abs(f2.vx * dt) / 0.2));   // in short steps: a dash can't skip a thin wall
+      for (let k = 0; k < nx && f2.vx; k++) {
+        f2.x += f2.vx * dt / nx;
+        for (const q of P) if (f2.x + hw > q.x0 && f2.x - hw < q.x1 && f2.y + hh > q.y0 && f2.y < q.y1) { if (f2.vx > 0) f2.x = q.x0 - hw; else if (f2.vx < 0) f2.x = q.x1 + hw; f2.vx = 0; }
+      }
       f2.y += f2.vy * dt; f2.ground = false;
       for (const q of P) if (f2.x + hw > q.x0 && f2.x - hw < q.x1 && f2.y + hh > q.y0 && f2.y < q.y1) {
         if (f2.vy <= 0 && f2.y - f2.vy * dt >= q.y1 - 0.05) { f2.y = q.y1; f2.ground = true; f2.airDash = true; f2.sx = Math.max(q.x0 + 0.6, Math.min(q.x1 - 0.6, f2.x)); f2.sy = q.y1; }
@@ -1599,10 +1608,10 @@ void main() {
             b.x = px; b.y = py; burst(b.x, b.y, 0, WEAPONS[b.w].hot.map(v => v * 0.7), 6, 2.5, 0.25, 0.06); play('ping'); continue;
           }
           if (inPlat(b.x, b.y)) { b.life = 0; burst(b.x - b.vx * 0.004, b.y - b.vy * 0.004, 0, [0.5, 1.6, 2.6], 8, 3, 0.35, 0.07); flash(b.x, b.y, 0.5, [0.4, 1.2, 2], 4, 0.12); break; }
-          for (const e of S.enemies) { if (e.dead || e === b.last || (e.type === 'phase' && Math.abs(e.z) > 0.8)) continue; if ((b.x - e.x) ** 2 + (b.y - e.y) ** 2 < (e.r + 0.2) ** 2) { b.last = e; if (b.pierce > 0) b.pierce--; else b.life = 0; e.awake = true; e.flash = 1; e.hp -= DMG(); if (b.w) { const l = Math.hypot(b.vx, b.vy) || 1; e.vx += b.vx / l * WEAPONS[b.w].push; e.vy = (e.vy || 0) + b.vy / l * WEAPONS[b.w].push; } play('hit'); burst(b.x, b.y, 0, [2, 2, 2], 6, 3, 0.25, 0.06); if (e.hp <= 0) killEnemy(e); hitMark(); break; } }
+          for (const e of S.enemies) { if (e.dead || e === b.last || (e.type === 'phase' && Math.abs(e.z) > 0.8)) continue; if ((b.x - e.x) ** 2 + (b.y - e.y) ** 2 < (e.r + 0.2) ** 2) { b.last = e; if (b.pierce > 0) b.pierce--; else b.life = 0; e.awake = true; e.flash = 1; e.hp -= DMG() * (WEAPONS[b.w].dmg || 1); if (b.w) { const l = Math.hypot(b.vx, b.vy) || 1; e.vx += b.vx / l * WEAPONS[b.w].push; e.vy = (e.vy || 0) + b.vy / l * WEAPONS[b.w].push; } play('hit'); burst(b.x, b.y, 0, [2, 2, 2], 6, 3, 0.25, 0.06); if (e.hp <= 0) killEnemy(e); hitMark(); break; } }
           if (b.life <= 0) break;
-          for (const c of S.cores) { if (!c.fold || !c.alive) continue; if ((b.x - c.x) ** 2 + (b.y - c.y) ** 2 < 1.15 ** 2) { b.life = 0; hitCore(c); burst(b.x, b.y, 0, [2.4, 2.2, 1.4], 8, 3, 0.3, 0.07); hitMark(); break; } }
-          if (b.life > 0 && S.boss && S.boss.alive) { const h = bossHit(b.x, b.y, 0); if (h) { b.life = 0; hitTarget(h, [b.x, b.y, 0]); } }
+          for (const c of S.cores) { if (!c.fold || !c.alive) continue; if ((b.x - c.x) ** 2 + (b.y - c.y) ** 2 < 1.15 ** 2) { b.life = 0; hitCore(c, WEAPONS[b.w].coreDmg || 1); burst(b.x, b.y, 0, [2.4, 2.2, 1.4], 8, 3, 0.3, 0.07); hitMark(); break; } }
+          if (b.life > 0 && S.boss && S.boss.alive) { const h = bossHit(b.x, b.y, 0); if (h) { b.life = 0; hitTarget(h, [b.x, b.y, 0], WEAPONS[b.w].coreDmg || 1); } }
         }
         b.life -= dt;
       }
@@ -1791,8 +1800,10 @@ void main() {
           const fr = Math.exp(-dt * (il > 0.05 ? 7 : 12)); pl.vx *= fr; pl.vz *= fr;
           const sp = Math.hypot(pl.vx, pl.vz); if (sp > MAXV && sp > 0) { const k = Math.max(MAXV / sp, Math.exp(-dt * 8)); pl.vx *= k; pl.vz *= k; }
         }
-        pl.x += pl.vx * dt; pl.z += pl.vz * dt;
-        collide(pl, 0.38);
+        {   // in steps of at most 0.2: a fast dash on a slow phone went far enough into a wall in one frame to come out the other side
+          const n = Math.max(1, Math.ceil(Math.hypot(pl.vx, pl.vz) * dt / 0.2));
+          for (let k = 0; k < n; k++) { pl.x += pl.vx * dt / n; pl.z += pl.vz * dt / n; collide(pl, 0.38); }
+        }
         if (pl.dashT > 0 && upN('dash')) for (const e of S.enemies) if (!e.dead && e.dashId !== pl.dashId && Math.hypot(e.x - pl.x, e.z - pl.z) < e.r + 0.8) { e.dashId = pl.dashId; e.hp -= 2 * upN('dash') * DMG(); e.flash = 1; e.awake = true; burst(e.x, e.y, e.z, [1.2, 2.4, 3], 16, 4, 0.4, 0.08); play('zap'); if (e.hp <= 0) killEnemy(e); }
         S.cores.forEach(c => { if (!c.alive || c.fold) return; const dx = pl.x - c.x, dz = pl.z - c.z, d = Math.hypot(dx, dz); if (d < 1.3 && d > 0) { pl.x = c.x + dx / d * 1.3; pl.z = c.z + dz / d * 1.3; } });
         const sp = Math.hypot(pl.vx, pl.vz);
@@ -1885,10 +1896,10 @@ void main() {
               continue;
             }
             if (solidAt(b.x, b.z) || b.y < 0.02 || b.y > ceilAt(b.x, b.z)) { b.life = 0; if (solidAt(b.x, b.z)) wallHit(b.x, b.z); burst(b.x - b.vx * 0.004, b.y - b.vy * 0.004, b.z - b.vz * 0.004, [0.5, 1.6, 2.6], 8, 3, 0.35, 0.07); flash(b.x, b.y, b.z, [0.4, 1.2, 2], 4, 0.12); break; }
-            for (const e of S.enemies) { if (e.dead || e === b.last) continue; const dx = b.x - e.x, dy = b.y - e.y, dz = b.z - e.z; if (dx * dx + dy * dy + dz * dz < (e.r + 0.18) ** 2) { b.last = e; if (b.pierce > 0) b.pierce--; else b.life = 0; e.awake = true; e.flash = 1; e.hp -= DMG(); if (b.w) { const l = Math.hypot(b.vx, b.vz) || 1; e.vx += b.vx / l * WEAPONS[b.w].push; e.vz += b.vz / l * WEAPONS[b.w].push; } play('hit'); burst(b.x, b.y, b.z, [2, 2, 2], 6, 3, 0.25, 0.06); if (e.hp <= 0) killEnemy(e); hitMark(); break; } }
+            for (const e of S.enemies) { if (e.dead || e === b.last) continue; const dx = b.x - e.x, dy = b.y - e.y, dz = b.z - e.z; if (dx * dx + dy * dy + dz * dz < (e.r + 0.18) ** 2) { b.last = e; if (b.pierce > 0) b.pierce--; else b.life = 0; e.awake = true; e.flash = 1; e.hp -= DMG() * (WEAPONS[b.w].dmg || 1); if (b.w) { const l = Math.hypot(b.vx, b.vz) || 1; e.vx += b.vx / l * WEAPONS[b.w].push; e.vz += b.vz / l * WEAPONS[b.w].push; } play('hit'); burst(b.x, b.y, b.z, [2, 2, 2], 6, 3, 0.25, 0.06); if (e.hp <= 0) killEnemy(e); hitMark(); break; } }
             if (b.life <= 0) break;
-            for (const c of S.cores) { if (!c.alive || c.fold) continue; const dx = b.x - c.x, dy = b.y - c.y, dz = b.z - c.z; if (dx * dx + dy * dy + dz * dz < 1.05 ** 2) { b.life = 0; hitCore(c); burst(b.x, b.y, b.z, [2.4, 2.2, 1.4], 8, 3, 0.3, 0.07); hitMark(); break; } }
-            if (b.life > 0 && S.boss && S.boss.alive) { const h = bossHit(b.x, b.y, b.z); if (h) { b.life = 0; hitTarget(h, [b.x, b.y, b.z]); } }
+            for (const c of S.cores) { if (!c.alive || c.fold) continue; const dx = b.x - c.x, dy = b.y - c.y, dz = b.z - c.z; if (dx * dx + dy * dy + dz * dz < 1.05 ** 2) { b.life = 0; hitCore(c, WEAPONS[b.w].coreDmg || 1); burst(b.x, b.y, b.z, [2.4, 2.2, 1.4], 8, 3, 0.3, 0.07); hitMark(); break; } }
+            if (b.life > 0 && S.boss && S.boss.alive) { const h = bossHit(b.x, b.y, b.z); if (h) { b.life = 0; hitTarget(h, [b.x, b.y, b.z], WEAPONS[b.w].coreDmg || 1); } }
           }
           b.life -= dt;
         }
