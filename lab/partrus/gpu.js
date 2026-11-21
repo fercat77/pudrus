@@ -722,7 +722,7 @@ fn blob(p: vec2f, c: vec2f, r: f32) -> f32 { let d = p - c; return exp(-dot(d, d
       UB.set([dt, time, beat, aspect], 0);
       UB.set([S.fno, trigs.u_burst ? 1 : 0, trigs.u_kick ? 1 : 0, Math.max(0, num(M.size, 1))], 4);
       UB.set([num(M.hue, 0), Math.max(0, num(M.glow, 1)), S.rclock || 0, h / 720], 8);
-      UB.set([256, init ? S.life : 0, S.np, 0], 12);
+      UB.set([S.maxpt || 256, init ? S.life : 0, S.np, 0], 12);
       UB.set([num(M.yaw, 0), num(M.pitch, 0), Math.max(0.1, num(M.zoom, 1)), num(M.spin, 0)], 16);
       const a = S.audio || [0, 0, 0, 0]; UB.set([a[0] || 0, a[1] || 0, a[2] || 0, a[3] || 0], 20);
       const pt = M.ptr; UB.set([pt ? +pt[0] || 0 : 0, pt ? +pt[1] || 0 : 0, pt && pt[2] ? 1 : 0, 0], 24);
@@ -863,6 +863,9 @@ fn blob(p: vec2f, c: vec2f, r: f32) -> f32 { let d = p - c; return exp(-dot(d, d
       S.used = performance.now();
       if (!G.ready || !S.comp || !S.state) return null;
       if (!S.progs) return S.shownOnce ? G.canvas : null;   // the shaders are being compiled (a moment): keep the last picture
+      // the board is still on the last frame: don't pile up more work (with millions of big particles that froze the computer
+      // and Windows reset the video driver: the screen flashed like a strobe); the last picture stays (same «uploaded»)
+      if (S.busy && performance.now() - S.busyAt < 2000) return S.shownOnce ? G.canvas : null;
       const d = dev();
       S.audio = audio || [0, 0, 0, 0]; beat = beat || 0;
       const M = (S.mods = mods || {});
@@ -873,6 +876,9 @@ fn blob(p: vec2f, c: vec2f, r: f32) -> f32 { let d = p - c; return exp(-dot(d, d
       prepShape();
       if (S.wantInit && S.last !== null) { const now = performance.now(); if (!(now - (S.initAt || 0) < 120)) { S.wantInit = false; S.initAt = now; S.last = null; S.quick = true; } }
       const B = binds();
+      // how big a particle may get, in pixels: less with millions of them, and less again while the board can't keep up
+      S.fill = S.fill || 1;
+      S.maxpt = Math.max(6, 256 * Math.min(1, Math.sqrt(1048576 / Math.max(1, S.np))) * S.fill);
       const submitSim = (dt, t, trigs) => {
         S.fno = (S.fno + 1) % 16777216;
         writeUniforms(dt, t, beat, aspect, trigs, w, h, false);
@@ -887,7 +893,7 @@ fn blob(p: vec2f, c: vec2f, r: f32) -> f32 { let d = p - c; return exp(-dot(d, d
         writeUniforms(0, S.clock, beat, aspect, {}, w, h, true); d.queue.writeBuffer(S.ubuf, 0, UB);
         const enc = d.createCommandEncoder(); const cp = enc.beginComputePass(); cp.setPipeline(S.progs.init); cp.setBindGroup(0, B.init); cp.dispatchWorkgroups(Math.ceil(S.np / 256)); cp.end(); d.queue.submit([enc.finish()]);
         if (!S.comp.burst) {
-          const steps = Math.max(1, Math.min(S.quick ? 24 : 250, Math.round(S.life * 30), Math.floor((S.quick ? 6e6 : 4e7) / S.np)));
+          const steps = Math.max(1, Math.min(S.quick ? 24 : S.comp.fluid ? 40 : 250, Math.round(S.life * 30), Math.floor((S.quick ? 6e6 : 4e7) / S.np)));   // the fluid costs ~66 passes a step: a shorter warm-up
           const sdt = Math.min(0.1, (S.life * 1.05) / steps);
           for (let i = 0; i < steps; i++) submitSim(sdt, S.clock - (steps - i) * sdt, {});
         }
@@ -925,7 +931,9 @@ fn blob(p: vec2f, c: vec2f, r: f32) -> f32 { let d = p - c; return exp(-dot(d, d
         fp.setPipeline(G.pFade); const k = dt > 0 ? Math.pow(trail, dt * 60) : 1; fp.setBlendConstant([k, k, k, k]); fp.draw(3); fp.end();
       }
       const rp = enc.beginRenderPass({ colorAttachments: [{ view: S.color.view, loadOp: clear ? 'clear' : 'load', storeOp: 'store', clearValue: { r: 0, g: 0, b: 0, a: 0 } }] });
-      rp.setPipeline(S.progs.draw); rp.setBindGroup(0, B.draw); rp.draw(6, S.np * S.comp.copies); rp.end();
+      // at most ~16 million quads a frame (4 million particles × 24 «Simetría» copies would be 100 million): past that, a subset
+      const inst = Math.min(S.np * S.comp.copies, Math.floor(16777216 / S.comp.copies) * S.comp.copies);
+      rp.setPipeline(S.progs.draw); rp.setBindGroup(0, B.draw); rp.draw(6, inst); rp.end();
       S.color.fresh = false;
       // «Estudio»: the shadows, at half size (they are soft anyway), fresh every frame
       if (S.progs.shadow) {
@@ -938,7 +946,7 @@ fn blob(p: vec2f, c: vec2f, r: f32) -> f32 { let d = p - c; return exp(-dot(d, d
         UBS.set(UB); UBS[11] = h2 / 720; UBS[30] = w2; UBS[31] = h2;   // the same uniforms at half size
         d.queue.writeBuffer(S.ubufS, 0, UBS);
         const sp = enc.beginRenderPass({ colorAttachments: [{ view: S.shadow.view, loadOp: 'clear', storeOp: 'store', clearValue: { r: 0, g: 0, b: 0, a: 0 } }] });
-        sp.setPipeline(S.progs.shadow); sp.setBindGroup(0, B.shadow); sp.draw(6, S.np * S.comp.copies); sp.end();
+        sp.setPipeline(S.progs.shadow); sp.setBindGroup(0, B.shadow); sp.draw(6, inst); sp.end();
       }
       // to the shared canvas (with bloom, lens and grain when the Salida asks)
       if (G.canvas.width !== w || G.canvas.height !== h) { G.canvas.width = w; G.canvas.height = h; }
@@ -987,6 +995,11 @@ fn blob(p: vec2f, c: vec2f, r: f32) -> f32 { let d = p - c; return exp(-dot(d, d
       } else fullPass(G.pBlit, view, postBind(G.pBlit, S.color.view, null, S.pub.b3));
       d.queue.submit([enc.finish()]);
       S.uploaded++; S.shownOnce = true;
+      const t0 = performance.now(); S.busy = true; S.busyAt = t0;
+      d.queue.onSubmittedWorkDone().then(() => {
+        S.busy = false; const ms = performance.now() - t0; S.gpuMs = ms;
+        if (ms > 45) S.fill = Math.max(0.05, S.fill * 0.8); else if (ms < 20) S.fill = Math.min(1, S.fill * 1.03);
+      }, () => { S.busy = false; });
       return G.canvas;
     }
     Object.assign(S, { setSpec, frame, reset() { S.last = null; S.trig = {}; }, kick() { S.kreq = 1; }, free() { freeAll(); if (S.ubuf) S.ubuf.destroy(); if (S.ubufS) S.ubufS.destroy(); if (S.sub) S.sub.destroy(); }, engine: 'webgpu' });

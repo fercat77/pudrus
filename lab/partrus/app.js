@@ -903,7 +903,7 @@
     if (PP.ok && !sim.err) {
       const cv = sim.frame(simT, bands, beat, rsz[0], rsz[1], ptr ? { ptr } : undefined);
       showCanvas(cv);
-      if (rec && cv) composite(rec.c, rec.g, false);
+      if (rec && cv && sim.uploaded !== rec.up) { rec.up = sim.uploaded; composite(rec.c, rec.g, false); }   // a frame the board skipped: the video keeps the last one
     }
     if (rec) { const s = Math.floor((now - rec.t0) / 1000); $('#count').textContent = `● ${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}${rec.stopAt ? ' / ' + ex.dur + ' s' : ''}`; }
     meter.forEach((m, i) => { m.style.height = Math.max(1, Math.round(bands[i] * 12)) + 'px'; });

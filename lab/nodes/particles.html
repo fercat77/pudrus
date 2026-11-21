@@ -14,7 +14,7 @@
 <body>
 <canvas id="c"></canvas>
 <script src="../partrus/particles.js?v=14"></script>
-<script src="../partrus/gpu.js?v=3"></script>
+<script src="../partrus/gpu.js?v=4"></script>
 <script src="nodes.js?v=48"></script>
 <script>
 (function () {
@@ -73,12 +73,22 @@
         const ctx = { time, audio, values: D.vals };
         const r = PP.source(D.owner, t.node, N.particleSys(t.p), time, audio, N.clock.beat, W, H, N.particleMods(t, ctx));
         if (!r) return;
+        // each system's last picture, kept: the WebGPU engine skips a frame while the board is busy (same «n»), and its
+        // shared canvas can only be read right after it draws
+        const ck = d + ':' + t.node; let K = keep.get(ck);
+        if (!K) keep.set(ck, (K = { c: document.createElement('canvas'), n: -1 }));
+        if (r.n !== K.n) {
+          K.n = r.n;
+          if (K.c.width !== W || K.c.height !== H) { K.c.width = W; K.c.height = H; }
+          const kg = K.c.getContext('2d'); kg.clearRect(0, 0, W, H); kg.drawImage(r.canvas, 0, 0, W, H);
+        }
         g.globalAlpha = Math.max(0, Math.min(1, wgt * (typeof op === 'number' ? op : 1)));
-        g.drawImage(r.canvas, 0, 0, W, H);
+        g.drawImage(K.c, 0, 0, W, H);
       });
     });
     g.globalAlpha = 1; g.globalCompositeOperation = 'source-over';
   }
+  const keep = new Map();
   requestAnimationFrame(loop);
   window.__particlesOut = { decks, get x() { return x; } };
 })();
