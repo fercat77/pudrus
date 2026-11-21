@@ -470,6 +470,8 @@ body.cb .sd-cell.bad { text-decoration: line-through 3px; text-decoration-color:
 .nc-cross::before { left: 10px; top: 0; width: 2px; height: 22px; clip-path: polygon(0 0,100% 0,100% 30%,0 30%,0 70%,100% 70%,100% 100%,0 100%); }
 .nc-cross::after { top: 10px; left: 0; height: 2px; width: 22px; clip-path: polygon(0 0,30% 0,30% 100%,0 100%,0 0,70% 0,100% 0,100% 100%,70% 100%); }
 .nc-cross.hit::before, .nc-cross.hit::after { background: #fff; box-shadow: 0 0 10px #fff; }
+.nc-cross.auto { border: 1.5px dashed rgba(255,210,120,0.75); border-radius: 50%; width: 30px; height: 30px; margin: -15px 0 0 -15px; }   /* a phone aiming by itself */
+.nc-cross.auto::before { left: 14px; top: 4px; } .nc-cross.auto::after { top: 14px; left: 4px; }
 .nc-hp { position: absolute; left: 16px; bottom: 16px; display: flex; align-items: center; gap: 8px; font-size: 11px; letter-spacing: .12em; text-transform: uppercase; color: #9fe8ff; text-shadow: 0 0 6px rgba(0,200,255,0.5); }
 .nc-hp .bar { width: clamp(110px, 18vw, 220px); height: 8px; border: 1px solid rgba(0,212,255,0.6); border-radius: 2px; overflow: hidden; background: rgba(0,20,30,0.5); }
 .nc-hp .bar i { display: block; height: 100%; background: linear-gradient(90deg, #00d4ff, #8ff); box-shadow: 0 0 10px #0cf; transition: width .15s; }

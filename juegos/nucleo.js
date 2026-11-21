@@ -489,8 +489,8 @@ void main() {
   const GAME = {
     id: 'nucleo', solo: true, title: tr('Núcleo', 'Core'), tag: tr('Acción', 'Action'),
     desc: tr('Una estructura de neón que se arma distinta cada vez. Apagá sus núcleos y escapá.', 'A neon structure built anew every time. Shut down its cores and get out.'),
-    how: tr('Cada nivel tiene núcleos escondidos: destruilos todos (cada uno que cae deja su sala a oscuras) y llegá a la salida, que se abre al final. Cada nivel es más grande y con más enemigos. Compu: W A S D para moverte, mouse para mirar, clic para disparar, Shift o Espacio para el impulso, Q (o 1–4, o la ruedita) para cambiar de arma, Esc para pausar, M para el sonido. Joystick: palanca izquierda para moverte, derecha para mirar, gatillo derecho para disparar, gatillo izquierdo o B para el impulso, A para saltar (en los pliegues) y hablar, LB / RB o Y para cambiar de arma, Start para pausar. Al pasar de nivel elegís una de tres mejoras; algunas paredes esconden salas secretas (dispará donde brilla un dibujo tenue). Celular: palanca a la izquierda para moverte, arrastrá a la derecha para mirar, botones para disparar, para el impulso y ⇄ para cambiar de arma. Dos armas: el Pulso (rápido y preciso) y el Abanico (ocho disparos en abanico: lento pero demoledor de cerca, y empuja); en los niveles podés encontrar el Rayo y el Rebote. Cada 5 niveles te espera el Gran Núcleo en su arena. Los rojos te persiguen, los naranjas disparan de lejos (esquivá sus esferas), los amarillos se parten en dos y los violetas atraviesan las paredes. Cuanto más hondo, más rara se pone la estructura. A veces aparece alguien que no ataca: acercate y apretá E para hablar. Desde el nivel 3, algún núcleo está dentro de un pliegue (un portal magenta en una pared): adentro el mundo se ve de costado, con plataformas; A D para moverte, W o Espacio para saltar (más alto si lo mantenés), Shift para el impulso (también en el aire) y el mouse para apuntar.',
-      'Every level hides cores: destroy them all (each one that falls blacks out its room) and reach the exit, which opens at the end. Every level is bigger and has more enemies. Computer: W A S D to move, mouse to look, click to shoot, Shift or Space to dash, Q (or 1–4, or the wheel) to switch weapons, Esc to pause, M for sound. Gamepad: left stick to move, right stick to look, right trigger to shoot, left trigger or B to dash, A to jump (in folds) and talk, LB / RB or Y to switch weapons, Start to pause. Clearing a level you choose one of three upgrades; some walls hide secret rooms (shoot where a faint drawing glows). Phone: stick on the left to move, drag on the right to look, buttons to shoot, to dash and ⇄ to switch weapons. Two weapons: the Pulse (fast and precise) and the Fan (eight shots in a fan: slow but crushing up close, and it pushes); in the levels you can find the Beam and the Bounce. Every 5 levels the Great Core waits in its arena. Red ones chase you, orange ones shoot from afar (dodge their orbs), yellow ones split in two and violet ones go through walls. The deeper you go, the stranger the structure gets. Now and then someone appears who doesn’t attack: go up to them and press E to talk. From level 3, a core may sit inside a fold (a magenta portal on a wall): inside, the world is seen from the side, with platforms; A D to move, W or Space to jump (higher if you hold it), Shift to dash (in the air too) and the mouse to aim.'),
+    how: tr('Cada nivel tiene núcleos escondidos: destruilos todos (cada uno que cae deja su sala a oscuras) y llegá a la salida, que se abre al final. Cada nivel es más grande y con más enemigos. Compu: W A S D para moverte, mouse para mirar, clic para disparar, Shift o Espacio para el impulso, Q (o 1–4, o la ruedita) para cambiar de arma, Esc para pausar, M para el sonido. Joystick: palanca izquierda para moverte, derecha para mirar, gatillo derecho para disparar, gatillo izquierdo o B para el impulso, A para saltar (en los pliegues) y hablar, LB / RB o Y para cambiar de arma, Start para pausar. Al pasar de nivel elegís una de tres mejoras; algunas paredes esconden salas secretas (dispará donde brilla un dibujo tenue). Celular: palanca a la izquierda para moverte, arrastrá a la derecha para mirar, botones para disparar, para el impulso y ⇄ para cambiar de arma. Dos armas: el Pulso (rápido y preciso) y el Abanico (ocho disparos en abanico: lento pero demoledor de cerca, y empuja); en los niveles podés encontrar el Rayo y el Rebote. Cada 5 niveles te espera el Gran Núcleo en su arena. Los rojos te persiguen, los naranjas disparan de lejos (esquivá sus esferas), los amarillos se parten en dos y los violetas atraviesan las paredes. Cuanto más hondo, más rara se pone la estructura. A veces aparece alguien que no ataca: acercate y apretá E para hablar. Desde el nivel 3, algún núcleo está dentro de un pliegue (un portal magenta en una pared): adentro el mundo se ve de costado, con plataformas; A D para moverte, W o Espacio para saltar (más alto si lo mantenés), S para agacharte, Shift para el impulso (también en el aire) y el mouse para apuntar; en el celular, arrastrá a la derecha para mover la mira (si no la tocás, apunta sola) y bajá la palanca para agacharte.',
+      'Every level hides cores: destroy them all (each one that falls blacks out its room) and reach the exit, which opens at the end. Every level is bigger and has more enemies. Computer: W A S D to move, mouse to look, click to shoot, Shift or Space to dash, Q (or 1–4, or the wheel) to switch weapons, Esc to pause, M for sound. Gamepad: left stick to move, right stick to look, right trigger to shoot, left trigger or B to dash, A to jump (in folds) and talk, LB / RB or Y to switch weapons, Start to pause. Clearing a level you choose one of three upgrades; some walls hide secret rooms (shoot where a faint drawing glows). Phone: stick on the left to move, drag on the right to look, buttons to shoot, to dash and ⇄ to switch weapons. Two weapons: the Pulse (fast and precise) and the Fan (eight shots in a fan: slow but crushing up close, and it pushes); in the levels you can find the Beam and the Bounce. Every 5 levels the Great Core waits in its arena. Red ones chase you, orange ones shoot from afar (dodge their orbs), yellow ones split in two and violet ones go through walls. The deeper you go, the stranger the structure gets. Now and then someone appears who doesn’t attack: go up to them and press E to talk. From level 3, a core may sit inside a fold (a magenta portal on a wall): inside, the world is seen from the side, with platforms; A D to move, W or Space to jump (higher if you hold it), S to crouch, Shift to dash (in the air too) and the mouse to aim; on a phone, drag on the right to move the sight (leave it and it aims by itself) and push the stick down to crouch.'),
     better: 'high', fmt: n => Number(n).toLocaleString(J.LOCALE),
     options: [['libre', tr('Partida', 'Run')], ['hoy', tr('Semilla del día', 'Daily seed')], ['visual', tr('Modo visual', 'Visual mode')]], dayOption: 'hoy',
     startNote(flag) {   // #nucleo/s<code>: a friend's seed · #nucleo/dia: today's seed
@@ -1119,7 +1119,6 @@ void main() {
       let a, dir, hit = null, d = 0.3, end; S.beamWall = null;
       if (S.mode === 'fold') {
         let dx = f2.ax, dy = f2.ay;
-        if (touch) { dx = Math.cos(f2.aimA); dy = Math.sin(f2.aimA); }
         const l = Math.hypot(dx, dy) || 1; dir = [dx / l, dy / l, 0]; const sh = shoulder2(); a = [sh[0] + dir[0] * 0.9, sh[1] + dir[1] * 0.9, 0];
         for (; d < Wp.range * beamK(); d += 0.15) {
           const x = a[0] + dir[0] * d, y = a[1] + dir[1] * d;
@@ -1441,7 +1440,7 @@ void main() {
     }
 
     /* ── folds: a side-scrolling zone (same world, one dimension less) ── */
-    const f2 = { x: 0, y: 0, vx: 0, vy: 0, ground: false, coyote: 0, buf: 0, held: false, face: 1, ax: 4, ay: 0.5, aimA: 0.12, dashT: 0, airDash: true, sx: 0, sy: 0, run: 0 };
+    const f2 = { x: 0, y: 0, vx: 0, vy: 0, ground: false, coyote: 0, buf: 0, held: false, face: 1, ax: 4, ay: 0.5, aimA: 0.12, dashT: 0, airDash: true, sx: 0, sy: 0, run: 0, cr: 0, crouch: false, handT: -9, target: null };
     let foldGL = null;
     function enterFold() {
       const Pt = S.portal; if (!Pt || Pt.done) return;
@@ -1451,12 +1450,12 @@ void main() {
       S.fold = { F: Pt.F, saved: { enemies: S.enemies, bolts: S.bolts, orbs: S.orbs, parts: S.parts, flashes: S.flashes }, tr: 0, outT: 0, cam: [0, 1.5] };
       S.enemies = []; S.bolts = []; S.orbs = []; S.parts = []; S.flashes = [];
       Pt.F.en.forEach(q => { const e = spawnEnemy(q.type, q.x, 0, false); e.y = e.hy = q.y; e.hx = q.x; e.z = 0; e.vy = 0; });
-      Object.assign(f2, { x: 0, y: 0, vx: 0, vy: 0, ground: true, coyote: 0, buf: 0, held: false, face: 1, ax: 4, ay: 0.5, dashT: 0, airDash: true, sx: 0, sy: 0 });
+      Object.assign(f2, { x: 0, y: 0, vx: 0, vy: 0, ground: true, coyote: 0, buf: 0, held: false, face: 1, ax: 4, ay: 0.5, dashT: 0, airDash: true, sx: 0, sy: 0, cr: 0, crouch: false, handT: -9, target: null });
       S.fold.cam = [f2.x + 2, f2.y + 1.5];
       S.mode = 'fold'; firing = false; S.fx = 1; play('fold');
       S.canTalk = false; promptEl.hidden = true; jumpBtn.hidden = !touch; mapCv.style.visibility = 'hidden';
-      toast(touch ? tr('Un pliegue: la estructura perdió una dimensión', 'A fold: the structure lost a dimension')
-        : tr('Un pliegue · A D moverse · W o Espacio saltar · Shift impulso · mouse apuntar', 'A fold · A D move · W or Space jump · Shift dash · mouse aims'), 4);
+      toast(touch ? tr('Un pliegue · arrastrá a la derecha para apuntar (si no, apunta solo) · palanca abajo para agacharte', 'A fold · drag on the right to aim (otherwise it aims by itself) · stick down to crouch')
+        : tr('Un pliegue · A D moverse · W o Espacio saltar · S agacharse · Shift impulso · mouse apuntar', 'A fold · A D move · W or Space jump · S crouch · Shift dash · mouse aims'), 4.5);
     }
     function exitFold() {
       const Pt = S.portal, Fo = S.fold; if (!Fo) return;
@@ -1473,16 +1472,20 @@ void main() {
       burst(f2.x, f2.y + 0.8, 0, [0.3, 0.8, 1.6], 14, 2.5, 0.4, 0.08);
     }
     const inPlat = (x, y) => { const P = S.fold.F.P; for (let i = 0; i < P.length; i++) { const q = P[i]; if (x > q.x0 && x < q.x1 && y > q.y0 && y < q.y1) return true; } return false; };
+    // on a phone, when you haven't moved the sight lately: the nearest thing you can hit, in front (or close behind)
+    function autoTarget2() {
+      const sh = shoulder2(); let best = null, bd = 16;
+      for (const e of S.enemies) {
+        if (e.dead || !e.awake || (e.type === 'phase' && Math.abs(e.z) > 0.8)) continue;   // a violet one out of the plane can't be hit
+        const ex = e.x - sh[0], ey = e.y - sh[1], d = Math.hypot(ex, ey) - (ex * f2.face > 0 ? 2 : 0);   // what's in front counts as a little nearer
+        if (d < bd && ex * f2.face > -4) { bd = d; best = [ex + (e.vx || 0) * 0.12, ey + (e.vy || 0) * 0.12]; }   // a little ahead of where it's going
+      }
+      S.cores.forEach(c => { if (c.fold && c.alive) { const ex = c.x - sh[0], ey = c.y - sh[1], d = Math.hypot(ex, ey); if (d < bd && ex * f2.face > 0) { bd = d; best = [ex, ey]; } } });
+      if (S.boss && S.boss.alive && S.boss.fold) { const ex = S.boss.x - sh[0], ey = S.boss.y - sh[1], d = Math.hypot(ex, ey); if (d < 20 && (!best || d < bd + 4)) best = [ex, ey]; }
+      return best;
+    }
     function fire2() {
       let dx = f2.ax, dy = f2.ay;
-      if (touch) {   // on a phone it aims by itself at the nearest thing in front
-        let best = null, bd = 16;
-        for (const e of S.enemies) { if (e.dead || (e.type === 'phase' && Math.abs(e.z) > 0.8)) continue; const ex = e.x - ox, ey = e.y - oy, d = Math.hypot(ex, ey); if (d < bd && ex * f2.face > -0.5) { bd = d; best = [ex, ey]; } }
-        S.cores.forEach(c => { if (c.fold && c.alive) { const ex = c.x - ox, ey = c.y - oy, d = Math.hypot(ex, ey); if (d < bd && ex * f2.face > 0) { bd = d; best = [ex, ey]; } } });
-        if (S.boss && S.boss.alive && S.boss.fold) { const ex = S.boss.x - ox, ey = S.boss.y - oy, d = Math.hypot(ex, ey); if (d < 20 && (!best || d < bd + 4)) best = [ex, ey]; }
-        [dx, dy] = best || [f2.face, 0];
-        f2.aimA = Math.atan2(dy, dx); if (Math.abs(dx) > 0.2) f2.face = Math.sign(dx);
-      }
       const l = Math.hypot(dx, dy) || 1; dx /= l; dy /= l;
       const Wp = WEAPONS[pl.weapon], sh = shoulder2(), ox = sh[0] + dx * 0.9, oy = sh[1] + dy * 0.9, a0 = Math.atan2(dy, dx);   // out of the barrel
       const np = Wp.pellets + (pl.weapon === 1 ? 4 * upN('abanico') : 0);
@@ -1495,20 +1498,34 @@ void main() {
       flash(ox, oy, 0.6, Wp.hot.map(v => v * 0.6), 5, 0.07); play(pl.weapon ? 'fan' : 'shot');
     }
     // where the shoulder is (the arms and the shots start there), and the run cycle
-    function shoulder2() { return [f2.x - f2.face * 0.02, f2.y + 0.84 + bob2() + 0.56]; }
+    function shoulder2() { return [f2.x - f2.face * 0.02, f2.y + 0.84 + bob2() + 0.56 - 0.38 * f2.cr]; }
+    const bodyH2 = () => 1.7 - 0.62 * f2.cr;   // crouching: a smaller target
     function bob2() { return f2.ground && Math.abs(f2.vx) > 0.5 ? Math.abs(Math.sin(f2.run * 2.4)) * 0.05 : 0; }
     function updateFold(dt) {
       const Fo = S.fold, Fd = Fo.F;
       Fo.tr = Math.min(1, Fo.tr + dt / 1.0);
       if (Fo.outT > 0) { Fo.outT -= dt; if (Fo.outT <= 0) { exitFold(); return; } }
-      // aim: the mouse moves a sight around you
-      if (!touch || PAD.on) { f2.ax += mx * 0.012; f2.ay -= my * 0.012; const l = Math.hypot(f2.ax, f2.ay); if (l > 5) { f2.ax *= 5 / l; f2.ay *= 5 / l; } f2.aimA = Math.atan2(f2.ay, f2.ax); }
-      else if (!firing) { let d = (f2.face > 0 ? 0 : Math.PI) - f2.aimA; d = Math.atan2(Math.sin(d), Math.cos(d)); f2.aimA += d * Math.min(1, dt * 8); }   // a phone: the arms rest pointing ahead
+      // aim: the mouse (or a drag on the right of a phone screen, or the gamepad) moves a sight around you
+      const k = touch && !PAD.on ? 0.012 * O.sensT : 0.012;
+      if (mx || my) { f2.ax += mx * k; f2.ay -= my * k; f2.handT = S.t; const l = Math.hypot(f2.ax, f2.ay); if (l > 5) { f2.ax *= 5 / l; f2.ay *= 5 / l; } if (l < 1.2) { const s = 1.2 / (l || 1); f2.ax *= s; f2.ay *= s; } }
+      if (touch && !PAD.on && S.t - f2.handT > 2.5) {
+        // a phone, and the sight hasn't been moved for a while: it aims by itself (or rests ahead)
+        const tg = f2.target = autoTarget2();
+        const want = tg ? Math.atan2(tg[1], tg[0]) : (f2.face > 0 ? 0 : Math.PI);
+        let d = want - f2.aimA; d = Math.atan2(Math.sin(d), Math.cos(d)); f2.aimA += d * Math.min(1, dt * (tg ? 14 : 8));
+        f2.ax = Math.cos(f2.aimA) * 3; f2.ay = Math.sin(f2.aimA) * 3;
+      } else { f2.target = null; f2.aimA = Math.atan2(f2.ay, f2.ax); }
       mx = my = 0;
       const ready = Fo.tr >= 1;
       let mv = ready ? (K.KeyD || K.ArrowRight ? 1 : 0) - (K.KeyA || K.ArrowLeft ? 1 : 0) + (stick ? stick.dx : 0) + (PAD.on ? PAD.lx : 0) : 0;
       mv = Math.max(-1, Math.min(1, mv));
-      if (Math.abs(mv) > 0.2) f2.face = Math.sign(mv); else if (!touch && Math.abs(f2.ax) > 0.3) f2.face = Math.sign(f2.ax);
+      if (Math.abs(mv) > 0.2) f2.face = Math.sign(mv); else if (Math.abs(f2.ax) > 0.3) f2.face = Math.sign(f2.ax);
+      // crouch: S / ↓, the stick pushed down, the gamepad's stick down. Only on the ground; you stay down while something is over your head
+      const wantDown = ready && f2.ground && (K.KeyS || K.ArrowDown || (stick && stick.dy > 0.55 && Math.abs(stick.dx) < 0.8) || (PAD.on && PAD.ly > 0.55));
+      if (wantDown) f2.crouch = true;
+      else if (f2.crouch) { let room = true; for (const q of Fd.P) if (f2.x + 0.3 > q.x0 && f2.x - 0.3 < q.x1 && f2.y + 1.7 > q.y0 && f2.y + 0.2 < q.y1) { room = false; break; } if (room) f2.crouch = false; }
+      f2.cr += ((f2.crouch ? 1 : 0) - f2.cr) * Math.min(1, dt * 14);
+      if (f2.crouch) mv *= 0.4;
       pl.dashCd = Math.max(0, pl.dashCd - dt);
       if (f2.dashT > 0) { f2.dashT -= dt; }
       else {
@@ -1517,9 +1534,9 @@ void main() {
         f2.vy = Math.max(f2.vy, -24);
       }
       f2.coyote = f2.ground ? 0.1 : Math.max(0, f2.coyote - dt); f2.buf = Math.max(0, f2.buf - dt);
-      if (ready && f2.buf > 0 && (f2.ground || f2.coyote > 0)) { f2.vy = 11.5; f2.buf = 0; f2.coyote = 0; f2.ground = false; play('jump'); burst(f2.x, f2.y + 0.05, 0, [0.4, 1.2, 2], 8, 2, 0.3, 0.06); }
+      if (ready && f2.buf > 0 && (f2.ground || f2.coyote > 0) && !(f2.crouch && wantDown)) { f2.crouch = false; f2.vy = 11.5; f2.buf = 0; f2.coyote = 0; f2.ground = false; play('jump'); burst(f2.x, f2.y + 0.05, 0, [0.4, 1.2, 2], 8, 2, 0.3, 0.06); }
       // move and collide (the body: 0.6 wide, 1.7 tall), one axis at a time
-      const P = Fd.P, hw = 0.3, hh = 1.7;
+      const P = Fd.P, hw = 0.3, hh = bodyH2();
       f2.x += f2.vx * dt;
       for (const q of P) if (f2.x + hw > q.x0 && f2.x - hw < q.x1 && f2.y + hh > q.y0 && f2.y < q.y1) { if (f2.vx > 0) f2.x = q.x0 - hw; else if (f2.vx < 0) f2.x = q.x1 + hw; f2.vx = 0; }
       f2.y += f2.vy * dt; f2.ground = false;
@@ -1545,10 +1562,10 @@ void main() {
       for (const e of S.enemies) {
         if (e.dead) continue;
         e.t += dt; e.flash = Math.max(0, e.flash - dt * 6); e.cd -= dt;
-        const tx = f2.x, ty = f2.y + 1, dx = tx - e.x, dy = ty - e.y, d = Math.hypot(dx, dy), ph = e.type === 'phase';
+        const tx = f2.x, ty = f2.y + 1 - 0.4 * f2.cr, dx = tx - e.x, dy = ty - e.y, d = Math.hypot(dx, dy), ph = e.type === 'phase';
         if (!e.awake) { if (Math.abs(dx) < 15 && Math.abs(dy) < 10) e.awake = true; else continue; }
         near++;
-        if (ph) e.z = Math.sin(e.t * 1.3 + e.seed) * 2.4;   // in and out of the plane
+        if (ph) e.z = 2.4 * Math.max(0, Math.sin(e.t * 1.3 + e.seed)) ** 2;   // in and out of the plane: out in short dives, hittable ~70% of the time
         const inPlane = !ph || Math.abs(e.z) < 0.8;
         if (e.type === 'shoot') {
           e.x = e.hx + Math.sin(e.t * 0.8 + e.seed) * 1.2 * (0.4 + er); e.y = e.hy + Math.sin(e.t * 2.1) * 0.3;
@@ -1593,7 +1610,7 @@ void main() {
       for (const o of S.orbs) {
         o.x += o.vx * dt; o.y += o.vy * dt; o.life -= dt;
         if (inPlat(o.x, o.y)) { o.life = 0; burst(o.x, o.y, 0, [2.4, 0.9, 0.2], 10, 2.5, 0.4, 0.08); continue; }
-        if (o.x > f2.x - 0.4 && o.x < f2.x + 0.4 && o.y > f2.y && o.y < f2.y + 1.7) { o.life = 0; hurt(9 + S.level, o.x); burst(o.x, o.y, 0, [2.4, 0.9, 0.2], 14, 3, 0.4, 0.08); }
+        if (o.x > f2.x - 0.4 && o.x < f2.x + 0.4 && o.y > f2.y && o.y < f2.y + bodyH2()) { o.life = 0; hurt(9 + S.level, o.x); burst(o.x, o.y, 0, [2.4, 0.9, 0.2], 14, 3, 0.4, 0.08); }
       }
       S.orbs = S.orbs.filter(o => o.life > 0);
     }
@@ -1989,11 +2006,12 @@ void main() {
       if (FO) {   // you, from the side: a jointed figure (legs that run, knees tucked in the air, both arms aiming the weapon)
         const fc = f2.face, col = [0.35, 0.9, 1], fl = pl.hurtT > 0 ? pl.hurtT : 0, ph = f2.run * 2.4, moving = f2.ground && Math.abs(f2.vx) > 0.5;
         const root = chain(T4(f2.x, f2.y, 0), SC(fc, 1, 1)), lean = -0.18 * Math.max(-1, Math.min(1, f2.vx * fc / 8));
-        const hip = chain(root, T4(0, 0.84 + bob2(), 0));
+        const hip = chain(root, T4(0, 0.84 + bob2() - 0.38 * f2.cr, 0));
         let legs;
         if (!f2.ground) legs = [[0.75, 1.3], [-0.35, 0.45]];   // in the air: one knee up, the other trailing
         else if (moving) { const s = Math.sin(ph); legs = [[0.65 * s, Math.max(0, Math.cos(ph)) * 1.1 + 0.08], [-0.65 * s, Math.max(0, -Math.cos(ph)) * 1.1 + 0.08]]; }
         else legs = [[0.12, 0.12], [-0.08, 0.06]];
+        if (f2.cr > 0.01 && f2.ground) { const c = f2.cr, D = [[1.0, 2.0], [0.92, 1.86]]; legs = legs.map((l, i) => [l[0] + (D[i][0] - l[0]) * c, l[1] + (D[i][1] - l[1]) * c]); }   // crouching
         legs.forEach(([th, kn], i) => {
           const thigh = chain(hip, T4(0, 0, i ? -0.09 : 0.09), RZ(th));
           draw(MESH.thigh, thigh, col, 1.0, 0.12, fl);
@@ -2150,8 +2168,9 @@ void main() {
       hpFill.style.width = S.hp / maxHp() * 100 + '%'; hpNum.textContent = Math.ceil(S.hp); hpBox.classList.toggle('low', S.hp < 30);
       dashFill.style.width = (100 - pl.dashCd / pl.dashMax * 100) + '%';
       if (hitT > 0) { hitT -= dt; if (hitT <= 0) cross.classList.remove('hit'); }
-      if (FO) {   // the sight: where the shots go (on a phone, ahead of you)
-        const ax = touch ? Math.cos(f2.aimA) * 3 : f2.ax, ay = touch ? Math.sin(f2.aimA) * 3 : f2.ay, sh2 = shoulder2(), wx = sh2[0] + ax, wy = sh2[1] + ay;
+      if (FO) {   // the sight: where the shots go
+        const ax = f2.ax, ay = f2.ay, sh2 = shoulder2(), wx = sh2[0] + ax, wy = sh2[1] + ay;
+        cross.classList.toggle('auto', !!f2.target);   // a phone aiming by itself: the sight says so
         const c4 = [vp[0] * wx + vp[4] * wy + vp[12], vp[1] * wx + vp[5] * wy + vp[13], vp[3] * wx + vp[7] * wy + vp[15]];
         if (c4[2] > 0) { cross.style.left = ((c4[0] / c4[2]) * 0.5 + 0.5) * 100 + '%'; cross.style.top = (0.5 - (c4[1] / c4[2]) * 0.5) * 100 + '%'; }
       }
