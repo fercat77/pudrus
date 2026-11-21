@@ -38,15 +38,18 @@ float hexL(vec2 p, float w) {   // the edges of a honeycomb (one hexagon per uni
   return edge(0.5 - max(dot(q, vec2(0.5, 0.8660254)), q.x), w);
 }
 vec3 hueShift(vec3 c, float h) { const vec3 k = vec3(0.57735); float a = h * 6.2831853, ca = cos(a); return c * ca + cross(k, c) * sin(a) + k * dot(k, c) * (1.0 - ca); }
-vec2 melt(vec2 p) { return p + u_psy * 0.22 * vec2(sin(p.y * 2.1 + u_time * 0.9), sin(p.x * 1.7 - u_time * 0.7)); }
+// every pattern (and the melting) repeats exactly once per cell and is mirror-symmetric, so it runs on unbroken
+// from cell to cell, from one wall to the next and round the corners (p is in cells)
+vec2 melt(vec2 p) { return p + u_psy * 0.06 * vec2(sin(p.y * 6.2831853 + u_time * 0.9), sin(p.x * 6.2831853 - u_time * 0.7)); }
+vec2 hexq(vec2 p) { return vec2(p.x * 2.0, p.y * 1.7320508); }   // two hexagons across a cell, one row of the lattice down it
 float pattern(int k, vec2 p, float w) {
-  if (k == 5) { vec2 c = fract(p / 3.0) - 0.5; return line(length(c) * 6.0 - u_time * 0.4, w * 1.5); }   // ripples
-  if (k == 6) { vec2 c = fract(p / 4.0) - 0.5; return line(length(c) * 9.0 + atan(c.y, c.x) / 6.2831853 * 3.0 - u_time * 0.5, w * 1.6); }   // turning spirals
-  if (k == 7) return hexL((p + 0.35 * vec2(sin(p.y * 2.3 + u_time), sin(p.x * 1.9 - u_time * 1.2))) * 1.6, w * 1.3);   // melting honeycomb
-  if (k == 1) return hexL(p * 1.35, w * 1.2);
-  if (k == 2) { vec2 d = vec2(p.x + p.y, p.x - p.y) * 0.7071 * 1.4; return max(line(d.x, w), line(d.y, w)); }
+  if (k == 5) { vec2 c = fract(p) - 0.5; return line(length(c) * 6.0 - u_time * 0.4, w * 1.5); }   // ripples
+  if (k == 6) { vec2 c = abs(fract(p) - 0.5); return line(length(c) * 8.0 + atan(c.y, c.x) / 1.5707963 * 2.0 - u_time * 0.5, w * 1.6); }   // kaleidoscope swirls
+  if (k == 7) return hexL(hexq(p) + 0.3 * vec2(sin(p.y * 6.2831853 + u_time), sin(p.x * 6.2831853 - u_time * 1.2)), w * 1.3);   // melting honeycomb
+  if (k == 1) return hexL(hexq(p), w * 1.2);
+  if (k == 2) { vec2 d = vec2(p.x + p.y, p.x - p.y) * 2.0; return max(line(d.x, w), line(d.y, w)); }
   if (k == 3) { vec2 f = abs(fract(p) - 0.5); float m = max(f.x, f.y); return max(max(line(p.x, w), line(p.y, w)), edge(abs(m - 0.36), w) * 0.7); }
-  if (k == 4) { vec2 q = p * 1.6; return max(line(q.y, w), max(line(dot(q, vec2(0.8660254, 0.5)), w), line(dot(q, vec2(-0.8660254, 0.5)), w))); }
+  if (k == 4) { vec2 q = p * 2.0; return max(line(q.y, w), max(line((q.y - 2.0 * q.x) * 0.5, w), line((q.y + 2.0 * q.x) * 0.5, w))); }
   return max(line(p.x, w), line(p.y, w));
 }
 void main() {
@@ -272,7 +275,7 @@ void main() {
       const x = 1 + Math.floor(rnd() * (W - w - 2)), y = 1 + Math.floor(rnd() * (H - h - 2));
       if (rooms.some(r => x < r.x + r.w + 2 && x + w + 2 > r.x && y < r.y + r.h + 2 && y + h + 2 > r.y)) continue;
       const big = w * h >= 42;
-      rooms.push({ x, y, w, h, cx: x + (w >> 1), cy: y + (h >> 1), hgt: [3.6, 4.6, 6, 8][Math.floor(rnd() * (big ? 4 : 3))], hue: Math.floor(rnd() * PAL.length),
+      rooms.push({ x, y, w, h, cx: x + (w >> 1), cy: y + (h >> 1), hgt: [4, 4, 6, 8][Math.floor(rnd() * (big ? 4 : 3))], hue: Math.floor(rnd() * PAL.length),
         pf: pickOf(FP, rnd), pw: pickOf(WP, rnd) });
     }
     rooms.forEach((r, k) => { for (let y = r.y; y < r.y + r.h; y++) for (let x = r.x; x < r.x + r.w; x++) { const i = y * W + x; grid[i] = 0; ceil[i] = r.hgt; rid[i] = k; } });
@@ -289,7 +292,7 @@ void main() {
       for (let b = 0; b < n; b++) if (b !== a && !edges.some(e => (e[0] === a && e[1] === b) || (e[0] === b && e[1] === a))) { const d = d2(rooms[a], rooms[b]); if (d < bd) { bd = d; best = b; } }
       if (best >= 0 && bd < (W * 0.45) ** 2) edges.push([a, best]);
     }
-    const carve = (x, y) => { if (x < 1 || y < 1 || x > W - 2 || y > H - 2) return; const i = y * W + x; corr[i] = 1; if (grid[i] === 1) { grid[i] = 0; ceil[i] = 3.2; rid[i] = -1; } };
+    const carve = (x, y) => { if (x < 1 || y < 1 || x > W - 2 || y > H - 2) return; const i = y * W + x; corr[i] = 1; if (grid[i] === 1) { grid[i] = 0; ceil[i] = 4; rid[i] = -1; } };
     const hline = (x0, x1, y) => { for (let x = Math.min(x0, x1); x <= Math.max(x0, x1) + 1; x++) { carve(x, y); carve(x, y + 1); } };
     const vline = (y0, y1, x) => { for (let y = Math.min(y0, y1); y <= Math.max(y0, y1) + 1; y++) { carve(x, y); carve(x + 1, y); } };
     edges.forEach(([a, b]) => { const A = rooms[a], B = rooms[b]; if (rnd() < 0.5) { hline(A.cx, B.cx, A.cy); vline(A.cy, B.cy, B.cx); } else { vline(A.cy, B.cy, A.cx); hline(A.cx, B.cx, B.cy); } });
@@ -1104,6 +1107,7 @@ void main() {
       aimAt(x, y, z) { const dx = x - pl.x, dy = y - EYE, dz = z - pl.z; pl.yaw = Math.atan2(dx, -dz); pl.pitch = Math.atan2(dy, Math.hypot(dx, dz)); },
       hurt, nextLevel, talk, advance, endTalk,
       setLevel(n) { S.level = n; loadLevel(); },
+      setPat(f, w) { S.M.rooms.forEach(r => { r.pf = f; r.pw = w; }); S.M.corrPat = [f, w]; },
     });
 
     return () => {
