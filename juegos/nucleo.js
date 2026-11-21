@@ -608,15 +608,19 @@ void main() {
     /* ── sound: a tiny synth (effects) and a generated soundtrack that rises with the fight ── */
     const MUTE_KEY = 'pudrus_nucleo_mute';
     let muted = false; try { muted = localStorage.getItem(MUTE_KEY) === '1'; } catch (e) { /* private mode */ }
+    const OPT_KEY = 'pudrus_nucleo_opts', OPT0 = { sensT: 1, sensM: 1, sensP: 1, invY: false, fov: 76, vol: 1, mus: 1, sfx: 1, shake: 1, psyFx: 1, quality: 'auto', btn: 1 };
+    const O = { ...OPT0 }; try { Object.assign(O, JSON.parse(localStorage.getItem(OPT_KEY) || '{}')); } catch (e) { /* private mode */ }
+    const saveOpts = () => { try { localStorage.setItem(OPT_KEY, JSON.stringify(O)); } catch (e) { /* private mode */ } };
+    const lookSens = () => (touch ? 0.0042 * O.sensT : 0.0022 * O.sensM), FOV = () => O.fov * Math.PI / 180;
     let A = null, master = null, sfx = null, mus = null, noiseBuf = null, echo = null, echoFb = null, echoWet = null;
     function audio() {
       if (A) return A;
       try {
         A = new (window.AudioContext || window.webkitAudioContext)();
         const comp = A.createDynamicsCompressor(); comp.threshold.value = -14; comp.ratio.value = 6; comp.connect(A.destination);
-        master = A.createGain(); master.gain.value = muted ? 0 : 0.7; master.connect(comp);
-        sfx = A.createGain(); sfx.gain.value = 0.9; sfx.connect(master);
-        mus = A.createGain(); mus.gain.value = 0.32; mus.connect(master);
+        master = A.createGain(); master.gain.value = muted ? 0 : 0.7 * O.vol; master.connect(comp);
+        sfx = A.createGain(); sfx.gain.value = 0.9 * O.sfx; sfx.connect(master);
+        mus = A.createGain(); mus.gain.value = 0.32 * O.mus; mus.connect(master);
         // an echo on the music: it grows with the psychedelia (and in the folds)
         echo = A.createDelay(1.5); echo.delayTime.value = 60 / 124 * 0.75; echoFb = A.createGain(); echoFb.gain.value = 0.15; echoWet = A.createGain(); echoWet.gain.value = 0.05;
         mus.connect(echo); echo.connect(echoFb).connect(echo); echo.connect(echoWet).connect(master);
@@ -706,22 +710,23 @@ void main() {
         MU.next += sp; MU.step++;
       }
     }
-    function setMute(m) { muted = m; try { localStorage.setItem(MUTE_KEY, m ? '1' : '0'); } catch (e) { /* private mode */ } if (master) master.gain.value = m ? 0 : 0.7; muteBtn.textContent = m ? '🔇' : '🔊'; }
+    function setMute(m) { muted = m; try { localStorage.setItem(MUTE_KEY, m ? '1' : '0'); } catch (e) { /* private mode */ } if (master) master.gain.value = m ? 0 : 0.7 * O.vol; muteBtn.textContent = m ? '🔇' : '🔊'; }
 
     /* ── HUD (DOM over the picture) ── */
     const hudEl = el('div', 'nc-hud');
     const cross = el('div', 'nc-cross'), hpBox = el('div', 'nc-hp'), hpFill = el('i'), hpNum = el('b'), dashBar = el('div', 'nc-dash'), dashFill = el('i');
     hpBox.append(el('span', null, tr('Energía', 'Energy')), el('div', 'bar'), hpNum); hpBox.querySelector('.bar').append(hpFill); dashBar.append(dashFill);
     const coresEl = el('div', 'nc-cores'), toastEl = el('div', 'nc-toast'), mapCv = el('canvas', 'nc-map'), bigEl = el('div', 'nc-big');
-    const tools = el('div', 'nc-tools'), muteBtn = el('button', 'nc-tool', muted ? '🔇' : '🔊'), fsBtn = el('button', 'nc-tool', '⛶'), pauseBtn = el('button', 'nc-tool', 'Ⅱ');
-    muteBtn.title = tr('Sonido (M)', 'Sound (M)'); fsBtn.title = tr('Pantalla completa', 'Full screen'); pauseBtn.title = tr('Pausa', 'Pause');
-    tools.append(pauseBtn, muteBtn, fsBtn);
+    const tools = el('div', 'nc-tools'), muteBtn = el('button', 'nc-tool', muted ? '🔇' : '🔊'), fsBtn = el('button', 'nc-tool', '⛶'), pauseBtn = el('button', 'nc-tool', 'Ⅱ'), optBtn = el('button', 'nc-tool', '⚙');
+    muteBtn.title = tr('Sonido (M)', 'Sound (M)'); fsBtn.title = tr('Pantalla completa', 'Full screen'); pauseBtn.title = tr('Pausa', 'Pause'); optBtn.title = tr('Opciones', 'Options');
+    tools.append(pauseBtn, muteBtn, fsBtn, optBtn);
     mapCv.width = 150; mapCv.height = 150;
     const pauseEl = el('div', 'nc-pause'); pauseEl.hidden = true;
     const promptEl = el('button', 'nc-prompt'), talkEl = el('div', 'nc-talk'), talkName = el('b'), talkText = el('p'), talkHint = el('small');
     talkEl.append(talkName, talkText, talkHint); talkEl.hidden = true; promptEl.hidden = true;
-    hudEl.append(cross, hpBox, dashBar, coresEl, toastEl, mapCv, bigEl, tools, promptEl, talkEl);
-    wrap.append(hudEl, pauseEl);
+    hudEl.append(cross, hpBox, dashBar, coresEl, toastEl, mapCv, bigEl, promptEl, talkEl);
+    const optsEl = el('div', 'nc-opts'); optsEl.hidden = true;
+    wrap.append(hudEl, pauseEl, tools, optsEl);
     let toastT = 0;
     function toast(msg, s = 2.2) { toastEl.textContent = msg; toastEl.classList.add('on'); toastT = s; }
     function big(msg, sub) { bigEl.innerHTML = ''; bigEl.append(el('b', null, msg)); if (sub) bigEl.append(el('small', null, sub)); bigEl.classList.add('on'); }
@@ -833,6 +838,7 @@ void main() {
     const onKey = e => {
       if (HOST) return;
       const down = e.type === 'keydown', k = e.code;
+      if (!optsEl.hidden) { if (down && (k === 'Escape' || k === 'KeyO')) closeOpts(); if (k === 'Escape') { e.preventDefault(); e.stopImmediatePropagation(); } return; }
       if (S.state === 'pick') {
         if (down) { if (/^Digit[1-3]$/.test(k)) choose(+k.slice(5) - 1); else if (k === 'ArrowLeft' || k === 'KeyA') movePick(-1); else if (k === 'ArrowRight' || k === 'KeyD') movePick(1); else if (k === 'Enter' || k === 'Space') choose(pickSel); }
         if (k !== 'Tab') { e.preventDefault(); e.stopImmediatePropagation(); } return;
@@ -867,6 +873,8 @@ void main() {
     talkEl.addEventListener('click', e => { e.stopPropagation(); advance(); });
     pauseBtn.addEventListener('click', e => { e.stopPropagation(); pause(S.state === 'play'); });
     muteBtn.addEventListener('click', e => { e.stopPropagation(); setMute(!muted); });
+    optBtn.addEventListener('click', e => { e.stopPropagation(); if (optsEl.hidden) openOpts(); else closeOpts(); });
+    [tools, optsEl].forEach(x => ['pointerdown', 'mousedown', 'click'].forEach(t => x.addEventListener(t, e => e.stopPropagation())));
     fsBtn.addEventListener('click', e => { e.stopPropagation(); if (document.fullscreenElement) document.exitFullscreen(); else if (wrap.requestFullscreen) wrap.requestFullscreen().then(() => lock(), () => {}); });
     if (tc) {
       const pts = new Map();
@@ -916,7 +924,8 @@ void main() {
       if (st === 'pick') {
         const nx = Math.abs(lx) > 0.6 ? Math.sign(lx) : 0; if (nx && nx !== PAD.nav) movePick(nx); PAD.nav = nx;
         if (hit(0)) choose(pickSel);
-      } else if (st === 'pause') { if (hit(9) || hit(0)) pause(false); else if (hit(8)) location.hash = ''; }
+      } else if (st === 'pause' && !optsEl.hidden) { if (hit(1) || hit(9)) closeOpts(); }
+      else if (st === 'pause') { if (hit(9) || hit(0)) pause(false); else if (hit(8)) location.hash = ''; }
       else if (st === 'talk') { if (hit(0) || hit(2)) advance(); else if (hit(1)) endTalk(); }
       else if (st === 'play') {
         PAD.lx = lx; PAD.ly = ly;
@@ -925,7 +934,7 @@ void main() {
           else if (Math.abs(lx) > 0.3 && Math.sign(f2.ax || 1) !== Math.sign(lx)) { f2.ax = Math.sign(lx) * 4; f2.ay = 0.4; }
           if (hit(0)) f2.buf = 0.13; if (B(0) !== !!PAD.prev[0]) f2.held = B(0);
         } else {
-          const k = touch ? 0.0042 : 0.0022;
+          const k = lookSens() / O.sensP;
           mx += rx * Math.abs(rx) * 2.8 * dt / k; my += ry * Math.abs(ry) * 1.9 * dt / k;
           if (B(7)) assist(dt);
         }
@@ -957,13 +966,60 @@ void main() {
         pauseEl.innerHTML = ''; pauseEl.append(el('b', null, tr('Pausa', 'Paused')), el('small', null, touch ? tr('Tocá para seguir', 'Tap to go on') : tr('Clic para seguir · Esc otra vez para salir', 'Click to go on · Esc again to leave')));
         pauseEl.append(el('small', 'nc-seedline', (mode === 'hoy' ? tr('Semilla del día ', 'Daily seed ') : tr('Semilla ', 'Seed ')) + seedCode));
         if (PAD.on) pauseEl.querySelector('small').textContent = tr('Start para seguir · Back para salir', 'Start to go on · Back to leave');
+        const pb = el('div', 'nc-pbtns'), ob = el('button', 'nc-pbtn', '⚙ ' + tr('Opciones', 'Options')), xb = el('button', 'nc-pbtn', '✕ ' + tr('Salir', 'Leave'));
+        ob.addEventListener('click', e => { e.stopPropagation(); openOpts(); }); xb.addEventListener('click', e => { e.stopPropagation(); location.hash = ''; });
+        pb.append(ob, xb); pauseEl.append(pb);
         const have = UPS.filter(u => upN(u.id)); if (have.length) { const hv = el('div', 'nc-have'); have.forEach(u => hv.append(el('span', null, `${u.ic} ${L2(u.n)}${upN(u.id) > 1 ? ' ×' + upN(u.id) : ''}`))); pauseEl.append(hv); }
         pauseEl.hidden = false; if (A) A.suspend();
         if (locked()) document.exitPointerLock();
       } else if (!on && S.state === 'pause') {
-        S.state = 'play'; pauseEl.hidden = true; if (A) A.resume(); lock(); last = performance.now();
+        S.state = 'play'; pauseEl.hidden = true; optsEl.hidden = true; if (A) A.resume(); lock(); last = performance.now();
       }
     }
+
+    /* ── the options panel: opening it pauses; it saves as you change things ── */
+    function openOpts() {
+      if (S.state === 'play') pause(true);
+      if (S.state !== 'pause') return;
+      optsEl.innerHTML = '';
+      const head = el('div', 'head'); head.append(el('b', null, tr('Opciones', 'Options')));
+      const body = el('div', 'body');
+      const sect = t => body.append(el('h4', null, t));
+      const range = (k, label, min, max, step, fmt, after) => {
+        const row = el('label', 'row'), inp = el('input'), val = el('span', 'val');
+        inp.type = 'range'; inp.min = min; inp.max = max; inp.step = step; inp.value = O[k];
+        const paint = () => { val.textContent = fmt(O[k]); };
+        inp.addEventListener('input', () => { O[k] = +inp.value; paint(); saveOpts(); if (after) after(); });
+        row.append(el('span', 'lbl', label), inp, val); paint(); body.append(row); return inp;
+      };
+      const pct = v => Math.round(v * 100) + ' %', xv = v => '×' + v.toFixed(2).replace('.', J.LOCALE.startsWith('es') ? ',' : '.');
+      const check = (k, label) => { const row = el('label', 'row chk'), inp = el('input'); inp.type = 'checkbox'; inp.checked = !!O[k]; inp.addEventListener('change', () => { O[k] = inp.checked; saveOpts(); }); row.append(el('span', 'lbl', label), inp); body.append(row); };
+      const choice = (k, label, opts, after) => { const row = el('div', 'row'), g = el('div', 'seg'); opts.forEach(([v, l]) => { const b = el('button', O[k] === v ? 'on' : '', l); b.addEventListener('click', () => { O[k] = v; saveOpts(); g.querySelectorAll('button').forEach(x => x.classList.toggle('on', x === b)); if (after) after(); }); g.append(b); }); row.append(el('span', 'lbl', label), g); body.append(row); };
+      sect(tr('Controles', 'Controls'));
+      if (touch) range('sensT', tr('Sensibilidad al mirar (pantalla)', 'Look sensitivity (screen)'), 0.3, 3, 0.05, xv);
+      else range('sensM', tr('Sensibilidad del mouse', 'Mouse sensitivity'), 0.3, 3, 0.05, xv);
+      if (PAD.on || !touch) range('sensP', tr('Sensibilidad del joystick', 'Gamepad sensitivity'), 0.3, 3, 0.05, xv);
+      check('invY', tr('Invertir el eje vertical', 'Invert vertical look'));
+      if (touch) range('btn', tr('Tamaño de los botones', 'Button size'), 0.7, 1.5, 0.05, pct, paintBtnSize);
+      sect(tr('Sonido', 'Sound'));
+      const gains = () => { if (master) { master.gain.value = muted ? 0 : 0.7 * O.vol; sfx.gain.value = 0.9 * O.sfx; mus.gain.value = 0.32 * O.mus; } };
+      range('vol', tr('Volumen general', 'Master volume'), 0, 1, 0.05, pct, gains);
+      range('mus', tr('Música', 'Music'), 0, 1, 0.05, pct, gains);
+      range('sfx', tr('Efectos', 'Effects'), 0, 1, 0.05, pct, gains);
+      sect(tr('Imagen', 'Picture'));
+      range('fov', tr('Campo de visión', 'Field of view'), 60, 100, 1, v => v + '°', () => { pl.fov = FOV(); });
+      range('shake', tr('Sacudón de cámara', 'Camera shake'), 0, 1, 0.05, pct);
+      range('psyFx', tr('Efectos psicodélicos', 'Psychedelic effects'), 0, 1, 0.05, pct);
+      choice('quality', tr('Calidad', 'Quality'), [['auto', tr('auto', 'auto')], ['alta', tr('alta', 'high')], ['media', tr('media', 'medium')], ['baja', tr('baja', 'low')]], () => { scale = 1; });
+      const foot = el('div', 'foot'), rs = el('button', 'nc-pbtn', tr('Restablecer', 'Reset')), ok = el('button', 'nc-pbtn primary', tr('Listo', 'Done'));
+      rs.addEventListener('click', () => { Object.assign(O, OPT0); saveOpts(); gains(); paintBtnSize(); pl.fov = FOV(); openOpts(); });
+      ok.addEventListener('click', closeOpts);
+      foot.append(rs, ok);
+      optsEl.append(head, body, foot); optsEl.hidden = false;
+    }
+    function closeOpts() { optsEl.hidden = true; }
+    function paintBtnSize() { wrap.style.setProperty('--nc-btn', O.btn); }
+    paintBtnSize();
 
     /* ── actions ── */
     function setWeapon(i, dir = 1) {
@@ -1702,8 +1758,8 @@ void main() {
       if (S.state === 'play' && S.mode === '3d') {
         if (S.demo) pilot(dt);
         // looking
-        const sens = touch ? 0.0042 : 0.0022;
-        pl.yaw += mx * sens; pl.pitch = Math.max(-1.45, Math.min(1.45, pl.pitch - my * sens)); mx = my = 0;
+        const sens = lookSens();
+        pl.yaw += mx * sens; pl.pitch = Math.max(-1.45, Math.min(1.45, pl.pitch - my * sens * (O.invY ? -1 : 1))); mx = my = 0;
         // moving: acceleration, friction, the dash
         const f = [Math.sin(pl.yaw), -Math.cos(pl.yaw)], r = [Math.cos(pl.yaw), Math.sin(pl.yaw)];
         let fw = (K.KeyW || K.ArrowUp ? 1 : 0) - (K.KeyS || K.ArrowDown ? 1 : 0), st = (K.KeyD || K.ArrowRight ? 1 : 0) - (K.KeyA || K.ArrowLeft ? 1 : 0);
@@ -1725,7 +1781,7 @@ void main() {
         const sp = Math.hypot(pl.vx, pl.vz);
         pl.bob += dt * sp * 1.6;
         pl.roll += ((-st * 0.035) - pl.roll) * Math.min(1, dt * 8);
-        pl.fov += ((pl.dashT > 0 ? 1.5 : 1.32) - pl.fov) * Math.min(1, dt * 10);
+        pl.fov += ((pl.dashT > 0 ? FOV() + 0.18 : FOV()) - pl.fov) * Math.min(1, dt * 10);
         // shooting
         pl.fireCd -= dt;
         if (firing && WEAPONS[pl.weapon].beam) beamTick(dt); else { S.beam = null; if (firing && pl.fireCd <= 0) fire(); }
@@ -1843,14 +1899,14 @@ void main() {
     let scale = 1, slowT = 0, fastT = 0, lastLayout = '';
     function frame(dt) {
       const cw = HOST ? HOST.w : wrap.clientWidth, ch = HOST ? HOST.h : wrap.clientHeight; if (!cw || !ch) return;
-      const dpr = (HOST ? 1 : Math.min(window.devicePixelRatio || 1, touch ? 1.25 : 1.5)) * scale;
+      const dpr = (HOST ? 1 : O.quality === 'alta' ? Math.min(window.devicePixelRatio || 1, 2) : O.quality === 'media' ? 1 : O.quality === 'baja' ? 0.65 : Math.min(window.devicePixelRatio || 1, touch ? 1.25 : 1.5)) * scale;
       const W = Math.max(64, Math.round(cw * dpr)), H = Math.max(64, Math.round(ch * dpr));
       if (cv.width !== W || cv.height !== H) { cv.width = W; cv.height = H; }
       ensureRT(W, H);
       const M = S.M;
       // the camera (with bob, recoil, shake and the tilt while strafing)
-      const sh = pl.shake * pl.shake, sp = Math.hypot(pl.vx, pl.vz);
-      const yaw = pl.yaw + (Math.random() - 0.5) * sh * 0.05, pitch = pl.pitch + (Math.random() - 0.5) * sh * 0.05 + pl.recoil * 0.012;
+      const sh = pl.shake * pl.shake * O.shake, sp = Math.hypot(pl.vx, pl.vz);
+      const yaw = pl.yaw + (Math.random() - 0.5) * sh * 0.05, pitch = pl.pitch + (Math.random() - 0.5) * sh * 0.05 + pl.recoil * 0.012 * O.shake;
       let B = basis(yaw, pitch, pl.roll), eye = [pl.x, EYE + Math.sin(pl.bob * 2) * 0.05 * Math.min(1, sp / 7), pl.z], fov = pl.fov;
       const FO = S.mode === 'fold' ? S.fold : null;
       if (FO) {   // a fold: seen from the side (going in, the camera turns from your eyes to there)
@@ -1858,7 +1914,7 @@ void main() {
         const ey = [cx * k + (f2.x - 0.4) * (1 - k), (cy + 1.4) * k + (f2.y + 1.6) * (1 - k), D * k];
         const jit = (Math.random() - 0.5) * sh * 0.04;
         B = basis(Math.PI / 2 * (1 - k) + jit, Math.atan2(-1.4, D) * k + jit, (1 - k) * 0.5 * Math.sin(k * Math.PI));
-        eye = ey; fov = 1.32 * (1 - k) + 0.95 * k;
+        eye = ey; fov = FOV() * (1 - k) + 0.95 * k;
       }
       const proj = persp(fov, W / H, 0.05, 160), vp = mul(proj, viewM(eye, B));
       // the lights: the 16 nearest of everything that glows
@@ -1899,7 +1955,7 @@ void main() {
       let p = P.level; gl.useProgram(p.p);
       gl.uniformMatrix4fv(p.L.u_vp, false, vp); gl.uniform3fv(p.L.u_eye, eye); gl.uniform1f(p.L.u_time, S.t);
       gl.uniform4fv(p.L.u_lp, LP); gl.uniform4fv(p.L.u_lc, LC); gl.uniform1i(p.L.u_nl, NL); gl.uniform4fv(p.L.u_rc, RC); gl.uniform4fv(p.L.u_rp, RP);
-      gl.uniform1f(p.L.u_psy, S.psy); gl.uniform1f(p.L.u_warp, Math.max(0, (S.level - 4) / 6) * 0.26 * Math.min(1, S.psy * 2));
+      gl.uniform1f(p.L.u_psy, S.psy * O.psyFx); gl.uniform1f(p.L.u_warp, Math.max(0, (S.level - 4) / 6) * 0.26 * Math.min(1, S.psy * 2) * O.psyFx);
       const geo = FO ? foldGL : levelGL;
       gl.bindVertexArray(geo.vao); gl.drawArrays(gl.TRIANGLES, 0, geo.n);
       // things
@@ -2074,8 +2130,8 @@ void main() {
       gl.bindVertexArray(emptyVao);
       const pass = (prg, fb, w, h, srcs, set) => { gl.bindFramebuffer(gl.FRAMEBUFFER, fb); gl.viewport(0, 0, w, h); gl.useProgram(prg.p); srcs.forEach((t, i) => { gl.activeTexture(gl.TEXTURE0 + i); gl.bindTexture(gl.TEXTURE_2D, t); }); set(prg.L); gl.drawArrays(gl.TRIANGLES, 0, 3); };
       let scene = RT.main;
-      if (S.psy > 0.02) {   // deep levels: what glows leaves trails that turn and change colour
-        const src = RT.e[RT.ec], dst = 1 - RT.ec, ps = S.psy;
+      if (S.psy * O.psyFx > 0.02) {   // deep levels: what glows leaves trails that turn and change colour
+        const src = RT.e[RT.ec], dst = 1 - RT.ec, ps = S.psy * O.psyFx;
         pass(P.echo, RT.fe[dst], W, H, [RT.main, src], L => { gl.uniform1i(L.u_img, 0); gl.uniform1i(L.u_prev, 1); gl.uniform1f(L.u_k, 0.3 + 0.38 * ps); gl.uniform1f(L.u_rot, 0.006 * ps * Math.sin(S.t * 0.3)); gl.uniform1f(L.u_zoom, 1 - 0.012 * ps); gl.uniform1f(L.u_hue, 0.015 * ps); });
         RT.ec = dst; scene = RT.e[dst];
       }
@@ -2087,7 +2143,7 @@ void main() {
       const fade = S.state === 'trans' ? Math.max(0, Math.min(1, Math.abs(S.endT - 0.8) / 0.8)) : S.state === 'dead' || S.state === 'over' ? Math.max(0.25, S.endT / 1.6) : 1;
       pass(P.comp, null, W, H, [scene, RT.a], L => {
         gl.uniform1i(L.u_img, 0); gl.uniform1i(L.u_bloom, 1); gl.uniform1f(L.u_hurt, Math.min(1, pl.hurtT * 2) + (S.state === 'dead' ? 0.6 : 0) + (S.hp < 30 && S.state === 'play' ? 0.18 + 0.12 * Math.sin(S.t * 6) : 0));
-        gl.uniform1f(L.u_time, S.t % 100); gl.uniform1f(L.u_ab, S.fx * 0.12 + 0.012 + S.psy * 0.03 * (1 + Math.sin(S.t * 0.7)) + pl.hurtT * 0.05 + (pl.dashT > 0 ? 0.04 : 0)); gl.uniform1f(L.u_bk, 1.1); gl.uniform1f(L.u_fade, fade * (1 + S.fx * 1.4)); gl.uniform2f(L.u_res, W, H);
+        gl.uniform1f(L.u_time, S.t % 100); gl.uniform1f(L.u_ab, S.fx * 0.12 + 0.012 + S.psy * O.psyFx * 0.03 * (1 + Math.sin(S.t * 0.7)) + pl.hurtT * 0.05 + (pl.dashT > 0 ? 0.04 : 0)); gl.uniform1f(L.u_bk, 1.1); gl.uniform1f(L.u_fade, fade * (1 + S.fx * 1.4)); gl.uniform2f(L.u_res, W, H);
       });
       gl.activeTexture(gl.TEXTURE0);
       // the HUD

@@ -488,7 +488,7 @@ body.cb .sd-cell.bad { text-decoration: line-through 3px; text-decoration-color:
 .nc-big.on { opacity: 1; }
 .nc-big b { font-size: clamp(28px, 7vw, 64px); letter-spacing: .12em; text-transform: uppercase; color: #fff; text-shadow: 0 0 18px #0cf, 0 0 40px rgba(0,212,255,0.5); }
 .nc-big small { font-size: 13px; letter-spacing: .1em; color: #9fe8ff; }
-.nc-tools { position: absolute; left: 12px; top: 12px; display: flex; gap: 6px; }
+.nc-tools { position: absolute; left: 12px; top: 12px; display: flex; gap: 6px; z-index: 7; }
 .nc-tool { width: 32px; height: 32px; border: 1px solid rgba(0,212,255,0.35); border-radius: 6px; background: rgba(0,10,20,0.5); color: #bdf3ff; font-size: 14px; cursor: pointer; }
 .nc-tool:hover { border-color: #0cf; }
 .nc-pause { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; background: rgba(0,4,10,0.6); cursor: pointer; z-index: 3; }
@@ -564,3 +564,32 @@ body.cb .sd-cell.bad { text-decoration: line-through 3px; text-decoration-color:
 .nc-seed { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 8px 12px; margin: 4px 0 0; font-size: 12px; letter-spacing: .06em; color: rgba(var(--text-rgb),0.7); }
 /* Núcleo: the visual mode (it plays itself): only the picture */
 .nc-hud.demo > :not(.nc-tools):not(.nc-big) { display: none !important; }
+/* Núcleo: the options panel, the pause buttons */
+.nc-fire, .nc-dashbtn, .nc-jumpbtn, .nc-swapbtn { scale: var(--nc-btn, 1); transform-origin: 100% 100%; }
+.nc-pbtns { display: flex; gap: 10px; margin-top: 6px; }
+.nc-pbtn { padding: 8px 16px; font: inherit; font-size: 12px; letter-spacing: .1em; text-transform: uppercase; color: #dff8ff; background: rgba(0,20,34,0.75); border: 1px solid rgba(0,212,255,0.45); border-radius: 6px; cursor: pointer; }
+.nc-pbtn:hover { border-color: #0cf; box-shadow: 0 0 12px rgba(0,212,255,0.35); }
+.nc-pbtn.primary { background: rgba(0,212,255,0.2); border-color: #0cf; }
+.nc-opts { position: absolute; inset: 0; z-index: 6; display: flex; flex-direction: column; width: min(520px, 100%); margin: 0 auto; background: rgba(2,8,16,0.94); border-left: 1px solid rgba(0,212,255,0.3); border-right: 1px solid rgba(0,212,255,0.3); color: #dff8ff; cursor: default; }
+.nc-opts[hidden] { display: none; }
+.nc-opts .head { padding: 14px 18px 8px; font-size: 18px; letter-spacing: .16em; text-transform: uppercase; text-shadow: 0 0 12px #0cf; }
+.nc-opts .body { flex: 1; overflow-y: auto; padding: 0 18px 8px; overscroll-behavior: contain; }
+.nc-opts h4 { margin: 14px 0 6px; font-size: 10px; letter-spacing: .2em; text-transform: uppercase; color: #e9b8ff; font-weight: 600; }
+.nc-opts .row { display: grid; grid-template-columns: 1fr minmax(110px, 46%) 52px; align-items: center; gap: 10px; min-height: 36px; font-size: 13px; }
+.nc-opts .row.chk { grid-template-columns: 1fr auto; }
+.nc-opts .row:has(.seg) { grid-template-columns: 1fr auto; }
+.nc-opts input[type=range] { width: 100%; accent-color: #0cf; height: 28px; }
+.nc-opts input[type=checkbox] { width: 20px; height: 20px; accent-color: #0cf; }
+.nc-opts .val { text-align: right; font-variant-numeric: tabular-nums; color: #9fe8ff; font-size: 12px; }
+.nc-opts .seg { display: flex; border: 1px solid rgba(0,212,255,0.4); border-radius: 6px; overflow: hidden; }
+.nc-opts .seg button { padding: 6px 10px; font: inherit; font-size: 12px; color: #bfe9f7; background: transparent; border: 0; cursor: pointer; }
+.nc-opts .seg button.on { background: rgba(0,212,255,0.25); color: #fff; }
+.nc-opts .foot { display: flex; justify-content: space-between; gap: 10px; padding: 10px 18px 14px; border-top: 1px solid rgba(0,212,255,0.2); }
+@media (max-width: 720px) {
+  .nc-opts { top: 52px; border: 0; border-top: 1px solid rgba(0,212,255,0.3); }
+  .nc-opts .row { grid-template-columns: 1fr 52px; gap: 2px 10px; padding: 4px 0; }
+  .nc-opts .row .lbl { grid-column: 1 / -1; }
+  .nc-opts .row.chk { grid-template-columns: 1fr auto; }
+  .nc-opts .row.chk .lbl { grid-column: auto; }
+  .nc-opts .row:has(.seg) { grid-template-columns: 1fr; }
+}
