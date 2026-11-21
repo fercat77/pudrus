@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="theme-color" content="#050508">
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="PUDRUS.XYZ">
+  <meta property="og:title" content="NoticIAs — PUDRUS.XYZ">
+  <meta property="og:description" content="Las noticias de los principales diarios, con títulos claros, sin publicidad, y cómo tituló cada medio.">
+  <meta property="og:url" content="https://pudrus.xyz/noticias/">
+  <meta property="og:image" content="https://pudrus.xyz/assets/og/cover.jpg">
+  <meta property="og:locale" content="es_AR">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="description" content="Las noticias de los principales diarios, con títulos claros, sin publicidad, y cómo tituló cada medio.">
+  <title>NoticIAs — PUDRUS.XYZ</title>
+  <link rel="icon" type="image/svg+xml" href="../favicon.svg">
+  <link rel="manifest" href="/manifest.webmanifest">
+  <link rel="apple-touch-icon" href="/assets/icons/apple-touch-icon.png">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="PUDRUS">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600;700&display=swap">
+  <script src="../js/theme.js"></script>
+  <link rel="stylesheet" href="../css/style.css">
+  <link rel="stylesheet" href="../css/noticias.css?v=1">
+</head>
+<body class="home">
+
+<nav id="nav">
+  <a href="../index.html" class="nav-logo">PUDRUS<span>.xyz</span></a>
+  <ul class="nav-links" id="navLinks">
+    <li><a href="../index.html#tools" data-i18n="nav.tools">Herramientas</a></li>
+    <li><a href="../index.html#about" data-i18n="nav.about">Acerca de</a></li>
+    <li><a href="../index.html#work" data-i18n="nav.work">Trabajo</a></li>
+  </ul>
+  <div class="nav-lang">
+    <select id="langSelect" aria-label="Language selector">
+      <option value="es">ES</option>
+      <option value="en">EN</option>
+    </select>
+  </div>
+  <button class="nav-toggle" type="button" aria-controls="navLinks" aria-expanded="false" data-i18n-title="nav.menu"><span></span></button>
+</nav>
+
+<!-- data-src: the URL of the Apps Script web app (scripts/noticias.gs). Empty = the example data. -->
+<main class="nx" data-src="" data-example="ejemplo.json">
+  <header class="nx-head">
+    <div class="section-tag" data-i18n="news.tag">◈ Noticias</div>
+    <h1 class="section-title nx-title">Notic<span>IA</span>s</h1>
+    <p class="section-desc" data-i18n="news.desc">Las noticias de los principales diarios, con un título claro, un resumen propio y sin publicidad. Y al lado, cómo lo tituló cada medio.</p>
+    <p class="nx-meta" data-nx-meta aria-live="polite"></p>
+    <div class="nx-filters" data-nx-filters role="toolbar" aria-label="Secciones"></div>
+  </header>
+
+  <p class="nx-demo" data-nx-demo hidden data-i18n="news.demo">◈ Datos de ejemplo: medios y noticias inventados para mostrar cómo se ve la portada.</p>
+  <p class="nx-empty" data-nx-empty hidden></p>
+
+  <section class="nx-lead" data-nx-lead aria-label="Noticia principal"></section>
+  <section class="nx-grid" data-nx-grid aria-label="Más noticias"></section>
+
+  <div class="nx-cols">
+    <section class="nx-box" aria-labelledby="nxBriefs">
+      <h2 class="nx-h2" id="nxBriefs" data-i18n="news.briefs">Breves</h2>
+      <p class="nx-sub" data-i18n="news.briefsDesc">Lo que por ahora publicó un solo medio.</p>
+      <ol class="nx-briefs" data-nx-briefs></ol>
+    </section>
+    <section class="nx-box" aria-labelledby="nxMeter">
+      <h2 class="nx-h2" id="nxMeter" data-i18n="news.meter">Termómetro de medios</h2>
+      <p class="nx-sub" data-i18n="news.meterDesc">Promedio de sensacionalismo de sus títulos en esta portada, de 0 a 10.</p>
+      <ol class="nx-meter" data-nx-meter></ol>
+    </section>
+  </div>
+
+  <section class="nx-box nx-about" aria-labelledby="nxHow">
+    <h2 class="nx-h2" id="nxHow" data-i18n="news.how">Cómo se arma esta portada</h2>
+    <ol class="nx-steps">
+      <li><b data-i18n="news.s1t">Juntar</b><span data-i18n="news.s1">Cada media hora leemos los RSS de nueve diarios argentinos: solo títulos, bajadas y links.</span></li>
+      <li><b data-i18n="news.s2t">Agrupar</b><span data-i18n="news.s2">Una IA junta las notas que cuentan el mismo hecho. Si lo publicaron dos medios o más, es una historia; si no, una breve.</span></li>
+      <li><b data-i18n="news.s3t">Escribir</b><span data-i18n="news.s3">La IA escribe un título que dice qué pasó y un resumen propio, solo con lo que dicen las fuentes. Una persona lo revisa antes de publicarlo.</span></li>
+      <li><b data-i18n="news.s4t">Medir</b><span data-i18n="news.s4">Cada título original suma puntos por las señales de sensacionalismo que tiene, hasta 10.</span></li>
+    </ol>
+    <h3 class="nx-h3" data-i18n="news.signals">Señales que suman puntos</h3>
+    <ul class="nx-signals" data-nx-signals></ul>
+    <p class="nx-fine" data-i18n="news.fine">Los puntajes son una estimación automática y pueden equivocarse. Los resúmenes los escribe una IA con revisión humana. No copiamos el texto de las notas: cada fuente tiene su link al original. Sin publicidad.</p>
+  </section>
+</main>
+
+<footer>
+  <span data-i18n="footer.copyright">© 2026 PUDRUS.XYZ</span>
+  <span class="footer-separator" aria-hidden="true">◈ ◈ ◈</span>
+  <a href="https://cafecito.app/pudrus" target="_blank" rel="noopener noreferrer" data-i18n="footer.donate">Apoyá este proyecto</a>
+  <span class="footer-separator" aria-hidden="true">◈ ◈ ◈</span>
+  <span data-i18n="footer.note">Sumergite en un desastre digital</span>
+</footer>
+
+<script src="../js/i18n.js"></script>
+<script src="../js/noticias.js?v=1"></script>
+<script src="../js/nav.js"></script>
+<script src="/js/pwa.js"></script>
+</body>
+</html>
