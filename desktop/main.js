@@ -70,11 +70,11 @@ function serve(req, res) {
   if (p === '/') { res.writeHead(302, { Location: '/lab/nodes/?pc' }); res.end(); return; }
   let file = VENDOR[p];
   if (!file) {
-    if (!(p.startsWith('/lab/nodes/') || p.startsWith('/lab/syndrus/') || p.startsWith('/lab/setrus/') || p.startsWith('/lab/partrus/') || p === '/favicon.svg' || p === '/js/splash.js' || p === '/js/theme.js')) { res.writeHead(404); res.end('no'); return; }
+    if (!(p.startsWith('/lab/nodes/') || p.startsWith('/lab/syndrus/') || p.startsWith('/lab/setrus/') || p.startsWith('/lab/partrus/') || p === '/favicon.svg' || p === '/js/splash.js' || p === '/js/theme.js' || p === '/juegos/nucleo.js')) { res.writeHead(404); res.end('no'); return; }
     if (p.endsWith('/')) p += 'index.html';
     file = path.normalize(path.join(WEB, p));
     const root = path.normalize(path.join(WEB, 'lab', 'nodes')), syRoot = path.normalize(path.join(WEB, 'lab', 'syndrus')), seRoot = path.normalize(path.join(WEB, 'lab', 'setrus')), paRoot = path.normalize(path.join(WEB, 'lab', 'partrus'));
-    if (!(file.startsWith(root + path.sep) || file.startsWith(syRoot + path.sep) || file.startsWith(seRoot + path.sep) || file.startsWith(paRoot + path.sep) || file === path.join(WEB, 'favicon.svg') || file === path.join(WEB, 'js', 'splash.js') || file === path.join(WEB, 'js', 'theme.js'))) { res.writeHead(403); res.end(); return; }
+    if (!(file.startsWith(root + path.sep) || file.startsWith(syRoot + path.sep) || file.startsWith(seRoot + path.sep) || file.startsWith(paRoot + path.sep) || file === path.join(WEB, 'favicon.svg') || file === path.join(WEB, 'js', 'splash.js') || file === path.join(WEB, 'js', 'theme.js') || file === path.join(WEB, 'juegos', 'nucleo.js'))) { res.writeHead(403); res.end(); return; }
   }
   fs.stat(file, (err, st) => {
     if (err || !st.isFile()) { res.writeHead(404); res.end('no'); return; }

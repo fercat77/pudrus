@@ -773,6 +773,8 @@
   function paintHub() {
     const n = streak();
     $('#streak').innerHTML = n ? tr(`<b>${n}</b> día${n > 1 ? 's' : ''} seguido${n > 1 ? 's' : ''}`, `<b>${n}</b> day${n > 1 ? 's' : ''} in a row`) : tr('Jugá hoy para empezar una racha', 'Play today to start a streak');
+    const nb = $('#nucleoBtn small'), runs = store.nucleo && store.nucleo.runs;   // Núcleo's button: your best run
+    if (nb && runs && runs.length) nb.textContent = tr('récord ', 'record ') + runs[0].score.toLocaleString(LOCALE);
     const dg = dailyGame(), dd = store.daily[dayKey()];
     const d = $('#daily'); d.classList.toggle('done', !!dd);
     d.innerHTML = `<span class="ic">◈</span><span class="tx"><small>${tr('Desafío del día', 'Daily challenge')} · ${new Date().toLocaleDateString(LOCALE, { day: 'numeric', month: 'long' })}</small><b>${dg.title}</b> — ${tr('el mismo para todos hoy', 'the same for everyone today')}${dd ? ` · ${tr('tu resultado', 'your result')}: ${dg.fmt(dd)}` : ''}</span><span class="go">${dd ? tr('Otra vez →', 'Again →') : tr('Jugar →', 'Play →')}</span>`;
@@ -798,11 +800,12 @@
   if ($('#nucleoBtn')) $('#nucleoBtn').addEventListener('click', () => { location.hash = 'nucleo'; });
   const hideDuel = () => { const d = $('#duel'); if (d) d.hidden = true; document.body.classList.remove('duelmode'); };
 
-  let cleanup = null, current = null, isDaily = false, testHook = {}, option = null, run = null;
-  const bestKey = gm => gm.id + (gm.options && option ? ':' + option : '');
-  function open(id, daily) {
+  let cleanup = null, current = null, isDaily = false, testHook = {}, option = null, run = null, openFlag = '';
+  // (a game may name one option «of the day»: its records start over every day)
+  const bestKey = gm => gm.id + (gm.options && option ? ':' + option : '') + (gm.dayOption && option === gm.dayOption ? ':' + dayKey() : '');
+  function open(id, daily, flag) {
     const gm = byId(id); if (!gm) { showHub(); return; }
-    close(); duelRun = null; hideDuel(); current = gm; isDaily = !!daily;
+    close(); duelRun = null; hideDuel(); current = gm; isDaily = !!daily; openFlag = flag || '';
     hub.hidden = true; play.hidden = false; result.hidden = true; document.body.classList.remove('hubmode'); document.body.classList.add('playmode');
     $('#gTitle').textContent = gm.title + (isDaily ? tr(' · desafío del día', ' · daily challenge') : '');
     $('#gTag').textContent = gm.tag;
@@ -814,7 +817,9 @@
     const st = el('div', 'jg-start');
     st.append(el('div', 'big', '◈'), el('p', 'jg-rules', gm.how));
     option = isDaily ? gm.dailyOption : (store.opt && store.opt[gm.id]) || (gm.options ? gm.options[0][0] : null);
-    if (gm.options && !isDaily) {
+    const note = gm.startNote ? gm.startNote(openFlag) : null;   // e.g. Núcleo opened with a friend's seed (#nucleo/s…): that seed, no choosing
+    if (note && note.option) option = note.option;
+    if (gm.options && !isDaily && !(note && note.option)) {
       const row = el('div', 'jg-btns');
       gm.options.forEach(([k, label]) => { const b = el('button', 'jg-btn' + (k === option ? ' on' : ''), label); b.addEventListener('click', () => { option = k; store.opt = store.opt || {}; store.opt[gm.id] = k; save(); row.querySelectorAll('.jg-btn').forEach(x => x.classList.toggle('on', x === b)); }); row.append(b); });
       st.append(row);
@@ -825,13 +830,14 @@
     cbBtn.title = tr('Colores que se distinguen con cualquier tipo de daltonismo, y el color nunca como única pista (queda guardado)', 'Colours that every kind of colour blindness tells apart, and colour never the only clue (it is remembered)');
     cbBtn.addEventListener('click', () => { store.cb = !CB(); save(); paintCB(); paintCbBtn(); });
     paintCbBtn();
+    if (note && note.el) st.append(note.el);
     st.append(goBtn, cbBtn); stage.append(st); goBtn.focus();
     function go() {
       stage.innerHTML = '';
       const rnd = isDaily ? mulberry(hashStr(dayKey() + ':' + gm.id)) : Math.random;
       testHook = {};
       const mine = run = {};   // this play: a game that was left can't report a result later
-      cleanup = gm.start({ test: testHook, option, stage, rnd, daily: isDaily, hud: h => { if (run === mine) hud.innerHTML = h; }, done: r => { if (run === mine) finish(gm, r); } });
+      cleanup = gm.start({ test: testHook, option, flag: openFlag, stage, rnd, daily: isDaily, hud: h => { if (run === mine) hud.innerHTML = h; }, done: r => { if (run === mine) finish(gm, r); } });
     }
   }
   function close() { run = null; if (cleanup) { try { cleanup(); } catch (e) { /* ignore */ } cleanup = null; } }
@@ -860,7 +866,7 @@
     sh.onclick = () => { if (navigator.clipboard) navigator.clipboard.writeText(shareTxt + (r.share ? '' : '\npudrus.xyz/juegos')).then(() => { sh.textContent = tr('Copiado ✓', 'Copied ✓'); }, () => {}); };
     result.hidden = false; $('#rAgain').focus();
   }
-  $('#rAgain').addEventListener('click', () => { result.hidden = true; if (current) open(current.id, isDaily); });
+  $('#rAgain').addEventListener('click', () => { result.hidden = true; if (current) open(current.id, isDaily, openFlag); });
   $('#rHub').addEventListener('click', () => { location.hash = ''; });
   $('#back').addEventListener('click', () => { if (duelRun) abortDuel(); else location.hash = ''; });
   $('#helpBtn').addEventListener('click', () => { how.hidden = !how.hidden; });
@@ -929,9 +935,9 @@
       if (window.drusDuel) window.drusDuel.show(flag || ''); else window.__drusDuelPending = flag || '';
       return;
     }
-    if (id && byId(id)) open(id, flag === 'hoy'); else showHub();
+    if (id && byId(id)) open(id, flag === 'hoy' && !byId(id).solo, flag); else showHub();   // («solo» games have no daily challenge of the hub)
   }
   addEventListener('hashchange', route);
   route();
-  window.__juegos = { EN, tr, LOCALE, CB, GAMES, store, save, open, route, mulberry, hashStr, runDuel, abortDuel, el, okSound, badSound, tone, get inDuelRound() { return !!duelRun; }, get test() { return testHook; } };
+  window.__juegos = { EN, tr, LOCALE, CB, GAMES, store, save, open, route, mulberry, hashStr, dayKey, mmss, runDuel, abortDuel, el, okSound, badSound, tone, get inDuelRound() { return !!duelRun; }, get test() { return testHook; } };
 })();

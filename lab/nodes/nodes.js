@@ -412,6 +412,16 @@ vec3 n${id}_march(vec2 uv, float size, float twist, float speed, float sp, out v
       outputs: [['c', 'color', 'Color'], ['a', 'float', 'Alfa']],
       glsl: (I, O, P, id) => texGLSL(I, O, P, id) + ` ${O.c} *= ${I.opacity};` },
 
+    // Núcleo (DRUS · juegos/nucleo.js) playing by itself: its neon levels, patterns and bosses as a picture
+    nucleo: { title: 'Núcleo', cat: 'Entrada', tex: true,
+      inputs: [UV, F('size', 'Tamaño', 1, 0.05, 3), F('opacity', 'Opacidad', 1, 0, 1),
+        F('npsy', 'Psicodelia', 0.3, 0, 1), F('nlevel', 'Nivel', 3, 1, 30, 1), F('nspeed', 'Velocidad', 1, 0, 3), F('npunch', 'Golpe', 0, 0, 1)],
+      params: [{ k: 'seed', label: 'Mapa', v: '1', options: [['1', '1'], ['2', '2'], ['3', '3'], ['4', '4'], ['5', '5'], ['6', '6'], ['7', '7'], ['8', '8']] },
+               { k: 'gun', label: 'Arma', v: 'yes', options: [['yes', 'visible'], ['no', 'oculta']] },
+               { k: 'q', label: 'Calidad', v: '0.75', options: [['1', 'alta'], ['0.75', 'media'], ['0.5', 'liviana']] }],
+      outputs: [['c', 'color', 'Color'], ['a', 'float', 'Alfa']],
+      glsl: (I, O, P, id) => texGLSL(I, O, P, id) },
+
     glsl: { title: 'GLSL', cat: 'Código',
       inputs: [UV, COL('in', 'Color de entrada', '#000000'), F('k1', 'Perilla 1', 0.5, 0, 1), F('k2', 'Perilla 2', 0.5, 0, 1), F('k3', 'Perilla 3', 0.5, 0, 1), F('k4', 'Perilla 4', 0.5, 0, 1)],
       params: [{ k: 'code', label: 'Código', kind: 'code', v: GLSL_TEMPLATES.effect }],
@@ -875,8 +885,8 @@ mat2 h_rot(float a){ return mat2(cos(a), -sin(a), sin(a), cos(a)); }
       return { n: src.type, o: link.ao, P: { ...defaultsFor(src.type).p, ...(src.p || {}) }, I };
     }
     function particlePlan(node) {
-      const m = {};
-      inputsOf(node).forEach(i => { if (MACROS[i.k] || i.uniform) m[i.k] = { pl: cpuPlan(node.id, i), uniform: i.uniform }; });
+      const m = {}, map = node.type === 'nucleo' ? NMACROS : MACROS;
+      inputsOf(node).forEach(i => { if (map[i.k] || i.uniform) m[i.k] = { pl: cpuPlan(node.id, i), uniform: i.uniform }; });
       return m;
     }
     function emit(node) {
@@ -908,7 +918,7 @@ mat2 h_rot(float a){ return mat2(cos(a), -sin(a), sin(a), cos(a)); }
       if (def.globals) globals.push(`// ${def.title} #${node.id}\n` + def.globals(P, node.id));
       if (def.lib) libs.add(def.lib);
       lines.push(`  // ${def.title} #${node.id}\n  ` + def.glsl(I, O, P, node.id));
-      if (def.tex) textures.push({ node: node.id, kind: node.type, p: P, texName: `u_${node.id}_tex`, aspName: `u_${node.id}_aspect`, macros: node.type === 'particles' ? particlePlan(node) : null });
+      if (def.tex) textures.push({ node: node.id, kind: node.type, p: P, texName: `u_${node.id}_tex`, aspName: `u_${node.id}_aspect`, macros: node.type === 'particles' || node.type === 'nucleo' ? particlePlan(node) : null });
       if (def.usesAudio) usesAudio = true;
       if (def.usesFeedback || (def.feedbackIf && def.feedbackIf(P))) usesFeedback = true;
       visiting.delete(node.id);
@@ -1162,6 +1172,7 @@ void main(){
     }
     return 0;
   }
+  const NMACROS = { npsy: 'psy', nlevel: 'level', nspeed: 'speed', npunch: 'punch' };   // the «Núcleo» node's knobs, read on the CPU
   const MACROS = { pspeed: 'speed', psize: 'size', hue: 'hue', glow: 'glow', trail: 'trail', yaw: 'yaw', pitch: 'pitch', zoom: 'zoom', spin: 'spin', boom: 'boom' };
   function particleMods(t, ctx) {
     const m = t.macros || {}, mods = { text: t.p.otext || undefined, img: t.p.oimg || undefined, pub: null };
@@ -1173,6 +1184,14 @@ void main(){
     return mods;
   }
   function texSource(t, owner, ctx) {
+    if (t.kind === 'nucleo') {   // one game per renderer and node (juegos/nucleo.js), a step and a picture per frame
+      const NU = window.PudrusNucleo;
+      if (!NU || !ctx) return null;
+      const mods = { seed: t.p.seed || '1', q: +t.p.q || 0.75, gun: t.p.gun !== 'no' }, m = t.macros || {};
+      for (const k in m) if (NMACROS[k]) mods[NMACROS[k]] = cpuVal(m[k].pl, ctx);
+      const r = NU.source(owner, t.node, ctx.time, ctx.w, ctx.h, mods);
+      return r ? { src: r.canvas, key: 'n' + r.n, aspect: r.aspect } : null;
+    }
     if (t.kind === 'particles') {   // one simulation per renderer and node, advanced to this renderer's time
       const PP = window.PudrusParticles;
       if (!PP || !ctx) return null;

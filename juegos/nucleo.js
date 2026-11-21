@@ -4,7 +4,15 @@
    dynamic lights, bloom), own level generator, own Web Audio synth. Desktop: mouse + keyboard; phones: touch sticks. */
 (function () {
   'use strict';
-  const J = window.__juegos; if (!J) return;
+  const J = window.__juegos || (() => {
+    const pad2 = n => String(n).padStart(2, '0');
+    let en = false; try { en = (localStorage.getItem('pudrus_lang') || navigator.language || 'es').slice(0, 2) === 'en'; } catch (e) { /* private mode */ }
+    return { tr: (a, b) => (en ? b : a), LOCALE: en ? 'en-GB' : 'es-AR', GAMES: [], store: { best: {} }, save() {}, route: null,
+      el(tag, cls, txt) { const e = document.createElement(tag); if (cls) e.className = cls; if (txt !== undefined) e.textContent = txt; return e; },
+      hashStr(t) { let h = 2166136261; for (let i = 0; i < t.length; i++) { h ^= t.charCodeAt(i); h = Math.imul(h, 16777619); } return h >>> 0; },
+      mulberry(seed) { let a = seed >>> 0; return () => { a = a + 0x6D2B79F5 | 0; let t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; },
+      dayKey(d = new Date()) { return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`; }, mmss: t => `${Math.floor(t / 60)}:${pad2(Math.floor(t % 60))}` };
+  })();
   const { tr, el } = J;
 
   /* ═══════════════ shaders ═══════════════ */
@@ -278,13 +286,14 @@ void main() {
   const UNLOCK = [0, 3, 1, 2, 4, 5, 6, 7];
   const pickOf = (pool, rnd) => pool[Math.floor(rnd() * pool.length)];
   let FP = [0], WP = [0];
+  const BOSSES = ['core', 'hive', 'eye', 'fold'];   // every 5 levels, in turn: the Great Core, the Hive, the Eye, the Greater Fold
   function generate(level, rnd) {
     const open = UNLOCK.slice(0, Math.min(UNLOCK.length, level)), newest = open[open.length - 1];
     FP = [...open, newest, newest];   // the newest one, more often (so you notice it arrived)
     WP = [...open, newest, newest, ...(level >= 3 ? [1] : [])];   // and hexagons, a favourite on walls
     const W = Math.min(60, 26 + level * 5), H = W;
     const grid = new Uint8Array(W * H).fill(1), ceil = new Float32Array(W * H), rid = new Int16Array(W * H).fill(-1), corr = new Uint8Array(W * H);
-    const rooms = [], want = Math.min(14, 5 + Math.floor(level * 1.5)), boss = level % 5 === 0;
+    const rooms = [], want = Math.min(14, 5 + Math.floor(level * 1.5)), boss = level % 5 === 0, bk = boss ? BOSSES[(level / 5 - 1) % BOSSES.length] : null;
     for (let t = 0; t < 800 && rooms.length < want; t++) {
       const arena = boss && rooms.length === 1 && t < 500;   // every 5 levels: a big arena for the Great Core (the room after the start)
       const w = arena ? 13 : 4 + Math.floor(rnd() * 6), h = arena ? 13 : 4 + Math.floor(rnd() * 6);
@@ -344,8 +353,9 @@ void main() {
     for (let k = 0; k < 2 + Math.floor(level / 2); k++) { const r = rooms[1 + Math.floor(rnd() * (n - 1))]; const c = free(r); if (c.length) { const [x, y] = c[Math.floor(rnd() * c.length)]; pickups.push({ x: (x + 0.5) * CS, z: (y + 0.5) * CS }); } }
     // a «fold» (level 3 on): one core sits in a side-scrolling zone, reached through a portal on a wall of its room
     let portal = null;
-    if (level >= 3 && rnd() < 0.8) {
-      const k = coreRooms[Math.floor(rnd() * coreRooms.length)], r = rooms[k], cand = [];
+    const pk = bk === 'fold' ? arena : level >= 3 && rnd() < 0.8 ? coreRooms[Math.floor(rnd() * coreRooms.length)] : -1;   // (the Greater Fold: a big portal in its arena)
+    if (pk >= 0) {
+      const k = pk, r = rooms[k], cand = [];
       const side = (x, y, ox, oy, nx, nz) => { if (!grid[y * W + x] && grid[oy * W + ox] === 1 && !corr[oy * W + ox]) cand.push({ x, y, nx, nz }); };
       for (let x = r.x; x < r.x + r.w; x++) { side(x, r.y, x, r.y - 1, 0, 1); side(x, r.y + r.h - 1, x, r.y + r.h, 0, -1); }
       for (let y = r.y; y < r.y + r.h; y++) { side(r.x, y, r.x - 1, y, 1, 0); side(r.x + r.w - 1, y, r.x + r.w, y, -1, 0); }
@@ -367,7 +377,26 @@ void main() {
         npc = { x: (x + 0.5) * CS, z: (y + 0.5) * CS, name: pick(NAMES), lines: [pick(OPEN), ...mids], gift: pick(GIFTS), hue: rnd() };
       }
     }
-    return { W, H, grid, ceil, rid, rooms, exitRoom, coreRooms, enemies, pickups, npc, portal, wspot, arena, start: rooms[0], corrPat: [pickOf(FP, rnd), pickOf(WP, rnd)] };
+    // a secret room (level 2 on, often): a small pocket behind one cell of a room's wall; three shots on that wall open it
+    let secret = null;
+    if (level >= 2 && rnd() < 0.6) for (let t = 0; t < 60 && !secret; t++) {
+      const k = 1 + Math.floor(rnd() * (n - 1)), r = rooms[k]; if (!r || k === arena) continue;
+      const side = Math.floor(rnd() * 4), along = (a, l) => a + 1 + Math.floor(rnd() * Math.max(1, l - 2));
+      let dx, dy, x0, y0, nx = 0, nz = 0;
+      if (side === 0) { dy = along(r.y, r.h); dx = r.x + r.w; x0 = dx + 1; y0 = dy - 1; nx = -1; }
+      else if (side === 1) { dy = along(r.y, r.h); dx = r.x - 1; x0 = dx - 3; y0 = dy - 1; nx = 1; }
+      else if (side === 2) { dx = along(r.x, r.w); dy = r.y + r.h; x0 = dx - 1; y0 = dy + 1; nz = -1; }
+      else { dx = along(r.x, r.w); dy = r.y - 1; x0 = dx - 1; y0 = dy - 3; nz = 1; }
+      if (x0 < 2 || y0 < 2 || x0 + 4 > W - 2 || y0 + 4 > H - 2 || rid[(dy + nz) * W + dx + nx] !== k) continue;
+      let ok = true;
+      for (let y = y0 - 1; y <= y0 + 3 && ok; y++) for (let x = x0 - 1; x <= x0 + 3; x++) { const i = y * W + x; if (grid[i] !== 1 || corr[i]) { ok = false; break; } }
+      if (!ok) continue;
+      const idx = rooms.length;
+      rooms.push({ x: x0, y: y0, w: 3, h: 3, cx: x0 + 1, cy: y0 + 1, hgt: 4, hue: 4, pf: newest, pw: newest, secret: true });
+      for (let y = y0; y < y0 + 3; y++) for (let x = x0; x < x0 + 3; x++) { const i = y * W + x; grid[i] = 0; ceil[i] = 4; rid[i] = idx; }
+      secret = { door: dy * W + dx, x: dx, y: dy, nx, nz, room: idx };
+    }
+    return { W, H, grid, ceil, rid, rooms, exitRoom, coreRooms, enemies, pickups, npc, portal, wspot, arena, secret, bossKind: bk, start: rooms[0], corrPat: [pickOf(FP, rnd), pickOf(WP, rnd)] };
   }
   // the fold's course: platforms laid out in the style of its room's pattern (hexagons: staggered; triangles: stairs; spirals: a tower…)
   function genFold(level, rnd, pat) {
@@ -398,6 +427,12 @@ void main() {
     en.push({ type: 'drone', x: x + 6, y: y + 3 }, { type: level >= 5 ? 'phase' : 'drone', x: x + 9, y: y + 4.5 });
     const ys = P.map(p => p.y1);
     return { P, en, core, end: x + 15, style, minY: Math.min(...ys), maxY: Math.max(...ys) };
+  }
+  function genBossFold() {
+    const P = [], slab = (x0, x1, top, pillar) => P.push({ x0, x1, y0: pillar ? top - 16 : top - 0.9, y1: top });
+    slab(-12, 44, 0, true);
+    [[5, 9, 3.2], [15, 19, 3.2], [25, 29, 3.2], [35, 39, 3.2], [10, 14, 6.2], [20, 24, 6.2], [30, 34, 6.2]].forEach(([a, b, y]) => slab(a, b, y, false));
+    return { P, en: [], core: { x: 0, y: -99 }, end: 44, style: 'boss', minY: 0, maxY: 6.2, bx: 17, by: 8.4, bw: 14 };
   }
   function foldMesh(Fd, slot) {
     const v = [], push = (p, n, uv, inf) => v.push(p[0], p[1], p[2], n[0], n[1], n[2], uv[0], uv[1], inf[0], inf[1], inf[2], 0);
@@ -454,23 +489,62 @@ void main() {
   const GAME = {
     id: 'nucleo', solo: true, title: tr('Núcleo', 'Core'), tag: tr('Acción', 'Action'),
     desc: tr('Una estructura de neón que se arma distinta cada vez. Apagá sus núcleos y escapá.', 'A neon structure built anew every time. Shut down its cores and get out.'),
-    how: tr('Cada nivel tiene núcleos escondidos: destruilos todos (cada uno que cae deja su sala a oscuras) y llegá a la salida, que se abre al final. Cada nivel es más grande y con más enemigos. Compu: W A S D para moverte, mouse para mirar, clic para disparar, Shift o Espacio para el impulso, Q (o 1–4, o la ruedita) para cambiar de arma, Esc para pausar, M para el sonido. Celular: palanca a la izquierda para moverte, arrastrá a la derecha para mirar, botones para disparar, para el impulso y ⇄ para cambiar de arma. Dos armas: el Pulso (rápido y preciso) y el Abanico (ocho disparos en abanico: lento pero demoledor de cerca, y empuja); en los niveles podés encontrar el Rayo y el Rebote. Cada 5 niveles te espera el Gran Núcleo en su arena. Los rojos te persiguen, los naranjas disparan de lejos (esquivá sus esferas), los amarillos se parten en dos y los violetas atraviesan las paredes. Cuanto más hondo, más rara se pone la estructura. A veces aparece alguien que no ataca: acercate y apretá E para hablar. Desde el nivel 3, algún núcleo está dentro de un pliegue (un portal magenta en una pared): adentro el mundo se ve de costado, con plataformas; A D para moverte, W o Espacio para saltar (más alto si lo mantenés), Shift para el impulso (también en el aire) y el mouse para apuntar.',
-      'Every level hides cores: destroy them all (each one that falls blacks out its room) and reach the exit, which opens at the end. Every level is bigger and has more enemies. Computer: W A S D to move, mouse to look, click to shoot, Shift or Space to dash, Q (or 1–4, or the wheel) to switch weapons, Esc to pause, M for sound. Phone: stick on the left to move, drag on the right to look, buttons to shoot, to dash and ⇄ to switch weapons. Two weapons: the Pulse (fast and precise) and the Fan (eight shots in a fan: slow but crushing up close, and it pushes); in the levels you can find the Beam and the Bounce. Every 5 levels the Great Core waits in its arena. Red ones chase you, orange ones shoot from afar (dodge their orbs), yellow ones split in two and violet ones go through walls. The deeper you go, the stranger the structure gets. Now and then someone appears who doesn’t attack: go up to them and press E to talk. From level 3, a core may sit inside a fold (a magenta portal on a wall): inside, the world is seen from the side, with platforms; A D to move, W or Space to jump (higher if you hold it), Shift to dash (in the air too) and the mouse to aim.'),
+    how: tr('Cada nivel tiene núcleos escondidos: destruilos todos (cada uno que cae deja su sala a oscuras) y llegá a la salida, que se abre al final. Cada nivel es más grande y con más enemigos. Compu: W A S D para moverte, mouse para mirar, clic para disparar, Shift o Espacio para el impulso, Q (o 1–4, o la ruedita) para cambiar de arma, Esc para pausar, M para el sonido. Joystick: palanca izquierda para moverte, derecha para mirar, gatillo derecho para disparar, gatillo izquierdo o B para el impulso, A para saltar (en los pliegues) y hablar, LB / RB o Y para cambiar de arma, Start para pausar. Al pasar de nivel elegís una de tres mejoras; algunas paredes esconden salas secretas (dispará donde brilla un dibujo tenue). Celular: palanca a la izquierda para moverte, arrastrá a la derecha para mirar, botones para disparar, para el impulso y ⇄ para cambiar de arma. Dos armas: el Pulso (rápido y preciso) y el Abanico (ocho disparos en abanico: lento pero demoledor de cerca, y empuja); en los niveles podés encontrar el Rayo y el Rebote. Cada 5 niveles te espera el Gran Núcleo en su arena. Los rojos te persiguen, los naranjas disparan de lejos (esquivá sus esferas), los amarillos se parten en dos y los violetas atraviesan las paredes. Cuanto más hondo, más rara se pone la estructura. A veces aparece alguien que no ataca: acercate y apretá E para hablar. Desde el nivel 3, algún núcleo está dentro de un pliegue (un portal magenta en una pared): adentro el mundo se ve de costado, con plataformas; A D para moverte, W o Espacio para saltar (más alto si lo mantenés), Shift para el impulso (también en el aire) y el mouse para apuntar.',
+      'Every level hides cores: destroy them all (each one that falls blacks out its room) and reach the exit, which opens at the end. Every level is bigger and has more enemies. Computer: W A S D to move, mouse to look, click to shoot, Shift or Space to dash, Q (or 1–4, or the wheel) to switch weapons, Esc to pause, M for sound. Gamepad: left stick to move, right stick to look, right trigger to shoot, left trigger or B to dash, A to jump (in folds) and talk, LB / RB or Y to switch weapons, Start to pause. Clearing a level you choose one of three upgrades; some walls hide secret rooms (shoot where a faint drawing glows). Phone: stick on the left to move, drag on the right to look, buttons to shoot, to dash and ⇄ to switch weapons. Two weapons: the Pulse (fast and precise) and the Fan (eight shots in a fan: slow but crushing up close, and it pushes); in the levels you can find the Beam and the Bounce. Every 5 levels the Great Core waits in its arena. Red ones chase you, orange ones shoot from afar (dodge their orbs), yellow ones split in two and violet ones go through walls. The deeper you go, the stranger the structure gets. Now and then someone appears who doesn’t attack: go up to them and press E to talk. From level 3, a core may sit inside a fold (a magenta portal on a wall): inside, the world is seen from the side, with platforms; A D to move, W or Space to jump (higher if you hold it), Shift to dash (in the air too) and the mouse to aim.'),
     better: 'high', fmt: n => Number(n).toLocaleString(J.LOCALE),
+    options: [['libre', tr('Partida', 'Run')], ['hoy', tr('Semilla del día', 'Daily seed')], ['visual', tr('Modo visual', 'Visual mode')]], dayOption: 'hoy',
+    startNote(flag) {   // #nucleo/s<code>: a friend's seed · #nucleo/dia: today's seed
+      const m = /^s([0-9a-z]{1,8})$/i.exec(flag || ''), p = el('p', 'jg-note');
+      if (m) { p.textContent = tr(`Semilla compartida ${m[1].toUpperCase()}: el mismo mapa que jugó quien te pasó el link`, `Shared seed ${m[1].toUpperCase()}: the same map whoever sent you the link played`); return { option: 's' + m[1].toLowerCase(), el: p }; }
+      if (flag === 'dia') { p.textContent = tr('Semilla del día: hoy todos juegan el mismo mapa', 'Daily seed: today everyone plays the same map'); return { option: 'hoy', el: p }; }
+      p.textContent = tr('Partida: un mapa nuevo cada vez · Semilla del día: hoy, el mismo mapa para todos · Modo visual: se juega solo, para mirar o proyectar (también es un nodo de NODRUS)', 'Run: a new map every time · Daily seed: today, the same map for everyone · Visual mode: it plays itself, to watch or project (also a NODRUS node)');
+      return { el: p };
+    },
     start: ctx => run(ctx),
   };
   J.GAMES.push(GAME);
+  try { if (J.store.best.nucleo !== undefined && J.store.best['nucleo:libre'] === undefined) { J.store.best['nucleo:libre'] = J.store.best.nucleo; J.save(); } } catch (e) { /* an old record */ }
   if (J.route && /^#nucleo/.test(location.hash)) J.route();   // the page was opened at #nucleo before this file loaded
 
+  const hostOwners = new WeakMap(), liveHosts = new Set();
+  let hostSweep = 0;
+  function makeHost(seedStr) {
+    const ctx = { host: { w: 640, h: 360 }, option: 'visual', rnd: J.mulberry(J.hashStr('nucleo:' + seedStr)), test: {}, stage: document.createElement('div'), hud() {}, done() {} };
+    let cleanup = null;
+    try { cleanup = run(ctx); } catch (e) { return null; }
+    if (!ctx.tick) { try { cleanup && cleanup(); } catch (e) { /* gone */ } return null; }   // (no WebGL 2)
+    const H = { ctx, seedStr, lastT: null, n: 0, used: 0, err: null, free() { try { cleanup(); } catch (e) { /* gone */ } liveHosts.delete(H); if (H.owned) H.owned.delete(H.key); } };
+    liveHosts.add(H); return H;
+  }
+  function hostSource(owner, key, time, w, h, mods = {}) {
+    let m = hostOwners.get(owner); if (!m) hostOwners.set(owner, (m = new Map()));
+    const seedStr = String(mods.seed || '1');
+    let H = m.get(key);
+    if (H && (H.seedStr !== seedStr || H.err)) { H.free(); H = null; }
+    if (!H) { H = makeHost(seedStr); if (!H) return null; H.owned = m; H.key = key; m.set(key, H); }
+    const now = performance.now(); H.used = now;
+    if (now - hostSweep > 2000) { hostSweep = now; liveHosts.forEach(x => { if (now - x.used > 4000) x.free(); }); }
+    const q = Math.max(0.25, Math.min(1, +mods.q || 0.75));
+    H.ctx.host.w = Math.max(64, Math.round(w * q)); H.ctx.host.h = Math.max(64, Math.round(h * q));
+    if (time !== H.lastT) {
+      const dt = H.lastT === null ? 1 / 60 : Math.max(0, Math.min(0.05, time - H.lastT)) * (mods.speed === undefined ? 1 : Math.max(0, mods.speed));
+      H.lastT = time;
+      try { H.ctx.tick(dt, mods); } catch (e) { H.err = e; return null; }
+      H.n++;
+    }
+    const c = H.ctx.canvas; return c.width ? { canvas: c, aspect: c.width / c.height, n: H.n } : null;
+  }
+  window.PudrusNucleo = { source: hostSource, run };
+
   function run(ctx) {
-    const stage = ctx.stage;
+    const stage = ctx.stage, HOST = ctx.host || null, DEMO = !!HOST || ctx.option === 'visual';   // HOST: drawn into NODRUS, frame by frame; DEMO: it plays itself
     stage.classList.add('nc-stage');
     const wrap = el('div', 'nc-wrap'), cv = el('canvas', 'nc-cv');
     wrap.append(cv); stage.append(wrap);
     const gl = cv.getContext('webgl2', { antialias: false, alpha: false, depth: true, powerPreference: 'high-performance', preserveDrawingBuffer: false });
     if (!gl) { wrap.append(el('p', 'nc-msg', tr('Este navegador no tiene WebGL 2: Núcleo no puede correr acá.', 'This browser has no WebGL 2: Core can’t run here.'))); return () => stage.classList.remove('nc-stage'); }
     const hdr = !!gl.getExtension('EXT_color_buffer_float');
-    const touch = /[?&]nctouch=1/.test(location.search) || (matchMedia('(pointer: coarse)').matches && !matchMedia('(pointer: fine)').matches);   // a laptop with a touch screen still has its mouse
+    const touch = !HOST && /[?&]nctouch=1/.test(location.search) || !HOST && (matchMedia('(pointer: coarse)').matches && !matchMedia('(pointer: fine)').matches);   // a laptop with a touch screen still has its mouse
 
     /* ── GL resources ── */
     function prog(vs, fs) {
@@ -576,6 +650,8 @@ void main() {
       ping() { osc('triangle', 1500 + Math.random() * 400, 900, 0.07, 0.05); },
       clang() { osc('square', 300, 280, 0.09, 0.05); noise(0.06, 0.08, 'bandpass', 2400, 2400, sfx, A.currentTime, 4); },
       boss() { osc('sawtooth', 55, 55, 2.2, 0.25); osc('sawtooth', 55 * 1.5, 55 * 1.49, 2.2, 0.15); noise(1.8, 0.2, 'lowpass', 200, 1600); },
+      beam() { osc('sawtooth', 70, 140, 0.6, 0.16); noise(0.6, 0.15, 'bandpass', 600, 2400, sfx, A.currentTime, 3); },
+      burn() { noise(0.12, 0.12, 'bandpass', 1800, 900, sfx, A.currentTime, 2); osc('square', 120 + Math.random() * 40, 90, 0.1, 0.05); },
       warn() { osc('square', 880, 880, 0.08, 0.06); setTimeout(() => A && osc('square', 880, 880, 0.08, 0.06), 140); },
       fan() { noise(0.22, 0.32, 'lowpass', 4000, 300); osc('sawtooth', 220, 55, 0.2, 0.16); },
       swap() { osc('triangle', 700, 1100, 0.06, 0.06); setTimeout(() => A && osc('triangle', 1100, 1300, 0.05, 0.05), 60); },
@@ -592,7 +668,7 @@ void main() {
     const SCALES = { pent: [0, 3, 5, 7, 10], phryg: [0, 1, 4, 5, 7, 8, 10], whole: [0, 2, 4, 6, 8, 10] };
     function musicTick() {
       if (!A || A.state !== 'running' || muted) return;
-      const style = S.mode === 'fold' ? 'fold' : S.boss && S.boss.alive && S.boss.awake ? 'boss' : 'level', psy = S.psy || 0;
+      const style = S.boss && S.boss.alive && S.boss.awake ? 'boss' : S.mode === 'fold' ? 'fold' : 'level', psy = S.psy || 0;
       const bpm = style === 'fold' ? 138 : style === 'boss' ? 142 : 124 + psy * 8, t0 = A.currentTime, sp = 60 / bpm / 4;
       if (echo) {
         echo.delayTime.setTargetAtTime(60 / bpm * (style === 'fold' ? 0.5 : 0.75), t0, 0.3);
@@ -650,17 +726,20 @@ void main() {
     function toast(msg, s = 2.2) { toastEl.textContent = msg; toastEl.classList.add('on'); toastT = s; }
     function big(msg, sub) { bigEl.innerHTML = ''; bigEl.append(el('b', null, msg)); if (sub) bigEl.append(el('small', null, sub)); bigEl.classList.add('on'); }
     // touch controls
-    const tc = touch ? el('div', 'nc-touch') : null;
+    const tc = touch && !DEMO ? el('div', 'nc-touch') : null;
     let stick = null, look = null; const fireBtn = el('button', 'nc-fire', '◉'), dashBtn = el('button', 'nc-dashbtn', '»'), jumpBtn = el('button', 'nc-jumpbtn', '▲'), swapBtn = el('button', 'nc-swapbtn', '⇄'), stickEl = el('div', 'nc-stick'), knob = el('i');
     if (tc) { stickEl.append(knob); tc.append(stickEl, fireBtn, dashBtn, jumpBtn, swapBtn); wrap.append(tc); }
     const weaponEl = el('div', 'nc-weapon'); hudEl.append(weaponEl);
     const bossEl = el('div', 'nc-boss'), bossFill = el('i'); bossEl.append(el('span', null, tr('Gran Núcleo', 'Great Core')), el('div', 'bar')); bossEl.querySelector('.bar').append(bossFill); bossEl.hidden = true; hudEl.append(bossEl);
     jumpBtn.hidden = true;
+    if (DEMO) hudEl.classList.add('demo');   // the visual mode: only the picture (and the pause / sound / full screen buttons)
 
     /* ── state ── */
-    const seed = Math.floor(ctx.rnd() * 4294967296);
-    const S = { level: 1, score: 0, kills: 0, hp: 100, t: 0, state: 'play', M: null, psy: 0, errat: 0, npc: null, canTalk: false, talk: null, mode: '3d', portal: null, fold: null, fx: 0, enemies: [], bolts: [], orbs: [], parts: [], flashes: [], pickups: [], cores: [], exit: null, seen: null, roomGlow: [], flow: null, flowCell: -1, endT: 0 };
-    const pl = { x: 0, z: 0, vx: 0, vz: 0, yaw: 0, pitch: 0, dashT: 0, dashCd: 0, hurtT: 0, shake: 0, fireCd: 0, recoil: 0, bob: 0, roll: 0, fov: 1.32, weapon: 0, swap: 0, owned: [true, true, false, false], beamT: 0 };
+    const shared = /^s([0-9a-z]{1,8})$/i.exec(ctx.flag || ''), mode = shared ? 'seed' : ctx.option === 'hoy' ? 'hoy' : 'libre';
+    const seed = shared ? parseInt(shared[1], 36) >>> 0 : HOST ? Math.floor(ctx.rnd() * 4294967296) : mode === 'hoy' ? J.hashStr(J.dayKey() + ':nucleo') : Math.floor(ctx.rnd() * 4294967296);
+    const seedCode = seed.toString(36).toUpperCase();
+    const S = { level: 1, score: 0, kills: 0, hp: 100, t: 0, time: 0, demo: DEMO, levelT: 0, noGun: false, state: 'play', M: null, psy: 0, errat: 0, npc: null, canTalk: false, talk: null, mode: '3d', portal: null, fold: null, fx: 0, enemies: [], bolts: [], orbs: [], parts: [], flashes: [], pickups: [], cores: [], exit: null, seen: null, roomGlow: [], flow: null, flowCell: -1, endT: 0 };
+    const pl = { x: 0, z: 0, vx: 0, vz: 0, yaw: 0, pitch: 0, dashT: 0, dashCd: 0, hurtT: 0, shake: 0, fireCd: 0, recoil: 0, bob: 0, roll: 0, fov: 1.32, weapon: 0, swap: 0, owned: [true, true, false, false], beamT: 0, up: {}, lastHurt: -9, dashMax: 0.9, dashId: 0 };
     const K = {}; let firing = false, mx = 0, my = 0;
     const EYE = 1.6;
     function isSolid(i, j) { const M = S.M; return i < 0 || j < 0 || i >= M.W || j >= M.H || M.grid[j * M.W + i] === 1; }
@@ -686,6 +765,7 @@ void main() {
       { name: tr('Rayo', 'Beam'), beam: true, rate: 0.1, range: 22, col: [0.35, 1, 0.55], hot: [1.0, 3.2, 1.6], shake: 0.012, recoil: 0.25, push: 0, mesh: 'beamgun', find: tr('un rayo continuo: mantené apretado', 'a continuous beam: hold to fire') },
       { name: tr('Rebote', 'Bounce'), rate: 0.22, pellets: 1, spread: 0.01, speed: 28, life: 2.4, bounce: 4, col: [1, 0.85, 0.25], hot: [3.2, 2.6, 0.8], shake: 0.1, recoil: 1.3, push: 1.2, mesh: 'bouncer', find: tr('rebota en paredes, piso y techo', 'it bounces off walls, floor and ceiling') },
     ];
+    const BOSS_LIGHT = { core: [[1.6, 1.2, 0.6], [1.8, 0.8, 0.4], [2, 0.4, 0.5]], hive: [[1.6, 1.4, 0.3], [1.8, 1.1, 0.2], [2, 0.7, 0.2]], eye: [[1.4, 0.5, 0.9], [1.7, 0.35, 0.7], [2, 0.2, 0.5]], fold: [[1.4, 0.4, 1.6], [1.6, 0.3, 1.3], [2, 0.3, 0.8]] };
     const HP = { drone: 2, shoot: 4, split: 5, mini: 1, phase: 3 }, PTS = { drone: 100, shoot: 150, split: 200, mini: 50, phase: 180 };
     const COL = { drone: [1, 0.16, 0.24], shoot: [1, 0.55, 0.08], split: [1, 0.92, 0.2], mini: [1, 0.3, 0.3], phase: [0.8, 0.35, 1] };
     function spawnEnemy(type, x, z, awake) {
@@ -704,7 +784,9 @@ void main() {
       if (M.wspot && nextW >= 0 && S.level >= nextW) S.pickups.push({ ...M.wspot, t: 0, kind: 'weapon', w: nextW });
       // the Great Core
       S.boss = null; bossEl.hidden = true;
-      if (M.arena > 0) { const r = M.rooms[M.arena], hp = 140 + S.level * 16; S.boss = { room: M.arena, x: (r.x + r.w / 2) * CS, z: (r.y + r.h / 2) * CS, y: 3.4, hp, max: hp, alive: true, awake: false, t: 0, phase: 1, cd: 2, flash: 0, warn: 0, stream: 0, sT: 0, spin: 0, charge: 0, chargeT: 4, cTo: [0, 0] }; }
+      if (S.demo) { pl.owned = pl.owned.map(() => true); if (M.bossKind === 'fold') { M.bossKind = 'hive'; M.portal = null; } if (M.portal) M.portal = null; }
+      S.levelT = 0; AI.pfCell = -1; AI.stuckT = 0;
+      if (M.arena > 0) S.boss = makeBoss(M);
       S.cores = M.coreRooms.map(k => { const r = M.rooms[k]; return { x: (r.cx + 0.5) * CS, z: (r.cy + 0.5) * CS, y: Math.min(2.2, r.hgt - 1.3), room: k, hp: 22 + S.level * 6, max: 22 + S.level * 6, alive: true, flash: 0, t: 0, calls: 0 }; });
       const er = M.rooms[M.exitRoom]; S.exit = { x: (er.cx + 0.5) * CS, z: (er.cy + 0.5) * CS, open: false, t: 0, room: M.exitRoom };
       S.roomGlow = M.rooms.map(() => 1); S.roomTarget = M.rooms.map(() => 1);
@@ -712,9 +794,13 @@ void main() {
       // deeper = stranger: the psychedelia (level 4 → 10) and how erratic the enemies get (level 3 → 9)
       S.psy = Math.max(0, Math.min(1, (S.level - 3) / 7)); S.errat = Math.max(0, Math.min(1, (S.level - 2) / 7));
       S.npc = M.npc ? { ...M.npc, t: 0, gone: false, fade: 1 } : null; S.canTalk = false; S.talk = null;
+      S.secret = M.secret ? { ...M.secret, hits: 0, open: false, flash: 0 } : null;
       // the fold: its course is laid out now (its core is one of this level's cores), its mesh when you go in
       S.mode = '3d'; S.fold = null; S.portal = null;
-      if (M.portal) {
+      if (M.portal && M.bossKind === 'fold' && S.boss) {   // the Greater Fold waits inside, through the arena's portal
+        const Fd = genBossFold(); S.portal = { ...M.portal, F: Fd, done: false, t: 0, boss: true };
+        Object.assign(S.boss, { x: Fd.bx, y: Fd.by, z: 0 });
+      } else if (M.portal) {
         const Fd = genFold(S.level, J.mulberry((seed + S.level * 131) >>> 0), M.portal.pat);
         const c = S.cores.find(c => c.room === M.portal.room);
         if (c) { Object.assign(c, { fold: true, x: Fd.core.x, y: Fd.core.y, z: 0, hp: 12 + S.level * 3, max: 12 + S.level * 3 });   // a shorter fight: getting there is the challenge
@@ -729,7 +815,7 @@ void main() {
     function revealRoom(k) { const M = S.M, r = M.rooms[k]; for (let y = r.y - 1; y <= r.y + r.h; y++) for (let x = r.x - 1; x <= r.x + r.w; x++) if (x >= 0 && y >= 0 && x < M.W && y < M.H) S.seen[y * M.W + x] = 1; }
     const coresLeft = () => S.cores.filter(c => c.alive).length;
     const allDown = () => !coresLeft() && !(S.boss && S.boss.alive);   // the exit opens when the cores (and the Great Core) are down
-    function paintCores() { const n = S.cores.length, left = coresLeft(); coresEl.innerHTML = ''; coresEl.append(el('span', null, allDown() ? tr('Salida abierta', 'Exit open') : left ? tr('Núcleos', 'Cores') : tr('Queda el Gran Núcleo', 'The Great Core remains'))); S.cores.forEach(c => coresEl.append(el('i', (c.alive ? 'on' : '') + (c.fold ? ' fold' : '')))); coresEl.classList.toggle('open', allDown()); coresEl.title = `${n - left}/${n}`; }
+    function paintCores() { const n = S.cores.length, left = coresLeft(); coresEl.innerHTML = ''; coresEl.append(el('span', null, allDown() ? tr('Salida abierta', 'Exit open') : left || !S.boss ? tr('Núcleos', 'Cores') : tr('Queda ', 'Left: ') + bossName(S.boss))); S.cores.forEach(c => coresEl.append(el('i', (c.alive ? 'on' : '') + (c.fold ? ' fold' : '')))); coresEl.classList.toggle('open', allDown()); coresEl.title = `${n - left}/${n}`; }
     function paintHud() { ctx.hud(`${tr('Nivel', 'Level')}<b>${S.level}</b> ${tr('Puntos', 'Points')}<b>${S.score.toLocaleString(J.LOCALE)}</b>`); }
 
     /* ── effects ── */
@@ -743,9 +829,14 @@ void main() {
 
     /* ── input ── */
     const locked = () => document.pointerLockElement === cv;
-    function lock() { if (!touch && cv.requestPointerLock && !locked()) { try { const p = cv.requestPointerLock({ unadjustedMovement: true }); if (p && p.catch) p.catch(() => { try { cv.requestPointerLock(); } catch (e) { /* ignore */ } }); } catch (e) { /* ignore */ } } }
+    function lock() { if (DEMO) return; if (!touch && cv.requestPointerLock && !locked()) { try { const p = cv.requestPointerLock({ unadjustedMovement: true }); if (p && p.catch) p.catch(() => { try { cv.requestPointerLock(); } catch (e) { /* ignore */ } }); } catch (e) { /* ignore */ } } }
     const onKey = e => {
+      if (HOST) return;
       const down = e.type === 'keydown', k = e.code;
+      if (S.state === 'pick') {
+        if (down) { if (/^Digit[1-3]$/.test(k)) choose(+k.slice(5) - 1); else if (k === 'ArrowLeft' || k === 'KeyA') movePick(-1); else if (k === 'ArrowRight' || k === 'KeyD') movePick(1); else if (k === 'Enter' || k === 'Space') choose(pickSel); }
+        if (k !== 'Tab') { e.preventDefault(); e.stopImmediatePropagation(); } return;
+      }
       if (k === 'Escape' && down && S.state === 'play') { pause(true); e.stopImmediatePropagation(); e.preventDefault(); return; }
       if (['KeyW', 'KeyA', 'KeyS', 'KeyD', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'ShiftLeft', 'ShiftRight', 'Space'].includes(k)) { K[k] = down; e.preventDefault(); }
       if (S.mode === 'fold') {   // in a fold: W / ↑ / Space jump, Shift dashes
@@ -760,16 +851,16 @@ void main() {
       if (down && k === 'KeyP') pause(S.state === 'play');
     };
     addEventListener('keydown', onKey, true); addEventListener('keyup', onKey, true);
-    const onMove = e => { if (!locked() || S.state !== 'play') return; mx += e.movementX; my += e.movementY; };
+    const onMove = e => { if (HOST || !locked() || S.state !== 'play') return; mx += e.movementX; my += e.movementY; };
     document.addEventListener('mousemove', onMove);
     cv.addEventListener('mousedown', e => { if (touch) return; if (S.state === 'talk') { advance(); return; } if (S.state === 'pause') { pause(false); return; } if (!locked()) { lock(); return; } if (e.button === 0) firing = true; if (e.button === 2) { if (S.mode === 'fold') dash2(); else dash(); } });
     const onUp = e => { if (e.button === 0) firing = false; };
     cv.addEventListener('wheel', e => { e.preventDefault(); if (Math.abs(e.deltaY) > 4) setWeapon(pl.weapon + (e.deltaY > 0 ? 1 : -1), e.deltaY > 0 ? 1 : -1); }, { passive: false });
     document.addEventListener('mouseup', onUp);
     cv.addEventListener('contextmenu', e => e.preventDefault());
-    const onLock = () => { if (!locked() && S.state === 'play' && !touch) pause(true); };
+    const onLock = () => { if (HOST) return; if (!locked() && S.state === 'play' && !touch && !PAD.on) pause(true); };
     document.addEventListener('pointerlockchange', onLock);
-    const onVis = () => { if (document.hidden && S.state === 'play') pause(true); };
+    const onVis = () => { if (HOST) return; if (document.hidden && S.state === 'play') pause(true); };
     document.addEventListener('visibilitychange', onVis);
     pauseEl.addEventListener('click', () => { pause(false); });
     promptEl.addEventListener('click', e => { e.stopPropagation(); if (S.state === 'play' && S.canTalk) talk(); });
@@ -807,11 +898,66 @@ void main() {
       jumpBtn.addEventListener('pointerdown', e => { e.stopPropagation(); e.preventDefault(); f2.buf = 0.13; f2.held = true; try { jumpBtn.setPointerCapture(e.pointerId); } catch (er) { /* ignore */ } });
       ['pointerup', 'pointercancel'].forEach(t => jumpBtn.addEventListener(t, () => { f2.held = false; }));
     }
+    /* ── a gamepad (standard mapping): sticks, triggers, A B X Y, LB RB, Start / Back, the d-pad; it rumbles ── */
+    const PAD = { on: false, gp: null, prev: [], lx: 0, ly: 0, nav: 0 };
+    function rumble(strong, weak, ms) { const v = PAD.on && PAD.gp && PAD.gp.vibrationActuator; if (v && v.playEffect) v.playEffect('dual-rumble', { startDelay: 0, duration: ms, strongMagnitude: strong, weakMagnitude: weak }).catch(() => {}); }
+    function padPoll(dt) {
+      let gp = null; const all = navigator.getGamepads ? navigator.getGamepads() : [];
+      for (const g of all) if (g && g.connected && (!gp || g.mapping === 'standard')) gp = g;
+      if (DEMO) return;
+      if (!gp) { if (PAD.on) { PAD.on = false; PAD.lx = PAD.ly = 0; paintWeapon(); } return; }
+      PAD.gp = gp;
+      const B = i => { const x = gp.buttons[i]; return !!x && (x.pressed || x.value > 0.5); }, hit = i => B(i) && !PAD.prev[i];
+      const dz = v => (Math.abs(v) < 0.2 ? 0 : (v - Math.sign(v) * 0.2) / 0.8), ax = i => dz(gp.axes[i] || 0);
+      let lx = ax(0) + (B(15) ? 1 : 0) - (B(14) ? 1 : 0), ly = ax(1) + (B(13) ? 1 : 0) - (B(12) ? 1 : 0); const rx = ax(2), ry = ax(3);
+      lx = Math.max(-1, Math.min(1, lx)); ly = Math.max(-1, Math.min(1, ly));
+      if (!PAD.on) { if (lx || ly || rx || ry || gp.buttons.some(x => x.pressed)) { PAD.on = true; paintWeapon(); toast(tr('Joystick conectado', 'Gamepad connected'), 2); } else { PAD.prev = gp.buttons.map(x => x.pressed || x.value > 0.5); return; } }
+      const st = S.state;
+      if (st === 'pick') {
+        const nx = Math.abs(lx) > 0.6 ? Math.sign(lx) : 0; if (nx && nx !== PAD.nav) movePick(nx); PAD.nav = nx;
+        if (hit(0)) choose(pickSel);
+      } else if (st === 'pause') { if (hit(9) || hit(0)) pause(false); else if (hit(8)) location.hash = ''; }
+      else if (st === 'talk') { if (hit(0) || hit(2)) advance(); else if (hit(1)) endTalk(); }
+      else if (st === 'play') {
+        PAD.lx = lx; PAD.ly = ly;
+        if (S.mode === 'fold') {
+          if (Math.hypot(rx, ry) > 0.35) { f2.ax = rx * 4.5; f2.ay = -ry * 4.5; }
+          else if (Math.abs(lx) > 0.3 && Math.sign(f2.ax || 1) !== Math.sign(lx)) { f2.ax = Math.sign(lx) * 4; f2.ay = 0.4; }
+          if (hit(0)) f2.buf = 0.13; if (B(0) !== !!PAD.prev[0]) f2.held = B(0);
+        } else {
+          const k = touch ? 0.0042 : 0.0022;
+          mx += rx * Math.abs(rx) * 2.8 * dt / k; my += ry * Math.abs(ry) * 1.9 * dt / k;
+          if (B(7)) assist(dt);
+        }
+        if (B(7) !== !!PAD.prev[7]) firing = B(7);
+        if (hit(6) || hit(1)) { if (S.mode === 'fold') dash2(); else dash(); }
+        if (hit(0) && S.mode !== 'fold') { if (S.canTalk) talk(); else dash(); }
+        if (hit(2) && S.canTalk) talk();
+        if (hit(5) || hit(3)) setWeapon(pl.weapon + 1); if (hit(4)) setWeapon(pl.weapon - 1, -1);
+        if (hit(9)) pause(true);
+      }
+      PAD.prev = gp.buttons.map(x => x.pressed || x.value > 0.5);
+    }
+    // with a gamepad the sight leans a little towards what is right next to it
+    function assist(dt) {
+      const B = basis(pl.yaw, pl.pitch, 0); let best = null, ba = 0.09;
+      const consider = (x, y, z) => { const dx = x - pl.x, dy = y - EYE, dz = z - pl.z, d = Math.hypot(dx, dy, dz); if (d > 26 || d < 0.5) return; const c = (dx * B.f[0] + dy * B.f[1] + dz * B.f[2]) / d, a = Math.acos(Math.min(1, c)); if (a < ba && los(pl.x, pl.z, x, z)) { ba = a; best = [dx, dy, dz]; } };
+      S.enemies.forEach(e => { if (!e.dead && e.awake) consider(e.x, e.y, e.z); });
+      S.cores.forEach(c => { if (c.alive && !c.fold) consider(c.x, c.y, c.z); });
+      if (S.boss && S.boss.alive && !S.boss.fold) (S.boss.bodies || [S.boss]).forEach(b => { if (b.alive !== false) consider(b.x, b.y, b.z); });
+      if (!best) return;
+      let dyaw = Math.atan2(best[0], -best[2]) - pl.yaw; dyaw = Math.atan2(Math.sin(dyaw), Math.cos(dyaw));
+      const dp = Math.atan2(best[1], Math.hypot(best[0], best[2])) - pl.pitch, k = Math.min(1, dt * 5);
+      pl.yaw += dyaw * k; pl.pitch += dp * k;
+    }
     function pause(on) {
       if (S.state === 'dead' || S.state === 'over') return;
       if (on && S.state === 'play') {
         S.state = 'pause'; firing = false; Object.keys(K).forEach(k => { K[k] = false; });
         pauseEl.innerHTML = ''; pauseEl.append(el('b', null, tr('Pausa', 'Paused')), el('small', null, touch ? tr('Tocá para seguir', 'Tap to go on') : tr('Clic para seguir · Esc otra vez para salir', 'Click to go on · Esc again to leave')));
+        pauseEl.append(el('small', 'nc-seedline', (mode === 'hoy' ? tr('Semilla del día ', 'Daily seed ') : tr('Semilla ', 'Seed ')) + seedCode));
+        if (PAD.on) pauseEl.querySelector('small').textContent = tr('Start para seguir · Back para salir', 'Start to go on · Back to leave');
+        const have = UPS.filter(u => upN(u.id)); if (have.length) { const hv = el('div', 'nc-have'); have.forEach(u => hv.append(el('span', null, `${u.ic} ${L2(u.n)}${upN(u.id) > 1 ? ' ×' + upN(u.id) : ''}`))); pauseEl.append(hv); }
         pauseEl.hidden = false; if (A) A.suspend();
         if (locked()) document.exitPointerLock();
       } else if (!on && S.state === 'pause') {
@@ -826,15 +972,15 @@ void main() {
       if (i === pl.weapon || S.state !== 'play' || !pl.owned[i]) return;
       pl.weapon = i; pl.swap = 1; pl.fireCd = Math.max(pl.fireCd, 0.22); play('swap'); paintWeapon();
     }
-    function paintWeapon() { weaponEl.innerHTML = ''; WEAPONS.forEach((w, i) => { if (!pl.owned[i]) return; const b = el('span', i === pl.weapon ? 'on' : '', w.name); weaponEl.append(b); }); if (!touch) weaponEl.append(el('small', null, 'Q')); }
+    function paintWeapon() { weaponEl.innerHTML = ''; WEAPONS.forEach((w, i) => { if (!pl.owned[i]) return; const b = el('span', i === pl.weapon ? 'on' : '', w.name); weaponEl.append(b); }); if (PAD.on) weaponEl.append(el('small', null, 'LB RB')); else if (!touch) weaponEl.append(el('small', null, 'Q')); }
     function dash() {
       if (S.state !== 'play' || pl.dashCd > 0) return;
       let ix = 0, iz = 0; const f = [Math.sin(pl.yaw), -Math.cos(pl.yaw)], r = [Math.cos(pl.yaw), Math.sin(pl.yaw)];
-      const fw = (K.KeyW || K.ArrowUp ? 1 : 0) - (K.KeyS || K.ArrowDown ? 1 : 0) - (stick ? stick.dy : 0), st = (K.KeyD || K.ArrowRight ? 1 : 0) - (K.KeyA || K.ArrowLeft ? 1 : 0) + (stick ? stick.dx : 0);
+      const fw = (K.KeyW || K.ArrowUp ? 1 : 0) - (K.KeyS || K.ArrowDown ? 1 : 0) - (stick ? stick.dy : 0) - (PAD.on ? PAD.ly : 0) + (S.demo ? AI.fw : 0), st = (K.KeyD || K.ArrowRight ? 1 : 0) - (K.KeyA || K.ArrowLeft ? 1 : 0) + (stick ? stick.dx : 0) + (PAD.on ? PAD.lx : 0) + (S.demo ? AI.st : 0);
       ix = f[0] * fw + r[0] * st; iz = f[1] * fw + r[1] * st;
       if (Math.hypot(ix, iz) < 0.2) { ix = f[0]; iz = f[1]; }
       const l = Math.hypot(ix, iz); pl.vx = ix / l * 22; pl.vz = iz / l * 22;
-      pl.dashT = 0.16; pl.dashCd = 0.9; play('dash');
+      pl.dashT = 0.16; pl.dashMax = pl.dashCd = 0.9 * 0.75 ** upN('dash'); pl.dashId++; play('dash');
       burst(pl.x, 0.3, pl.z, [0.3, 0.8, 1.6], 14, 2.5, 0.4, 0.08);
     }
     function fire() {
@@ -843,19 +989,21 @@ void main() {
       // aim where the crosshair points (the first wall along the view), so the shots converge on it
       let d = 0.5; while (d < 40) { const x = e[0] + B.f[0] * d, y = e[1] + B.f[1] * d, z = e[2] + B.f[2] * d; if (solidAt(x, z) || y < 0 || y > ceilAt(x, z)) break; d += 0.25; }
       const Wp = WEAPONS[pl.weapon], tgt = [e[0] + B.f[0] * d, e[1] + B.f[1] * d, e[2] + B.f[2] * d], d0 = norm(sub(tgt, start));
-      for (let k = 0; k < Wp.pellets; k++) {
+      const np = Wp.pellets + (pl.weapon === 1 ? 4 * upN('abanico') : 0);
+      for (let k = 0; k < np; k++) {
         const dir = d0.slice(), spr = Wp.spread;
-        if (Wp.pellets > 1) { const a = (k / (Wp.pellets - 1) - 0.5) * 2 * spr + (Math.random() - 0.5) * spr * 0.3, b = (Math.random() - 0.5) * spr * 0.6; for (let q = 0; q < 3; q++) dir[q] += B.r[q] * a + B.u[q] * b; }
+        if (np > 1) { const a = (k / (np - 1) - 0.5) * 2 * spr + (Math.random() - 0.5) * spr * 0.3, b = (Math.random() - 0.5) * spr * 0.6; for (let q = 0; q < 3; q++) dir[q] += B.r[q] * a + B.u[q] * b; }
         else for (let q = 0; q < 3; q++) dir[q] += (Math.random() - 0.5) * spr;
-        const n2 = norm(dir); S.bolts.push({ x: start[0], y: start[1], z: start[2], vx: n2[0] * Wp.speed, vy: n2[1] * Wp.speed, vz: n2[2] * Wp.speed, life: Wp.life, w: pl.weapon, bounce: Wp.bounce || 0 });
+        const n2 = norm(dir); S.bolts.push({ x: start[0], y: start[1], z: start[2], vx: n2[0] * Wp.speed, vy: n2[1] * Wp.speed, vz: n2[2] * Wp.speed, life: Wp.life, w: pl.weapon, bounce: Wp.bounce || 0, pierce: upN('perf') });
       }
-      pl.fireCd = Wp.rate; pl.recoil = Wp.recoil; pl.shake = Math.min(1, pl.shake + Wp.shake); pl.pitch += 0.004 * Wp.recoil;
+      pl.fireCd = Wp.rate * rateK(); pl.recoil = Wp.recoil; pl.shake = Math.min(1, pl.shake + Wp.shake); pl.pitch += 0.004 * Wp.recoil;
       flash(start[0], start[1], start[2], Wp.hot.map(v => v * 0.6), 6 + Wp.pellets * 0.5, 0.07);
-      play(pl.weapon ? 'fan' : 'shot');
+      play(pl.weapon ? 'fan' : 'shot'); if (pl.weapon === 1) rumble(0.5, 0.2, 90);
     }
     function hurt(d, fx, fz) {
       if (S.state !== 'play') return;
-      S.hp = Math.max(0, S.hp - d); pl.hurtT = 0.5; pl.shake = Math.min(1, pl.shake + 0.45); play('hurt');
+      if (S.demo) { pl.hurtT = 0.25; pl.shake = Math.min(1, pl.shake + 0.2); return; }
+      S.hp = Math.max(0, S.hp - d); pl.hurtT = 0.5; pl.lastHurt = S.t; rumble(0.7, 0.4, 160); pl.shake = Math.min(1, pl.shake + 0.45); play('hurt');
       if (S.mode === 'fold') { if (fx !== undefined) { f2.vx += Math.sign(f2.x - fx || 1) * 7; f2.vy = Math.max(f2.vy, 5); } }
       else if (fx !== undefined) { const dx = pl.x - fx, dz = pl.z - fz, l = Math.hypot(dx, dz) || 1; pl.vx += dx / l * 6; pl.vz += dz / l * 6; }
       if (S.hp <= 0) die();
@@ -867,13 +1015,14 @@ void main() {
     }
     function killEnemy(e) {
       e.dead = true; S.kills++; S.score += PTS[e.type]; paintHud();
+      if (upN('vamp')) S.hp = Math.min(maxHp(), S.hp + 3 * upN('vamp'));
       const c = COL[e.type]; burst(e.x, e.y, e.z, [c[0] * 2.5, c[1] * 2.5, c[2] * 2.5], e.type === 'mini' ? 18 : 36, 6, 0.8); flash(e.x, e.y, e.z, [c[0] * 4, c[1] * 4, c[2] * 4], 9, 0.35);
-      play('boom', false); pl.shake = Math.min(1, pl.shake + 0.12);
+      play('boom', false); pl.shake = Math.min(1, pl.shake + 0.12); rumble(0.15, 0.3, 70);
       if (e.type === 'split') for (let k = 0; k < 2; k++) { const m = spawnEnemy('mini', e.x + (k ? 0.5 : -0.5), e.z, true); m.vx = (k ? 1 : -1) * 5; m.y = e.y; m.vy = 0; }
       if (S.mode === '3d' && Math.random() < 0.12) S.pickups.push({ x: e.x, z: e.z, t: 0 });
     }
     function hitCore(c) {
-      c.hp--; c.flash = 1; play('hit');
+      c.hp -= DMG(); c.flash = 1; play('hit');
       const frac = c.hp / c.max;
       if (c.hp > 0 && frac < 0.75 - c.calls * 0.25) {   // it calls defenders as it weakens
         c.calls++; for (let k = 0; k < 1 + Math.min(2, Math.floor(S.level / 2)); k++) {
@@ -884,13 +1033,13 @@ void main() {
         toast(tr('El núcleo llama defensores', 'The core calls defenders'), 1.6);
       }
       if (c.hp <= 0) {
-        c.alive = false; S.score += 500; paintHud(); play('core'); pl.shake = 1;
+        c.alive = false; S.score += 500; paintHud(); play('core'); pl.shake = 1; rumble(1, 1, 420);
         burst(c.x, c.y, c.z, [2.6, 2.4, 1.6], 160, 10, 1.6, 0.16); flash(c.x, c.y, c.z, [8, 7, 5], 22, 1.2);
         S.roomTarget[c.room] = 0.1;   // «apagón»: its room goes dark
         if (c.fold && S.fold) { S.fold.outT = 1.8; }   // and the fold comes undone
         const left = coresLeft(); paintCores();
         if (allDown()) { S.exit.open = true; play('open'); toast(tr('Todos los núcleos apagados: ¡la salida se abrió!', 'All cores down: the exit is open!'), 3.5); }
-        else if (!left) toast(tr('Queda el Gran Núcleo', 'The Great Core remains'), 3);
+        else if (!left) toast(tr('Queda ', 'Left: ') + bossName(S.boss), 3);
         else toast(tr(`Núcleo apagado · quedan ${left}`, `Core down · ${left} left`));
       }
     }
@@ -900,39 +1049,41 @@ void main() {
     }
 
     /* ── hitting things (shared by bolts and the beam) ── */
-    function hitEnemy(e) { e.awake = true; e.flash = 1; e.hp--; if (e.hp <= 0 && !e.dead) killEnemy(e); }
+    function hitEnemy(e) { e.awake = true; e.flash = 1; e.hp -= DMG(); if (e.hp <= 0 && !e.dead) killEnemy(e); }
     function hitTarget(h, p) {
       if (h.e) { hitEnemy(h.e); burst(p[0], p[1], p[2], [2, 2, 2], 4, 3, 0.2, 0.05); }
       else if (h.c) { hitCore(h.c); burst(p[0], p[1], p[2], [2.4, 2.2, 1.4], 5, 3, 0.25, 0.06); }
-      else if (h.boss) hitBoss(p);
+      else if (h.boss) hitBoss(p, h.body);
       else if (h.shield) { play('clang'); burst(p[0], p[1], p[2], [1.2, 2, 2.6], 6, 3, 0.25, 0.06); return; }
       hitMark();
     }
     // the beam: from the barrel to the first thing along the line of aim (a wall, a platform, an enemy, a core, the boss)
     function beamTick(dt) {
       const Wp = WEAPONS[pl.weapon];
-      let a, dir, hit = null, d = 0.3, end;
+      let a, dir, hit = null, d = 0.3, end; S.beamWall = null;
       if (S.mode === 'fold') {
         let dx = f2.ax, dy = f2.ay;
         if (touch) { dx = Math.cos(f2.aimA); dy = Math.sin(f2.aimA); }
         const l = Math.hypot(dx, dy) || 1; dir = [dx / l, dy / l, 0]; const sh = shoulder2(); a = [sh[0] + dir[0] * 0.9, sh[1] + dir[1] * 0.9, 0];
-        for (; d < Wp.range; d += 0.15) {
+        for (; d < Wp.range * beamK(); d += 0.15) {
           const x = a[0] + dir[0] * d, y = a[1] + dir[1] * d;
           if (inPlat(x, y)) break;
           for (const e of S.enemies) if (!e.dead && !(e.type === 'phase' && Math.abs(e.z) > 0.8) && (x - e.x) ** 2 + (y - e.y) ** 2 < (e.r + 0.1) ** 2) { hit = { e }; break; }
           if (!hit) for (const c of S.cores) if (c.fold && c.alive && (x - c.x) ** 2 + (y - c.y) ** 2 < 1.15 ** 2) { hit = { c }; break; }
+          if (!hit && S.boss && S.boss.alive) hit = bossHit(x, y, 0);
           if (hit) break;
         }
         end = [a[0] + dir[0] * d, a[1] + dir[1] * d, 0];
       } else {
         const B = basis(pl.yaw, pl.pitch, 0), e = [pl.x, EYE, pl.z];
         a = [e[0] + B.f[0] * 0.75 + B.r[0] * 0.16 - B.u[0] * 0.12, e[1] + B.f[1] * 0.75 + B.r[1] * 0.16 - B.u[1] * 0.12, e[2] + B.f[2] * 0.75 + B.r[2] * 0.16 - B.u[2] * 0.12];
-        for (; d < Wp.range; d += 0.2) {
+        for (; d < Wp.range * beamK(); d += 0.2) {
           const x = e[0] + B.f[0] * d, y = e[1] + B.f[1] * d, z = e[2] + B.f[2] * d;
           if (solidAt(x, z) || y < 0 || y > ceilAt(x, z)) break;
           for (const en of S.enemies) if (!en.dead && (x - en.x) ** 2 + (y - en.y) ** 2 + (z - en.z) ** 2 < (en.r + 0.12) ** 2) { hit = { e: en }; break; }
           if (!hit) for (const c of S.cores) if (c.alive && !c.fold && (x - c.x) ** 2 + (y - c.y) ** 2 + (z - c.z) ** 2 < 1.05 ** 2) { hit = { c }; break; }
           if (!hit && S.boss && S.boss.alive) hit = bossHit(x, y, z);
+          if (!hit && solidAt(x + B.f[0] * 0.2, z + B.f[2] * 0.2)) S.beamWall = [x + B.f[0] * 0.2, z + B.f[2] * 0.2];
           if (hit) break;
         }
         end = [e[0] + B.f[0] * d, e[1] + B.f[1] * d, e[2] + B.f[2] * d];
@@ -940,53 +1091,102 @@ void main() {
       S.beam = { a, b: end, t: S.t };
       pl.beamT -= dt;
       if (pl.beamT <= 0) {
-        pl.beamT = Wp.rate; pl.recoil = Math.max(pl.recoil, Wp.recoil); pl.shake = Math.min(1, pl.shake + Wp.shake);
+        pl.beamT = Wp.rate * rateK() * 0.8 ** upN('rayo'); pl.recoil = Math.max(pl.recoil, Wp.recoil); pl.shake = Math.min(1, pl.shake + Wp.shake);
+        if (!hit && S.beamWall && S.mode !== 'fold') wallHit(S.beamWall[0], S.beamWall[1]);
         if (hit) hitTarget(hit, end); else burst(end[0], end[1], end[2], Wp.hot.map(v => v * 0.6), 3, 2, 0.2, 0.05);
         play('zap');
       }
     }
 
-    /* ── the Great Core (every 5 levels): it floats around its arena, attacks in three phases, guards itself with shields ── */
+    /* ── the bosses (every 5 levels, in turn): the Great Core, the Hive, the Eye, the Greater Fold ── */
+    const BOSS_NAME = { core: ['el Gran Núcleo', 'the Great Core'], hive: ['la Colmena', 'the Hive'], eye: ['el Ojo', 'the Eye'], fold: ['el Pliegue Mayor', 'the Greater Fold'] };
+    const cap = t => t.charAt(0).toUpperCase() + t.slice(1);
+    const bossName = Bo => tr(...BOSS_NAME[Bo.kind]);
+    const HIVE_SHARE = [0.3, 0.2, 0.075], HIVE_DESC = [0.7, 0.15, 0];   // each body's share of the life, and what its offspring will still have
+    function makeBoss(M) {
+      const kind = M.bossKind || 'core', r = M.rooms[M.arena], cx = (r.x + r.w / 2) * CS, cz = (r.y + r.h / 2) * CS;
+      const hp = { core: 140, hive: 170, eye: 150, fold: 110 }[kind] + S.level * (kind === 'fold' ? 12 : 16);
+      const Bo = { kind, fold: kind === 'fold', room: M.arena, x: cx, z: cz, y: kind === 'eye' ? 4.4 : 3.4, hp, max: hp, alive: true, awake: false, t: 0, phase: 1, cd: 2, flash: 0, warn: 0, stream: 0, sT: 0, spin: 0, charge: 0, chargeT: 4, cTo: [0, 0] };
+      if (kind === 'hive') Bo.bodies = [{ x: cx, z: cz, y: 3.4, r: 2.0, gen: 0, hp: hp * HIVE_SHARE[0], alive: true, t: 0, cd: 1.5, flash: 0, vx: 0, vz: 0, seed: 0, warn: 0, ch: 0 }];
+      if (kind === 'eye') Object.assign(Bo, { look: 0, bs: 'idle', bT: 2.2, a: 0, dir: 1, beams: [], burnT: 0 });
+      bossEl.firstChild.textContent = cap(bossName(Bo));
+      return Bo;
+    }
     function bossShields(Bo) {
-      if (Bo.phase < 2) return [];
+      if (Bo.kind !== 'core' || Bo.phase < 2) return [];
       const n = Bo.phase === 2 ? 3 : 5, sp = Bo.phase === 2 ? 1.1 : 1.9, o = [];
       for (let k = 0; k < n; k++) { const a = Bo.t * sp + k * Math.PI * 2 / n; o.push([Bo.x + Math.cos(a) * 3.3, Bo.y + Math.sin(a * 2) * 0.7, Bo.z + Math.sin(a) * 3.3]); }
       return o;
     }
     function bossHit(x, y, z) {
       const Bo = S.boss;
+      if (Bo.fold !== (S.mode === 'fold')) return null;   // (it lives in the other world)
+      if (Bo.kind === 'hive') { for (const b of Bo.bodies) if (b.alive && (x - b.x) ** 2 + (y - b.y) ** 2 + (z - b.z) ** 2 < b.r ** 2) return { boss: true, body: b }; return null; }
       for (const s of bossShields(Bo)) if ((x - s[0]) ** 2 + (y - s[1]) ** 2 + (z - s[2]) ** 2 < 0.8 ** 2) return { shield: true };
-      if ((x - Bo.x) ** 2 + (y - Bo.y) ** 2 + (z - Bo.z) ** 2 < 2.1 ** 2) return { boss: true };
+      const R = Bo.kind === 'core' ? 2.1 : Bo.kind === 'eye' ? 1.9 : 1.8;
+      if ((x - Bo.x) ** 2 + (y - Bo.y) ** 2 + (z - Bo.z) ** 2 < R * R) return { boss: true };
       return null;
     }
-    function hitBoss(p) {
+    function hitBoss(p, body) {
       const Bo = S.boss; if (!Bo.alive) return;
-      Bo.hp--; Bo.flash = 1; Bo.awake = true;
+      const d = DMG(); Bo.flash = 1; Bo.awake = true;
+      if (body) {
+        if (!body.alive) return;
+        body.hp -= d; body.flash = 1;
+        if (body.hp <= 0) splitBody(Bo, body);
+        Bo.hp = Bo.bodies.reduce((a, b) => a + (b.alive ? Math.max(0, b.hp) + HIVE_DESC[b.gen] * Bo.max : 0), 0);
+      } else Bo.hp -= d;
       if (Math.random() < 0.5) play('hit');
       burst(p[0], p[1], p[2], [2.6, 2, 1.2], 5, 3, 0.3, 0.07);
-      if (Bo.hp <= 0) {
-        Bo.alive = false; bossEl.hidden = true; S.score += 3000 + 500 * S.level; paintHud(); play('core'); pl.shake = 1;
-        for (let k = 0; k < 4; k++) burst(Bo.x + (Math.random() - 0.5) * 2, Bo.y + (Math.random() - 0.5) * 2, Bo.z + (Math.random() - 0.5) * 2, [3, 2.4, 1.4], 120, 12, 2, 0.2);
-        flash(Bo.x, Bo.y, Bo.z, [12, 9, 6], 30, 1.8);
-        S.roomTarget[Bo.room] = 0.1;
-        S.enemies.forEach(e => { if (e.boss) { e.hp = 0; killEnemy(e); } });
-        paintCores();
-        if (allDown()) { S.exit.open = true; play('open'); toast(tr('¡El Gran Núcleo cayó! La salida se abrió', 'The Great Core fell! The exit is open'), 4); }
-        else toast(tr(`¡El Gran Núcleo cayó! Quedan ${coresLeft()} núcleos`, `The Great Core fell! ${coresLeft()} cores left`), 4);
+      if (Bo.hp <= 0.001 || (body && !Bo.bodies.length)) bossDown(body || Bo);
+    }
+    function splitBody(Bo, b) {   // a body of the Hive falls: two smaller, quicker ones come out (twice)
+      b.alive = false; play('boom', false); pl.shake = Math.min(1, pl.shake + 0.4);
+      burst(b.x, b.y, b.z, [2.6, 2.2, 0.6], 70, 7, 1, 0.14); flash(b.x, b.y, b.z, [6, 5, 1], 14, 0.6);
+      if (b.gen < 2) {
+        for (let k = 0; k < 2; k++) { const a = Math.random() * 6.283; Bo.bodies.push({ x: b.x + Math.cos(a) * 1.2, z: b.z + Math.sin(a) * 1.2, y: b.y, r: b.r * 0.62, gen: b.gen + 1, hp: Bo.max * HIVE_SHARE[b.gen + 1], alive: true, t: 0, cd: 1 + k * 0.7, flash: 1, vx: Math.cos(a) * 7, vz: Math.sin(a) * 7, seed: Math.random() * 10, warn: 0, ch: 0 }); }
+        toast(tr('La Colmena se divide', 'The Hive splits'), 1.8);
       }
+      Bo.bodies = Bo.bodies.filter(q => q.alive);
+    }
+    function bossDown(at) {
+      const Bo = S.boss; Bo.alive = false; bossEl.hidden = true; S.score += 3000 + 500 * S.level; paintHud(); play('core'); pl.shake = 1; rumble(1, 1, 900);
+      for (let k = 0; k < 4; k++) burst(at.x + (Math.random() - 0.5) * 2, at.y + (Math.random() - 0.5) * 2, at.z + (Bo.fold ? 0 : (Math.random() - 0.5) * 2), [3, 2.4, 1.4], 120, 12, 2, 0.2);
+      flash(at.x, at.y, at.z, [12, 9, 6], 30, 1.8);
+      S.roomTarget[Bo.room] = 0.1;
+      S.enemies.forEach(e => { if (e.boss && !e.dead) { e.hp = 0; killEnemy(e); } });
+      S.orbs.forEach(o => { o.life = Math.min(o.life, 0.05); });
+      if (Bo.fold && S.fold) S.fold.outT = 2.4;   // and its fold comes undone
+      paintCores();
+      const nm = cap(bossName(Bo));
+      if (allDown()) { S.exit.open = true; play('open'); toast(tr(`¡${nm} cayó! La salida se abrió`, `${nm} fell! The exit is open`), 4); }
+      else toast(tr(`¡${nm} cayó! Quedan ${coresLeft()} núcleos`, `${nm} fell! ${coresLeft()} cores left`), 4);
+    }
+    function wakeBoss(Bo) { Bo.awake = true; bossEl.hidden = false; play('boss'); pl.shake = 0.7; toast(cap(bossName(Bo)) + tr(' despertó', ' woke up'), 3); }
+    const PHASE_TOAST = { core: [tr('Se rodea de escudos', 'It surrounds itself with shields'), tr('Está furioso', 'It is furious')], hive: [tr('La Colmena zumba más fuerte', 'The Hive hums louder'), tr('La Colmena enloquece', 'The Hive goes mad')],
+      eye: [tr('El Ojo abre un segundo rayo', 'The Eye opens a second beam'), tr('El Ojo ya no deja de mirar', 'The Eye never stops looking now')], fold: [tr('Llueve luz', 'It rains light'), tr('Está furioso', 'It is furious')] };
+    function bossPhase(Bo) {
+      const ph = Bo.hp / Bo.max > 0.66 ? 1 : Bo.hp / Bo.max > 0.33 ? 2 : 3;
+      if (ph !== Bo.phase) { Bo.phase = ph; play('warn'); flash(Bo.x, Bo.y, Bo.z, [6, 3, 2], 20, 0.8); toast(PHASE_TOAST[Bo.kind][ph - 2], 2.5); }
+      bossFill.style.width = Math.max(0, Bo.hp / Bo.max * 100) + '%'; bossEl.className = 'nc-boss p' + ph;
+      return ph;
     }
     function updateBoss(dt) {
-      const Bo = S.boss; if (!Bo || !Bo.alive) return;
+      const Bo = S.boss; if (!Bo || !Bo.alive || Bo.fold) return;
       const M = S.M, r = M.rooms[Bo.room];
       Bo.t += dt; Bo.flash = Math.max(0, Bo.flash - dt * 5); Bo.warn = Math.max(0, Bo.warn - dt);
       if (!Bo.awake) {
         if (M.rid[Math.floor(pl.z / CS) * M.W + Math.floor(pl.x / CS)] !== Bo.room) return;
-        Bo.awake = true; bossEl.hidden = false; play('boss'); pl.shake = 0.7;
-        toast(tr('El Gran Núcleo despertó', 'The Great Core woke up'), 3);
+        wakeBoss(Bo);
       }
-      const ph = Bo.hp / Bo.max > 0.66 ? 1 : Bo.hp / Bo.max > 0.33 ? 2 : 3;
-      if (ph !== Bo.phase) { Bo.phase = ph; play('warn'); flash(Bo.x, Bo.y, Bo.z, [6, 3, 2], 20, 0.8); toast(ph === 2 ? tr('Se rodea de escudos', 'It surrounds itself with shields') : tr('Está furioso', 'It is furious'), 2.5); }
-      bossFill.style.width = (Bo.hp / Bo.max * 100) + '%'; bossEl.className = 'nc-boss p' + ph;
+      const ph = bossPhase(Bo);
+      if (Bo.kind === 'hive') hiveTick(Bo, r, dt, ph);
+      else if (Bo.kind === 'eye') eyeTick(Bo, r, dt, ph);
+      else coreTick(Bo, r, dt, ph);
+      MU.int = 1;
+    }
+    const defender = (x, z) => { const e = spawnEnemy('drone', x, z, true); e.boss = true; collide(e, e.r); return e; };
+    function coreTick(Bo, r, dt, ph) {
       // it floats around its arena (faster each phase); in the last one it charges at you, warning first
       const cx = (r.x + r.w / 2) * CS, cz = (r.y + r.h / 2) * CS, ax = (r.w / 2 - 3) * CS, az = (r.h / 2 - 3) * CS, k = 0.6 + ph * 0.35;
       let tx = cx + ax * Math.sin(Bo.t * 0.23 * k), tz = cz + az * Math.sin(Bo.t * 0.31 * k + 1), ty = 3.4 + Math.sin(Bo.t * 0.8) * 0.5;
@@ -1005,14 +1205,183 @@ void main() {
       if (Bo.stream > 0) { Bo.stream -= dt; Bo.sT -= dt; if (Bo.sT <= 0) { Bo.sT = 0.11; Bo.spin += 0.45; orb(Bo.spin, 7); orb(Bo.spin + Math.PI, 7); } }
       if (Bo.cd <= 0) {
         if (ph === 1) { for (let q = 0; q < 14; q++) orb(q / 14 * Math.PI * 2 + Bo.t, 6.5); Bo.cd = 2.6; }
-        else if (ph === 2) { Bo.stream = 1.6; Bo.sT = 0; Bo.cd = 3.4; if ((Bo.n2 = (Bo.n2 || 0) + 1) % 2 === 0) for (let q = 0; q < 2 + Math.floor(S.level / 5); q++) { const a = Math.random() * 6.28; const e = spawnEnemy('drone', Bo.x + Math.cos(a) * 3, Bo.z + Math.sin(a) * 3, true); e.boss = true; collide(e, e.r); } }
+        else if (ph === 2) { Bo.stream = 1.6; Bo.sT = 0; Bo.cd = 3.4; if ((Bo.n2 = (Bo.n2 || 0) + 1) % 2 === 0) for (let q = 0; q < 2 + Math.floor(S.level / 5); q++) { const a = Math.random() * 6.28; defender(Bo.x + Math.cos(a) * 3, Bo.z + Math.sin(a) * 3); } }
         else { const a0 = Math.atan2(dz, dx); for (let q = -2; q <= 2; q++) orb(a0 + q * 0.16, 9, 0.5); if (Math.random() < 0.5) for (let q = 0; q < 10; q++) orb(q / 10 * Math.PI * 2, 6); Bo.cd = 1.4; }
         play('orb');
       }
       // touching it hurts; it is solid
       const hd = Math.hypot(pl.x - Bo.x, pl.z - Bo.z);
       if (hd < 2.3 && Math.abs(Bo.y - EYE) < 2.4) { if (hd > 0) { pl.x = Bo.x + (pl.x - Bo.x) / hd * 2.3; pl.z = Bo.z + (pl.z - Bo.z) / hd * 2.3; } if (!Bo.touchCd || S.t > Bo.touchCd) { Bo.touchCd = S.t + 1; hurt(18, Bo.x, Bo.z); } }
+    }
+    // the Hive: one big body that splits in two, and again; the small ones charge at you (they flash red first)
+    function hiveTick(Bo, r, dt, ph) {
+      const x0 = (r.x + 2) * CS, x1 = (r.x + r.w - 2) * CS, z0 = (r.y + 2) * CS, z1 = (r.y + r.h - 2) * CS, cx = (x0 + x1) / 2, cz = (z0 + z1) / 2;
+      let sx = 0, sz = 0, n = 0;
+      for (const b of Bo.bodies) {
+        if (!b.alive) continue;
+        b.t += dt; b.cd -= dt; b.flash = Math.max(0, b.flash - dt * 5); b.warn = Math.max(0, b.warn - dt);
+        const dx = pl.x - b.x, dz = pl.z - b.z, d = Math.hypot(dx, dz) || 1, fast = 1 + (ph - 1) * 0.25;
+        let tx, tz, ty, k;
+        if (b.gen === 0) { tx = cx + (x1 - cx) * 0.6 * Math.sin(b.t * 0.3 * fast); tz = cz + (z1 - cz) * 0.6 * Math.sin(b.t * 0.37 * fast + 1); ty = 3.4 + Math.sin(b.t) * 0.4; k = 0.8; }
+        else if (b.gen === 1) { const a = Math.atan2(-dz, -dx) + Math.sin(b.t * 0.7 + b.seed) * 1.1; tx = pl.x + Math.cos(a) * 6.5; tz = pl.z + Math.sin(a) * 6.5; ty = 2.6 + Math.sin(b.t * 1.3 + b.seed) * 0.6; k = 1.3 * fast; }
+        else {
+          if (!b.ch && b.cd <= 0) { b.warn = 0.55; b.ch = 0.0001; b.cTo = [pl.x, pl.z]; play('warn'); }
+          if (b.ch && b.warn <= 0) { tx = b.cTo[0]; tz = b.cTo[1]; k = 4.5; b.ch += dt; if (b.ch > 1) { b.ch = 0; b.cd = 1.4 + Math.random(); } }
+          else { const a = b.t * 0.9 * fast + b.seed; tx = pl.x + Math.cos(a) * 5; tz = pl.z + Math.sin(a) * 5; k = 1.6; }
+          ty = 1.5;
+        }
+        b.x += (tx - b.x) * Math.min(1, dt * k) + b.vx * dt; b.z += (tz - b.z) * Math.min(1, dt * k) + b.vz * dt; b.y += (ty - b.y) * Math.min(1, dt * 2);
+        b.vx *= Math.exp(-dt * 3); b.vz *= Math.exp(-dt * 3);
+        for (const o of Bo.bodies) if (o !== b && o.alive) { const ox = b.x - o.x, oz = b.z - o.z, od = Math.hypot(ox, oz), m = b.r + o.r; if (od < m && od > 1e-3) { b.x += ox / od * (m - od) * 0.5; b.z += oz / od * (m - od) * 0.5; } }
+        b.x = Math.max(x0, Math.min(x1, b.x)); b.z = Math.max(z0, Math.min(z1, b.z));
+        if (b.gen < 2 && b.cd <= 0) {
+          const orb = (a, v, wob) => S.orbs.push({ x: b.x + Math.cos(a) * b.r, y: b.y, z: b.z + Math.sin(a) * b.r, vx: Math.cos(a) * v, vy: (EYE - 0.3 - b.y) * v / Math.max(4, d), vz: Math.sin(a) * v, life: 5, wob: wob || 0, ph: Math.random() * 6 });
+          if (b.gen === 0) { for (let q = 0; q < 12; q++) orb(q / 12 * 6.283 + b.t, 6); b.cd = 2.6 - ph * 0.2; if (ph >= 2 && Math.random() < 0.5) defender(b.x + 3, b.z); }
+          else { const a0 = Math.atan2(dz, dx); for (let q = -1; q <= 1; q++) orb(a0 + q * 0.2, 8.5, 0.3); b.cd = 1.7 + Math.random() * 0.6; }
+          play('orb');
+        }
+        const hd = Math.hypot(pl.x - b.x, pl.z - b.z), rr = b.r + 0.4;
+        if (hd < rr && Math.abs(b.y - EYE) < b.r + 1.4) { if (hd > 0) { pl.x = b.x + (pl.x - b.x) / hd * rr; pl.z = b.z + (pl.z - b.z) / hd * rr; } if (!b.touchCd || S.t > b.touchCd) { b.touchCd = S.t + 0.8; hurt(b.gen === 2 ? 10 : 16, b.x, b.z); } }
+        sx += b.x; sz += b.z; n++;
+      }
+      if (n) { Bo.x = sx / n; Bo.z = sz / n; Bo.y = 3; }
+    }
+    // the Eye: it hangs over its arena and sweeps it with beams (a thin red line warns first); the pillars cast shadows, the dash goes through
+    function eyeTick(Bo, r, dt, ph) {
+      const cx = (r.x + r.w / 2) * CS, cz = (r.y + r.h / 2) * CS;
+      let tx = cx, tz = cz;
+      if (ph === 3) { tx += Math.sin(Bo.t * 0.35) * (r.w / 2 - 4) * CS * 0.6; tz += Math.sin(Bo.t * 0.47 + 1) * (r.h / 2 - 4) * CS * 0.6; }
+      Bo.x += (tx - Bo.x) * Math.min(1, dt * 0.6); Bo.z += (tz - Bo.z) * Math.min(1, dt * 0.6); Bo.y = 4.4 + Math.sin(Bo.t * 0.9) * 0.25;
+      const want = Math.atan2(pl.z - Bo.z, pl.x - Bo.x); let dl = want - Bo.look; dl = Math.atan2(Math.sin(dl), Math.cos(dl)); Bo.look += dl * Math.min(1, dt * 2.5);
+      Bo.bT -= dt;
+      if (Bo.bs === 'idle' && Bo.bT <= 0) { Bo.bs = 'aim'; Bo.bT = 0.9; Bo.dir = Math.random() < 0.5 ? 1 : -1; Bo.a = want - Bo.dir * (ph === 3 ? 0.35 : 1.0); play('warn'); }
+      else if (Bo.bs === 'aim' && Bo.bT <= 0) { Bo.bs = 'fire'; Bo.bT = ph === 1 ? 2.3 : ph === 2 ? 2.8 : 3.6; play('beam'); }
+      else if (Bo.bs === 'fire') { Bo.a += Bo.dir * dt * (ph === 1 ? 0.9 : ph === 2 ? 1.1 : 1.5); if (Bo.bT <= 0) { Bo.bs = 'idle'; Bo.bT = ph === 1 ? 2.2 : ph === 2 ? 1.8 : 1.2; } }
+      Bo.beams = [];
+      if (Bo.bs !== 'idle') for (let k = 0; k < (ph === 1 ? 1 : 2); k++) {
+        const a = Bo.a + k * Math.PI, dx = Math.cos(a), dz = Math.sin(a);
+        let L = 1; while (L < 40 && !solidAt(Bo.x + dx * L, Bo.z + dz * L)) L += 0.15;
+        const bm = { a: [Bo.x + dx * 1.2, Bo.y - 0.5, Bo.z + dz * 1.2], b: [Bo.x + dx * L, 0.3, Bo.z + dz * L], on: Bo.bs === 'fire' };
+        Bo.beams.push(bm);
+        if (bm.on && S.state === 'play' && pl.dashT <= 0 && !S.demo) {   // you, against the line (from above), and how high the beam is where you are
+          const px = pl.x - Bo.x, pz = pl.z - Bo.z, along = px * dx + pz * dz, side = Math.abs(-px * dz + pz * dx);
+          if (along > 0 && along < L && side < 0.6 && bm.a[1] + (bm.b[1] - bm.a[1]) * along / L < 2.6) {
+            S.hp = Math.max(0, S.hp - (32 + S.level) * dt); pl.hurtT = Math.max(pl.hurtT, 0.3); pl.lastHurt = S.t; pl.shake = Math.min(1, pl.shake + dt * 2);
+            if ((Bo.burnT -= dt) <= 0) { Bo.burnT = 0.16; play('burn'); rumble(0.4, 0.6, 150); }
+            if (S.hp <= 0) die();
+          }
+        }
+      }
+      Bo.cd -= dt;
+      if (Bo.cd <= 0 && Bo.bs === 'idle') {
+        const d = Math.hypot(pl.x - Bo.x, pl.z - Bo.z) || 1;
+        for (let q = 0; q < 10; q++) { const a = q / 10 * 6.283 + Bo.t; S.orbs.push({ x: Bo.x + Math.cos(a) * 1.8, y: Bo.y - 0.5, z: Bo.z + Math.sin(a) * 1.8, vx: Math.cos(a) * 6, vy: (EYE - 0.3 - Bo.y) * 6 / Math.max(4, d), vz: Math.sin(a) * 6, life: 5, wob: ph === 3 ? 0.4 : 0, ph: Math.random() * 6 }); }
+        if (ph >= 2) for (let q = 0; q < 2; q++) { const a = Math.random() * 6.283; defender(Bo.x + Math.cos(a) * 3, Bo.z + Math.sin(a) * 3); }
+        Bo.cd = ph === 1 ? 1.6 : 1.3; play('orb');
+      }
+      const hd = Math.hypot(pl.x - Bo.x, pl.z - Bo.z);
+      if (hd < 2.2 && Math.abs(Bo.y - EYE) < 3.2) { if (hd > 0) { pl.x = Bo.x + (pl.x - Bo.x) / hd * 2.2; pl.z = Bo.z + (pl.z - Bo.z) / hd * 2.2; } if (!Bo.touchCd || S.t > Bo.touchCd) { Bo.touchCd = S.t + 1; hurt(14, Bo.x, Bo.z); } }
+    }
+    // the Greater Fold: a boss on the side (inside its fold); rings of orbs, rain of light, and charges across the screen
+    function updateFoldBoss(dt) {
+      const Bo = S.boss; if (!Bo || !Bo.alive || !Bo.fold || !S.fold) return;
+      const Fd = S.fold.F;
+      Bo.t += dt; Bo.flash = Math.max(0, Bo.flash - dt * 5); Bo.warn = Math.max(0, Bo.warn - dt);
+      if (!Bo.awake) { if (S.fold.tr < 1) return; wakeBoss(Bo); }
+      const ph = bossPhase(Bo), k = 0.7 + ph * 0.3;
+      let tx = Fd.bx + Fd.bw * Math.sin(Bo.t * 0.22 * k), ty = Fd.by + 1.8 * Math.sin(Bo.t * 0.7 * k);
+      if (ph === 3) {
+        Bo.chargeT -= dt;
+        if (Bo.chargeT <= 0 && !Bo.charge) { Bo.warn = 0.75; Bo.chargeT = 5; Bo.charge = 0.0001; Bo.cTo = [f2.x, f2.y + 1.2]; play('warn'); }
+        if (Bo.charge && Bo.warn <= 0) { Bo.charge += dt; tx = Bo.cTo[0]; ty = Bo.cTo[1]; if (Bo.charge > 1.1) Bo.charge = 0; }
+      }
+      const fol = Bo.charge && Bo.warn <= 0 ? 3.4 : 0.9;
+      Bo.x += (tx - Bo.x) * Math.min(1, dt * fol); Bo.y += (ty - Bo.y) * Math.min(1, dt * (fol + 0.6));
+      const dx = f2.x - Bo.x, dy = f2.y + 1 - Bo.y;
+      const orb = (a, v, x, y) => S.orbs.push({ x: x === undefined ? Bo.x + Math.cos(a) * 1.7 : x, y: y === undefined ? Bo.y + Math.sin(a) * 1.7 : y, z: 0, vx: Math.cos(a) * v, vy: Math.sin(a) * v, vz: 0, life: 5, wob: 0 });
+      Bo.cd -= dt;
+      if (Bo.stream > 0) { Bo.stream -= dt; Bo.sT -= dt; if (Bo.sT <= 0) { Bo.sT = 0.12; Bo.spin += 0.5; orb(Bo.spin, 6.5); orb(Bo.spin + Math.PI, 6.5); } }
+      if (Bo.cd <= 0) {
+        if (ph === 1) { for (let q = 0; q < 12; q++) orb(q / 12 * 6.283 + Bo.t, 5.5); Bo.cd = 2.4; }
+        else if (ph === 2) { for (let q = 0; q < 7; q++) orb(-Math.PI / 2, 6 + Math.random() * 2, f2.x + (q - 3) * 2.4 + Math.random(), Fd.maxY + 9 + Math.random() * 2); if ((Bo.n2 = (Bo.n2 || 0) + 1) % 2 === 0) { const e = spawnEnemy('drone', Bo.x, 0, true); e.y = Bo.y; e.z = 0; e.vy = 0; e.boss = true; } Bo.cd = 2.2; }
+        else { const a0 = Math.atan2(dy, dx); for (let q = -2; q <= 2; q++) orb(a0 + q * 0.17, 8); if (Math.random() < 0.5) { Bo.stream = 1.2; Bo.sT = 0; } Bo.cd = 1.5; }
+        play('orb');
+      }
+      if (Math.hypot(dx, dy) < 2 && (!Bo.touchCd || S.t > Bo.touchCd)) { Bo.touchCd = S.t + 1; hurt(16, Bo.x); }
       MU.int = 1;
+    }
+
+    /* ── upgrades: between levels (and from the relics of the secret rooms) you choose one of three ── */
+    const UPS = [
+      { id: 'vida', ic: '✚', n: ['Corazón de neón', 'Neon heart'], d: ['+25 de energía máxima (y te cura)', '+25 max energy (and heals you)'], max: 4 },
+      { id: 'cad', ic: '⟫', n: ['Gatillo nervioso', 'Twitchy trigger'], d: ['Disparás un 18 % más rápido', 'You shoot 18% faster'], max: 4 },
+      { id: 'dmg', ic: '✦', n: ['Carga densa', 'Dense charge'], d: ['Cada impacto pega un 35 % más', 'Every hit deals 35% more'], max: 4 },
+      { id: 'perf', ic: '➶', n: ['Perforante', 'Piercing'], d: ['Los disparos atraviesan un enemigo más', 'Shots go through one more enemy'], max: 3 },
+      { id: 'dash', ic: '»', n: ['Impulso eléctrico', 'Electric dash'], d: ['El impulso recarga antes y daña lo que atravesás', 'The dash recharges sooner and hurts what you go through'], max: 3 },
+      { id: 'vamp', ic: '♥', n: ['Absorción', 'Absorption'], d: ['Cada enemigo que cae te da 3 de energía', 'Every enemy that falls gives you 3 energy'], max: 3 },
+      { id: 'regen', ic: '∞', n: ['Regeneración', 'Regeneration'], d: ['Si no te pegan por 4 s, recuperás energía', 'Unhurt for 4 s, you regain energy'], max: 3 },
+      { id: 'vel', ic: '➤', n: ['Piernas largas', 'Long legs'], d: ['Te movés un 12 % más rápido', 'You move 12% faster'], max: 3 },
+      { id: 'iman', ic: '◎', n: ['Imán', 'Magnet'], d: ['La energía del piso viene hacia vos y cura más', 'Energy on the floor comes to you and heals more'], max: 2 },
+      { id: 'abanico', ic: '⋔', n: ['Abanico ancho', 'Wide fan'], d: ['El Abanico tira 4 disparos más', 'The Fan fires 4 more shots'], max: 2 },
+      { id: 'rayo', ic: '⌇', n: ['Rayo largo', 'Long beam'], d: ['El Rayo llega un 50 % más lejos y pega más seguido', 'The Beam reaches 50% further and hits more often'], max: 2, need: () => pl.owned[2] },
+      { id: 'split', ic: '⁂', n: ['Rebote que se divide', 'Splitting bounce'], d: ['Al rebotar por primera vez, el Rebote se parte en dos', 'On its first bounce, the Bounce splits in two'], max: 1, need: () => pl.owned[3] },
+    ];
+    const upN = id => pl.up[id] || 0;
+    const DMG = () => (1 + 0.35 * upN('dmg')) * (S.demo ? 2.5 : 1), rateK = () => 0.82 ** upN('cad'), beamK = () => 1 + 0.5 * upN('rayo'), maxHp = () => 100 + 25 * upN('vida'), velK = () => 1 + 0.12 * upN('vel');
+    const pickEl = el('div', 'nc-pick'); pickEl.hidden = true; wrap.append(pickEl);
+    let pickOpts = null, pickThen = null, pickSel = 1;
+    function offerUps(then, title) {
+      const rnd = J.mulberry((seed + S.level * 977 + (S.picks || 0) * 131) >>> 0);   // the same offers for the same seed (the daily one is fair)
+      const pool = UPS.filter(u => upN(u.id) < u.max && (!u.need || u.need())), opts = [];
+      while (opts.length < 3 && pool.length) opts.push(pool.splice(Math.floor(rnd() * pool.length), 1)[0]);
+      if (!opts.length) { then(); return; }
+      S.state = 'pick'; firing = false; Object.keys(K).forEach(k => { K[k] = false; });
+      pickOpts = opts; pickThen = then; pickSel = Math.min(1, opts.length - 1);
+      if (S.demo) { setTimeout(() => choose(Math.floor(Math.random() * opts.length)), 600); }
+      if (locked()) document.exitPointerLock();
+      pickEl.innerHTML = '';
+      pickEl.append(el('b', null, title), el('small', null, PAD.on ? tr('Elegí una mejora · ◀ ▶ y A', 'Choose an upgrade · ◀ ▶ and A') : tr('Elegí una mejora', 'Choose an upgrade')));
+      const row = el('div', 'row');
+      opts.forEach((u, i) => {
+        const c = el('button', 'card' + (i === pickSel ? ' on' : ''));
+        c.append(el('i', null, u.ic), el('strong', null, L2(u.n)), el('span', null, L2(u.d)), el('em', null, '●'.repeat(upN(u.id) + 1) + '○'.repeat(u.max - upN(u.id) - 1)));
+        if (!touch && !PAD.on) c.append(el('kbd', null, String(i + 1)));
+        c.addEventListener('click', e => { e.stopPropagation(); choose(i); });
+        row.append(c);
+      });
+      pickEl.append(row);
+      const have = UPS.filter(u => upN(u.id));
+      if (have.length) pickEl.append(el('div', 'have', have.map(u => u.ic + (upN(u.id) > 1 ? '×' + upN(u.id) : '')).join('  ')));
+      pickEl.hidden = false; play('npc');
+    }
+    function movePick(d) { if (!pickOpts) return; pickSel = (pickSel + d + pickOpts.length) % pickOpts.length; pickEl.querySelectorAll('.card').forEach((c, i) => c.classList.toggle('on', i === pickSel)); play('swap'); }
+    function choose(i) {
+      if (S.state !== 'pick' || !pickOpts || !pickOpts[i]) return;
+      const u = pickOpts[i], then = pickThen; pl.up[u.id] = upN(u.id) + 1; S.picks = (S.picks || 0) + 1;
+      if (u.id === 'vida') S.hp = Math.min(maxHp(), S.hp + 25);
+      pickEl.hidden = true; pickOpts = pickThen = null; S.state = 'play'; last = performance.now(); play('pickup');
+      toast(`${u.ic} ${L2(u.n)}`, 2.2);
+      then(); if (!DEMO) lock();
+    }
+
+    /* ── the secret rooms: a wall that answers to shots ── */
+    function wallHit(x, z) {
+      const Sc = S.secret; if (!Sc || Sc.open) return;
+      if (Math.floor(z / CS) * S.M.W + Math.floor(x / CS) !== Sc.door) return;
+      Sc.hits++; Sc.flash = 1; play('clang'); pl.shake = Math.min(1, pl.shake + 0.1);
+      if (Sc.hits >= 3) openSecret();
+    }
+    function openSecret() {
+      const Sc = S.secret, M = S.M; Sc.open = true;
+      M.grid[Sc.door] = 0; M.ceil[Sc.door] = 4; M.rid[Sc.door] = Sc.room;
+      if (levelGL) { gl.deleteBuffer(levelGL.buf); gl.deleteVertexArray(levelGL.vao); }
+      levelGL = meshVao(levelMesh(M), [[0, 3], [1, 3], [2, 2], [3, 4]]);
+      S.flowCell = -1;
+      const r = M.rooms[Sc.room], X = (r.cx + 0.5) * CS, Z = (r.cy + 0.5) * CS;
+      S.pickups.push({ x: X, z: Z, t: 0, kind: 'relic' }, { x: (r.x + 0.5) * CS, z: (r.y + 0.5) * CS, t: 0 }, { x: (r.x + 2.5) * CS, z: (r.y + 2.5) * CS, t: 0 });
+      const fx = (Sc.x + 0.5) * CS, fz = (Sc.y + 0.5) * CS;
+      burst(fx, 1.6, fz, [2.6, 0.8, 2.4], 90, 6, 1, 0.12); flash(fx, 1.6, fz, [6, 2, 6], 14, 0.8);
+      S.score += 1500; paintHud(); play('open'); toast(tr('¡Una sala secreta!', 'A secret room!'), 3);
     }
 
     /* ── folds: a side-scrolling zone (same world, one dimension less) ── */
@@ -1044,7 +1413,7 @@ void main() {
     function dash2() {
       if (S.state !== 'play' || S.mode !== 'fold' || pl.dashCd > 0 || (!f2.ground && !f2.airDash)) return;
       if (!f2.ground) f2.airDash = false;
-      f2.dashT = 0.16; f2.vx = f2.face * 17; f2.vy = 0; pl.dashCd = 0.7; play('dash');
+      f2.dashT = 0.16; f2.vx = f2.face * 17; f2.vy = 0; pl.dashMax = pl.dashCd = 0.7 * 0.75 ** upN('dash'); pl.dashId++; play('dash');
       burst(f2.x, f2.y + 0.8, 0, [0.3, 0.8, 1.6], 14, 2.5, 0.4, 0.08);
     }
     const inPlat = (x, y) => { const P = S.fold.F.P; for (let i = 0; i < P.length; i++) { const q = P[i]; if (x > q.x0 && x < q.x1 && y > q.y0 && y < q.y1) return true; } return false; };
@@ -1054,16 +1423,18 @@ void main() {
         let best = null, bd = 16;
         for (const e of S.enemies) { if (e.dead || (e.type === 'phase' && Math.abs(e.z) > 0.8)) continue; const ex = e.x - ox, ey = e.y - oy, d = Math.hypot(ex, ey); if (d < bd && ex * f2.face > -0.5) { bd = d; best = [ex, ey]; } }
         S.cores.forEach(c => { if (c.fold && c.alive) { const ex = c.x - ox, ey = c.y - oy, d = Math.hypot(ex, ey); if (d < bd && ex * f2.face > 0) { bd = d; best = [ex, ey]; } } });
+        if (S.boss && S.boss.alive && S.boss.fold) { const ex = S.boss.x - ox, ey = S.boss.y - oy, d = Math.hypot(ex, ey); if (d < 20 && (!best || d < bd + 4)) best = [ex, ey]; }
         [dx, dy] = best || [f2.face, 0];
         f2.aimA = Math.atan2(dy, dx); if (Math.abs(dx) > 0.2) f2.face = Math.sign(dx);
       }
       const l = Math.hypot(dx, dy) || 1; dx /= l; dy /= l;
       const Wp = WEAPONS[pl.weapon], sh = shoulder2(), ox = sh[0] + dx * 0.9, oy = sh[1] + dy * 0.9, a0 = Math.atan2(dy, dx);   // out of the barrel
-      for (let k = 0; k < Wp.pellets; k++) {
-        const a = a0 + (Wp.pellets > 1 ? (k / (Wp.pellets - 1) - 0.5) * 2 * Wp.spread : 0) + (Math.random() - 0.5) * (Wp.pellets > 1 ? 0.05 : 0.02);
-        S.bolts.push({ x: ox, y: oy, z: 0, vx: Math.cos(a) * Wp.speed * 0.85, vy: Math.sin(a) * Wp.speed * 0.85, vz: 0, life: Wp.life * 0.85, w: pl.weapon, bounce: Wp.bounce || 0 });
+      const np = Wp.pellets + (pl.weapon === 1 ? 4 * upN('abanico') : 0);
+      for (let k = 0; k < np; k++) {
+        const a = a0 + (np > 1 ? (k / (np - 1) - 0.5) * 2 * Wp.spread : 0) + (Math.random() - 0.5) * (np > 1 ? 0.05 : 0.02);
+        S.bolts.push({ x: ox, y: oy, z: 0, vx: Math.cos(a) * Wp.speed * 0.85, vy: Math.sin(a) * Wp.speed * 0.85, vz: 0, life: Wp.life * 0.85, w: pl.weapon, bounce: Wp.bounce || 0, pierce: upN('perf') });
       }
-      pl.fireCd = Wp.rate; pl.recoil = Wp.recoil; pl.shake = Math.min(1, pl.shake + Wp.shake * 0.8);
+      pl.fireCd = Wp.rate * rateK(); pl.recoil = Wp.recoil; pl.shake = Math.min(1, pl.shake + Wp.shake * 0.8);
       if (Wp.push) f2.vx -= dx * 2.5;   // the fan kicks you back a little
       flash(ox, oy, 0.6, Wp.hot.map(v => v * 0.6), 5, 0.07); play(pl.weapon ? 'fan' : 'shot');
     }
@@ -1075,17 +1446,17 @@ void main() {
       Fo.tr = Math.min(1, Fo.tr + dt / 1.0);
       if (Fo.outT > 0) { Fo.outT -= dt; if (Fo.outT <= 0) { exitFold(); return; } }
       // aim: the mouse moves a sight around you
-      if (!touch) { f2.ax += mx * 0.012; f2.ay -= my * 0.012; const l = Math.hypot(f2.ax, f2.ay); if (l > 5) { f2.ax *= 5 / l; f2.ay *= 5 / l; } f2.aimA = Math.atan2(f2.ay, f2.ax); }
+      if (!touch || PAD.on) { f2.ax += mx * 0.012; f2.ay -= my * 0.012; const l = Math.hypot(f2.ax, f2.ay); if (l > 5) { f2.ax *= 5 / l; f2.ay *= 5 / l; } f2.aimA = Math.atan2(f2.ay, f2.ax); }
       else if (!firing) { let d = (f2.face > 0 ? 0 : Math.PI) - f2.aimA; d = Math.atan2(Math.sin(d), Math.cos(d)); f2.aimA += d * Math.min(1, dt * 8); }   // a phone: the arms rest pointing ahead
       mx = my = 0;
       const ready = Fo.tr >= 1;
-      let mv = ready ? (K.KeyD || K.ArrowRight ? 1 : 0) - (K.KeyA || K.ArrowLeft ? 1 : 0) + (stick ? stick.dx : 0) : 0;
+      let mv = ready ? (K.KeyD || K.ArrowRight ? 1 : 0) - (K.KeyA || K.ArrowLeft ? 1 : 0) + (stick ? stick.dx : 0) + (PAD.on ? PAD.lx : 0) : 0;
       mv = Math.max(-1, Math.min(1, mv));
       if (Math.abs(mv) > 0.2) f2.face = Math.sign(mv); else if (!touch && Math.abs(f2.ax) > 0.3) f2.face = Math.sign(f2.ax);
       pl.dashCd = Math.max(0, pl.dashCd - dt);
       if (f2.dashT > 0) { f2.dashT -= dt; }
       else {
-        const acc = f2.ground ? 70 : 38; f2.vx += (mv * 8 - f2.vx) * Math.min(1, acc * dt / 8);
+        const acc = f2.ground ? 70 : 38; f2.vx += (mv * 8 * velK() - f2.vx) * Math.min(1, acc * dt / 8);
         f2.vy -= 30 * dt; if (!f2.held && f2.vy > 3) f2.vy -= 45 * dt;   // let go early: a shorter jump
         f2.vy = Math.max(f2.vy, -24);
       }
@@ -1106,6 +1477,8 @@ void main() {
         hurt(12); f2.x = f2.sx; f2.y = f2.sy + 0.2; f2.vx = f2.vy = 0; S.fx = 0.6;
       }
       f2.run += Math.abs(f2.vx) * dt;
+      if (f2.dashT > 0 && upN('dash')) for (const e of S.enemies) if (!e.dead && e.dashId !== pl.dashId && Math.hypot(e.x - f2.x, e.y - f2.y - 0.9) < e.r + 0.9) { e.dashId = pl.dashId; e.hp -= 2 * upN('dash') * DMG(); e.flash = 1; e.awake = true; burst(e.x, e.y, 0, [1.2, 2.4, 3], 16, 4, 0.4, 0.08); play('zap'); if (e.hp <= 0) killEnemy(e); }
+      updateFoldBoss(dt);
       pl.fireCd -= dt;
       if (firing && ready && WEAPONS[pl.weapon].beam) beamTick(dt); else { S.beam = null; if (firing && ready && pl.fireCd <= 0) fire2(); }
       pl.hurtT = Math.max(0, pl.hurtT - dt); pl.recoil = Math.max(0, pl.recoil - dt * 8); pl.swap = Math.max(0, pl.swap - dt * 4);
@@ -1149,12 +1522,14 @@ void main() {
           if (inPlat(b.x, b.y) && b.bounce > 0) {
             b.bounce--; let f = false;
             if (inPlat(px, b.y)) { b.vy = -b.vy; f = true; } if (inPlat(b.x, py)) { b.vx = -b.vx; f = true; } if (!f) { b.vx = -b.vx; b.vy = -b.vy; }
+            if (upN('split') && !b.child) { b.child = true; const c = Math.cos(0.45), sn = Math.sin(0.45); S.bolts.push({ ...b, x: px, y: py, vx: b.vx * c - b.vy * sn, vy: b.vx * sn + b.vy * c, child: true }); }
             b.x = px; b.y = py; burst(b.x, b.y, 0, WEAPONS[b.w].hot.map(v => v * 0.7), 6, 2.5, 0.25, 0.06); play('ping'); continue;
           }
           if (inPlat(b.x, b.y)) { b.life = 0; burst(b.x - b.vx * 0.004, b.y - b.vy * 0.004, 0, [0.5, 1.6, 2.6], 8, 3, 0.35, 0.07); flash(b.x, b.y, 0.5, [0.4, 1.2, 2], 4, 0.12); break; }
-          for (const e of S.enemies) { if (e.dead || (e.type === 'phase' && Math.abs(e.z) > 0.8)) continue; if ((b.x - e.x) ** 2 + (b.y - e.y) ** 2 < (e.r + 0.2) ** 2) { b.life = 0; e.awake = true; e.flash = 1; e.hp--; if (b.w) { const l = Math.hypot(b.vx, b.vy) || 1; e.vx += b.vx / l * WEAPONS[b.w].push; e.vy = (e.vy || 0) + b.vy / l * WEAPONS[b.w].push; } play('hit'); burst(b.x, b.y, 0, [2, 2, 2], 6, 3, 0.25, 0.06); if (e.hp <= 0) killEnemy(e); hitMark(); break; } }
+          for (const e of S.enemies) { if (e.dead || e === b.last || (e.type === 'phase' && Math.abs(e.z) > 0.8)) continue; if ((b.x - e.x) ** 2 + (b.y - e.y) ** 2 < (e.r + 0.2) ** 2) { b.last = e; if (b.pierce > 0) b.pierce--; else b.life = 0; e.awake = true; e.flash = 1; e.hp -= DMG(); if (b.w) { const l = Math.hypot(b.vx, b.vy) || 1; e.vx += b.vx / l * WEAPONS[b.w].push; e.vy = (e.vy || 0) + b.vy / l * WEAPONS[b.w].push; } play('hit'); burst(b.x, b.y, 0, [2, 2, 2], 6, 3, 0.25, 0.06); if (e.hp <= 0) killEnemy(e); hitMark(); break; } }
           if (b.life <= 0) break;
           for (const c of S.cores) { if (!c.fold || !c.alive) continue; if ((b.x - c.x) ** 2 + (b.y - c.y) ** 2 < 1.15 ** 2) { b.life = 0; hitCore(c); burst(b.x, b.y, 0, [2.4, 2.2, 1.4], 8, 3, 0.3, 0.07); hitMark(); break; } }
+          if (b.life > 0 && S.boss && S.boss.alive) { const h = bossHit(b.x, b.y, 0); if (h) { b.life = 0; hitTarget(h, [b.x, b.y, 0]); } }
         }
         b.life -= dt;
       }
@@ -1167,13 +1542,38 @@ void main() {
       S.orbs = S.orbs.filter(o => o.life > 0);
     }
 
+    /* ── the end: this run among your best ones, the seed and a link to it ── */
+    function finishRun() {
+      const time = Math.round(S.time), N = J.store.nucleo = J.store.nucleo && Array.isArray(J.store.nucleo.runs) ? J.store.nucleo : { runs: [] };
+      const me = { score: S.score, level: S.level, time, kills: S.kills, date: Date.now(), seed: seedCode, mode };
+      N.runs.push(me); N.runs.sort((a, b) => b.score - a.score || a.time - b.time); const rank = N.runs.indexOf(me); N.runs = N.runs.slice(0, 8);
+      if (mode === 'hoy') { const k = J.dayKey(); if (!N.day || N.day.k !== k) N.day = { k, best: 0, tries: 0 }; N.day.tries++; N.day.best = Math.max(N.day.best, S.score); }
+      J.save();
+      const box = el('div', 'nc-runs'), tb = el('table'), row = (cells, cls) => { const r = el('tr', cls || ''); cells.forEach(c => r.append(el('td', null, String(c)))); return r; };
+      box.append(el('b', null, tr('Tus mejores partidas', 'Your best runs')));
+      const fmtD = d => new Date(d).toLocaleDateString(J.LOCALE, { day: 'numeric', month: 'short' });
+      const line = (r, i) => row([i + 1, r.score.toLocaleString(J.LOCALE), tr('nivel ', 'level ') + r.level, J.mmss(r.time || 0), r.mode === 'hoy' ? tr('del día', 'daily') : fmtD(r.date)], r === me ? 'me' : '');
+      N.runs.forEach((r, i) => tb.append(line(r, i)));
+      if (rank >= N.runs.length) tb.append(line(me, rank));
+      box.append(tb);
+      const link = `https://pudrus.xyz/juegos/#nucleo/${mode === 'hoy' ? 'dia' : 's' + seedCode.toLowerCase()}`;
+      const sd = el('p', 'nc-seed'); sd.append(el('span', null, (mode === 'hoy' ? tr('Semilla del día ', 'Daily seed ') : tr('Semilla ', 'Seed ')) + seedCode + (mode === 'hoy' && N.day ? tr(` · hoy: ${N.day.tries} intento${N.day.tries > 1 ? 's' : ''}, mejor ${N.day.best.toLocaleString(J.LOCALE)}`, ` · today: ${N.day.tries} tr${N.day.tries > 1 ? 'ies' : 'y'}, best ${N.day.best.toLocaleString(J.LOCALE)}`) : '')));
+      const cp = el('button', 'jg-btn', tr('Copiar link de esta semilla', 'Copy this seed’s link'));
+      cp.addEventListener('click', () => { if (navigator.clipboard) navigator.clipboard.writeText(link).then(() => { cp.textContent = tr('Link copiado ✓', 'Link copied ✓'); }, () => {}); });
+      sd.append(cp); box.append(sd);
+      const pts = S.score.toLocaleString(J.LOCALE);
+      const share = mode === 'hoy' ? tr(`PUDRUS · Núcleo · semilla del día ${new Date().toLocaleDateString(J.LOCALE)}: nivel ${S.level} · ${pts} puntos ◆`, `PUDRUS · Core · daily seed ${new Date().toLocaleDateString(J.LOCALE)}: level ${S.level} · ${pts} points ◆`)
+        : tr(`PUDRUS · Núcleo: nivel ${S.level} · ${pts} puntos · semilla ${seedCode} ◆`, `PUDRUS · Core: level ${S.level} · ${pts} points · seed ${seedCode} ◆`);
+      ctx.done({ score: S.score, text: tr(`Llegaste al nivel ${S.level}`, `You reached level ${S.level}`), detail: tr(`${S.kills} enemigos · ${S.level - 1} niveles completos · ${J.mmss(time)}`, `${S.kills} enemies · ${S.level - 1} levels cleared · ${J.mmss(time)}`), better: 'high', share: share + '\n' + link, extra: [box] });
+    }
+
     /* ── the strange ones: talk, the words come letter by letter, a gift at the end, and they dissolve ── */
     const L2 = x => tr(x[0], x[1]);
     function talk() {
       const n = S.npc; if (!n || n.gone) return;
       S.state = 'talk'; firing = false; Object.keys(K).forEach(k => { K[k] = false; });
       S.talk = { i: 0, shown: 0, lines: [...n.lines.map(L2), L2([n.gift[1], n.gift[2]])] };
-      talkName.textContent = L2(n.name); talkHint.textContent = touch ? tr('Tocá para seguir', 'Tap to go on') : tr('E o clic para seguir', 'E or click to go on');
+      talkName.textContent = L2(n.name); talkHint.textContent = PAD.on ? tr('A para seguir', 'A to go on') : touch ? tr('Tocá para seguir', 'Tap to go on') : tr('E o clic para seguir', 'E or click to go on');
       talkEl.hidden = false; promptEl.hidden = true; play('npc');
     }
     function advance() {
@@ -1188,7 +1588,7 @@ void main() {
       S.talk = null; talkEl.hidden = true; S.state = 'play'; last = performance.now();
       if (!n.gone) {
         n.gone = true; const g = n.gift[0];
-        if (g === 'heal') S.hp = Math.min(100, S.hp + 30);
+        if (g === 'heal') S.hp = Math.min(maxHp(), S.hp + 30);
         else if (g === 'map') S.cores.forEach(c => { if (c.alive) revealRoom(c.room); });   // (a core in a fold: its portal's room)
         else if (g === 'calm') S.enemies.forEach(e => { e.awake = false; e.calmT = 9; });
         else if (g === 'score') { S.score += 750; paintHud(); }
@@ -1212,8 +1612,8 @@ void main() {
       if (c === S.flowCell) return;
       S.flowCell = c; S.flow = bfs(M.grid, M.W, M.H, c % M.W, (c / M.W) | 0);
     }
-    function steer(e) {   // towards the neighbouring cell closest to you
-      const M = S.M, i = Math.floor(e.x / CS), j = Math.floor(e.z / CS), F = S.flow; let best = F[j * M.W + i], bx = 0, bz = 0;
+    function steer(e, F = S.flow) {   // towards the neighbouring cell closest to you (or, with F, to somewhere else)
+      const M = S.M, i = Math.floor(e.x / CS), j = Math.floor(e.z / CS); let best = F[j * M.W + i], bx = 0, bz = 0;
       for (let dj = -1; dj <= 1; dj++) for (let di = -1; di <= 1; di++) {
         if (!di && !dj) continue; const ni = i + di, nj = j + dj;
         if (isSolid(ni, nj) || (di && dj && (isSolid(i + di, j) || isSolid(i, j + dj)))) continue;
@@ -1222,9 +1622,65 @@ void main() {
       const l = Math.hypot(bx, bz); return l > 1e-4 ? [bx / l, bz / l] : [0, 0];
     }
 
+    /* ── the pilot (the visual mode): it walks to the nearest core, then the boss, then the exit;
+       it shoots whatever is near and in sight, changes weapons, dashes now and then, and never dies ── */
+    const AI = { fw: 0, st: 0, pf: null, pfCell: -1, stuckT: 0, lx: 0, lz: 0, dashT: 2.5, side: 1, sideT: 2, wT: 0, aimed: null };
+    function pilot(dt) {
+      const M = S.M; S.levelT += dt;
+      if (S.levelT > 150 && S.state === 'play') { nextLevel(); return; }   // a level that takes too long: on to the next (the picture should keep changing)
+      const F0 = S.flow, here = c => F0 ? F0[Math.floor(c.z / CS) * M.W + Math.floor(c.x / CS)] : 0;
+      let goal = null, keep = 0;
+      const cores = S.cores.filter(c => c.alive && !c.fold);
+      const Bo = S.boss && S.boss.alive && !S.boss.fold ? S.boss : null;
+      if (cores.length) { goal = cores.reduce((a, b) => (here(b) < here(a) ? b : a)); keep = 6; }
+      else if (Bo) { const r = M.rooms[Bo.room]; goal = { x: (r.x + r.w / 2) * CS, z: (r.y + r.h / 2) * CS }; keep = 0; }
+      else if (S.exit.open) goal = S.exit;
+      // what to shoot: an awake enemy in sight (the nearest), else the boss, else the core you are going to
+      let tgt = null, td = 1e9;
+      for (const e of S.enemies) if (!e.dead && e.awake) { const d = Math.hypot(e.x - pl.x, e.z - pl.z); if (d < 17 && d < td && los(pl.x, pl.z, e.x, e.z)) { td = d; tgt = e; } }
+      if (Bo && Bo.awake && (!tgt || td > 6)) { const b = Bo.bodies ? Bo.bodies.filter(q => q.alive).sort((a, c) => Math.hypot(a.x - pl.x, a.z - pl.z) - Math.hypot(c.x - pl.x, c.z - pl.z))[0] : Bo; if (b && los(pl.x, pl.z, b.x, b.z)) { tgt = b; td = Math.hypot(b.x - pl.x, b.z - pl.z); } }
+      if (goal && goal.alive && goal.hp !== undefined && (!tgt || td > 3)) { const d = Math.hypot(goal.x - pl.x, goal.z - pl.z); if (d < 12 && los(pl.x, pl.z, goal.x, goal.z)) { tgt = goal; td = d; } }   // the core first, unless something is on top of it
+      // the way: the walking field towards the goal; near what it shoots (a core, the boss) it circles
+      let dx = 0, dz = 0;
+      if (goal) {
+        const c = Math.floor(goal.z / CS) * M.W + Math.floor(goal.x / CS);
+        if (c !== AI.pfCell) { AI.pfCell = c; AI.pf = bfs(M.grid, M.W, M.H, c % M.W, (c / M.W) | 0); }
+        [dx, dz] = steer(pl, AI.pf);
+        const gd = Math.hypot(goal.x - pl.x, goal.z - pl.z);
+        if ((goal.hp !== undefined && gd < keep + 2) || (Bo && tgt && tgt !== goal && Bo.awake && gd < 9)) { const ox = -(goal.z - pl.z) / (gd || 1), oz = (goal.x - pl.x) / (gd || 1); dx = ox * AI.side + (gd < keep ? -(goal.x - pl.x) / gd : 0) * 0.7; dz = oz * AI.side + (gd < keep ? -(goal.z - pl.z) / gd : 0) * 0.7; }
+      }
+      if ((AI.sideT -= dt) <= 0) { AI.side = -AI.side; AI.sideT = 1.5 + Math.random() * 2.5; }
+      const f = [Math.sin(pl.yaw), -Math.cos(pl.yaw)], r = [Math.cos(pl.yaw), Math.sin(pl.yaw)];
+      AI.fw = dx * f[0] + dz * f[1]; AI.st = dx * r[0] + dz * r[1];
+      // looking: at the target, else a little ahead along the way (slow, like a camera)
+      let ax, ay, az;
+      if (tgt) { ax = tgt.x; ay = tgt.y; az = tgt.z; } else { ax = pl.x + (dx || f[0]) * 6; ay = EYE + Math.sin(S.t * 0.37) * 0.5; az = pl.z + (dz || f[1]) * 6; }
+      let dy = Math.atan2(ax - pl.x, -(az - pl.z)) - pl.yaw; dy = Math.atan2(Math.sin(dy), Math.cos(dy));
+      const dp = Math.atan2(ay - EYE, Math.hypot(ax - pl.x, az - pl.z)) - pl.pitch, k = Math.min(1, dt * (tgt ? 7 : 1.8));
+      pl.yaw += dy * k; pl.pitch += dp * k;
+      firing = !!tgt && Math.abs(dy) < (td < 4 ? 0.4 : 0.14);
+      // the weapon: the Fan up close, the Beam at a boss, otherwise the Pulse or the Bounce
+      AI.wT -= dt;
+      const want = tgt && td < 5.5 && !(tgt.bodies || tgt === Bo) ? 1 : tgt && (tgt === Bo || (Bo && Bo.bodies && Bo.bodies.includes(tgt))) ? 2 : AI.wT < 0 ? 0 : 3;
+      if (AI.wT < -9) AI.wT = 9;
+      if (want !== pl.weapon && pl.fireCd <= 0.05) setWeapon(want);
+      // a dash now and then; unstuck if it stopped
+      const moved = Math.hypot(pl.x - AI.lx, pl.z - AI.lz); AI.lx = pl.x; AI.lz = pl.z;
+      if (moved < dt * 0.6 && Math.hypot(dx, dz) > 0.5) AI.stuckT += dt; else AI.stuckT = Math.max(0, AI.stuckT - dt);
+      if ((AI.dashT -= dt) <= 0 || AI.stuckT > 1.2) { if (AI.stuckT > 1.2) { AI.fw = Math.random() - 0.5; AI.st = Math.random() - 0.5; pl.x = (Math.floor(pl.x / CS) + 0.5) * CS * 0.5 + pl.x * 0.5; pl.z = (Math.floor(pl.z / CS) + 0.5) * CS * 0.5 + pl.z * 0.5; } dash(); AI.dashT = 2.5 + Math.random() * 4; AI.stuckT = 0; }
+    }
+    // the host's knobs (NODRUS): psychedelia, the level (when the knob moves), a punch (an audio hit), the weapon shown
+    let knobL = null;
+    function applyMods(m) {
+      if (m.level !== undefined) { const L = Math.max(1, Math.min(40, Math.round(m.level))); if (L !== knobL) { knobL = L; if (L !== S.level) { S.level = L; loadLevel(); S.state = 'play'; pickEl.hidden = true; pickOpts = null; bigEl.classList.remove('on'); } } }
+      if (m.psy !== undefined) S.psy = Math.max(0, Math.min(1, m.psy));
+      if (m.punch) { S.fx = Math.max(S.fx, Math.min(1, m.punch)); pl.shake = Math.min(1, Math.max(pl.shake, m.punch * 0.5)); }
+      S.noGun = m.gun === false;
+    }
+
     /* ── one step of the world ── */
     function update(dt) {
-      S.t += dt;
+      S.t += dt; if (S.state === 'play') S.time += dt;
       const M = S.M;
       if (toastT > 0) { toastT -= dt; if (toastT <= 0) toastEl.classList.remove('on'); }
       for (let k = 0; k < S.roomGlow.length; k++) S.roomGlow[k] += (S.roomTarget[k] - S.roomGlow[k]) * Math.min(1, dt * 1.5);
@@ -1237,13 +1693,14 @@ void main() {
       if (S.npc && !S.npc.gone) S.npc.t += dt; else if (S.npc) S.npc.fade = Math.max(0, S.npc.fade - dt * 1.5);
       if (S.state === 'dead' || S.state === 'trans') {
         S.endT -= dt;
-        if (S.state === 'trans' && S.endT <= 0) { S.level++; S.hp = Math.min(100, S.hp + 30); loadLevel(); S.state = 'play'; bigEl.classList.remove('on'); toast(S.boss ? tr(`Nivel ${S.level}: el Gran Núcleo te espera`, `Level ${S.level}: the Great Core awaits`) : tr(`Nivel ${S.level}: ${S.cores.length} núcleos`, `Level ${S.level}: ${S.cores.length} cores`), 3); }
-        if (S.state === 'dead' && S.endT <= 0) { S.state = 'over'; ctx.done({ score: S.score, text: tr(`Llegaste al nivel ${S.level}`, `You reached level ${S.level}`), detail: tr(`${S.kills} enemigos · ${S.level - 1} niveles completos`, `${S.kills} enemies · ${S.level - 1} levels cleared`), better: 'high' }); }
+        if (S.state === 'trans' && S.endT <= 0) { bigEl.classList.remove('on'); offerUps(() => { S.level++; S.hp = Math.min(maxHp(), S.hp + 30); loadLevel(); S.fx = 1; toast(S.boss ? tr(`Nivel ${S.level}: ${bossName(S.boss)} te espera`, `Level ${S.level}: ${bossName(S.boss)} awaits`) : tr(`Nivel ${S.level}: ${S.cores.length} núcleos`, `Level ${S.level}: ${S.cores.length} cores`), 3); }, tr(`Nivel ${S.level} superado`, `Level ${S.level} cleared`)); }
+        if (S.state === 'dead' && S.endT <= 0) { S.state = 'over'; finishRun(); }
       }
       S.fx = Math.max(0, S.fx - dt * 2.2);
       if (S.portal) S.portal.t += dt;
       if (S.state === 'play' && S.mode === 'fold') updateFold(dt);
       if (S.state === 'play' && S.mode === '3d') {
+        if (S.demo) pilot(dt);
         // looking
         const sens = touch ? 0.0042 : 0.0022;
         pl.yaw += mx * sens; pl.pitch = Math.max(-1.45, Math.min(1.45, pl.pitch - my * sens)); mx = my = 0;
@@ -1251,16 +1708,19 @@ void main() {
         const f = [Math.sin(pl.yaw), -Math.cos(pl.yaw)], r = [Math.cos(pl.yaw), Math.sin(pl.yaw)];
         let fw = (K.KeyW || K.ArrowUp ? 1 : 0) - (K.KeyS || K.ArrowDown ? 1 : 0), st = (K.KeyD || K.ArrowRight ? 1 : 0) - (K.KeyA || K.ArrowLeft ? 1 : 0);
         if (stick) { fw -= stick.dy; st += stick.dx; }
+        if (PAD.on) { fw -= PAD.ly; st += PAD.lx; }
+        if (S.demo) { fw = AI.fw; st = AI.st; }
         let ix = f[0] * fw + r[0] * st, iz = f[1] * fw + r[1] * st; const il = Math.hypot(ix, iz); if (il > 1) { ix /= il; iz /= il; }
         pl.dashT = Math.max(0, pl.dashT - dt); pl.dashCd = Math.max(0, pl.dashCd - dt);
         if (pl.dashT <= 0) {
-          const MAXV = 7.5, acc = 70;
+          const MAXV = 7.5 * velK(), acc = 70 * velK();
           pl.vx += ix * acc * dt; pl.vz += iz * acc * dt;
           const fr = Math.exp(-dt * (il > 0.05 ? 7 : 12)); pl.vx *= fr; pl.vz *= fr;
           const sp = Math.hypot(pl.vx, pl.vz); if (sp > MAXV && sp > 0) { const k = Math.max(MAXV / sp, Math.exp(-dt * 8)); pl.vx *= k; pl.vz *= k; }
         }
         pl.x += pl.vx * dt; pl.z += pl.vz * dt;
         collide(pl, 0.38);
+        if (pl.dashT > 0 && upN('dash')) for (const e of S.enemies) if (!e.dead && e.dashId !== pl.dashId && Math.hypot(e.x - pl.x, e.z - pl.z) < e.r + 0.8) { e.dashId = pl.dashId; e.hp -= 2 * upN('dash') * DMG(); e.flash = 1; e.awake = true; burst(e.x, e.y, e.z, [1.2, 2.4, 3], 16, 4, 0.4, 0.08); play('zap'); if (e.hp <= 0) killEnemy(e); }
         S.cores.forEach(c => { if (!c.alive || c.fold) return; const dx = pl.x - c.x, dz = pl.z - c.z, d = Math.hypot(dx, dz); if (d < 1.3 && d > 0) { pl.x = c.x + dx / d * 1.3; pl.z = c.z + dz / d * 1.3; } });
         const sp = Math.hypot(pl.vx, pl.vz);
         pl.bob += dt * sp * 1.6;
@@ -1278,15 +1738,20 @@ void main() {
         // pickups and the exit
         S.pickups = S.pickups.filter(p => { p.t += dt;
           if (p.kind === 'weapon') { if (Math.hypot(p.x - pl.x, p.z - pl.z) > 1.3) return true; const Wp = WEAPONS[p.w]; pl.owned[p.w] = true; setWeapon(p.w); paintWeapon(); play('open'); toast(`${tr('Encontraste', 'You found')}: ${Wp.name} — ${Wp.find}`, 4); burst(p.x, 1.1, p.z, Wp.hot, 50, 4, 0.9); return false; }
-          if (Math.hypot(p.x - pl.x, p.z - pl.z) < 1.1 && S.hp < 100) { S.hp = Math.min(100, S.hp + 25); play('pickup'); toast(tr('+25 de energía', '+25 energy'), 1.2); burst(p.x, 1, p.z, [0.6, 2.4, 0.5], 24, 3, 0.6); return false; } return true; });
+          if (p.kind === 'relic') { if (Math.hypot(p.x - pl.x, p.z - pl.z) > 1.3) return true; burst(p.x, 1.2, p.z, [2.6, 0.9, 2.4], 60, 4, 1); offerUps(() => {}, tr('Una reliquia', 'A relic')); return false; }
+          const mg = upN('iman'), dm = Math.hypot(p.x - pl.x, p.z - pl.z);
+          if (mg && dm < 4 + 3 * mg && dm > 0.3 && S.hp < maxHp()) { p.x += (pl.x - p.x) / dm * 9 * dt; p.z += (pl.z - p.z) / dm * 9 * dt; }
+          if (dm < 1.1 && S.hp < maxHp()) { const hv = 25 + 10 * mg; S.hp = Math.min(maxHp(), S.hp + hv); play('pickup'); toast(tr(`+${hv} de energía`, `+${hv} energy`), 1.2); burst(p.x, 1, p.z, [0.6, 2.4, 0.5], 24, 3, 0.6); return false; } return true; });
         if (S.exit.open && Math.hypot(S.exit.x - pl.x, S.exit.z - pl.z) < 1.4) nextLevel();
         if (S.portal && !S.portal.done && Math.hypot(S.portal.fx - pl.x, S.portal.fz - pl.z) < 1.0) { enterFold(); return; }
         // a strange one near you, in front of you: you can talk
         const n = S.npc; let can = false;
         if (n && !n.gone) { const dx = n.x - pl.x, dz = n.z - pl.z, d = Math.hypot(dx, dz); can = d < 2.9 && (dx * Math.sin(pl.yaw) - dz * Math.cos(pl.yaw)) / (d || 1) > 0.5; }
-        if (can !== S.canTalk) { S.canTalk = can; promptEl.hidden = !can; if (can) promptEl.textContent = (touch ? '💬 ' : 'E · ') + tr('Hablar con ', 'Talk to ') + L2(n.name).toLowerCase(); }
+        if (can !== S.canTalk) { S.canTalk = can; promptEl.hidden = !can; if (can) promptEl.textContent = (PAD.on ? 'A · ' : touch ? '💬 ' : 'E · ') + tr('Hablar con ', 'Talk to ') + L2(n.name).toLowerCase(); }
       }
       pl.shake = Math.max(0, pl.shake - dt * 1.8);
+      if (S.state === 'play' && upN('regen') && S.t - pl.lastHurt > 4 && S.hp < maxHp()) S.hp = Math.min(maxHp(), S.hp + 2.5 * upN('regen') * dt);
+      if (S.secret) S.secret.flash = Math.max(0, S.secret.flash - dt * 3);
       // enemies
       let near = 0;
       if (S.state === 'play' && S.mode === '3d') for (const e of S.enemies) {
@@ -1339,14 +1804,15 @@ void main() {
             const px = b.x, py = b.y, pz = b.z;
             b.x += b.vx * dt / n; b.y += b.vy * dt / n; b.z += b.vz * dt / n;
             if ((solidAt(b.x, b.z) || b.y < 0.02 || b.y > ceilAt(b.x, b.z)) && b.bounce > 0) {   // «Rebote»: it bounces
-              b.bounce--;
+              b.bounce--; if (solidAt(b.x, b.z)) wallHit(b.x, b.z);
+              if (upN('split') && !b.child) { b.child = true; const c = Math.cos(0.45), sn = Math.sin(0.45); S.bolts.push({ ...b, vx: b.vx * c - b.vz * sn, vz: b.vx * sn + b.vz * c, child: true }); }
               if (solidAt(b.x, b.z)) { let f = false; if (solidAt(b.x, pz)) { b.vx = -b.vx; f = true; } if (solidAt(px, b.z)) { b.vz = -b.vz; f = true; } if (!f) { b.vx = -b.vx; b.vz = -b.vz; } }
               else b.vy = -b.vy;
               b.x = px; b.y = py; b.z = pz; burst(b.x, b.y, b.z, WEAPONS[b.w].hot.map(v => v * 0.7), 6, 2.5, 0.25, 0.06); play('ping');
               continue;
             }
-            if (solidAt(b.x, b.z) || b.y < 0.02 || b.y > ceilAt(b.x, b.z)) { b.life = 0; burst(b.x - b.vx * 0.004, b.y - b.vy * 0.004, b.z - b.vz * 0.004, [0.5, 1.6, 2.6], 8, 3, 0.35, 0.07); flash(b.x, b.y, b.z, [0.4, 1.2, 2], 4, 0.12); break; }
-            for (const e of S.enemies) { if (e.dead) continue; const dx = b.x - e.x, dy = b.y - e.y, dz = b.z - e.z; if (dx * dx + dy * dy + dz * dz < (e.r + 0.18) ** 2) { b.life = 0; e.awake = true; e.flash = 1; e.hp--; if (b.w) { const l = Math.hypot(b.vx, b.vz) || 1; e.vx += b.vx / l * WEAPONS[b.w].push; e.vz += b.vz / l * WEAPONS[b.w].push; } play('hit'); burst(b.x, b.y, b.z, [2, 2, 2], 6, 3, 0.25, 0.06); if (e.hp <= 0) killEnemy(e); hitMark(); break; } }
+            if (solidAt(b.x, b.z) || b.y < 0.02 || b.y > ceilAt(b.x, b.z)) { b.life = 0; if (solidAt(b.x, b.z)) wallHit(b.x, b.z); burst(b.x - b.vx * 0.004, b.y - b.vy * 0.004, b.z - b.vz * 0.004, [0.5, 1.6, 2.6], 8, 3, 0.35, 0.07); flash(b.x, b.y, b.z, [0.4, 1.2, 2], 4, 0.12); break; }
+            for (const e of S.enemies) { if (e.dead || e === b.last) continue; const dx = b.x - e.x, dy = b.y - e.y, dz = b.z - e.z; if (dx * dx + dy * dy + dz * dz < (e.r + 0.18) ** 2) { b.last = e; if (b.pierce > 0) b.pierce--; else b.life = 0; e.awake = true; e.flash = 1; e.hp -= DMG(); if (b.w) { const l = Math.hypot(b.vx, b.vz) || 1; e.vx += b.vx / l * WEAPONS[b.w].push; e.vz += b.vz / l * WEAPONS[b.w].push; } play('hit'); burst(b.x, b.y, b.z, [2, 2, 2], 6, 3, 0.25, 0.06); if (e.hp <= 0) killEnemy(e); hitMark(); break; } }
             if (b.life <= 0) break;
             for (const c of S.cores) { if (!c.alive || c.fold) continue; const dx = b.x - c.x, dy = b.y - c.y, dz = b.z - c.z; if (dx * dx + dy * dy + dz * dz < 1.05 ** 2) { b.life = 0; hitCore(c); burst(b.x, b.y, b.z, [2.4, 2.2, 1.4], 8, 3, 0.3, 0.07); hitMark(); break; } }
             if (b.life > 0 && S.boss && S.boss.alive) { const h = bossHit(b.x, b.y, b.z); if (h) { b.life = 0; hitTarget(h, [b.x, b.y, b.z]); } }
@@ -1376,8 +1842,8 @@ void main() {
     /* ── drawing ── */
     let scale = 1, slowT = 0, fastT = 0, lastLayout = '';
     function frame(dt) {
-      const cw = wrap.clientWidth, ch = wrap.clientHeight; if (!cw || !ch) return;
-      const dpr = Math.min(window.devicePixelRatio || 1, touch ? 1.25 : 1.5) * scale;
+      const cw = HOST ? HOST.w : wrap.clientWidth, ch = HOST ? HOST.h : wrap.clientHeight; if (!cw || !ch) return;
+      const dpr = (HOST ? 1 : Math.min(window.devicePixelRatio || 1, touch ? 1.25 : 1.5)) * scale;
       const W = Math.max(64, Math.round(cw * dpr)), H = Math.max(64, Math.round(ch * dpr));
       if (cv.width !== W || cv.height !== H) { cv.width = W; cv.height = H; }
       ensureRT(W, H);
@@ -1405,9 +1871,14 @@ void main() {
       if (!FO && S.portal && !S.portal.done) { const q = S.portal, p = 1 + 0.3 * Math.sin(q.t * 3); lights.push([q.x + q.nx * 0.6, 1.7, q.z + q.nz * 0.6, 6, 1.4 * p, 0.4 * p, 1.6 * p]); }
       if (FO) lights.push([f2.x, f2.y + 1.2, 1.2, 4, 0.25, 0.6, 0.9]);
       if (S.beam && S.t - S.beam.t < 0.06) { const c = WEAPONS[2].col, q = S.beam; lights.push([q.b[0], q.b[1], q.b[2], 5, c[0] * 2, c[1] * 2, c[2] * 2], [(q.a[0] + q.b[0]) / 2, (q.a[1] + q.b[1]) / 2, (q.a[2] + q.b[2]) / 2, 6, c[0], c[1], c[2]]); }
-      const Bo = !FO && S.boss && S.boss.alive ? S.boss : null;
-      if (Bo) { const p = 1 + 0.3 * Math.sin(Bo.t * 3), c = Bo.warn > 0 ? [3, 0.3, 0.3] : Bo.phase === 1 ? [1.6, 1.2, 0.6] : Bo.phase === 2 ? [1.8, 0.8, 0.4] : [2, 0.4, 0.5]; lights.push([Bo.x, Bo.y, Bo.z, 16, c[0] * p, c[1] * p, c[2] * p]); }
-      if (!FO) S.pickups.forEach(q => { if (q.kind === 'weapon') { const c = WEAPONS[q.w].col; lights.push([q.x, 1.2, q.z, 5, c[0] * 1.4, c[1] * 1.4, c[2] * 1.4]); } });
+      const Bo = S.boss && S.boss.alive && S.boss.fold === !!FO ? S.boss : null;
+      if (Bo) {
+        const p = 1 + 0.3 * Math.sin(Bo.t * 3), c = Bo.warn > 0 ? [3, 0.3, 0.3] : BOSS_LIGHT[Bo.kind][Bo.phase - 1];
+        if (Bo.bodies) Bo.bodies.forEach(b => { if (b.alive) lights.push([b.x, b.y, b.z, 5 + b.r * 4, c[0] * p, c[1] * p, c[2] * p]); });
+        else lights.push([Bo.x, Bo.y, Bo.z, 16, c[0] * p, c[1] * p, c[2] * p]);
+        if (Bo.beams) Bo.beams.forEach(q => { if (q.on) lights.push([q.b[0], q.b[1] + 0.5, q.b[2], 5, 1.5, 0.2, 0.4], [(q.a[0] + q.b[0]) / 2, (q.a[1] + q.b[1]) / 2, (q.a[2] + q.b[2]) / 2, 6, 0.9, 0.1, 0.25]); });
+      }
+      if (!FO) S.pickups.forEach(q => { if (q.kind === 'weapon') { const c = WEAPONS[q.w].col; lights.push([q.x, 1.2, q.z, 5, c[0] * 1.4, c[1] * 1.4, c[2] * 1.4]); } else if (q.kind === 'relic') lights.push([q.x, 1.3, q.z, 5, 1.6, 0.5, 1.5]); });
       if (!FO && S.exit.open) { const p = 1 + 0.4 * Math.sin(S.exit.t * 4); lights.push([S.exit.x, 1.6, S.exit.z, 12, 0.6 * p, 2.4 * p, 2.6 * p]); }
       S.enemies.forEach(e => { if (e.awake) { const c = COL[e.type]; lights.push([e.x, e.y, e.z, 3.5, c[0] * 0.8, c[1] * 0.8, c[2] * 0.8]); } });
       if (!FO && S.npc && !S.npc.gone) { const c = hsv((S.npc.hue + S.npc.t * 0.08) % 1, 0.5, 1); lights.push([S.npc.x, 1.7, S.npc.z, 5, c[0] * 0.55, c[1] * 0.55, c[2] * 0.55]); }
@@ -1491,9 +1962,10 @@ void main() {
       }
       // a portal into a fold: two rings on the wall, magenta
       if (!FO && S.portal && !S.portal.done) {
-        const q = S.portal, a = Math.atan2(q.nx, q.nz), pu = 1 + 0.05 * Math.sin(q.t * 4);
-        draw(MESH.ring, modelM(q.x, 1.8, q.z, 1.2 * pu, a, 0), [1, 0.35, 0.95], 1.5, 0.05, 0);
-        draw(MESH.ring, modelM(q.x + q.nx * 0.05, 1.8, q.z + q.nz * 0.05, 0.85, a, q.t * 1.5), [0.6, 0.9, 1], 1.1, 0.05, 0);
+        const q = S.portal, a = Math.atan2(q.nx, q.nz), pu = 1 + 0.05 * Math.sin(q.t * 4), bs = q.boss ? 1.5 : 1, py = q.boss ? 2.3 : 1.8;
+        draw(MESH.ring, modelM(q.x, py, q.z, 1.2 * pu * bs, a, 0), q.boss ? [1, 0.25, 0.5] : [1, 0.35, 0.95], 1.5, 0.05, 0);
+        draw(MESH.ring, modelM(q.x + q.nx * 0.05, py, q.z + q.nz * 0.05, 0.85 * bs, a, q.t * 1.5), [0.6, 0.9, 1], 1.1, 0.05, 0);
+        if (q.boss) draw(MESH.ring, modelM(q.x + q.nx * 0.08, py, q.z + q.nz * 0.08, 0.55 * bs, a, -q.t * 2.2), [1, 0.4, 0.9], 1.2, 0.05, 0);
       }
       // a strange one: rings turning around a small light, iridescent
       if (!FO && S.npc && S.npc.fade > 0.01) {
@@ -1507,17 +1979,40 @@ void main() {
       }
       if (!FO) for (const q of S.pickups) {
         if (q.kind === 'weapon') { const Wq = WEAPONS[q.w]; draw(MESH[Wq.mesh], modelM(q.x, 1.15 + Math.sin(q.t * 2.5) * 0.15, q.z, 2.6, q.t * 1.3, 0.25), Wq.col, 1.6, 0.12, 0); draw(MESH.ring, modelM(q.x, 0.15, q.z, 0.9, q.t, Math.PI / 2), Wq.col, 1.2, 0.05, 0); }
+        else if (q.kind === 'relic') { const y = 1.3 + Math.sin(q.t * 2) * 0.15; draw(MESH.ico, modelM(q.x, y, q.z, 0.4, q.t * 1.5, q.t), [1, 0.5, 1], 1.8, 0.4, 0); draw(MESH.ring, modelM(q.x, y, q.z, 0.75, q.t * 2, 0.6), [1, 0.4, 0.9], 1.3, 0.05, 0); draw(MESH.ring, modelM(q.x, y, q.z, 0.6, -q.t * 1.4, 1.9), [0.6, 0.9, 1], 1.2, 0.05, 0); }
         else draw(MESH.plus, modelM(q.x, 0.9 + Math.sin(q.t * 3) * 0.12, q.z, 0.9, q.t * 1.6, 0), [0.35, 1, 0.3], 1.2, 0.1, 0);
       }
-      // the Great Core: a huge crystal, rings, its shields
+      // the bosses
       if (Bo) {
-        const pu = 1 + 0.05 * Math.sin(Bo.t * 3), pc = Bo.warn > 0 && Math.floor(Bo.t * 12) % 2 ? [1, 0.15, 0.2] : Bo.phase === 1 ? [1, 0.82, 0.45] : Bo.phase === 2 ? [1, 0.55, 0.3] : [1, 0.25, 0.35];
+        const warnC = [1, 0.15, 0.2], blinkOn = Bo.warn > 0 && Math.floor(Bo.t * 12) % 2;
         wob(PS * 0.2 + (Bo.phase === 3 ? 0.08 : 0), PS > 0 ? S.t * 0.15 * PS : 0);
-        draw(MESH.octa, modelM(Bo.x, Bo.y, Bo.z, 2.1 * pu, Bo.t * 0.5, 0), pc, 1.4, 0.22, Bo.flash * 0.7);
-        draw(MESH.ico, modelM(Bo.x, Bo.y, Bo.z, 1.15, -Bo.t * 1.3, Bo.t * 0.7), [1, 1, 1], 1.8, 0.5, Bo.flash);
-        draw(MESH.ring, modelM(Bo.x, Bo.y, Bo.z, 3.0, Bo.t * 0.8, Math.PI / 2 + 0.4 * Math.sin(Bo.t * 0.6)), pc, 1.1, 0.05, 0);
-        draw(MESH.ring, modelM(Bo.x, Bo.y, Bo.z, 2.6, -Bo.t * 1.1, Math.PI / 2 - 0.7), pc, 0.9, 0.05, 0);
-        for (const s of bossShields(Bo)) draw(MESH.cube, modelM(s[0], s[1], s[2], 0.55, Bo.t * 3, Bo.t * 2), [0.6, 0.9, 1], 1.5, 0.18, 0);
+        if (Bo.kind === 'hive') {   // honey-coloured bodies wrapped in small cells that circle them
+          for (const b of Bo.bodies) {
+            if (!b.alive) continue;
+            const pc = b.warn > 0 && Math.floor(b.t * 14) % 2 ? warnC : [1, 0.85 - b.gen * 0.15, 0.25], sr = b.r;
+            draw(MESH.ico, modelM(b.x, b.y, b.z, sr * 0.78, b.t * 0.6, b.t * 0.4), pc, 1.3, 0.2, b.flash * 0.7);
+            for (let q = 0; q < 6; q++) { const a = b.t * (1.2 + b.gen * 0.5) + q * 1.047, e2 = Math.sin(b.t * 2 + q) * 0.4; draw(MESH.octa, modelM(b.x + Math.cos(a) * sr * 0.95, b.y + e2 * sr * 0.5, b.z + Math.sin(a) * sr * 0.95, sr * 0.2, -b.t * 2, q), [1, 0.95, 0.5], 1.5, 0.3, b.flash); }
+            draw(MESH.ring, modelM(b.x, b.y, b.z, sr * 1.25, b.t * 0.9, Math.PI / 2 + 0.3 * Math.sin(b.t)), pc, 0.9, 0.05, 0);
+          }
+        } else if (Bo.kind === 'eye') {   // a ring that looks at you (or along its beam), the iris, a white-hot pupil, rings around
+          const firing = Bo.bs !== 'idle', L = firing ? Bo.a : Bo.look, hd = Math.hypot(pl.x - Bo.x, pl.z - Bo.z);
+          const base = chain(T4(Bo.x, Bo.y, Bo.z), RY(Math.PI / 2 - L), RX(Math.atan2(Bo.y - (firing ? 0.6 : EYE), Math.max(2, firing ? 9 : hd))));
+          const pc = (Bo.bs === 'aim' && Math.floor(Bo.t * 14) % 2) ? warnC : Bo.phase === 1 ? [1, 0.35, 0.7] : Bo.phase === 2 ? [1, 0.25, 0.5] : [1, 0.15, 0.3];
+          draw(MESH.ring, chain(base, SC(2.5, 2.5, 2.5)), [0.85, 0.92, 1], 1.2, 0.06, Bo.flash * 0.5);
+          draw(MESH.ring, chain(base, RZ(Bo.t * 0.8), SC(2.05, 1.25, 2)), [0.7, 0.85, 1], 0.9, 0.05, 0);
+          draw(MESH.ico, chain(base, T4(0, 0, 0.3), SC(1.05, 1.05, 0.5)), pc, 1.5, 0.3, Bo.flash);
+          draw(MESH.octa, chain(base, T4(0, 0, 0.8), RZ(Bo.t * 3), SC(0.42, 0.42, 0.2)), [1, 1, 1], firing ? 2.6 : 2, 0.7, 0);
+          for (let q = 0; q < 3; q++) draw(MESH.ring, chain(T4(Bo.x, Bo.y, Bo.z), RY(Bo.t * (0.5 + q * 0.3) + q * 2), RX(0.6 + q * 0.7), SC(3 + q * 0.4, 3 + q * 0.4, 3)), pc, 0.6, 0.04, 0);
+        } else {   // the Great Core (and the Greater Fold, in magenta): a huge crystal, rings, the shields
+          const pal = Bo.kind === 'fold' ? [[1, 0.45, 1], [0.85, 0.35, 1], [1, 0.3, 0.6]] : [[1, 0.82, 0.45], [1, 0.55, 0.3], [1, 0.25, 0.35]];
+          const pu = 1 + 0.05 * Math.sin(Bo.t * 3), pc = blinkOn ? warnC : pal[Bo.phase - 1];
+          draw(MESH.octa, modelM(Bo.x, Bo.y, Bo.z, (Bo.fold ? 1.8 : 2.1) * pu, Bo.t * 0.5, 0), pc, 1.4, 0.22, Bo.flash * 0.7);
+          draw(MESH.ico, modelM(Bo.x, Bo.y, Bo.z, Bo.fold ? 0.95 : 1.15, -Bo.t * 1.3, Bo.t * 0.7), [1, 1, 1], 1.8, 0.5, Bo.flash);
+          draw(MESH.ring, modelM(Bo.x, Bo.y, Bo.z, Bo.fold ? 2.6 : 3.0, Bo.t * 0.8, Math.PI / 2 + 0.4 * Math.sin(Bo.t * 0.6)), pc, 1.1, 0.05, 0);
+          draw(MESH.ring, modelM(Bo.x, Bo.y, Bo.z, Bo.fold ? 2.2 : 2.6, -Bo.t * 1.1, Math.PI / 2 - 0.7), pc, 0.9, 0.05, 0);
+          if (Bo.fold) draw(MESH.ring, modelM(Bo.x, Bo.y, Bo.z, 3.1, Bo.t * 0.4, 0), [0.6, 0.9, 1], 0.8, 0.04, 0);
+          for (const sh of bossShields(Bo)) draw(MESH.cube, modelM(sh[0], sh[1], sh[2], 0.55, Bo.t * 3, Bo.t * 2), [0.6, 0.9, 1], 1.5, 0.18, 0);
+        }
         wob(PS * 0.12, PS > 0 ? S.t * 0.1 * PS : 0);
       }
       if (!FO && !Bo) { const X = S.exit, op = X.open, pu = op ? 1 + 0.05 * Math.sin(X.t * 4) : 1;
@@ -1536,7 +2031,20 @@ void main() {
         for (let k = 0; k <= nseg; k++) { const f = k / nseg, w = 0.07 + 0.03 * Math.sin(S.t * 60 + k); pt(q.a[0] + (q.b[0] - q.a[0]) * f, q.a[1] + (q.b[1] - q.a[1]) * f, q.a[2] + (q.b[2] - q.a[2]) * f, w, c[0], c[1], c[2], 0.9); }
         pt(q.b[0], q.b[1], q.b[2], 0.5, c[0], c[1], c[2], 0.8);
       }
-      if (Bo) pt(Bo.x, Bo.y, Bo.z, 4.5, 1.4, 0.9, 0.5, 0.35 + 0.1 * Math.sin(Bo.t * 3));
+      if (Bo) {
+        if (Bo.bodies) Bo.bodies.forEach(b => { if (b.alive) pt(b.x, b.y, b.z, b.r * 2.1, 1.4, 1.1, 0.3, 0.3); });
+        else { const g = BOSS_LIGHT[Bo.kind][Bo.phase - 1]; pt(Bo.x, Bo.y, Bo.z, 4.5, g[0] * 0.8, g[1] * 0.8, g[2] * 0.8, 0.35 + 0.1 * Math.sin(Bo.t * 3)); }
+        if (Bo.beams) for (const q of Bo.beams) {   // the Eye: a thin dotted line while it aims, a thick one when it fires
+          const Lb = Math.hypot(q.b[0] - q.a[0], q.b[1] - q.a[1], q.b[2] - q.a[2]), ns = Math.min(260, Math.ceil(Lb / (q.on ? 0.14 : 0.45)));
+          for (let k = 0; k <= ns; k++) { const f = k / ns, w = q.on ? 0.17 + 0.05 * Math.sin(S.t * 50 + k) : 0.05; pt(q.a[0] + (q.b[0] - q.a[0]) * f, q.a[1] + (q.b[1] - q.a[1]) * f, q.a[2] + (q.b[2] - q.a[2]) * f, w, q.on ? 2.4 : 1.8, q.on ? 0.35 : 0.15, q.on ? 0.9 : 0.3, q.on ? 0.85 : 0.6); }
+          if (q.on) { pt(q.b[0], q.b[1], q.b[2], 0.9, 3, 0.6, 1.2, 0.9); if (Math.random() < 0.4) burst(q.b[0], q.b[1] + 0.2, q.b[2], [3, 0.6, 1.2], 2, 3, 0.35, 0.06); }
+        }
+      }
+      if (!FO && S.secret && !S.secret.open) {   // the secret wall: a faint glyph that breathes (brighter with each shot)
+        const Sc = S.secret, fx = (Sc.x + 0.5) * CS + Sc.nx * (CS / 2 + 0.03), fz = (Sc.y + 0.5) * CS + Sc.nz * (CS / 2 + 0.03), tx = -Sc.nz, tz = Sc.nx;
+        const k0 = 0.32 + 0.18 * Math.sin(S.t * 2.3) + Sc.flash * 1.5 + Sc.hits * 0.3;
+        for (let q = 0; q < 14; q++) { const a = q / 14 * 6.283 + S.t * 0.4, r = 0.5 + 0.1 * Math.sin(S.t * 3 + q * 2) - (q % 2) * 0.22; pt(fx + tx * Math.cos(a) * r, 1.6 + Math.sin(a) * r, fz + tz * Math.cos(a) * r, 0.05, 2.4 * k0, 0.7 * k0, 2.2 * k0, 0.8); }
+      }
       if (!FO) S.pickups.forEach(q => { if (q.kind === 'weapon') { const c = WEAPONS[q.w].hot; for (let k = 0; k < 6; k++) { const a = q.t * 2 + k * 1.047; pt(q.x + Math.cos(a) * 0.9, 0.4 + ((q.t * 0.6 + k * 0.17) % 1) * 1.6, q.z + Math.sin(a) * 0.9, 0.07, c[0], c[1], c[2], 0.9); } } });
       if (!FO && S.exit.open) pt(S.exit.x, 1.6, S.exit.z, 3.2, 0.3, 1.4, 1.6, 0.8 + 0.3 * Math.sin(S.exit.t * 4));
       if (!FO && S.npc && S.npc.fade > 0.01) { const n = S.npc; for (let k = 0; k < 10; k++) { const a = n.t * 0.9 + k * 0.628, c = hsv((n.hue + k * 0.1 + n.t * 0.1) % 1, 0.6, 1); pt(n.x + Math.cos(a) * 1.3, 1.7 + Math.sin(a * 2.3) * 0.6, n.z + Math.sin(a) * 1.3, 0.09, c[0] * 2.5, c[1] * 2.5, c[2] * 2.5, n.fade); } }
@@ -1548,7 +2056,7 @@ void main() {
         gl.depthMask(true); gl.disable(gl.BLEND);
       }
       // the weapon, in front of the camera
-      if (!FO && (S.state === 'play' || S.state === 'pause' || S.state === 'talk')) {
+      if (!FO && !S.noGun && (S.state === 'play' || S.state === 'pause' || S.state === 'talk')) {
         gl.clear(gl.DEPTH_BUFFER_BIT);
         p = P.ent; gl.useProgram(p.p);
         gl.uniformMatrix4fv(p.L.u_vp, false, persp(1.1, W / H, 0.01, 10)); gl.uniform3fv(p.L.u_eye, [0, 0, 0]); gl.uniform1f(p.L.u_fog, 0);
@@ -1583,8 +2091,8 @@ void main() {
       });
       gl.activeTexture(gl.TEXTURE0);
       // the HUD
-      hpFill.style.width = S.hp + '%'; hpNum.textContent = Math.ceil(S.hp); hpBox.classList.toggle('low', S.hp < 30);
-      dashFill.style.width = (100 - pl.dashCd / 0.9 * 100) + '%';
+      hpFill.style.width = S.hp / maxHp() * 100 + '%'; hpNum.textContent = Math.ceil(S.hp); hpBox.classList.toggle('low', S.hp < 30);
+      dashFill.style.width = (100 - pl.dashCd / pl.dashMax * 100) + '%';
       if (hitT > 0) { hitT -= dt; if (hitT <= 0) cross.classList.remove('hit'); }
       if (FO) {   // the sight: where the shots go (on a phone, ahead of you)
         const ax = touch ? Math.cos(f2.aimA) * 3 : f2.ax, ay = touch ? Math.sin(f2.aimA) * 3 : f2.ay, sh2 = shoulder2(), wx = sh2[0] + ax, wy = sh2[1] + ay;
@@ -1592,7 +2100,7 @@ void main() {
         if (c4[2] > 0) { cross.style.left = ((c4[0] / c4[2]) * 0.5 + 0.5) * 100 + '%'; cross.style.top = (0.5 - (c4[1] / c4[2]) * 0.5) * 100 + '%'; }
       }
       const layout = touch ? 't' : 'd'; if (layout !== lastLayout) { wrap.classList.toggle('touch', touch); lastLayout = layout; }
-      if (!FO && (S.mapT = (S.mapT || 0) - dt) <= 0) { S.mapT = 0.12; drawMap(); }
+      if (!FO && !DEMO && (S.mapT = (S.mapT || 0) - dt) <= 0) { S.mapT = 0.12; drawMap(); }
       // a heavier picture than the device can carry: draw it smaller (and back up when there is room)
       if (dt > 1 / 40) { slowT += dt; fastT = 0; if (slowT > 1.5 && scale > 0.5) { scale = Math.max(0.5, scale * 0.85); slowT = 0; } }
       else if (dt < 1 / 70) { fastT += dt; slowT = 0; if (fastT > 4 && scale < 1) { scale = Math.min(1, scale * 1.1); fastT = 0; } }
@@ -1613,8 +2121,8 @@ void main() {
       const dot = (x, z, col, r) => { const px = Wm / 2 + (x / CS - cx) * s, pz = Wm / 2 + (z / CS - cz) * s; g.fillStyle = col; g.beginPath(); g.arc(px, pz, r, 0, Math.PI * 2); g.fill(); return [px, pz]; };
       S.cores.forEach(c => { if (c.alive && !c.fold && S.seen[Math.floor(c.z / CS) * M.W + Math.floor(c.x / CS)]) dot(c.x, c.z, '#ffd23f', 3.5); });
       if (S.portal && !S.portal.done && S.seen[Math.floor(S.portal.fz / CS) * M.W + Math.floor(S.portal.fx / CS)]) dot(S.portal.x, S.portal.z, '#ff5af0', 4);
-      if (S.boss && S.boss.alive && S.seen[Math.floor(S.boss.z / CS) * M.W + Math.floor(S.boss.x / CS)]) dot(S.boss.x, S.boss.z, '#ff4a4a', 6);
-      S.pickups.forEach(q => { if (q.kind === 'weapon' && S.seen[Math.floor(q.z / CS) * M.W + Math.floor(q.x / CS)]) dot(q.x, q.z, '#9dffb0', 3.5); });
+      if (S.boss && S.boss.alive && !S.boss.fold) (S.boss.bodies ? S.boss.bodies.filter(b => b.alive) : [S.boss]).forEach(b => { if (S.seen[Math.floor(b.z / CS) * M.W + Math.floor(b.x / CS)]) dot(b.x, b.z, '#ff4a4a', S.boss.bodies ? 2 + b.r * 1.5 : 6); });
+      S.pickups.forEach(q => { if (q.kind === 'relic') dot(q.x, q.z, '#ff7af0', 3.5); if (q.kind === 'weapon' && S.seen[Math.floor(q.z / CS) * M.W + Math.floor(q.x / CS)]) dot(q.x, q.z, '#9dffb0', 3.5); });
       if (S.npc && !S.npc.gone && S.seen[Math.floor(S.npc.z / CS) * M.W + Math.floor(S.npc.x / CS)]) dot(S.npc.x, S.npc.z, '#e9b8ff', 3);
       if (S.exit.open) {   // the exit always shows (on the rim when it is far)
         let ex = (S.exit.x / CS - cx) * s, ez = (S.exit.z / CS - cz) * s; const l = Math.hypot(ex, ez), m = Wm / 2 - 8; if (l > m) { ex *= m / l; ez *= m / l; }
@@ -1630,18 +2138,23 @@ void main() {
     function loop(now) {
       raf = requestAnimationFrame(loop);
       const dt = Math.min(0.05, Math.max(0, (now - last) / 1000)); last = now;
+      padPoll(dt);
       if (S.state !== 'pause') update(dt);
       if (S.state === 'over') return;   // the result screen is up (and this game already cleaned up)
       frame(dt);
       if ((musT -= dt) <= 0) { musT = 0.025; musicTick(); }
     }
-    audio(); if (A && A.state === 'suspended') A.resume();
+    if (!HOST) { audio(); if (A && A.state === 'suspended') A.resume(); }
     loadLevel(); paintWeapon();
+    if (DEMO) { pl.owned = pl.owned.map(() => true); paintWeapon(); }
     toast(tr(`Nivel 1: encontrá y destruí ${S.cores.length} núcleos`, `Level 1: find and destroy ${S.cores.length} cores`), 3.5);
     lock();
     // on a phone: the whole screen, sideways (the Start tap allows it)
-    if (touch && wrap.requestFullscreen && !/nctouch/.test(location.search)) wrap.requestFullscreen({ navigationUI: 'hide' }).then(() => { try { screen.orientation.lock('landscape').catch(() => {}); } catch (e) { /* ignore */ } }, () => {});
-    raf = requestAnimationFrame(loop);
+    if (touch && !DEMO && wrap.requestFullscreen && !/nctouch/.test(location.search)) wrap.requestFullscreen({ navigationUI: 'hide' }).then(() => { try { screen.orientation.lock('landscape').catch(() => {}); } catch (e) { /* ignore */ } }, () => {});
+    if (HOST) {   // NODRUS asks for a picture each frame: a step of the world, then the drawing
+      ctx.canvas = cv;
+      ctx.tick = (dt, m) => { if (m) applyMods(m); if (S.state !== 'pause') update(dt); frame(dt); };
+    } else raf = requestAnimationFrame(loop);
 
     // test hooks (headless runs)
     Object.assign(ctx.test, {
@@ -1653,9 +2166,11 @@ void main() {
       hurt, nextLevel, talk, advance, endTalk,
       setLevel(n) { S.level = n; loadLevel(); },
       get f2() { return f2; }, setWeapon, giveAll() { pl.owned = pl.owned.map(() => true); paintWeapon(); }, enterFold, exitFold, jump() { f2.buf = 0.13; f2.held = true; },
+      offerUps, choose, wallHit, openSecret, up: pl.up, seedCode, mode, PAD, AI,
       setPat(f, w) { S.M.rooms.forEach(r => { r.pf = f; r.pw = w; }); S.M.corrPat = [f, w]; },
     });
-    Object.defineProperty(ctx.test, 'boss', { get: () => S.boss, configurable: true });   // (Object.assign would freeze a getter's value)
+    Object.defineProperty(ctx.test, 'boss', { get: () => S.boss, configurable: true });
+    Object.defineProperty(ctx.test, 'pickOpts', { get: () => pickOpts, configurable: true });   // (Object.assign would freeze a getter's value)
 
     return () => {
       cancelAnimationFrame(raf);

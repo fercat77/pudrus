@@ -535,3 +535,32 @@ body.cb .sd-cell.bad { text-decoration: line-through 3px; text-decoration-color:
 .nc-boss.p2 .bar i { background: linear-gradient(90deg, #ff7a30, #ffc070); }
 .nc-boss.p3 .bar i { background: linear-gradient(90deg, #ff2a4a, #ff8a70); box-shadow: 0 0 12px #f24; }
 .nc-wrap.touch .nc-boss { top: 54px; }
+/* Núcleo: choosing an upgrade (between levels, or from a relic) */
+.nc-pick { position: absolute; inset: 0; z-index: 4; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; padding: 16px; background: radial-gradient(ellipse at center, rgba(10,4,26,0.82), rgba(0,2,8,0.94)); text-align: center; }
+.nc-pick[hidden] { display: none; }
+.nc-pick > b { font-size: clamp(22px, 5vw, 44px); letter-spacing: .14em; text-transform: uppercase; color: #fff; text-shadow: 0 0 18px #0cf, 0 0 36px rgba(0,212,255,0.45); }
+.nc-pick > small { font-size: 12px; letter-spacing: .16em; text-transform: uppercase; color: #e9b8ff; }
+.nc-pick .row { display: flex; gap: 12px; flex-wrap: wrap; justify-content: center; margin-top: 8px; max-width: 760px; }
+.nc-pick .card { position: relative; width: clamp(150px, 26vw, 220px); min-height: 170px; padding: 16px 12px 12px; display: flex; flex-direction: column; align-items: center; gap: 7px; font: inherit; color: #e9f8ff; background: rgba(4,14,26,0.85); border: 1px solid rgba(0,212,255,0.35); border-radius: 10px; cursor: pointer; transition: transform .15s, border-color .15s, box-shadow .15s; }
+.nc-pick .card:hover, .nc-pick .card.on { transform: translateY(-3px); border-color: #e9b8ff; box-shadow: 0 0 22px rgba(200,120,255,0.45), inset 0 0 18px rgba(0,212,255,0.12); }
+.nc-pick .card i { font-style: normal; font-size: 30px; line-height: 1; color: #8ff; text-shadow: 0 0 12px #0cf; }
+.nc-pick .card strong { font-size: 14px; letter-spacing: .06em; text-transform: uppercase; }
+.nc-pick .card span { font-size: 12.5px; line-height: 1.35; color: #b9d8e8; }
+.nc-pick .card em { margin-top: auto; font-style: normal; font-size: 10px; letter-spacing: .2em; color: #ffd23f; }
+.nc-pick .card kbd { position: absolute; left: 8px; top: 7px; font: inherit; font-size: 10px; color: #9fe8ff; opacity: 0.7; }
+.nc-pick .have { margin-top: 6px; font-size: 13px; letter-spacing: .1em; color: rgba(190,230,255,0.7); }
+.nc-have { display: flex; flex-wrap: wrap; justify-content: center; gap: 6px 14px; max-width: 560px; padding: 0 16px; font-size: 12px; color: #e9b8ff; }
+@media (max-width: 560px) { .nc-pick .card { width: 100%; min-height: 0; flex-direction: row; text-align: left; gap: 10px; } .nc-pick .card em { margin: 0 0 0 auto; } .nc-pick .row { flex-direction: column; } }
+/* Núcleo: the seed, your best runs */
+.jg-note { max-width: 520px; margin: 0; font-size: 13px; color: rgba(var(--text-rgb),0.7); }
+.nc-seedline { font-size: 11px; letter-spacing: .16em; text-transform: uppercase; color: rgba(255,210,63,0.75); }
+.nc-runs { display: flex; flex-direction: column; align-items: center; gap: 8px; margin-top: 6px; }
+.nc-runs > b { font-size: 11px; letter-spacing: .16em; text-transform: uppercase; color: rgba(var(--text-rgb),0.6); }
+.nc-runs table { border-collapse: collapse; font-size: 13px; font-variant-numeric: tabular-nums; }
+.nc-runs td { padding: 3px 10px; color: rgba(var(--text-rgb),0.75); text-align: right; }
+.nc-runs td:first-child { color: rgba(var(--text-rgb),0.4); }
+.nc-runs td:nth-child(3), .nc-runs td:nth-child(5) { text-align: left; }
+.nc-runs tr.me td { color: var(--c1); font-weight: 700; }
+.nc-seed { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 8px 12px; margin: 4px 0 0; font-size: 12px; letter-spacing: .06em; color: rgba(var(--text-rgb),0.7); }
+/* Núcleo: the visual mode (it plays itself): only the picture */
+.nc-hud.demo > :not(.nc-tools):not(.nc-big) { display: none !important; }

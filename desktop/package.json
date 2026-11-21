@@ -69,6 +69,10 @@
         "to": "web/favicon.svg"
       },
       {
+        "from": "../juegos/nucleo.js",
+        "to": "web/juegos/nucleo.js"
+      },
+      {
         "from": "../js/splash.js",
         "to": "web/js/splash.js"
       },
