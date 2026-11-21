@@ -1571,12 +1571,12 @@ void main() {
       ['out', { trail: 0.35, gain: 1, pitch: 12, sway: 5, fog: 0.3, bloom: 0.4, grain: 0.2, lens: 0.3 }, { blend: 'add' }]]) },
     // WebGPU: a simulated fluid, and many more particles (without WebGPU they run approximated / up to a million)
     { name: 'Fluido', sys: build('Fluido', [
-      ['emit', { speed: 0, chaos: 0, life: 12, lifeVar: 0.5 }, { shape: 'screen', dir: 'still', count: '262144' }],
-      ['fluid', { str: 0.7, speed: 1, swirl: 1.2, stir: 1.5, fade: 0.3 }, { with: 'all' }],
+      ['emit', { depth: 0, speed: 0, chaos: 0, life: 12, lifeVar: 0.5 }, { shape: 'screen', dir: 'still', count: '262144' }],
+      ['fluid', { str: 1, speed: 1, swirl: 1.2, stir: 1.5, fade: 0.3 }, { with: 'all' }],
       ['look', { size: 2, opacity: 0.75, a: '#3a7bff', b: '#ff3fa4' }, { shape: 'soft', color: 'speed', life: 'fade' }],
       ['out', { trail: 0.6, gain: 1, bloom: 0.5, grain: 0.1 }, { blend: 'add' }]]) },
     { name: 'Tinta en el agua', sys: build('Tinta en el agua', [
-      ['emit', { size: 0.08, speed: 0.25, chaos: 0.5, life: 10, lifeVar: 0.4 }, { shape: 'ring', dir: 'out', count: '1048576' }],
+      ['emit', { depth: 0, size: 0.08, speed: 0.25, chaos: 0.5, life: 10, lifeVar: 0.4 }, { shape: 'ring', dir: 'out', count: '1048576' }],
       ['fluid', { str: 0.9, speed: 1, swirl: 0.8, stir: 1, fade: 0.2 }, { with: 'all' }],
       ['look', { size: 1.2, opacity: 0.22, a: '#00d4ff', b: '#ff3fa4' }, { shape: 'soft', color: 'age', life: 'fade' }],
       ['out', { trail: 0.3, gain: 1, bloom: 0.45, grain: 0.12 }, { blend: 'add' }]]) },

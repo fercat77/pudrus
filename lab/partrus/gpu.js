@@ -248,7 +248,7 @@ struct U { g0: vec4f, g1: vec4f, g2: vec4f, g3: vec4f, cam: vec4f, audio: vec4f,
       else if (n.type === 'fluid') {
         // «Fluido»: the particles ride a simulated fluid (its own grid, stirred by the pointer, the beat, the bass and a soft swirl)
         fluid = { I, P: Q, id };
-        pre.push(`{ let fv = fluidVel(pos.xy, A); vel += (vec3f(fv.x * A, fv.y, 0.0) * ${I.speed} - vel) * clamp(${I.str} * dt * 6.0 / pw, 0.0, 1.0); }`);
+        pre.push(`{ let fv = fluidVel(pos.xy, A); vel += (vec3f(fv, 0.0) * ${I.speed} - vel) * clamp(${I.str} * dt * 60.0 / pw, 0.0, 1.0); }`);   // «Arrastre» high: they ride the current like ink
       } else if (n.type === 'bounds') {
         const B = `clamp(${I.bounce}, 0.0, 1.0)`;
         post.push({
@@ -280,7 +280,7 @@ struct U { g0: vec4f, g1: vec4f, g2: vec4f, g3: vec4f, cam: vec4f, audio: vec4f,
 fn fluidAt(x: i32, y: i32) -> vec2f { let W = i32(U_.fl.x); let H = i32(U_.fl.y); return FV[clamp(y, 0, H - 1) * W + clamp(x, 0, W - 1)]; }
 fn fluidVel(p: vec2f, A: f32) -> vec2f {   // the fluid's velocity under a point (bilinear)
   let W = U_.fl.x; let H = U_.fl.y;
-  let g = vec2f((p.x / A * 0.5 + 0.5) * W - 0.5, (p.y * 0.5 + 0.5) * H - 0.5);
+  let g = vec2f((p.x / (A * 1.08) * 0.5 + 0.5) * W - 0.5, (p.y / 1.08 * 0.5 + 0.5) * H - 0.5);   // the grid reaches 8 % past the screen (its walls stay off-screen)
   let i = vec2i(floor(g)); let f = fract(g);
   return mix(mix(fluidAt(i.x, i.y), fluidAt(i.x + 1, i.y), f.x), mix(fluidAt(i.x, i.y + 1), fluidAt(i.x + 1, i.y + 1), f.x), f.y);
 }` : ''}`;
@@ -523,9 +523,11 @@ fn unrot(q: vec3f, cy: f32, sy: f32, cp: f32, sp: f32) -> vec3f { let v = vec3f(
   col += (hash(v.uv * pu.b.zw + pu.a.w) - 0.5) * pu.a.y * 0.12;
   return vec4f(clamp(col, vec3f(0.0), vec3f(1.0)), 1.0);
 }`;
-  // «Fluido»: stable fluids on a small grid (velocity advected by itself, kept without divergence by a pressure solve)
+  // «Fluido»: stable fluids on a grid of square cells with solid walls (velocity in screen units per second, a cell = 2 / H).
+  // Each step: advect + stirring → vorticity (the curl) → vorticity confinement (keeps the eddies curling) → divergence →
+  // pressure (Jacobi, warm-started) → projection (no divergence, walls closed)
   const FLUID = `
-struct FU { a: vec4f, b: vec4f, c: vec4f, d: vec4f };   // a = W, H, dt, time · b = swirl, fade, stir, beatHit · c = ptr.x, ptr.y, ptr.vx, ptr.vy · d = ptrOn, bass, aspect, -
+struct FU { a: vec4f, b: vec4f, c: vec4f, d: vec4f };   // a = W, H, dt, time · b = swirl, fade, stir, beatHit · c = ptr.x, ptr.y, ptr.vx, ptr.vy · d = ptrOn, bass, aspect, beat seed
 @group(0) @binding(0) var<uniform> fu: FU;
 @group(0) @binding(1) var<storage, read> vin: array<vec2f>;
 @group(0) @binding(2) var<storage, read_write> vout: array<vec2f>;
@@ -534,41 +536,61 @@ struct FU { a: vec4f, b: vec4f, c: vec4f, d: vec4f };   // a = W, H, dt, time ·
 @group(0) @binding(5) var<storage, read_write> pout: array<f32>;
 fn W() -> i32 { return i32(fu.a.x); }
 fn H() -> i32 { return i32(fu.a.y); }
-fn at(x: i32, y: i32) -> vec2f { return vin[clamp(y, 0, H() - 1) * W() + clamp(x, 0, W() - 1)]; }
-fn pat(x: i32, y: i32) -> f32 { return pin[clamp(y, 0, H() - 1) * W() + clamp(x, 0, W() - 1)]; }
+fn ix(x: i32, y: i32) -> i32 { return clamp(y, 0, H() - 1) * W() + clamp(x, 0, W() - 1); }
+fn at(x: i32, y: i32) -> vec2f { return vin[ix(x, y)]; }
+fn pat(x: i32, y: i32) -> f32 { return pin[ix(x, y)]; }
+fn cat(x: i32, y: i32) -> f32 { return div[ix(x, y)]; }
+fn wall(x: i32, y: i32) -> bool { return x <= 0 || y <= 0 || x >= W() - 1 || y >= H() - 1; }
 fn sampleV(g: vec2f) -> vec2f { let i = vec2i(floor(g)); let f = fract(g); return mix(mix(at(i.x, i.y), at(i.x + 1, i.y), f.x), mix(at(i.x, i.y + 1), at(i.x + 1, i.y + 1), f.x), f.y); }
 fn h2(p: vec2f) -> f32 { return fract(sin(dot(p, vec2f(127.1, 311.7))) * 43758.5453); }
-fn vn(p: vec2f) -> f32 { let i = floor(p); let f = fract(p); let u = f * f * (3.0 - 2.0 * f); return mix(mix(h2(i), h2(i + vec2f(1.0, 0.0)), u.x), mix(h2(i + vec2f(0.0, 1.0)), h2(i + vec2f(1.0, 1.0)), u.x), u.y); }
+fn blob(p: vec2f, c: vec2f, r: f32) -> f32 { let d = p - c; return exp(-dot(d, d) / (r * r)); }
 @compute @workgroup_size(8, 8) fn advect(@builtin(global_invocation_id) id: vec3u) {
   let x = i32(id.x); let y = i32(id.y); if (x >= W() || y >= H()) { return; }
-  let dt = fu.a.z; let fw = fu.a.x; let fh = fu.a.y;
-  var v = sampleV(vec2f(f32(x), f32(y)) - at(x, y) * dt * vec2f(fw, fh) * 0.5);
-  // the grid in «screen» units: x from -aspect to aspect, y from -1 to 1
-  let p = vec2f((f32(x) + 0.5) / fw * 2.0 - 1.0, (f32(y) + 0.5) / fh * 2.0 - 1.0);
-  // a soft swirl that never stops (the fluid keeps moving by itself)
-  let t = fu.a.w; let e = 0.05;
-  let s = vec2f(p.x * fu.d.z, p.y) * 1.6 + vec2f(t * 0.07, -t * 0.05);
-  let curl = vec2f(vn(s + vec2f(0.0, e)) - vn(s - vec2f(0.0, e)), -(vn(s + vec2f(e, 0.0)) - vn(s - vec2f(e, 0.0)))) / (2.0 * e);
-  v += curl * fu.b.x * dt * 0.6;
-  // the pointer pushes it
-  if (fu.d.x > 0.5) { let d = vec2f((p.x - fu.c.x / fu.d.z) * fu.d.z, p.y - fu.c.y); let k = exp(-dot(d, d) * 60.0); v += fu.c.zw * k * fu.b.z * 6.0 * dt * 60.0 * 0.016; }
-  // the beat and the bass: bursts from a few places
-  if (fu.b.w > 0.5) { for (var i = 0; i < 4; i++) { let c = vec2f(h2(vec2f(f32(i), floor(t * 2.0))) * 1.6 - 0.8, h2(vec2f(f32(i) + 9.0, floor(t * 2.0))) * 1.6 - 0.8); let d = p - c; let k = exp(-dot(d, d) * 30.0); v += vec2f(-d.y, d.x) / (length(d) + 0.05) * k * fu.b.z * 0.5; } }   // a swirl at each spot (a push straight out would just be undone by the pressure)
-  v += normalize(p + vec2f(1e-4, 0.0)) * exp(-dot(p, p) * 3.0) * fu.d.y * fu.b.z * 0.08;
-  vout[y * W() + x] = v * exp(-fu.b.y * dt);
+  if (wall(x, y)) { vout[ix(x, y)] = vec2f(0.0); return; }
+  let dt = fu.a.z; let fh = fu.a.y; let A = fu.d.z; let t = fu.a.w;
+  // semi-Lagrangian: where was this water a moment ago (a cell is 2 / H screen units on both axes)
+  var v = sampleV(vec2f(f32(x), f32(y)) - at(x, y) * dt * fh * 0.5 / 1.08);
+  let p = vec2f(((f32(x) + 0.5) / fu.a.x * 2.0 - 1.0) * A, (f32(y) + 0.5) / fh * 2.0 - 1.0) * 1.08;
+  // three slow «spoons» wander through the water and drag it along: wakes and pairs of eddies
+  let sw = fu.b.x;
+  for (var i = 0; i < 3; i++) {
+    let fi = f32(i); let w1 = 0.11 + fi * 0.045; let w2 = 0.083 + fi * 0.037;
+    let c = vec2f(A * 0.62 * sin(t * w1 + fi * 2.1), 0.62 * sin(t * w2 + fi * 4.3));
+    let cv = vec2f(A * 0.62 * w1 * cos(t * w1 + fi * 2.1), 0.62 * w2 * cos(t * w2 + fi * 4.3));
+    v = mix(v, cv * 9.0 * sw, clamp(dt * 6.0, 0.0, 1.0) * blob(p, c, 0.13) * min(sw, 1.0));
+  }
+  // the pointer drags the water like a finger
+  if (fu.d.x > 0.5) { let pv = clamp(fu.c.zw, vec2f(-6.0), vec2f(6.0)); v = mix(v, pv, clamp(dt * 25.0, 0.0, 1.0) * blob(p, fu.c.xy, 0.09) * min(fu.b.z, 1.0)); }
+  // each beat: a puff from a random spot (it rolls into two eddies)
+  if (fu.b.w > 0.5) { let s = fu.d.w; let c = vec2f((h2(vec2f(s, 1.3)) * 1.4 - 0.7) * A, h2(vec2f(s, 7.1)) * 1.4 - 0.7); let an = h2(vec2f(s, 3.7)) * 6.2831853;
+    v += vec2f(cos(an), sin(an)) * fu.b.z * 1.1 * blob(p, c, 0.1); }
+  // the bass: a jet rising from the bottom (a plume, like smoke or warm water)
+  v += vec2f(0.0, 1.0) * fu.d.y * fu.b.z * 6.0 * dt * blob(p, vec2f(sin(t * 0.21) * A * 0.4, -0.88), 0.12);
+  vout[ix(x, y)] = v * exp(-fu.b.y * dt * 0.5);
+}
+@compute @workgroup_size(8, 8) fn vort(@builtin(global_invocation_id) id: vec3u) {   // the curl, in div (free until the divergence)
+  let x = i32(id.x); let y = i32(id.y); if (x >= W() || y >= H()) { return; }
+  div[ix(x, y)] = 0.5 * ((at(x + 1, y).y - at(x - 1, y).y) - (at(x, y + 1).x - at(x, y - 1).x));
+}
+@compute @workgroup_size(8, 8) fn confine(@builtin(global_invocation_id) id: vec3u) {   // pushes each eddy to keep spinning
+  let x = i32(id.x); let y = i32(id.y); if (x >= W() || y >= H() || wall(x, y)) { return; }
+  let w = cat(x, y);
+  let g = vec2f(abs(cat(x + 1, y)) - abs(cat(x - 1, y)), abs(cat(x, y + 1)) - abs(cat(x, y - 1))) * 0.5;
+  let n = g / (length(g) + 1e-5);
+  vout[ix(x, y)] = vout[ix(x, y)] + vec2f(n.y, -n.x) * w * fu.b.x * 4.0 * fu.a.z;
 }
 @compute @workgroup_size(8, 8) fn divergence(@builtin(global_invocation_id) id: vec3u) {
   let x = i32(id.x); let y = i32(id.y); if (x >= W() || y >= H()) { return; }
-  div[y * W() + x] = 0.5 * ((at(x + 1, y).x - at(x - 1, y).x) + (at(x, y + 1).y - at(x, y - 1).y));
-  pout[y * W() + x] = 0.0;
+  div[ix(x, y)] = 0.5 * ((at(x + 1, y).x - at(x - 1, y).x) + (at(x, y + 1).y - at(x, y - 1).y));
 }
 @compute @workgroup_size(8, 8) fn jacobi(@builtin(global_invocation_id) id: vec3u) {
   let x = i32(id.x); let y = i32(id.y); if (x >= W() || y >= H()) { return; }
-  pout[y * W() + x] = (pat(x - 1, y) + pat(x + 1, y) + pat(x, y - 1) + pat(x, y + 1) - div[y * W() + x]) * 0.25;
+  pout[ix(x, y)] = (pat(x - 1, y) + pat(x + 1, y) + pat(x, y - 1) + pat(x, y + 1) - div[ix(x, y)]) * 0.25;
 }
 @compute @workgroup_size(8, 8) fn project(@builtin(global_invocation_id) id: vec3u) {
   let x = i32(id.x); let y = i32(id.y); if (x >= W() || y >= H()) { return; }
-  vout[y * W() + x] = at(x, y) - 0.5 * vec2f(pat(x + 1, y) - pat(x - 1, y), pat(x, y + 1) - pat(x, y - 1));
+  if (wall(x, y)) { vout[ix(x, y)] = vec2f(0.0); return; }
+  vout[ix(x, y)] = at(x, y) - 0.5 * vec2f(pat(x + 1, y) - pat(x - 1, y), pat(x, y + 1) - pat(x, y - 1));
 }`;
 
   /* ── start WebGPU (once per page) ── */
@@ -792,12 +814,15 @@ fn vn(p: vec2f) -> f32 { let i = floor(p); let f = fract(p); let u = f * f * (3.
       const bg = (e, vin, vout, pin, pout) => {
         const p = pl(e), L = p.getBindGroupLayout(0), all = [{ binding: 0, resource: { buffer: bufs.u } }, { binding: 1, resource: { buffer: vin } }, { binding: 2, resource: { buffer: vout } }, { binding: 3, resource: { buffer: bufs.div } }, { binding: 4, resource: { buffer: pin } }, { binding: 5, resource: { buffer: pout } }];
         // 'auto' layouts only keep what the entry point uses
-        const used = { advect: [0, 1, 2], divergence: [0, 1, 3, 5], jacobi: [0, 3, 4, 5], project: [0, 1, 2, 4] }[e];
+        const used = { advect: [0, 1, 2], vort: [0, 1, 3], confine: [0, 2, 3], divergence: [0, 1, 3], jacobi: [0, 3, 4, 5], project: [0, 1, 2, 4] }[e];
         return { p, g: d.createBindGroup({ layout: L, entries: all.filter(x => used.includes(x.binding)) }) };
       };
       S.fluid = { W, H, bufs, steps: {
+        // v0 → advect → v1 → curl, confinement (in place) → divergence → pressure (p0, kept from the last step) → project → v0
         advect: bg('advect', bufs.v0, bufs.v1, bufs.p0, bufs.p1),
-        divergence: bg('divergence', bufs.v1, bufs.v0, bufs.p0, bufs.p0),
+        vort: bg('vort', bufs.v1, bufs.v0, bufs.p0, bufs.p1),
+        confine: bg('confine', bufs.v0, bufs.v1, bufs.p0, bufs.p1),
+        divergence: bg('divergence', bufs.v1, bufs.v0, bufs.p0, bufs.p1),
         jacobiA: bg('jacobi', bufs.v1, bufs.v0, bufs.p0, bufs.p1), jacobiB: bg('jacobi', bufs.v1, bufs.v0, bufs.p1, bufs.p0),
         project: bg('project', bufs.v1, bufs.v0, bufs.p0, bufs.p1),
       }, last: null };
@@ -812,12 +837,13 @@ fn vn(p: vec2f) -> f32 { let i = floor(p); let f = fract(p); let u = f * f * (3.
       const a = S.audio || [0, 0, 0, 0];
       const beatHit = (S.comp.fluid.P.with === 'beat' || S.comp.fluid.P.with === 'all') && trigs.__fluidBeat ? 1 : 0;
       const bass = (S.comp.fluid.P.with === 'bass' || S.comp.fluid.P.with === 'all') ? (a[1] || 0) : 0;
-      const u = new Float32Array([F.W, F.H, dt, time, k(I.swirl), k(I.fade), k(I.stir), beatHit, pt ? pt[0] : 0, pt ? pt[1] : 0, pvx, pvy, pt ? 1 : 0, bass, aspect, 0]);
+      if (beatHit) F.seed = ((F.seed || 0) + 1) % 4096;
+      const u = new Float32Array([F.W, F.H, dt, time, k(I.swirl), k(I.fade), k(I.stir), beatHit, pt ? pt[0] : 0, pt ? pt[1] : 0, pvx, pvy, pt ? 1 : 0, bass, aspect, (F.seed || 0) + 0.5]);
       dev().queue.writeBuffer(F.bufs.u, 0, u);
       const wg = [Math.ceil(F.W / 8), Math.ceil(F.H / 8)];
       const run = (st) => { const cp = enc.beginComputePass(); cp.setPipeline(st.p); cp.setBindGroup(0, st.g); cp.dispatchWorkgroups(wg[0], wg[1]); cp.end(); };
-      run(F.steps.advect); run(F.steps.divergence);
-      for (let i = 0; i < 40; i++) run(i % 2 ? F.steps.jacobiB : F.steps.jacobiA);   // an even count: the pressure ends in p0
+      run(F.steps.advect); run(F.steps.vort); run(F.steps.confine); run(F.steps.divergence);
+      for (let i = 0; i < 60; i++) run(i % 2 ? F.steps.jacobiB : F.steps.jacobiA);   // an even count: the pressure ends in p0
       run(F.steps.project);
     }
     function ensureColor(w, h) {
