@@ -10,13 +10,21 @@
   /* ═══════════════ shaders ═══════════════ */
   const LEVEL_VS = `#version 300 es
 layout(location=0) in vec3 a_p; layout(location=1) in vec3 a_n; layout(location=2) in vec2 a_uv; layout(location=3) in vec4 a_i;
-uniform mat4 u_vp; out vec3 vP; out vec3 vN; out vec2 vUV; out vec4 vI;
-void main() { vP = a_p; vN = a_n; vUV = a_uv; vI = a_i; gl_Position = u_vp * vec4(a_p, 1.0); }`;
+uniform mat4 u_vp; uniform float u_time, u_warp; out vec3 vP; out vec3 vN; out vec2 vUV; out vec4 vI;
+void main() {
+  vec3 p = a_p;
+  if (u_warp > 0.0) {   // deep levels: the structure breathes (one smooth field, so the faces never come apart)
+    p += vec3(sin(a_p.z * 0.55 + u_time * 0.9) + 0.5 * sin(a_p.y * 1.3 + u_time * 1.7),
+              0.4 * sin(a_p.x * 0.45 + a_p.z * 0.35 + u_time * 0.7),
+              sin(a_p.x * 0.5 - u_time * 1.1) + 0.5 * sin(a_p.y * 1.1 - u_time * 1.3)) * u_warp;
+  }
+  vP = p; vN = a_n; vUV = a_uv; vI = a_i; gl_Position = u_vp * vec4(p, 1.0);
+}`;
   // a_i = face height, kind (0 floor, 1 ceiling, 2 wall, 3 lintel), room (palette index), -
   const LEVEL_FS = `#version 300 es
 precision highp float;
 in vec3 vP; in vec3 vN; in vec2 vUV; in vec4 vI;
-uniform vec3 u_eye; uniform float u_time;
+uniform vec3 u_eye; uniform float u_time, u_psy;
 uniform vec4 u_lp[16]; uniform vec4 u_lc[16]; uniform int u_nl;
 uniform vec4 u_rc[16];
 uniform vec4 u_rp[16];   // each room's patterns: x = floor, y = walls (0 grid, 1 hexagons, 2 diamonds, 3 panels, 4 triangles)
@@ -29,7 +37,12 @@ float hexL(vec2 p, float w) {   // the edges of a honeycomb (one hexagon per uni
   vec2 a = mod(p, r) - h, b = mod(p - h, r) - h, g = dot(a, a) < dot(b, b) ? a : b, q = abs(g);
   return edge(0.5 - max(dot(q, vec2(0.5, 0.8660254)), q.x), w);
 }
+vec3 hueShift(vec3 c, float h) { const vec3 k = vec3(0.57735); float a = h * 6.2831853, ca = cos(a); return c * ca + cross(k, c) * sin(a) + k * dot(k, c) * (1.0 - ca); }
+vec2 melt(vec2 p) { return p + u_psy * 0.22 * vec2(sin(p.y * 2.1 + u_time * 0.9), sin(p.x * 1.7 - u_time * 0.7)); }
 float pattern(int k, vec2 p, float w) {
+  if (k == 5) { vec2 c = fract(p / 3.0) - 0.5; return line(length(c) * 6.0 - u_time * 0.4, w * 1.5); }   // ripples
+  if (k == 6) { vec2 c = fract(p / 4.0) - 0.5; return line(length(c) * 9.0 + atan(c.y, c.x) / 6.2831853 * 3.0 - u_time * 0.5, w * 1.6); }   // turning spirals
+  if (k == 7) return hexL((p + 0.35 * vec2(sin(p.y * 2.3 + u_time), sin(p.x * 1.9 - u_time * 1.2))) * 1.6, w * 1.3);   // melting honeycomb
   if (k == 1) return hexL(p * 1.35, w * 1.2);
   if (k == 2) { vec2 d = vec2(p.x + p.y, p.x - p.y) * 0.7071 * 1.4; return max(line(d.x, w), line(d.y, w)); }
   if (k == 3) { vec2 f = abs(fract(p) - 0.5); float m = max(f.x, f.y); return max(max(line(p.x, w), line(p.y, w)), edge(abs(m - 0.36), w) * 0.7); }
@@ -42,18 +55,18 @@ void main() {
   int pf = int(u_rp[slot].x + 0.5), pw = int(u_rp[slot].y + 0.5);
   float kind = vI.y, dist = length(vP - u_eye), em = 0.0;
   if (kind < 0.5) {   // the floor: this room's pattern, a faint fine grid, and pulses of light running along the lines
-    vec2 g = vP.xz / CS;
+    vec2 g = melt(vP.xz / CS);
     float L = pattern(pf, g, 0.018);
     em += L * (0.35 + 1.4 * pow(0.5 + 0.5 * sin((vP.x + vP.z) * 0.45 - u_time * 2.6), 12.0));
     if (pf == 0) em += max(line(g.x * 4.0, 0.025), line(g.y * 4.0, 0.025)) * 0.05;
   } else if (kind < 1.5) {
-    em += pattern(pf, vP.xz / CS, 0.012) * 0.1;
+    em += pattern(pf, melt(vP.xz / CS), 0.012) * 0.1;
   } else {   // walls: a bright line where they meet the floor, another at the top, and this room's pattern
     float h = vI.x, v = vUV.y, fv = fwidth(v);
     em += (1.0 - smoothstep(0.0, 0.05 + fv * 1.5, v)) * (kind < 2.5 ? 2.2 : 1.2);
     em += (1.0 - smoothstep(0.0, 0.04 + fv * 1.5, h - v)) * 0.9;
     if (pw == 0) { em += line(vUV.x / CS, 0.01) * 0.5; em += line(v, 0.008) * 0.07; }
-    else em += pattern(pw, vec2(vUV.x, v) / CS, 0.014) * (0.32 + 0.5 * pow(0.5 + 0.5 * sin(v * 1.2 - u_time * 1.6 + vUV.x * 0.15), 10.0));   // with a slow glow climbing the walls
+    else em += pattern(pw, melt(vec2(vUV.x, v) / CS), 0.014) * (0.32 + 0.5 * pow(0.5 + 0.5 * sin(v * 1.2 - u_time * 1.6 + vUV.x * 0.15), 10.0));   // with a slow glow climbing the walls
   }
   vec3 N = normalize(vN), V = normalize(u_eye - vP), col = vec3(0.012, 0.014, 0.022);
   for (int i = 0; i < 16; i++) {
@@ -67,25 +80,33 @@ void main() {
     col += u_lc[i].rgb * att * (diff * 0.45 + spec);
     em += att * diff * 0.5;
   }
-  col += rc.rgb * em * rc.a;
+  vec3 neon = rc.rgb;
+  if (u_psy > 0.0) neon = mix(neon, max(hueShift(neon, u_time * 0.07 + (vP.x + vP.z) * 0.03 + vP.y * 0.06), 0.0), u_psy);   // the colours drift into a rainbow
+  col += neon * em * rc.a;
   float fog = exp(-dist * 0.04);
-  o = vec4(col * fog + vec3(0.006, 0.0, 0.014) * (1.0 - fog), 1.0);
+  vec3 fogc = vec3(0.006, 0.0, 0.014) + max(hueShift(vec3(0.05, 0.0, 0.08), u_time * 0.05), 0.0) * u_psy;
+  o = vec4(col * fog + fogc * (1.0 - fog), 1.0);
 }`;
   const ENT_VS = `#version 300 es
 layout(location=0) in vec3 a_p; layout(location=1) in vec3 a_n; layout(location=2) in vec4 a_b;
-uniform mat4 u_vp, u_m; out vec3 vP; out vec3 vN; out vec4 vB;
-void main() { vec4 w = u_m * vec4(a_p, 1.0); vP = w.xyz; vN = mat3(u_m) * a_n; vB = a_b; gl_Position = u_vp * w; }`;
+uniform mat4 u_vp, u_m; uniform float u_wob, u_time; out vec3 vP; out vec3 vN; out vec4 vB;
+void main() {
+  vec3 p = a_p * (1.0 + u_wob * sin(a_p.y * 5.0 + a_p.x * 3.0 + u_time * 6.0));   // deep levels: the shapes melt
+  vec4 w = u_m * vec4(p, 1.0); vP = w.xyz; vN = mat3(u_m) * a_n; vB = a_b; gl_Position = u_vp * w;
+}`;
   const ENT_FS = `#version 300 es
 precision highp float;
 in vec3 vP; in vec3 vN; in vec4 vB;
-uniform vec3 u_col, u_eye; uniform float u_flash, u_glow, u_fill, u_fog;
+uniform vec3 u_col, u_eye; uniform float u_flash, u_glow, u_fill, u_fog, u_hue;
 out vec4 o;
+vec3 hueShift(vec3 c, float h) { const vec3 k = vec3(0.57735); float a = h * 6.2831853, ca = cos(a); return c * ca + cross(k, c) * sin(a) + k * dot(k, c) * (1.0 - ca); }
 void main() {
   float e = min(min(vB.x, vB.y), min(vB.z, vB.w)), fw = fwidth(e);
   float wire = 1.0 - smoothstep(0.04, 0.04 + fw * 1.5, e);
   vec3 V = normalize(u_eye - vP);
   float rim = pow(1.0 - abs(dot(normalize(vN), V)), 2.5);
-  vec3 c = u_col * (wire * 3.2 * u_glow + rim * 1.1 * u_glow + u_fill) + vec3(u_flash * 3.0);
+  vec3 base = u_hue != 0.0 ? max(hueShift(u_col, u_hue + dot(vP, vec3(0.08))), 0.0) : u_col;
+  vec3 c = base * (wire * 3.2 * u_glow + rim * 1.1 * u_glow + u_fill) + vec3(u_flash * 3.0);
   float fog = u_fog > 0.5 ? exp(-length(u_eye - vP) * 0.035) : 1.0;
   o = vec4(c * fog, 1.0);
 }`;
@@ -113,6 +134,15 @@ void main() {
   c += (texture(u_img, uv + u_dir * 3.2308).rgb + texture(u_img, uv - u_dir * 3.2308).rgb) * 0.0703;
   o = vec4(c, 1.0);
 }`;
+  const ECHO_FS = `#version 300 es
+precision highp float; in vec2 uv; uniform sampler2D u_img, u_prev; uniform float u_k, u_rot, u_zoom, u_hue; out vec4 o;
+vec3 hueShift(vec3 c, float h) { const vec3 k = vec3(0.57735); float a = h * 6.2831853, ca = cos(a); return c * ca + cross(k, c) * sin(a) + k * dot(k, c) * (1.0 - ca); }
+void main() {
+  vec2 c = uv - 0.5; float s = sin(u_rot), co = cos(u_rot);
+  vec2 q = vec2(co * c.x - s * c.y, s * c.x + co * c.y) * u_zoom + 0.5;
+  vec3 prev = max(hueShift(texture(u_prev, q).rgb, u_hue), 0.0) * u_k;
+  o = vec4(max(texture(u_img, uv).rgb, prev), 1.0);
+}`;
   const COMP_FS = `#version 300 es
 precision highp float; in vec2 uv;
 uniform sampler2D u_img, u_bloom; uniform float u_hurt, u_time, u_ab, u_bk, u_fade; uniform vec2 u_res;
@@ -129,6 +159,37 @@ void main() {
   col *= 0.975 + 0.025 * sin(uv.y * u_res.y * 3.14159);
   o = vec4(col * u_fade, 1.0);
 }`;
+
+  /* ═══════════════ the strange ones: rare beings who talk (in riddles) ═══════════════ */
+  const NAMES = [['La que cuenta pasillos', 'She who counts corridors'], ['El testigo del apagón', 'The witness of the blackout'], ['Eco sin origen', 'Echo with no source'],
+    ['El jardinero de hexágonos', 'The hexagon gardener'], ['La voz entre dos píxeles', 'The voice between two pixels'], ['El que llegó mañana', 'The one who arrived tomorrow'],
+    ['Guardiana del color perdido', 'Keeper of the lost colour'], ['El cartógrafo ciego', 'The blind cartographer'], ['Rumor de neón', 'Neon rumour'], ['La sombra que brilla', 'The shadow that glows']];
+  const OPEN = [['¿Vos también escuchás el zumbido de las paredes? Están soñando que son paredes.', 'Do you hear the walls humming too? They are dreaming they are walls.'],
+    ['Llegaste tarde, o yo llegué temprano. Acá adentro es lo mismo.', 'You are late, or I am early. In here it is the same thing.'],
+    ['No dispares. Soy solo una idea que alguien dejó encendida.', 'Don’t shoot. I am just an idea someone left switched on.'],
+    ['Te estaba esperando desde antes de que existiera este nivel.', 'I have been waiting for you since before this level existed.'],
+    ['Shh. Si hablás muy fuerte, la grilla se acuerda de vos.', 'Shh. If you speak too loud, the grid remembers you.'],
+    ['Hola, viajero de los ángulos rectos.', 'Hello, traveller of right angles.'],
+    ['Cada vez que apagás un núcleo, alguien en otro nivel se despierta.', 'Every time you shut down a core, someone on another level wakes up.']];
+  const MID = [['Los hexágonos son cuadrados que aprendieron a respirar.', 'Hexagons are squares that learned to breathe.'],
+    ['El color que buscás está escondido detrás del último color que viste.', 'The colour you are looking for hides behind the last colour you saw.'],
+    ['Esta estructura no se construyó: se recordó.', 'This structure was not built: it was remembered.'],
+    ['Los rojos no te odian. Solo tienen demasiado apuro por volverse luz.', 'The red ones don’t hate you. They are just in too much of a hurry to become light.'],
+    ['Contá tus pasos hasta la salida. Después contalos al revés. No da lo mismo.', 'Count your steps to the exit. Then count them backwards. It doesn’t add up.'],
+    ['La salida es una puerta que se cansó de ser pared.', 'The exit is a door that got tired of being a wall.'],
+    ['Si mirás el piso mucho tiempo, el piso empieza a mirarte con tus mismos ojos.', 'Stare at the floor long enough and it starts staring back with your eyes.'],
+    ['Abajo de cada nivel hay otro nivel, y abajo de ese, una canción.', 'Under every level there is another level, and under that one, a song.'],
+    ['El tiempo acá se mide en parpadeos de neón. Vos ya llevás tres mil.', 'Time here is measured in neon blinks. You are already at three thousand.'],
+    ['Yo antes era un enemigo. Un día me olvidé de qué.', 'I used to be an enemy. One day I forgot of what.'],
+    ['Las paredes se mueven solo cuando no las mirás. Por eso tiemblan cuando las mirás.', 'Walls only move when you are not looking. That is why they shiver when you are.'],
+    ['Hay un núcleo que late adentro tuyo. No lo apagues todavía.', 'There is a core beating inside you. Don’t shut it down yet.'],
+    ['Lo que llamás arriba es un abajo que se dio vuelta para verte.', 'What you call up is a down that turned around to see you.'],
+    ['Los violetas atraviesan las paredes porque nadie les dijo que eran paredes.', 'The violet ones go through walls because nobody told them they were walls.']];
+  const GIFTS = [['heal', 'Tomá un poco de luz. No me la devuelvas: ya no sé dónde guardarla.', 'Take some light. Don’t give it back: I no longer know where to keep it.', '+30 de energía', '+30 energy'],
+    ['map', 'Te dibujo los núcleos en la memoria. Cuando parpadees, van a estar ahí.', 'I’ll draw the cores into your memory. When you blink, they will be there.', 'Los núcleos aparecen en tu mapa', 'The cores show up on your map'],
+    ['calm', 'Voy a cantarles a los de afuera para que se olviden de vos un rato.', 'I’ll sing to the ones outside so they forget you for a while.', 'Los enemigos se duermen un rato', 'The enemies fall asleep for a while'],
+    ['score', 'Esto es el recuerdo de alguien que ganó. Usalo como quieras.', 'This is the memory of someone who won. Use it however you like.', '+750 puntos', '+750 points']];
+  function hsv(h, s, v) { const f = n => { const k = (n + h * 6) % 6; return v - v * s * Math.max(0, Math.min(k, 4 - k, 1)); }; return [f(5), f(3), f(1)]; }
 
   /* ═══════════════ small math ═══════════════ */
   function persp(fovy, asp, n, f) { const t = 1 / Math.tan(fovy / 2), o = new Float32Array(16); o[0] = t / asp; o[5] = t; o[10] = (f + n) / (n - f); o[11] = -1; o[14] = 2 * f * n / (n - f); return o; }
@@ -195,7 +256,14 @@ void main() {
   const CS = 2;   // a cell, in world units
   const PAL = [[0, 0.85, 1], [0.25, 0.45, 1], [0.66, 0.32, 1], [0.1, 1, 0.65], [1, 0.32, 0.85]];   // cyan, blue, violet, mint, pink
   const CORR = 15;   // the corridors' palette slot
+  // the patterns appear level by level: grid → panels → hexagons → diamonds → triangles → ripples → spirals → melting honeycomb
+  const UNLOCK = [0, 3, 1, 2, 4, 5, 6, 7];
+  const pickOf = (pool, rnd) => pool[Math.floor(rnd() * pool.length)];
+  let FP = [0], WP = [0];
   function generate(level, rnd) {
+    const open = UNLOCK.slice(0, Math.min(UNLOCK.length, level)), newest = open[open.length - 1];
+    FP = [...open, newest, newest];   // the newest one, more often (so you notice it arrived)
+    WP = [...open, newest, newest, ...(level >= 3 ? [1] : [])];   // and hexagons, a favourite on walls
     const W = Math.min(60, 26 + level * 5), H = W;
     const grid = new Uint8Array(W * H).fill(1), ceil = new Float32Array(W * H), rid = new Int16Array(W * H).fill(-1), corr = new Uint8Array(W * H);
     const rooms = [], want = Math.min(14, 5 + Math.floor(level * 1.5));
@@ -205,7 +273,7 @@ void main() {
       if (rooms.some(r => x < r.x + r.w + 2 && x + w + 2 > r.x && y < r.y + r.h + 2 && y + h + 2 > r.y)) continue;
       const big = w * h >= 42;
       rooms.push({ x, y, w, h, cx: x + (w >> 1), cy: y + (h >> 1), hgt: [3.6, 4.6, 6, 8][Math.floor(rnd() * (big ? 4 : 3))], hue: Math.floor(rnd() * PAL.length),
-        pf: [0, 0, 1, 2, 3, 4][Math.floor(rnd() * 6)], pw: [0, 1, 1, 1, 2, 3, 4][Math.floor(rnd() * 7)] });
+        pf: pickOf(FP, rnd), pw: pickOf(WP, rnd) });
     }
     rooms.forEach((r, k) => { for (let y = r.y; y < r.y + r.h; y++) for (let x = r.x; x < r.x + r.w; x++) { const i = y * W + x; grid[i] = 0; ceil[i] = r.hgt; rid[i] = k; } });
     // corridors: a spanning tree (every room reachable) plus a few loops (so it isn't a maze of dead ends)
@@ -244,14 +312,27 @@ void main() {
       if (k === 0) return;
       const cells = free(r); let m = Math.round((r.w * r.h / 24) * (0.55 + level * 0.25) * (0.7 + rnd() * 0.6));
       while (m-- > 0 && cells.length && enemies.length < cap) {
-        const [x, y] = cells.splice(Math.floor(rnd() * cells.length), 1)[0], q = rnd();
-        const type = level >= 3 && q < 0.2 ? 'split' : q < (level >= 2 ? 0.5 : 0.28) && q >= (level >= 3 ? 0.2 : 0) ? 'shoot' : 'drone';
+        const [x, y] = cells.splice(Math.floor(rnd() * cells.length), 1)[0];
+        const wts = [['drone', 1], ['shoot', level >= 2 ? 0.7 : 0.35], ['split', level >= 3 ? 0.45 : 0], ['phase', level >= 4 ? Math.min(0.8, 0.18 * (level - 3)) : 0]];
+        let s = wts.reduce((a, b) => a + b[1], 0) * rnd(), type = 'drone';
+        for (const [k, v] of wts) { if ((s -= v) <= 0) { type = k; break; } }
         enemies.push({ type, x: (x + 0.5) * CS, z: (y + 0.5) * CS });
       }
     });
     const pickups = [];
     for (let k = 0; k < 2 + Math.floor(level / 2); k++) { const r = rooms[1 + Math.floor(rnd() * (n - 1))]; const c = free(r); if (c.length) { const [x, y] = c[Math.floor(rnd() * c.length)]; pickups.push({ x: (x + 0.5) * CS, z: (y + 0.5) * CS }); } }
-    return { W, H, grid, ceil, rid, rooms, exitRoom, coreRooms, enemies, pickups, start: rooms[0], corrPat: [[0, 3], [0, 1], [2, 3], [4, 1]][level % 4] };
+    // now and then (never on level 1) a strange one waits in a quiet room
+    let npc = null;
+    const quiet = rooms.map((r, k) => k).filter(k => k > 0 && !coreRooms.includes(k));
+    if (level >= 2 && quiet.length && rnd() < 0.45) {
+      const r = rooms[quiet[Math.floor(rnd() * quiet.length)]], c = free(r);
+      if (c.length) {
+        const [x, y] = c[Math.floor(rnd() * c.length)], pick = a => a[Math.floor(rnd() * a.length)];
+        const mids = [pick(MID)]; if (rnd() < 0.6) { let m2 = pick(MID); if (m2 !== mids[0]) mids.push(m2); }
+        npc = { x: (x + 0.5) * CS, z: (y + 0.5) * CS, name: pick(NAMES), lines: [pick(OPEN), ...mids], gift: pick(GIFTS), hue: rnd() };
+      }
+    }
+    return { W, H, grid, ceil, rid, rooms, exitRoom, coreRooms, enemies, pickups, npc, start: rooms[0], corrPat: [pickOf(FP, rnd), pickOf(WP, rnd)] };
   }
   function bfs(grid, W, H, sx, sy) {
     const d = new Int32Array(W * H).fill(1e9), q = new Int32Array(W * H); let h = 0, t = 0;
@@ -292,8 +373,8 @@ void main() {
   const GAME = {
     id: 'nucleo', solo: true, title: tr('Núcleo', 'Core'), tag: tr('Acción', 'Action'),
     desc: tr('Una estructura de neón que se arma distinta cada vez. Apagá sus núcleos y escapá.', 'A neon structure built anew every time. Shut down its cores and get out.'),
-    how: tr('Cada nivel tiene núcleos escondidos: destruilos todos (cada uno que cae deja su sala a oscuras) y llegá a la salida, que se abre al final. Cada nivel es más grande y con más enemigos. Compu: W A S D para moverte, mouse para mirar, clic para disparar, Shift o Espacio para el impulso, Esc para pausar, M para el sonido. Celular: palanca a la izquierda para moverte, arrastrá a la derecha para mirar, botones para disparar y para el impulso. Los rojos te persiguen, los naranjas disparan de lejos (esquivá sus esferas) y los amarillos se parten en dos.',
-      'Every level hides cores: destroy them all (each one that falls blacks out its room) and reach the exit, which opens at the end. Every level is bigger and has more enemies. Computer: W A S D to move, mouse to look, click to shoot, Shift or Space to dash, Esc to pause, M for sound. Phone: stick on the left to move, drag on the right to look, buttons to shoot and to dash. Red ones chase you, orange ones shoot from afar (dodge their orbs) and yellow ones split in two.'),
+    how: tr('Cada nivel tiene núcleos escondidos: destruilos todos (cada uno que cae deja su sala a oscuras) y llegá a la salida, que se abre al final. Cada nivel es más grande y con más enemigos. Compu: W A S D para moverte, mouse para mirar, clic para disparar, Shift o Espacio para el impulso, Esc para pausar, M para el sonido. Celular: palanca a la izquierda para moverte, arrastrá a la derecha para mirar, botones para disparar y para el impulso. Los rojos te persiguen, los naranjas disparan de lejos (esquivá sus esferas), los amarillos se parten en dos y los violetas atraviesan las paredes. Cuanto más hondo, más rara se pone la estructura. A veces aparece alguien que no ataca: acercate y apretá E para hablar.',
+      'Every level hides cores: destroy them all (each one that falls blacks out its room) and reach the exit, which opens at the end. Every level is bigger and has more enemies. Computer: W A S D to move, mouse to look, click to shoot, Shift or Space to dash, Esc to pause, M for sound. Phone: stick on the left to move, drag on the right to look, buttons to shoot and to dash. Red ones chase you, orange ones shoot from afar (dodge their orbs), yellow ones split in two and violet ones go through walls. The deeper you go, the stranger the structure gets. Now and then someone appears who doesn’t attack: go up to them and press E to talk.'),
     better: 'high', fmt: n => Number(n).toLocaleString(J.LOCALE),
     start: ctx => run(ctx),
   };
@@ -319,7 +400,7 @@ void main() {
       for (let i = 0; i < n; i++) { const u = gl.getActiveUniform(p, i), name = u.name.replace(/\[0\]$/, ''); L[name] = gl.getUniformLocation(p, u.name); }
       return { p, L };
     }
-    const P = { level: prog(LEVEL_VS, LEVEL_FS), ent: prog(ENT_VS, ENT_FS), pts: prog(PTS_VS, PTS_FS), bright: prog(QUAD_VS, BRIGHT_FS), blur: prog(QUAD_VS, BLUR_FS), comp: prog(QUAD_VS, COMP_FS) };
+    const P = { level: prog(LEVEL_VS, LEVEL_FS), ent: prog(ENT_VS, ENT_FS), pts: prog(PTS_VS, PTS_FS), bright: prog(QUAD_VS, BRIGHT_FS), blur: prog(QUAD_VS, BLUR_FS), comp: prog(QUAD_VS, COMP_FS), echo: prog(QUAD_VS, ECHO_FS) };
     const emptyVao = gl.createVertexArray();
     function meshVao(data, layout) {   // layout: [[loc, size], …] (floats, interleaved)
       const vao = gl.createVertexArray(), buf = gl.createBuffer(), stride = layout.reduce((s, l) => s + l[1], 0) * 4;
@@ -355,11 +436,12 @@ void main() {
     }
     function ensureRT(w, h) {
       if (RT.w === w && RT.h === h) return;
-      if (RT.main) { [RT.main, RT.a, RT.b].forEach(t => gl.deleteTexture(t)); [RT.fMain, RT.fa, RT.fb].forEach(f => gl.deleteFramebuffer(f)); gl.deleteRenderbuffer(RT.depth); }
+      if (RT.main) { [RT.main, RT.a, RT.b, ...RT.e].forEach(t => gl.deleteTexture(t)); [RT.fMain, RT.fa, RT.fb, ...RT.fe].forEach(f => gl.deleteFramebuffer(f)); gl.deleteRenderbuffer(RT.depth); }
       RT.w = w; RT.h = h; RT.qw = Math.max(2, w >> 2); RT.qh = Math.max(2, h >> 2);
       RT.depth = gl.createRenderbuffer(); gl.bindRenderbuffer(gl.RENDERBUFFER, RT.depth); gl.renderbufferStorage(gl.RENDERBUFFER, gl.DEPTH_COMPONENT24, w, h);
       RT.main = tex(w, h); RT.fMain = fbo(RT.main, RT.depth);
       RT.a = tex(RT.qw, RT.qh); RT.fa = fbo(RT.a); RT.b = tex(RT.qw, RT.qh); RT.fb = fbo(RT.b);
+      RT.e = [tex(w, h), tex(w, h)]; RT.fe = RT.e.map(t => fbo(t)); RT.ec = 0;   // the echo (deep levels): two pictures that take turns
       gl.bindFramebuffer(gl.FRAMEBUFFER, null);
     }
 
@@ -399,6 +481,9 @@ void main() {
       pickup() { osc('sine', 660, 660, 0.09, 0.15); setTimeout(() => A && osc('sine', 990, 990, 0.14, 0.15), 70); },
       dash() { noise(0.22, 0.25, 'bandpass', 400, 2400, sfx, A.currentTime, 2); },
       orb() { osc('sine', 300, 600, 0.18, 0.08); },
+      blink() { osc('sine', 1600, 180, 0.14, 0.09); noise(0.1, 0.08, 'bandpass', 2500, 600, sfx, A.currentTime, 3); },
+      talk() { osc('triangle', 520 + Math.random() * 200, 520 + Math.random() * 200, 0.03, 0.025); },
+      npc() { [0, 3, 7, 10, 14].forEach((s, i) => setTimeout(() => A && osc('sine', 330 * 2 ** (s / 12), 330 * 2 ** (s / 12), 0.5, 0.07), i * 120)); },
       core() { SND.boom(true); osc('sawtooth', 440, 40, 1.4, 0.2); },
       open() { [0, 4, 7, 12].forEach((s, i) => setTimeout(() => A && osc('triangle', 440 * 2 ** (s / 12), 440 * 2 ** (s / 12), 0.25, 0.14), i * 110)); },
       level() { [0, 7, 12, 19].forEach((s, i) => setTimeout(() => A && osc('square', 220 * 2 ** (s / 12), 220 * 2 ** (s / 12), 0.2, 0.08), i * 90)); },
@@ -434,7 +519,9 @@ void main() {
     tools.append(pauseBtn, muteBtn, fsBtn);
     mapCv.width = 150; mapCv.height = 150;
     const pauseEl = el('div', 'nc-pause'); pauseEl.hidden = true;
-    hudEl.append(cross, hpBox, dashBar, coresEl, toastEl, mapCv, bigEl, tools);
+    const promptEl = el('button', 'nc-prompt'), talkEl = el('div', 'nc-talk'), talkName = el('b'), talkText = el('p'), talkHint = el('small');
+    talkEl.append(talkName, talkText, talkHint); talkEl.hidden = true; promptEl.hidden = true;
+    hudEl.append(cross, hpBox, dashBar, coresEl, toastEl, mapCv, bigEl, tools, promptEl, talkEl);
     wrap.append(hudEl, pauseEl);
     let toastT = 0;
     function toast(msg, s = 2.2) { toastEl.textContent = msg; toastEl.classList.add('on'); toastT = s; }
@@ -446,7 +533,7 @@ void main() {
 
     /* ── state ── */
     const seed = Math.floor(ctx.rnd() * 4294967296);
-    const S = { level: 1, score: 0, kills: 0, hp: 100, t: 0, state: 'play', M: null, enemies: [], bolts: [], orbs: [], parts: [], flashes: [], pickups: [], cores: [], exit: null, seen: null, roomGlow: [], flow: null, flowCell: -1, endT: 0 };
+    const S = { level: 1, score: 0, kills: 0, hp: 100, t: 0, state: 'play', M: null, psy: 0, errat: 0, npc: null, canTalk: false, talk: null, enemies: [], bolts: [], orbs: [], parts: [], flashes: [], pickups: [], cores: [], exit: null, seen: null, roomGlow: [], flow: null, flowCell: -1, endT: 0 };
     const pl = { x: 0, z: 0, vx: 0, vz: 0, yaw: 0, pitch: 0, dashT: 0, dashCd: 0, hurtT: 0, shake: 0, fireCd: 0, recoil: 0, bob: 0, roll: 0, fov: 1.32 };
     const K = {}; let firing = false, mx = 0, my = 0;
     const EYE = 1.6;
@@ -466,10 +553,10 @@ void main() {
     }
     function los(ax, az, bx, bz) { const dx = bx - ax, dz = bz - az, n = Math.ceil(Math.hypot(dx, dz) / (CS * 0.25)); for (let i = 1; i < n; i++) { const t = i / n; if (solidAt(ax + dx * t, az + dz * t)) return false; } return true; }
 
-    const HP = { drone: 2, shoot: 4, split: 5, mini: 1 }, PTS = { drone: 100, shoot: 150, split: 200, mini: 50 };
-    const COL = { drone: [1, 0.16, 0.24], shoot: [1, 0.55, 0.08], split: [1, 0.92, 0.2], mini: [1, 0.3, 0.3] };
+    const HP = { drone: 2, shoot: 4, split: 5, mini: 1, phase: 3 }, PTS = { drone: 100, shoot: 150, split: 200, mini: 50, phase: 180 };
+    const COL = { drone: [1, 0.16, 0.24], shoot: [1, 0.55, 0.08], split: [1, 0.92, 0.2], mini: [1, 0.3, 0.3], phase: [0.8, 0.35, 1] };
     function spawnEnemy(type, x, z, awake) {
-      const e = { type, x, z, y: type === 'shoot' ? 2.1 : 1.3, hp: HP[type] + Math.floor((S.level - 1) * (type === 'mini' ? 0 : 0.4)), r: type === 'mini' ? 0.3 : type === 'split' ? 0.55 : 0.45, awake: !!awake, cd: 1 + Math.random(), flash: 0, t: Math.random() * 10, vx: 0, vz: 0 };
+      const e = { type, x, z, y: type === 'shoot' ? 2.1 : 1.3, hp: HP[type] + Math.floor((S.level - 1) * (type === 'mini' ? 0 : 0.4)), r: type === 'mini' ? 0.3 : type === 'split' ? 0.55 : 0.45, awake: !!awake, cd: 1 + Math.random(), flash: 0, t: Math.random() * 10, vx: 0, vz: 0, seed: Math.random() * 100, calmT: 0 };
       S.enemies.push(e); return e;
     }
     function loadLevel() {
@@ -483,6 +570,9 @@ void main() {
       const er = M.rooms[M.exitRoom]; S.exit = { x: (er.cx + 0.5) * CS, z: (er.cy + 0.5) * CS, open: false, t: 0, room: M.exitRoom };
       S.roomGlow = M.rooms.map(() => 1); S.roomTarget = M.rooms.map(() => 1);
       S.seen = new Uint8Array(M.W * M.H); S.flowCell = -1;
+      // deeper = stranger: the psychedelia (level 4 → 10) and how erratic the enemies get (level 3 → 9)
+      S.psy = Math.max(0, Math.min(1, (S.level - 3) / 7)); S.errat = Math.max(0, Math.min(1, (S.level - 2) / 7));
+      S.npc = M.npc ? { ...M.npc, t: 0, gone: false, fade: 1 } : null; S.canTalk = false; S.talk = null;
       pl.x = (M.start.cx + 0.5) * CS; pl.z = (M.start.cy + 0.5) * CS; pl.vx = pl.vz = 0; pl.pitch = 0;
       // look along the first corridor out of the start room
       let best = 0, bl = -1; for (let k = 0; k < 4; k++) { const a = k * Math.PI / 2, dx = Math.sin(a), dz = -Math.cos(a); let l = 0; while (l < 30 && !solidAt(pl.x + dx * l, pl.z + dz * l)) l += 0.5; if (l > bl) { bl = l; best = a; } } pl.yaw = best;
@@ -511,13 +601,15 @@ void main() {
       if (k === 'Escape' && down && S.state === 'play') { pause(true); e.stopImmediatePropagation(); e.preventDefault(); return; }
       if (['KeyW', 'KeyA', 'KeyS', 'KeyD', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'ShiftLeft', 'ShiftRight', 'Space'].includes(k)) { K[k] = down; e.preventDefault(); }
       if (down && (k === 'ShiftLeft' || k === 'ShiftRight' || k === 'Space')) dash();
+      if (down && k === 'Escape' && S.state === 'talk') { endTalk(); e.stopImmediatePropagation(); e.preventDefault(); return; }
+      if (down && (k === 'KeyE' || k === 'KeyF' || (k === 'Space' && S.state === 'talk') || (k === 'Enter' && S.state === 'talk'))) { if (S.state === 'talk') advance(); else if (S.state === 'play' && S.canTalk) talk(); }
       if (down && k === 'KeyM') setMute(!muted);
       if (down && k === 'KeyP') pause(S.state === 'play');
     };
     addEventListener('keydown', onKey, true); addEventListener('keyup', onKey, true);
     const onMove = e => { if (!locked() || S.state !== 'play') return; mx += e.movementX; my += e.movementY; };
     document.addEventListener('mousemove', onMove);
-    cv.addEventListener('mousedown', e => { if (touch) return; if (S.state === 'pause') { pause(false); return; } if (!locked()) { lock(); return; } if (e.button === 0) firing = true; if (e.button === 2) dash(); });
+    cv.addEventListener('mousedown', e => { if (touch) return; if (S.state === 'talk') { advance(); return; } if (S.state === 'pause') { pause(false); return; } if (!locked()) { lock(); return; } if (e.button === 0) firing = true; if (e.button === 2) dash(); });
     const onUp = e => { if (e.button === 0) firing = false; };
     document.addEventListener('mouseup', onUp);
     cv.addEventListener('contextmenu', e => e.preventDefault());
@@ -526,6 +618,8 @@ void main() {
     const onVis = () => { if (document.hidden && S.state === 'play') pause(true); };
     document.addEventListener('visibilitychange', onVis);
     pauseEl.addEventListener('click', () => { pause(false); });
+    promptEl.addEventListener('click', e => { e.stopPropagation(); if (S.state === 'play' && S.canTalk) talk(); });
+    talkEl.addEventListener('click', e => { e.stopPropagation(); advance(); });
     pauseBtn.addEventListener('click', e => { e.stopPropagation(); pause(S.state === 'play'); });
     muteBtn.addEventListener('click', e => { e.stopPropagation(); setMute(!muted); });
     fsBtn.addEventListener('click', e => { e.stopPropagation(); if (document.fullscreenElement) document.exitFullscreen(); else if (wrap.requestFullscreen) wrap.requestFullscreen().then(() => lock(), () => {}); });
@@ -536,6 +630,7 @@ void main() {
         if (e.target === fireBtn || e.target === dashBtn) return;
         const R = rect(), x = e.clientX - R.left, y = e.clientY - R.top;
         if (S.state === 'pause') { pause(false); return; }
+        if (S.state === 'talk') { advance(); return; }
         if (x < R.width * 0.42 && !stick) { stick = { id: e.pointerId, x0: x, y0: y, dx: 0, dy: 0 }; stickEl.style.left = x + 'px'; stickEl.style.top = y + 'px'; stickEl.classList.add('on'); }
         else if (!look) look = { id: e.pointerId, x, y };
         pts.set(e.pointerId, true); try { tc.setPointerCapture(e.pointerId); } catch (er) { /* ignore */ }
@@ -629,6 +724,45 @@ void main() {
       big(tr(`Nivel ${S.level + 1}`, `Level ${S.level + 1}`), tr('La estructura se rearma…', 'The structure rebuilds itself…'));
     }
 
+    /* ── the strange ones: talk, the words come letter by letter, a gift at the end, and they dissolve ── */
+    const L2 = x => tr(x[0], x[1]);
+    function talk() {
+      const n = S.npc; if (!n || n.gone) return;
+      S.state = 'talk'; firing = false; Object.keys(K).forEach(k => { K[k] = false; });
+      S.talk = { i: 0, shown: 0, lines: [...n.lines.map(L2), L2([n.gift[1], n.gift[2]])] };
+      talkName.textContent = L2(n.name); talkHint.textContent = touch ? tr('Tocá para seguir', 'Tap to go on') : tr('E o clic para seguir', 'E or click to go on');
+      talkEl.hidden = false; promptEl.hidden = true; play('npc');
+    }
+    function advance() {
+      const T = S.talk; if (!T) return;
+      const line = T.lines[T.i];
+      if (T.shown < line.length) { T.shown = line.length; return; }
+      T.i++; T.shown = 0;
+      if (T.i >= T.lines.length) endTalk();
+    }
+    function endTalk() {
+      const n = S.npc; if (!S.talk || !n) return;
+      S.talk = null; talkEl.hidden = true; S.state = 'play'; last = performance.now();
+      if (!n.gone) {
+        n.gone = true; const g = n.gift[0];
+        if (g === 'heal') S.hp = Math.min(100, S.hp + 30);
+        else if (g === 'map') S.cores.forEach(c => { if (c.alive) revealRoom(c.room); });
+        else if (g === 'calm') S.enemies.forEach(e => { e.awake = false; e.calmT = 9; });
+        else if (g === 'score') { S.score += 750; paintHud(); }
+        toast(L2([n.gift[3], n.gift[4]]), 3); play('pickup');
+        const c = hsv(n.hue, 0.6, 1); burst(n.x, 1.7, n.z, [c[0] * 2.5, c[1] * 2.5, c[2] * 2.5], 90, 4, 1.4, 0.1); flash(n.x, 1.7, n.z, [c[0] * 4, c[1] * 4, c[2] * 4], 12, 1);
+      }
+    }
+    function blink(e) {   // a jump to a few steps away (the violet ones may land inside a wall: they don't care)
+      for (let k = 0; k < 6; k++) {
+        const a = Math.random() * Math.PI * 2, d = 2 + Math.random() * 3.5, nx = e.x + Math.cos(a) * d, nz = e.z + Math.sin(a) * d;
+        if (e.type !== 'phase' && solidAt(nx, nz)) continue;
+        const c = COL[e.type]; burst(e.x, e.y, e.z, [c[0] * 2, c[1] * 2, c[2] * 2], 14, 3, 0.4, 0.08);
+        e.x = nx; e.z = nz; burst(e.x, e.y, e.z, [c[0] * 2, c[1] * 2, c[2] * 2], 14, 3, 0.4, 0.08); play('blink');
+        return;
+      }
+    }
+
     /* ── the flow field: every floor cell knows its walking distance to you (the enemies follow it) ── */
     function updateFlow() {
       const M = S.M, c = Math.floor(pl.z / CS) * M.W + Math.floor(pl.x / CS);
@@ -651,6 +785,13 @@ void main() {
       const M = S.M;
       if (toastT > 0) { toastT -= dt; if (toastT <= 0) toastEl.classList.remove('on'); }
       for (let k = 0; k < S.roomGlow.length; k++) S.roomGlow[k] += (S.roomTarget[k] - S.roomGlow[k]) * Math.min(1, dt * 1.5);
+      if (S.state === 'talk' && S.talk) {
+        const T = S.talk, line = T.lines[T.i] || '', before = Math.floor(T.shown);
+        T.shown = Math.min(line.length, T.shown + dt * 38);
+        if (Math.floor(T.shown) > before && Math.floor(T.shown) % 3 === 0) play('talk');
+        talkText.textContent = line.slice(0, Math.floor(T.shown));
+      }
+      if (S.npc && !S.npc.gone) S.npc.t += dt; else if (S.npc) S.npc.fade = Math.max(0, S.npc.fade - dt * 1.5);
       if (S.state === 'dead' || S.state === 'trans') {
         S.endT -= dt;
         if (S.state === 'trans' && S.endT <= 0) { S.level++; S.hp = Math.min(100, S.hp + 30); loadLevel(); S.state = 'play'; bigEl.classList.remove('on'); toast(tr(`Nivel ${S.level}: ${S.cores.length} núcleos`, `Level ${S.level}: ${S.cores.length} cores`)); }
@@ -690,6 +831,10 @@ void main() {
         // pickups and the exit
         S.pickups = S.pickups.filter(p => { p.t += dt; if (Math.hypot(p.x - pl.x, p.z - pl.z) < 1.1 && S.hp < 100) { S.hp = Math.min(100, S.hp + 25); play('pickup'); toast(tr('+25 de energía', '+25 energy'), 1.2); burst(p.x, 1, p.z, [0.6, 2.4, 0.5], 24, 3, 0.6); return false; } return true; });
         if (S.exit.open && Math.hypot(S.exit.x - pl.x, S.exit.z - pl.z) < 1.4) nextLevel();
+        // a strange one near you, in front of you: you can talk
+        const n = S.npc; let can = false;
+        if (n && !n.gone) { const dx = n.x - pl.x, dz = n.z - pl.z, d = Math.hypot(dx, dz); can = d < 2.9 && (dx * Math.sin(pl.yaw) - dz * Math.cos(pl.yaw)) / (d || 1) > 0.5; }
+        if (can !== S.canTalk) { S.canTalk = can; promptEl.hidden = !can; if (can) promptEl.textContent = (touch ? '💬 ' : 'E · ') + tr('Hablar con ', 'Talk to ') + L2(n.name).toLowerCase(); }
       }
       pl.shake = Math.max(0, pl.shake - dt * 1.8);
       // enemies
@@ -697,28 +842,41 @@ void main() {
       if (S.state === 'play') for (const e of S.enemies) {
         if (e.dead) continue;
         e.t += dt; e.flash = Math.max(0, e.flash - dt * 6); e.cd -= dt;
-        const dx = pl.x - e.x, dz = pl.z - e.z, d = Math.hypot(dx, dz);
-        if (!e.awake) { if (d < 15 && los(e.x, e.z, pl.x, pl.z)) e.awake = true; else continue; }
+        const dx = pl.x - e.x, dz = pl.z - e.z, d = Math.hypot(dx, dz), ph = e.type === 'phase';
+        if (e.calmT > 0) { e.calmT -= dt; continue; }   // asleep (a strange one sang to it)
+        if (!e.awake) { if (d < (ph ? 12 : 15) && (ph || los(e.x, e.z, pl.x, pl.z))) e.awake = true; else continue; }
         if (d < 18) near++;
-        const see = d < 22 && los(e.x, e.z, pl.x, pl.z);
+        const see = d < 22 && los(e.x, e.z, pl.x, pl.z), er = S.errat;
         let dir;
-        if (see && d < 30) dir = [dx / (d || 1), dz / (d || 1)]; else dir = steer(e);
-        let speed = e.type === 'mini' ? 6.2 : e.type === 'drone' ? 4.4 + S.level * 0.15 : e.type === 'split' ? 3.4 : 3.6;
+        if (ph || (see && d < 30)) dir = [dx / (d || 1), dz / (d || 1)]; else dir = steer(e);   // the violet ones go straight at you, walls or not
+        let speed = e.type === 'mini' ? 6.2 : e.type === 'drone' ? 4.4 + S.level * 0.15 : e.type === 'split' ? 3.4 : ph ? 3.2 : 3.6;
+        // deeper = more erratic: they swerve, surge and jump around
+        if (er > 0 || ph) {
+            const k = Math.max(er, ph ? 0.6 : 0), ang = k * (Math.sin(e.t * 1.7 + e.seed) * 0.9 + Math.sin(e.t * 4.3 + e.seed * 2) * 0.45), c = Math.cos(ang), s = Math.sin(ang);
+            dir = [dir[0] * c - dir[1] * s, dir[0] * s + dir[1] * c];
+            speed *= 1 + k * 0.9 * Math.max(0, Math.sin(e.t * 2.1 + e.seed));
+            if (er > 0.15 && e.type !== 'shoot' && Math.random() < dt * 0.3 * er) blink(e);
+        }
         if (e.type === 'shoot' && see) {   // keeps its distance and strafes
           if (d < 7) dir = [-dir[0], -dir[1]]; else if (d < 11) dir = [-dir[1] * Math.sin(e.t * 0.7), dir[0] * Math.sin(e.t * 0.7)];
           if (e.cd <= 0) {
             e.cd = Math.max(0.8, 1.7 - S.level * 0.08);
             const ty = EYE - 0.2, lead = d / 10, tx = pl.x + pl.vx * lead * 0.5, tz = pl.z + pl.vz * lead * 0.5, v = norm([tx - e.x, ty - e.y, tz - e.z]);
-            S.orbs.push({ x: e.x, y: e.y, z: e.z, vx: v[0] * 10, vy: v[1] * 10, vz: v[2] * 10, life: 4 }); play('orb');
+            const fan = S.errat > 0.35 ? [-0.28, 0, 0.28] : [0];   // deep levels: a fan of orbs that weave
+            fan.forEach(a => { const c = Math.cos(a), s = Math.sin(a); S.orbs.push({ x: e.x, y: e.y, z: e.z, vx: (v[0] * c - v[2] * s) * 10, vy: v[1] * 10, vz: (v[0] * s + v[2] * c) * 10, life: 4, wob: S.errat, ph: Math.random() * 6 }); });
+            play('orb');
           }
         }
         const tv = [dir[0] * speed, dir[1] * speed];
         e.vx += (tv[0] - e.vx) * Math.min(1, dt * 5); e.vz += (tv[1] - e.vz) * Math.min(1, dt * 5);
         // keep apart from each other
         for (const o of S.enemies) { if (o === e || o.dead) continue; const ox = e.x - o.x, oz = e.z - o.z, od = Math.hypot(ox, oz), m = e.r + o.r + 0.2; if (od < m && od > 1e-3) { e.vx += ox / od * (m - od) * 12 * dt * 10; e.vz += oz / od * (m - od) * 12 * dt * 10; } }
-        e.x += e.vx * dt; e.z += e.vz * dt; collide(e, e.r);
-        const top = ceilAt(e.x, e.z);
-        e.y = Math.min(top - 0.6, (e.type === 'shoot' ? 2.2 : e.type === 'mini' ? 1.1 : 1.35) + Math.sin(e.t * 2.3) * 0.22);
+        e.x += e.vx * dt; e.z += e.vz * dt;
+        if (ph) { const M2 = S.M; e.x = Math.max(CS, Math.min((M2.W - 1) * CS, e.x)); e.z = Math.max(CS, Math.min((M2.H - 1) * CS, e.z)); } else collide(e, e.r);
+        const top = ph ? Math.max(3, ceilAt(e.x, e.z) || 3.2) : ceilAt(e.x, e.z);
+        // and they leave the floor: up and down through the whole room
+        const swoop = S.errat * Math.sin(e.t * 1.1 + e.seed) * Math.max(0, top - 2.2) * 0.45;
+        e.y = Math.max(0.6, Math.min(top - 0.6, (e.type === 'shoot' ? 2.2 : e.type === 'mini' ? 1.1 : 1.35) + Math.sin(e.t * 2.3) * 0.22 + swoop));
         if (e.type !== 'shoot' && d < e.r + 0.55 && e.cd <= 0) { e.cd = 0.75; hurt(e.type === 'mini' ? 6 : e.type === 'split' ? 15 : 11, e.x, e.z); }
       }
       S.enemies = S.enemies.filter(e => !e.dead);
@@ -739,6 +897,7 @@ void main() {
         S.bolts = S.bolts.filter(b => b.life > 0);
         for (const o of S.orbs) {
           o.x += o.vx * dt; o.y += o.vy * dt; o.z += o.vz * dt; o.life -= dt;
+          if (o.wob) { const l = Math.hypot(o.vx, o.vz) || 1, w = Math.sin(o.life * 7 + o.ph) * o.wob * 5 * dt; o.x += -o.vz / l * w; o.z += o.vx / l * w; o.y += Math.cos(o.life * 5 + o.ph) * o.wob * 1.5 * dt; }
           if (solidAt(o.x, o.z) || o.y < 0 || o.y > ceilAt(o.x, o.z)) { o.life = 0; burst(o.x, o.y, o.z, [2.4, 0.9, 0.2], 10, 2.5, 0.4, 0.08); continue; }
           const dx = o.x - pl.x, dy = o.y - (EYE - 0.3), dz = o.z - pl.z;
           if (S.state === 'play' && dx * dx + dy * dy + dz * dz < 0.55 ** 2) { o.life = 0; hurt(9 + S.level, o.x, o.z); burst(o.x, o.y, o.z, [2.4, 0.9, 0.2], 14, 3, 0.4, 0.08); }
@@ -775,6 +934,7 @@ void main() {
       S.cores.forEach(c => { if (c.alive) { const p = 1 + 0.35 * Math.sin(c.t * 3); lights.push([c.x, c.y, c.z, 9, 1.0 * p, 0.85 * p, 0.5 * p]); } });
       if (S.exit.open) { const p = 1 + 0.4 * Math.sin(S.exit.t * 4); lights.push([S.exit.x, 1.6, S.exit.z, 12, 0.6 * p, 2.4 * p, 2.6 * p]); }
       S.enemies.forEach(e => { if (e.awake) { const c = COL[e.type]; lights.push([e.x, e.y, e.z, 3.5, c[0] * 0.8, c[1] * 0.8, c[2] * 0.8]); } });
+      if (S.npc && !S.npc.gone) { const c = hsv((S.npc.hue + S.npc.t * 0.08) % 1, 0.5, 1); lights.push([S.npc.x, 1.7, S.npc.z, 5, c[0] * 0.55, c[1] * 0.55, c[2] * 0.55]); }
       lights.forEach(l => { l.d = (l[0] - eye[0]) ** 2 + (l[2] - eye[2]) ** 2; });
       lights.sort((a, b) => a.d - b.d);
       const LP = new Float32Array(64), LC = new Float32Array(64), NL = Math.min(16, lights.length);
@@ -792,23 +952,44 @@ void main() {
       let p = P.level; gl.useProgram(p.p);
       gl.uniformMatrix4fv(p.L.u_vp, false, vp); gl.uniform3fv(p.L.u_eye, eye); gl.uniform1f(p.L.u_time, S.t);
       gl.uniform4fv(p.L.u_lp, LP); gl.uniform4fv(p.L.u_lc, LC); gl.uniform1i(p.L.u_nl, NL); gl.uniform4fv(p.L.u_rc, RC); gl.uniform4fv(p.L.u_rp, RP);
+      gl.uniform1f(p.L.u_psy, S.psy); gl.uniform1f(p.L.u_warp, Math.max(0, (S.level - 4) / 6) * 0.26 * Math.min(1, S.psy * 2));
       gl.bindVertexArray(levelGL.vao); gl.drawArrays(gl.TRIANGLES, 0, levelGL.n);
       // things
       gl.disable(gl.CULL_FACE);
-      p = P.ent; gl.useProgram(p.p); gl.uniformMatrix4fv(p.L.u_vp, false, vp); gl.uniform3fv(p.L.u_eye, eye); gl.uniform1f(p.L.u_fog, 1);
+      p = P.ent; gl.useProgram(p.p); gl.uniformMatrix4fv(p.L.u_vp, false, vp); gl.uniform3fv(p.L.u_eye, eye); gl.uniform1f(p.L.u_fog, 1); gl.uniform1f(p.L.u_time, S.t);
+      const wob = (w, h) => { gl.uniform1f(p.L.u_wob, w); gl.uniform1f(p.L.u_hue, h); };
+      wob(0, 0);
       const draw = (mesh, m, col, glow, fill, fl) => { gl.uniformMatrix4fv(p.L.u_m, false, m); gl.uniform3fv(p.L.u_col, col); gl.uniform1f(p.L.u_glow, glow); gl.uniform1f(p.L.u_fill, fill); gl.uniform1f(p.L.u_flash, fl); gl.bindVertexArray(mesh.vao); gl.drawArrays(gl.TRIANGLES, 0, mesh.n); };
+      const ER = S.errat, PS = S.psy;
       for (const e of S.enemies) {
-        const c = COL[e.type], k = e.awake ? 1 : 0.55;
-        if (e.type === 'drone' || e.type === 'mini') draw(MESH.octa, modelM(e.x, e.y, e.z, e.r * 1.1, e.t * 2.4, 0.3), c, k, 0.05, e.flash);
-        else if (e.type === 'shoot') draw(MESH.cube, modelM(e.x, e.y, e.z, e.r * 0.85, e.t * 0.9, e.t * 0.6), c, k, 0.05, e.flash);
-        else draw(MESH.ico, modelM(e.x, e.y, e.z, e.r, e.t * 1.3, e.t * 0.7), c, k, 0.05, e.flash);
+        const c = COL[e.type], ph = e.type === 'phase';
+        let k = e.awake && !(e.calmT > 0) ? 1 : 0.55;
+        if (ph) k *= 0.55 + 0.45 * Math.abs(Math.sin(e.t * 9 + e.seed));   // the violet ones flicker
+        wob(PS * 0.28 + (ph ? 0.18 : 0), PS > 0 ? (S.t * 0.25 + e.seed) * PS : 0);
+        const sc = 1 + ER * 0.22 * Math.sin(e.t * 7 + e.seed), spin = 1 + ER * 1.5 * Math.sin(e.t * 0.9 + e.seed);
+        // deep levels (and the violet ones): the shape keeps changing
+        const mesh = (ph || PS > 0.55) && Math.floor(e.t * 0.8 + e.seed) % 3 !== 0 ? [MESH.octa, MESH.ico, MESH.cube][Math.floor(e.t * 0.8 + e.seed) % 3]
+          : e.type === 'drone' || e.type === 'mini' ? MESH.octa : e.type === 'shoot' ? MESH.cube : MESH.ico;
+        const sz = e.type === 'shoot' ? e.r * 0.85 : e.type === 'drone' || e.type === 'mini' ? e.r * 1.1 : e.r;
+        draw(mesh, modelM(e.x, e.y, e.z, sz * sc, e.t * 2.0 * spin, e.t * 0.6 * spin + 0.3), c, k, 0.05, e.flash);
       }
+      wob(PS * 0.12, PS > 0 ? S.t * 0.1 * PS : 0);
       for (const c of S.cores) {
         if (!c.alive) continue;
         const pu = 1 + 0.06 * Math.sin(c.t * 3);
         draw(MESH.octa, modelM(c.x, c.y, c.z, 0.85 * pu, c.t * 0.8, 0), [1, 0.86, 0.45], 1.2, 0.15, c.flash);
         draw(MESH.octa, modelM(c.x, c.y, c.z, 0.45, -c.t * 2.2, c.t), [1, 1, 1], 1.6, 0.6, c.flash);
         draw(MESH.ring, modelM(c.x, c.y, c.z, 1.25, c.t * 1.4, Math.PI / 2 + 0.3 * Math.sin(c.t)), [1, 0.86, 0.45], 0.8, 0.05, 0);
+      }
+      // a strange one: rings turning around a small light, iridescent
+      if (S.npc && S.npc.fade > 0.01) {
+        const n = S.npc, f = n.fade, c1 = hsv((n.hue + n.t * 0.08) % 1, 0.55, 1), c2 = hsv((n.hue + 0.33 + n.t * 0.08) % 1, 0.55, 1), y = 1.7 + Math.sin(n.t * 1.3) * 0.15;
+        wob(0.06, 0);
+        draw(MESH.ring, modelM(n.x, y, n.z, 0.95 * f, n.t * 0.7, 0.4), c1, 1.1 * f, 0.05, 0);
+        draw(MESH.ring, modelM(n.x, y, n.z, 0.75 * f, -n.t * 1.1, 1.3), c2, 1.1 * f, 0.05, 0);
+        draw(MESH.ring, modelM(n.x, y, n.z, 0.55 * f, n.t * 1.7, -0.7), c1, 1.1 * f, 0.05, 0);
+        draw(MESH.ico, modelM(n.x, y, n.z, 0.22 * f, n.t * 2, n.t), [1, 1, 1], 1.4 * f, 0.6, 0);
+        wob(PS * 0.12, PS > 0 ? S.t * 0.1 * PS : 0);
       }
       for (const q of S.pickups) draw(MESH.plus, modelM(q.x, 0.9 + Math.sin(q.t * 3) * 0.12, q.z, 0.9, q.t * 1.6, 0), [0.35, 1, 0.3], 1.2, 0.1, 0);
       { const X = S.exit, op = X.open, pu = op ? 1 + 0.05 * Math.sin(X.t * 4) : 1;
@@ -822,6 +1003,7 @@ void main() {
       S.parts.forEach(q => { const a = q.life / q.max; pt(q.x, q.y, q.z, q.size, q.col[0], q.col[1], q.col[2], a); });
       S.cores.forEach(c => { if (c.alive) pt(c.x, c.y, c.z, 1.7, 1.2, 1, 0.6, 0.28 + 0.1 * Math.sin(c.t * 3)); });
       if (S.exit.open) pt(S.exit.x, 1.6, S.exit.z, 3.2, 0.3, 1.4, 1.6, 0.8 + 0.3 * Math.sin(S.exit.t * 4));
+      if (S.npc && S.npc.fade > 0.01) { const n = S.npc; for (let k = 0; k < 10; k++) { const a = n.t * 0.9 + k * 0.628, c = hsv((n.hue + k * 0.1 + n.t * 0.1) % 1, 0.6, 1); pt(n.x + Math.cos(a) * 1.3, 1.7 + Math.sin(a * 2.3) * 0.6, n.z + Math.sin(a) * 1.3, 0.09, c[0] * 2.5, c[1] * 2.5, c[2] * 2.5, n.fade); } }
       if (n) {
         p = P.pts; gl.useProgram(p.p); gl.uniformMatrix4fv(p.L.u_vp, false, vp); gl.uniform1f(p.L.u_ph, H / (2 * Math.tan(pl.fov / 2)));
         gl.bindBuffer(gl.ARRAY_BUFFER, pBuf); gl.bufferSubData(gl.ARRAY_BUFFER, 0, pData, 0, n * 8);
@@ -843,15 +1025,21 @@ void main() {
       // bloom: bright parts at a quarter size, blurred twice
       gl.bindVertexArray(emptyVao);
       const pass = (prg, fb, w, h, srcs, set) => { gl.bindFramebuffer(gl.FRAMEBUFFER, fb); gl.viewport(0, 0, w, h); gl.useProgram(prg.p); srcs.forEach((t, i) => { gl.activeTexture(gl.TEXTURE0 + i); gl.bindTexture(gl.TEXTURE_2D, t); }); set(prg.L); gl.drawArrays(gl.TRIANGLES, 0, 3); };
-      pass(P.bright, RT.fa, RT.qw, RT.qh, [RT.main], L => { gl.uniform1i(L.u_img, 0); gl.uniform2f(L.u_px, 1 / W, 1 / H); });
+      let scene = RT.main;
+      if (S.psy > 0.02) {   // deep levels: what glows leaves trails that turn and change colour
+        const src = RT.e[RT.ec], dst = 1 - RT.ec, ps = S.psy;
+        pass(P.echo, RT.fe[dst], W, H, [RT.main, src], L => { gl.uniform1i(L.u_img, 0); gl.uniform1i(L.u_prev, 1); gl.uniform1f(L.u_k, 0.3 + 0.38 * ps); gl.uniform1f(L.u_rot, 0.006 * ps * Math.sin(S.t * 0.3)); gl.uniform1f(L.u_zoom, 1 - 0.012 * ps); gl.uniform1f(L.u_hue, 0.015 * ps); });
+        RT.ec = dst; scene = RT.e[dst];
+      }
+      pass(P.bright, RT.fa, RT.qw, RT.qh, [scene], L => { gl.uniform1i(L.u_img, 0); gl.uniform2f(L.u_px, 1 / W, 1 / H); });
       for (let k = 0; k < 2; k++) {
         pass(P.blur, RT.fb, RT.qw, RT.qh, [RT.a], L => { gl.uniform1i(L.u_img, 0); gl.uniform2f(L.u_dir, (1 + k) / RT.qw, 0); });
         pass(P.blur, RT.fa, RT.qw, RT.qh, [RT.b], L => { gl.uniform1i(L.u_img, 0); gl.uniform2f(L.u_dir, 0, (1 + k) / RT.qh); });
       }
       const fade = S.state === 'trans' ? Math.max(0, Math.min(1, Math.abs(S.endT - 0.8) / 0.8)) : S.state === 'dead' || S.state === 'over' ? Math.max(0.25, S.endT / 1.6) : 1;
-      pass(P.comp, null, W, H, [RT.main, RT.a], L => {
+      pass(P.comp, null, W, H, [scene, RT.a], L => {
         gl.uniform1i(L.u_img, 0); gl.uniform1i(L.u_bloom, 1); gl.uniform1f(L.u_hurt, Math.min(1, pl.hurtT * 2) + (S.state === 'dead' ? 0.6 : 0) + (S.hp < 30 && S.state === 'play' ? 0.18 + 0.12 * Math.sin(S.t * 6) : 0));
-        gl.uniform1f(L.u_time, S.t % 100); gl.uniform1f(L.u_ab, 0.012 + pl.hurtT * 0.05 + (pl.dashT > 0 ? 0.04 : 0)); gl.uniform1f(L.u_bk, 1.1); gl.uniform1f(L.u_fade, fade); gl.uniform2f(L.u_res, W, H);
+        gl.uniform1f(L.u_time, S.t % 100); gl.uniform1f(L.u_ab, 0.012 + S.psy * 0.03 * (1 + Math.sin(S.t * 0.7)) + pl.hurtT * 0.05 + (pl.dashT > 0 ? 0.04 : 0)); gl.uniform1f(L.u_bk, 1.1); gl.uniform1f(L.u_fade, fade); gl.uniform2f(L.u_res, W, H);
       });
       gl.activeTexture(gl.TEXTURE0);
       // the HUD
@@ -879,6 +1067,7 @@ void main() {
       }
       const dot = (x, z, col, r) => { const px = Wm / 2 + (x / CS - cx) * s, pz = Wm / 2 + (z / CS - cz) * s; g.fillStyle = col; g.beginPath(); g.arc(px, pz, r, 0, Math.PI * 2); g.fill(); return [px, pz]; };
       S.cores.forEach(c => { if (c.alive && S.seen[Math.floor(c.z / CS) * M.W + Math.floor(c.x / CS)]) dot(c.x, c.z, '#ffd23f', 3.5); });
+      if (S.npc && !S.npc.gone && S.seen[Math.floor(S.npc.z / CS) * M.W + Math.floor(S.npc.x / CS)]) dot(S.npc.x, S.npc.z, '#e9b8ff', 3);
       if (S.exit.open) {   // the exit always shows (on the rim when it is far)
         let ex = (S.exit.x / CS - cx) * s, ez = (S.exit.z / CS - cz) * s; const l = Math.hypot(ex, ez), m = Wm / 2 - 8; if (l > m) { ex *= m / l; ez *= m / l; }
         g.fillStyle = '#6ff'; g.beginPath(); g.arc(Wm / 2 + ex, Wm / 2 + ez, 4.5, 0, Math.PI * 2); g.fill();
@@ -913,7 +1102,8 @@ void main() {
       coresDown() { S.cores.forEach(c => { while (c.alive) hitCore(c); }); },
       goto(x, z, yaw) { pl.x = x; pl.z = z; if (yaw !== undefined) pl.yaw = yaw; },
       aimAt(x, y, z) { const dx = x - pl.x, dy = y - EYE, dz = z - pl.z; pl.yaw = Math.atan2(dx, -dz); pl.pitch = Math.atan2(dy, Math.hypot(dx, dz)); },
-      hurt, nextLevel,
+      hurt, nextLevel, talk, advance, endTalk,
+      setLevel(n) { S.level = n; loadLevel(); },
     });
 
     return () => {

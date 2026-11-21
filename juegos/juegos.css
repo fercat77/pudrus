@@ -506,3 +506,13 @@ body.cb .sd-cell.bad { text-decoration: line-through 3px; text-decoration-color:
 .nc-wrap.touch .nc-hp { bottom: auto; top: 54px; left: 12px; }
 .nc-wrap.touch .nc-dash { bottom: auto; top: 76px; left: 12px; }
 .nc-wrap.touch .nc-map { width: 92px; height: 92px; }
+/* Núcleo: the strange ones (the prompt and the dialog) */
+.nc-prompt { position: absolute; left: 50%; top: 60%; transform: translateX(-50%); padding: 7px 16px; font: inherit; font-size: 13px; letter-spacing: .05em; color: #f3e6ff; background: rgba(20,6,34,0.7); border: 1px solid rgba(220,160,255,0.65); border-radius: 999px; box-shadow: 0 0 16px rgba(200,120,255,0.35); cursor: pointer; white-space: nowrap; animation: ncPulse 1.6s ease-in-out infinite; }
+.nc-prompt[hidden] { display: none; }
+@keyframes ncPulse { 50% { box-shadow: 0 0 26px rgba(200,120,255,0.6); } }
+.nc-talk { position: absolute; left: 50%; bottom: 18px; transform: translateX(-50%); width: min(680px, calc(100% - 24px)); padding: 14px 18px 12px; background: rgba(6,4,16,0.86); border: 1px solid transparent; border-radius: 10px; pointer-events: auto; cursor: pointer; z-index: 3;
+  background-clip: padding-box; box-shadow: 0 0 0 1px rgba(210,150,255,0.55), 0 0 30px rgba(150,80,255,0.3); }
+.nc-talk[hidden] { display: none; }
+.nc-talk b { display: block; font-size: 12px; letter-spacing: .14em; text-transform: uppercase; background: linear-gradient(90deg, #8ff, #e9b8ff, #ffd23f); -webkit-background-clip: text; background-clip: text; color: transparent; margin-bottom: 6px; }
+.nc-talk p { margin: 0; min-height: 2.8em; font-size: clamp(14px, 2.2vw, 17px); line-height: 1.4; color: #f4ecff; }
+.nc-talk small { display: block; margin-top: 6px; text-align: right; font-size: 10px; letter-spacing: .1em; color: rgba(230,210,255,0.55); text-transform: uppercase; }
