@@ -32,6 +32,38 @@
 .nx-kicker { display: flex; flex-wrap: wrap; gap: 6px 12px; align-items: baseline; font-size: 9px; letter-spacing: 2px; text-transform: uppercase; color: var(--c2); }
 .nx-kicker b { color: var(--c1); font-weight: 600; }
 
+/* search + section chips: they stay at the top while you scroll */
+.nx-tools { position: sticky; top: var(--nav-height); z-index: 20; display: flex; flex-direction: column; gap: 10px;
+  margin: 0 calc(-1 * var(--gutter)); padding: 10px var(--gutter); background: rgba(var(--bg-rgb),0.94);
+  -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px); border-bottom: 1px solid var(--border); }
+.nx-search { display: flex; align-items: center; gap: 8px; padding: 0 12px; border: 1px solid var(--c3); background: var(--bg2); max-width: 520px; }
+.nx-search:focus-within { border-color: var(--c1); }
+.nx-search span { color: var(--c2); font-size: 16px; }
+.nx-search input { flex: 1; min-width: 0; padding: 10px 0; border: 0; background: transparent; color: var(--head); font: inherit; font-size: 14px; outline: none; }
+.nx-search input::placeholder { color: var(--text2); opacity: 0.8; }
+.nx-tools .nx-filters { margin-top: 0; }
+.nx-chip b { font-weight: 400; opacity: 0.7; margin-left: 4px; }
+.nx-results { font-size: 11px; letter-spacing: 2px; text-transform: uppercase; color: var(--c2); }
+mark.nx-hl { background: rgba(var(--c1-rgb),0.28); color: inherit; padding: 0 1px; }
+
+/* a heading per section in the list */
+.nx-sec { grid-column: 1 / -1; display: flex; align-items: baseline; gap: 10px; margin-top: 10px; padding-bottom: 6px; border-bottom: 1px solid rgba(var(--c1-rgb),0.3);
+  font-size: 12px; letter-spacing: 3px; text-transform: uppercase; color: var(--c1); font-weight: 600; scroll-margin-top: 150px; }
+.nx-sec:first-child { margin-top: 0; }
+.nx-sec small { font-size: 10px; color: var(--text2); letter-spacing: 1px; font-weight: 400; }
+
+/* a summary cut short on phones, with «seguir leyendo» */
+.nx-all { grid-column: 1 / -1; justify-self: start; padding: 10px 14px; border: 1px solid var(--c3); background: var(--inset); color: var(--c1); font: inherit; font-size: 11px; letter-spacing: 1px; text-transform: uppercase; cursor: pointer; }
+.nx-all:hover { border-color: var(--c1); }
+.nx-more { align-self: flex-start; margin-top: -4px; padding: 4px 0; border: 0; background: none; color: var(--c1); font: inherit; font-size: 10px; letter-spacing: 2px; text-transform: uppercase; cursor: pointer; }
+.nx-top { position: fixed; right: 16px; bottom: calc(16px + env(safe-area-inset-bottom)); z-index: 30; width: 44px; height: 44px; border: 1px solid var(--c1);
+  background: rgba(var(--bg-rgb),0.92); color: var(--c1); font-size: 18px; cursor: pointer; opacity: 0; pointer-events: none; transition: opacity .2s; }
+.nx-top.on { opacity: 1; pointer-events: auto; }
+.nx-lead-side details summary { cursor: pointer; list-style: none; display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+.nx-lead-side details summary::-webkit-details-marker { display: none; }
+.nx-lead-side details summary .nx-h3 { margin: 0; }
+.nx-lead-side details[open] summary { margin-bottom: 12px; }
+
 /* the lead story */
 .nx-lead { display: grid; grid-template-columns: minmax(0, 1.35fr) minmax(0, 1fr); border: 1px solid rgba(var(--c1-rgb),0.35); background: var(--work-bg); position: relative; }
 .nx-lead:empty { display: none; }
@@ -91,6 +123,8 @@
 
 /* briefs + meter */
 .nx-cols { display: grid; grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr); gap: 14px; }
+.nx-cols.one { grid-template-columns: minmax(0, 1fr); }
+.nx [hidden] { display: none !important; }
 .nx-box { padding: clamp(16px, 2.4vw, 26px); background: var(--bg2); border: 1px solid var(--border); }
 .nx-h2 { font-size: 13px; letter-spacing: 3px; text-transform: uppercase; color: var(--head); font-weight: 600; }
 .nx-sub { font-size: 11px; color: var(--text2); margin: 4px 0 14px; }
@@ -128,6 +162,24 @@
   .nx-sci .nx-briefs li:nth-child(2) { border-top: 1px solid rgba(var(--line-rgb),0.08); }
   .nx-steps { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
+@media (max-width: 720px) {
+  .nx { gap: 14px; }
+  .nx-head .section-desc { display: none; }   /* the title and the meta line are enough on a phone */
+  .nx-tools .nx-filters { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; margin: 0 calc(-1 * var(--gutter)); padding: 0 var(--gutter); scroll-padding: 0 var(--gutter); }
+  .nx-tools .nx-filters::-webkit-scrollbar { display: none; }
+  .nx-chip { flex: none; padding: 8px 12px; }
+  .nx-search { max-width: none; }
+  .nx-lead h2 { font-size: 21px; }
+  .nx-lead .nx-sum, .nx-card .nx-sum { font-size: 13px; line-height: 1.7; color: var(--text); }
+  .nx-sum.cut { display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+  .nx-card .nx-ctx { display: none; }
+  .nx-card.open .nx-ctx { display: block; }
+  .nx-card { padding: 14px; gap: 8px; }
+  .nx-card h2 { font-size: 16px; }
+  .nx-grid { gap: 10px; }
+  .nx-data div { flex: 1 1 100%; }
+}
+@media (min-width: 721px) { .nx-more, .nx-top { display: none; } }
 @media (max-width: 480px) {
   .nx-steps { grid-template-columns: minmax(0, 1fr); }
   .nx-briefs li, .nx-sci .nx-briefs li { grid-template-columns: minmax(0, 1fr); gap: 2px; }

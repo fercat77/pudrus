@@ -593,6 +593,17 @@
     "homeDesc": "Las noticias de los principales diarios, con un título claro, un resumen propio y sin publicidad. Y cómo lo tituló cada medio.",
     "homeMeta": "Diarios nacionales, del interior y de ciencia · tres veces por día",
     "homeHow": "Una IA agrupa lo que cuenta cada medio, escribe un título que dice qué pasó y verifica cada dato contra las fuentes antes de publicarlo. Al lado, el termómetro de sensacionalismo de cada título.",
-    "read": "Leer las noticias"
+    "read": "Leer las noticias",
+    "search": "Buscar: un tema, una persona, un medio…",
+    "results": "{n} resultados para «{q}»",
+    "result1": "1 resultado para «{q}»",
+    "noResults": "No hay nada sobre «{q}» en esta portada.",
+    "more": "Seguir leyendo",
+    "less": "Ver menos",
+    "toTop": "Volver arriba",
+    "sciShort": "Ciencia",
+    "intShort": "Interior",
+    "brfShort": "Breves",
+    "seeAll": "Ver las {n} de {s}"
   }
 }

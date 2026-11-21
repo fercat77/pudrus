@@ -593,6 +593,17 @@
     "homeDesc": "News from the main Argentine papers, with a clear headline, our own summary and no ads. And how each outlet headlined it.",
     "homeMeta": "National papers, papers from the provinces and science sites · three times a day",
     "homeHow": "An AI groups what each outlet reports, writes a headline that says what happened and checks every fact against the sources before publishing. Next to it, the sensationalism meter of every headline.",
-    "read": "Read the news"
+    "read": "Read the news",
+    "search": "Search: a topic, a person, an outlet…",
+    "results": "{n} results for “{q}”",
+    "result1": "1 result for “{q}”",
+    "noResults": "Nothing about “{q}” on this page.",
+    "more": "Read more",
+    "less": "Show less",
+    "toTop": "Back to top",
+    "sciShort": "Science",
+    "intShort": "Provinces",
+    "brfShort": "Briefs",
+    "seeAll": "See all {n} in {s}"
   }
 }

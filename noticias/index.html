@@ -26,7 +26,7 @@
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600;700&display=swap">
   <script src="../js/theme.js"></script>
   <link rel="stylesheet" href="../css/style.css">
-  <link rel="stylesheet" href="../css/noticias.css?v=3">
+  <link rel="stylesheet" href="../css/noticias.css?v=4">
 </head>
 <body class="home">
 
@@ -53,8 +53,14 @@
     <h1 class="section-title nx-title">Notic<span>IA</span>s</h1>
     <p class="section-desc" data-i18n="news.desc">Las noticias de los principales diarios, con un título claro, un resumen propio y sin publicidad. Y al lado, cómo lo tituló cada medio.</p>
     <p class="nx-meta" data-nx-meta aria-live="polite"></p>
-    <div class="nx-filters" data-nx-filters role="toolbar" aria-label="Secciones"></div>
   </header>
+
+  <!-- search + sections: it stays on top while you scroll -->
+  <div class="nx-tools" data-nx-tools>
+    <label class="nx-search"><span aria-hidden="true">⌕</span><input type="search" data-nx-q enterkeyhint="search" autocomplete="off" data-i18n-placeholder="news.search" placeholder="Buscar: un tema, una persona, un medio…" aria-label="Buscar en las noticias"></label>
+    <div class="nx-filters" data-nx-filters role="toolbar" aria-label="Secciones"></div>
+  </div>
+  <p class="nx-results" data-nx-results hidden aria-live="polite"></p>
 
   <p class="nx-demo" data-nx-demo hidden data-i18n="news.demo">◈ Datos de ejemplo: medios y noticias inventados para mostrar cómo se ve la portada.</p>
   <p class="nx-empty" data-nx-empty hidden></p>
@@ -74,20 +80,20 @@
     <ol class="nx-briefs" data-nx-int></ol>
   </section>
 
-  <div class="nx-cols">
-    <section class="nx-box" aria-labelledby="nxBriefs">
+  <div class="nx-cols" data-nx-cols>
+    <section class="nx-box" aria-labelledby="nxBriefs" data-nx-brf-box>
       <h2 class="nx-h2" id="nxBriefs" data-i18n="news.briefs">Breves</h2>
       <p class="nx-sub" data-i18n="news.briefsDesc">Lo que por ahora publicó un solo medio.</p>
       <ol class="nx-briefs" data-nx-briefs></ol>
     </section>
-    <section class="nx-box" aria-labelledby="nxMeter">
+    <section class="nx-box" aria-labelledby="nxMeter" data-nx-meter-box>
       <h2 class="nx-h2" id="nxMeter" data-i18n="news.meter">Termómetro de medios</h2>
       <p class="nx-sub" data-i18n="news.meterDesc">Promedio de sensacionalismo de sus títulos en esta portada, de 0 a 10.</p>
       <ol class="nx-meter" data-nx-meter></ol>
     </section>
   </div>
 
-  <section class="nx-box nx-about" aria-labelledby="nxHow">
+  <section class="nx-box nx-about" aria-labelledby="nxHow" data-nx-about>
     <h2 class="nx-h2" id="nxHow" data-i18n="news.how">Cómo se arma esta portada</h2>
     <ol class="nx-steps">
       <li><b data-i18n="news.s1t">Juntar</b><span data-i18n="news.s1">Tres veces por día leemos los RSS de nueve diarios nacionales, seis del interior y once sitios de ciencia: solo títulos, bajadas y links.</span></li>
@@ -110,7 +116,7 @@
 </footer>
 
 <script src="../js/i18n.js"></script>
-<script src="../js/noticias.js?v=5"></script>
+<script src="../js/noticias.js?v=6"></script>
 <script src="../js/nav.js"></script>
 <script src="/js/pwa.js"></script>
 </body>

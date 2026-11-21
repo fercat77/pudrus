@@ -76,10 +76,11 @@
     return ol;
   }
 
-  function kicker(h) {
+  function kicker(h, noSec) {
     const k = el('div', 'nx-kicker');
     const medios = new Set((h.fuentes || []).map(f => f.medio)).size;
-    k.append(el('b', '', h.seccion || ''), el('span', '', t('sources', '{n} medios', { n: medios })));
+    if (!noSec) k.append(el('b', '', h.seccion || ''));
+    k.append(el('span', '', t('sources', '{n} medios', { n: medios })));
     const last = (h.fuentes || []).map(f => f.publicado).filter(Boolean).sort().pop();
     if (last) k.append(el('span', '', ago(last)));
     return k;
@@ -97,13 +98,16 @@
     }
     if (h.contexto) m.append(el('p', 'nx-ctx', h.contexto));
     const side = el('aside', 'nx-lead-side');
-    side.append(el('h3', 'nx-h3', t('howTitled', 'Cómo lo titularon')), headlines(h.fuentes || []));
+    if (phone()) {   // on a phone it folds up, like the cards
+      const d = el('details'), sm = el('summary'), avg = Math.round(avgScore(h.fuentes || []));
+      sm.append(el('h3', 'nx-h3', t('howTitled', 'Cómo lo titularon')), led(avg)); d.append(sm, headlines(h.fuentes || [])); side.append(d);
+    } else side.append(el('h3', 'nx-h3', t('howTitled', 'Cómo lo titularon')), headlines(h.fuentes || []));
     box.append(m, side);
   }
 
-  function card(h) {
+  function card(h, noSec) {
     const c = el('article', 'nx-card');
-    c.append(kicker(h), el('h2', '', head(h.titulo)), el('p', 'nx-sum', h.resumen));
+    c.append(kicker(h, noSec), el('h2', '', head(h.titulo)), el('p', 'nx-sum', h.resumen));
     if (h.contexto) c.append(el('p', 'nx-ctx', h.contexto));
     const d = el('details');
     const s = el('summary');
@@ -149,37 +153,119 @@
     });
   }
 
-  function filters(hist) {
+  // views: '' = everything; a section name = its stories; 'sci' / 'int' / 'brf' = one of the lists
+  let query = '';
+  const fold = x => String(x || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
+  const phone = () => matchMedia('(max-width: 720px)').matches;
+  const storyText = h => fold([h.titulo, h.resumen, h.contexto, h.seccion, ...(h.datos || []).map(d => d.etiqueta + ' ' + d.texto), ...(h.fuentes || []).map(f => f.medio + ' ' + f.titulo)].join(' '));
+  const itemText = b => fold([b.titulo, b.original, b.resumen, b.medio].join(' '));
+  const matches = (txt, q) => fold(q).split(/\s+/).filter(Boolean).every(w => txt.includes(w));
+
+  function filters(all) {
     const box = $('filters'); box.textContent = '';
-    const secs = [...new Set(hist.map(h => h.seccion).filter(Boolean))];
-    if (secs.length < 2) return;
-    ['', ...secs].forEach(s => {
-      const b = el('button', 'nx-chip', s || t('all', 'Todas'));
-      b.type = 'button'; b.setAttribute('aria-pressed', String(s === filter));
-      b.addEventListener('click', () => { filter = s; render(); });
+    const count = {}; all.forEach(h => { if (h.seccion) count[h.seccion] = (count[h.seccion] || 0) + 1; });
+    const secs = Object.keys(count).sort((a, b) => count[b] - count[a]);
+    const chips = [['', t('all', 'Todas'), all.length], ...secs.map(x => [x, x, count[x]])];
+    if ((data.ciencia || []).length) chips.push(['sci', t('sciShort', 'Ciencia'), data.ciencia.length]);
+    if ((data.interior || []).length) chips.push(['int', t('intShort', 'Interior'), data.interior.length]);
+    if ((data.breves || []).length) chips.push(['brf', t('brfShort', 'Breves'), data.breves.length]);
+    chips.forEach(([v, label, n]) => {
+      const b = el('button', 'nx-chip', label); b.append(el('b', '', String(n)));
+      b.type = 'button'; b.setAttribute('aria-pressed', String(v === filter && !query));
+      b.addEventListener('click', () => {
+        filter = v; query = ''; $('q').value = ''; render();
+        const y = main.querySelector('.nx-head').getBoundingClientRect().bottom + scrollY - 56;   // back to the top of the list
+        if (scrollY > y) scrollTo({ top: y, behavior: 'smooth' });
+        const nb = [...$('filters').children].find(c => c.getAttribute('aria-pressed') === 'true');
+        if (nb) nb.scrollIntoView({ block: 'nearest', inline: 'center', behavior: 'smooth' });
+      });
       box.append(b);
     });
   }
 
+  // on a phone a long summary shows four lines and a «seguir leyendo»
+  function cutLong(root) {
+    if (!root || !phone()) return;
+    root.querySelectorAll('.nx-card .nx-sum').forEach(p => {
+      const c = p.closest('.nx-card'), ctx = c.querySelector('.nx-ctx');
+      p.classList.add('cut');
+      if (p.scrollHeight <= p.clientHeight + 4 && !ctx) { p.classList.remove('cut'); return; }
+      const b = el('button', 'nx-more', t('more', 'Seguir leyendo') + ' ▾'); b.type = 'button';
+      b.addEventListener('click', () => { const open = c.classList.toggle('open'); p.classList.toggle('cut', !open); b.textContent = open ? t('less', 'Ver menos') + ' ▴' : t('more', 'Seguir leyendo') + ' ▾'; });
+      p.after(b);
+    });
+  }
+
   function render() {
-    const all = (data.historias || []).filter(h => h.titulo && (!h.estado || h.estado === 'aprobada'));
-    const hist = all.filter(h => !filter || h.seccion === filter).sort((a, b) => (b.principal ? 1 : 0) - (a.principal ? 1 : 0) || (b.relevancia || 0) - (a.relevancia || 0));
+    const all = (data.historias || []).filter(h => h.titulo && (!h.estado || h.estado === 'aprobada'))
+      .sort((a, b) => (b.principal ? 1 : 0) - (a.principal ? 1 : 0) || (b.relevancia || 0) - (a.relevancia || 0));
     const medios = new Set(); all.forEach(h => (h.fuentes || []).forEach(f => medios.add(f.medio)));
     $('meta').textContent = [data.generado ? t('updated', 'Actualizado {t}', { t: ago(data.generado) }) : '', t('stories', '{n} historias', { n: all.length }), t('sources', '{n} medios', { n: medios.size })].filter(Boolean).join(' · ');
     $('demo').hidden = !data.ejemplo;
     const empty = $('empty'); empty.hidden = all.length > 0; empty.textContent = t('empty', 'Todavía no hay noticias publicadas. Volvé en un rato.');
     filters(all);
-    lead(hist[0]);
+
+    const q = query.trim(), lists = { sci: data.ciencia || [], int: data.interior || [], brf: data.breves || [] };
+    let stories, show;   // which stories, and which blocks are visible
+    if (q) {
+      stories = all.filter(h => matches(storyText(h), q));
+      Object.keys(lists).forEach(k => { lists[k] = lists[k].filter(b => matches(itemText(b), q)); });
+      const n = stories.length + lists.sci.length + lists.int.length + lists.brf.length;
+      const r = $('results'); r.hidden = false;
+      r.textContent = n ? (n === 1 ? t('result1', '1 resultado para «{q}»', { q }) : t('results', '{n} resultados para «{q}»', { n, q })) : t('noResults', 'No hay nada sobre «{q}» en esta portada.', { q });
+      show = { sci: lists.sci.length > 0, int: lists.int.length > 0, brf: lists.brf.length > 0, meter: false, about: false };
+    } else {
+      $('results').hidden = true;
+      const only = filter === 'sci' || filter === 'int' || filter === 'brf';
+      stories = only ? [] : all.filter(h => !filter || h.seccion === filter);
+      show = only ? { sci: filter === 'sci', int: filter === 'int', brf: filter === 'brf', meter: false, about: false }
+        : filter ? { sci: false, int: false, brf: false, meter: false, about: false }
+        : { sci: lists.sci.length > 0, int: lists.int.length > 0, brf: true, meter: true, about: true };
+    }
+
+    // the lead (not while searching), then the rest grouped by section when everything is shown
+    const leadStory = !q && stories.length ? stories[0] : null;
+    lead(leadStory);
     const grid = $('grid'); grid.textContent = '';
-    hist.slice(1).forEach(h => grid.append(card(h)));
-    briefs(data.breves || []);
-    const sci = data.ciencia || [];
-    $('sci-box').hidden = !sci.length;
-    if (sci.length) briefs(sci, 'sci');
-    const int = data.interior || [];
-    $('int-box').hidden = !int.length;
-    if (int.length) briefs(int, 'int');
-    meter(all);
+    const rest = leadStory ? stories.slice(1) : stories;
+    if (!q && !filter && rest.length > 4) {
+      const groups = new Map(); rest.forEach(h => { const k = h.seccion || 'Argentina'; if (!groups.has(k)) groups.set(k, []); groups.get(k).push(h); });
+      const few = phone() ? 3 : Infinity;
+      groups.forEach((hs, k) => {
+        const hd = el('h2', 'nx-sec', k); hd.append(el('small', '', String(hs.length))); grid.append(hd);
+        hs.slice(0, few).forEach(h => grid.append(card(h, true)));
+        if (hs.length > few) {   // the rest of the section is one tap away
+          const b = el('button', 'nx-all', t('seeAll', 'Ver las {n} de {s}', { n: hs.length, s: k }) + ' →'); b.type = 'button';
+          b.addEventListener('click', () => { const chip = [...$('filters').children].find(c => c.firstChild && c.firstChild.textContent === k); if (chip) chip.click(); });
+          grid.append(b);
+        }
+      });
+    } else rest.forEach(h => grid.append(card(h)));
+    if (q) highlight(grid, q);
+
+    $('sci-box').hidden = !show.sci; if (show.sci) briefs(lists.sci, 'sci');
+    $('int-box').hidden = !show.int; if (show.int) briefs(lists.int, 'int');
+    $('brf-box').hidden = !show.brf; if (show.brf) briefs(lists.brf);
+    $('meter-box').hidden = !show.meter; if (show.meter) meter(all);
+    $('cols').hidden = !show.brf && !show.meter;
+    $('cols').classList.toggle('one', show.brf !== show.meter);
+    $('about').hidden = !show.about;
+    if (q) ['sci', 'int', 'briefs'].forEach(k => highlight($(k), q));
+    cutLong(main.querySelector('.nx-lead')); cutLong(grid);
+  }
+
+  // marks the searched words inside the titles (text nodes only: the page never takes HTML from the feeds)
+  function highlight(root, q) {
+    const words = fold(q).split(/\s+/).filter(w => w.length > 1); if (!root || !words.length) return;
+    root.querySelectorAll('h2:not(.nx-sec), .nx-briefs a, .nx-orig').forEach(node => {
+      const tx = node.textContent, f = fold(tx), marks = [];
+      if (f.length !== tx.length) return;   // the folded text must line up with the original
+      words.forEach(w => { let i = f.indexOf(w); while (i >= 0) { marks.push([i, i + w.length]); i = f.indexOf(w, i + w.length); } });
+      if (!marks.length) return;
+      marks.sort((a, b) => a[0] - b[0]); const out = []; let at = 0;
+      marks.forEach(([a, b]) => { if (a < at) return; out.push(document.createTextNode(tx.slice(at, a))); out.push(el('mark', 'nx-hl', tx.slice(a, b))); at = b; });
+      out.push(document.createTextNode(tx.slice(at))); node.textContent = ''; node.append(...out);
+    });
   }
 
   function signals() {
@@ -204,6 +290,15 @@
 
   signals();
   load();
+  // search as you type
+  let qT = 0;
+  $('q').addEventListener('input', e => { clearTimeout(qT); qT = setTimeout(() => { query = e.target.value; if (data) render(); }, 160); });
+  $('q').addEventListener('keydown', e => { if (e.key === 'Escape') { e.target.value = ''; query = ''; if (data) render(); } if (e.key === 'Enter') e.target.blur(); });
+  // a phone: a button to go back up
+  const up = el('button', 'nx-top', '↑'); up.type = 'button'; up.title = t('toTop', 'Volver arriba'); up.setAttribute('aria-label', up.title);
+  up.addEventListener('click', () => scrollTo({ top: 0, behavior: 'smooth' })); document.body.append(up);
+  addEventListener('scroll', () => up.classList.toggle('on', scrollY > 1400), { passive: true });
+  let wasPhone = phone(); addEventListener('resize', () => { if (phone() !== wasPhone) { wasPhone = phone(); if (data) render(); } });
   // the language switch re-runs the static texts; the dynamic ones follow
   const sel = document.getElementById('langSelect');
   if (sel) sel.addEventListener('change', () => setTimeout(() => { if (data) render(); }, 150));
