@@ -521,3 +521,9 @@ body.cb .sd-cell.bad { text-decoration: line-through 3px; text-decoration-color:
 .nc-cores i.on.fold { background: #ff5af0; box-shadow: 0 0 8px #ff5af0; }
 .nc-jumpbtn { position: absolute; right: 112px; bottom: 104px; width: 64px; height: 64px; border-radius: 50%; border: 2px solid rgba(255,90,240,0.6); background: rgba(40,0,40,0.45); color: #ffd0fb; font-size: 22px; touch-action: none; }
 .nc-jumpbtn:active { background: rgba(255,90,240,0.35); }
+/* Núcleo: the weapons */
+.nc-weapon { position: absolute; right: 16px; bottom: 16px; display: flex; align-items: center; gap: 10px; font-size: 11px; letter-spacing: .12em; text-transform: uppercase; color: rgba(190,230,255,0.45); }
+.nc-weapon span.on { color: #fff; text-shadow: 0 0 8px #0cf; }
+.nc-weapon small { padding: 1px 6px; border: 1px solid rgba(0,212,255,0.4); border-radius: 3px; font-size: 10px; color: #9fe8ff; }
+.nc-wrap.touch .nc-weapon { right: auto; left: 50%; transform: translateX(-50%); bottom: auto; top: 34px; }
+.nc-swapbtn { position: absolute; right: 186px; bottom: 30px; width: 50px; height: 50px; border-radius: 50%; border: 2px solid rgba(0,212,255,0.5); background: rgba(0,30,45,0.45); color: #bff6ff; font-size: 20px; touch-action: none; }

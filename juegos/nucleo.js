@@ -218,6 +218,15 @@ void main() {
     o[12] = x; o[13] = y; o[14] = z; o[15] = 1; return o;
   }
 
+  // small matrices for things with joints (an arm, a leg): translate, rotate, scale, chained left to right
+  const I4 = () => { const o = new Float32Array(16); o[0] = o[5] = o[10] = o[15] = 1; return o; };
+  const T4 = (x, y, z) => { const o = I4(); o[12] = x; o[13] = y; o[14] = z; return o; };
+  const RZ = a => { const o = I4(), c = Math.cos(a), s = Math.sin(a); o[0] = c; o[1] = s; o[4] = -s; o[5] = c; return o; };
+  const RY = a => { const o = I4(), c = Math.cos(a), s = Math.sin(a); o[0] = c; o[2] = -s; o[8] = s; o[10] = c; return o; };
+  const RX = a => { const o = I4(), c = Math.cos(a), s = Math.sin(a); o[5] = c; o[6] = s; o[9] = -s; o[10] = c; return o; };
+  const SC = (x, y, z) => { const o = I4(); o[0] = x; o[5] = y; o[10] = z; return o; };
+  const chain = (...ms) => ms.reduce((a, b) => mul(a, b));
+
   /* ═══════════════ shapes (flat faces; a_b tells how far from a face's edge, for the glowing edges) ═══════════════ */
   function shape() { const v = []; return {
     v, tri(a, b, c) { const n = norm(cross(sub(b, a), sub(c, a))); [[a, [1, 0, 0, 1]], [b, [0, 1, 0, 1]], [c, [0, 0, 1, 1]]].forEach(([p, w]) => v.push(...p, ...n, ...w)); },
@@ -254,6 +263,8 @@ void main() {
     return s.v;
   }
   const plus = () => box(0.12, 0.42, 0.12, 0, 0, 0, box(0.42, 0.12, 0.12)).v;
+  const limb = (w, l, d) => box(w, l / 2, d, 0, -l / 2, 0).v;   // hangs from its joint (the origin), length l
+  const fan = () => { const s = box(0.06, 0.05, 0.2, 0, 0, -0.04); box(0.02, 0.02, 0.13, -0.028, 0.03, -0.33, s); box(0.02, 0.02, 0.13, 0.028, 0.03, -0.33, s); box(0.035, 0.07, 0.04, 0, -0.09, 0.1, s); box(0.05, 0.03, 0.07, 0, -0.045, -0.14, s); return s.v; };
   const avatar = () => { const s = box(0.2, 0.32, 0.14, 0, 0.95, 0); box(0.15, 0.15, 0.15, 0, 1.5, 0, s); box(0.07, 0.3, 0.08, -0.1, 0.32, 0, s); box(0.07, 0.3, 0.08, 0.1, 0.32, 0, s); box(0.24, 0.05, 0.05, 0.28, 1.08, 0, s); return s.v; };
   const gun = () => { const s = box(0.045, 0.05, 0.26, 0, 0, -0.06); box(0.03, 0.03, 0.1, 0, 0.065, -0.2, s); box(0.035, 0.07, 0.04, 0, -0.08, 0.1, s); box(0.05, 0.012, 0.18, 0, 0.0, -0.06, s); return s.v; };
 
@@ -436,8 +447,8 @@ void main() {
   const GAME = {
     id: 'nucleo', solo: true, title: tr('Núcleo', 'Core'), tag: tr('Acción', 'Action'),
     desc: tr('Una estructura de neón que se arma distinta cada vez. Apagá sus núcleos y escapá.', 'A neon structure built anew every time. Shut down its cores and get out.'),
-    how: tr('Cada nivel tiene núcleos escondidos: destruilos todos (cada uno que cae deja su sala a oscuras) y llegá a la salida, que se abre al final. Cada nivel es más grande y con más enemigos. Compu: W A S D para moverte, mouse para mirar, clic para disparar, Shift o Espacio para el impulso, Esc para pausar, M para el sonido. Celular: palanca a la izquierda para moverte, arrastrá a la derecha para mirar, botones para disparar y para el impulso. Los rojos te persiguen, los naranjas disparan de lejos (esquivá sus esferas), los amarillos se parten en dos y los violetas atraviesan las paredes. Cuanto más hondo, más rara se pone la estructura. A veces aparece alguien que no ataca: acercate y apretá E para hablar. Desde el nivel 3, algún núcleo está dentro de un pliegue (un portal magenta en una pared): adentro el mundo se ve de costado, con plataformas; A D para moverte, W o Espacio para saltar (más alto si lo mantenés), Shift para el impulso (también en el aire) y el mouse para apuntar.',
-      'Every level hides cores: destroy them all (each one that falls blacks out its room) and reach the exit, which opens at the end. Every level is bigger and has more enemies. Computer: W A S D to move, mouse to look, click to shoot, Shift or Space to dash, Esc to pause, M for sound. Phone: stick on the left to move, drag on the right to look, buttons to shoot and to dash. Red ones chase you, orange ones shoot from afar (dodge their orbs), yellow ones split in two and violet ones go through walls. The deeper you go, the stranger the structure gets. Now and then someone appears who doesn’t attack: go up to them and press E to talk. From level 3, a core may sit inside a fold (a magenta portal on a wall): inside, the world is seen from the side, with platforms; A D to move, W or Space to jump (higher if you hold it), Shift to dash (in the air too) and the mouse to aim.'),
+    how: tr('Cada nivel tiene núcleos escondidos: destruilos todos (cada uno que cae deja su sala a oscuras) y llegá a la salida, que se abre al final. Cada nivel es más grande y con más enemigos. Compu: W A S D para moverte, mouse para mirar, clic para disparar, Shift o Espacio para el impulso, Q (o 1 / 2, o la ruedita) para cambiar de arma, Esc para pausar, M para el sonido. Celular: palanca a la izquierda para moverte, arrastrá a la derecha para mirar, botones para disparar, para el impulso y ⇄ para cambiar de arma. Dos armas: el Pulso (rápido y preciso) y el Abanico (ocho disparos en abanico: lento pero demoledor de cerca, y empuja). Los rojos te persiguen, los naranjas disparan de lejos (esquivá sus esferas), los amarillos se parten en dos y los violetas atraviesan las paredes. Cuanto más hondo, más rara se pone la estructura. A veces aparece alguien que no ataca: acercate y apretá E para hablar. Desde el nivel 3, algún núcleo está dentro de un pliegue (un portal magenta en una pared): adentro el mundo se ve de costado, con plataformas; A D para moverte, W o Espacio para saltar (más alto si lo mantenés), Shift para el impulso (también en el aire) y el mouse para apuntar.',
+      'Every level hides cores: destroy them all (each one that falls blacks out its room) and reach the exit, which opens at the end. Every level is bigger and has more enemies. Computer: W A S D to move, mouse to look, click to shoot, Shift or Space to dash, Q (or 1 / 2, or the wheel) to switch weapons, Esc to pause, M for sound. Phone: stick on the left to move, drag on the right to look, buttons to shoot, to dash and ⇄ to switch weapons. Two weapons: the Pulse (fast and precise) and the Fan (eight shots in a fan: slow but crushing up close, and it pushes). Red ones chase you, orange ones shoot from afar (dodge their orbs), yellow ones split in two and violet ones go through walls. The deeper you go, the stranger the structure gets. Now and then someone appears who doesn’t attack: go up to them and press E to talk. From level 3, a core may sit inside a fold (a magenta portal on a wall): inside, the world is seen from the side, with platforms; A D to move, W or Space to jump (higher if you hold it), Shift to dash (in the air too) and the mouse to aim.'),
     better: 'high', fmt: n => Number(n).toLocaleString(J.LOCALE),
     start: ctx => run(ctx),
   };
@@ -475,7 +486,11 @@ void main() {
     const ENTL = [[0, 3], [1, 3], [2, 4]];
     const MESH = { octa: meshVao(new Float32Array(octa()), ENTL), cube: meshVao(new Float32Array(box(1, 1, 1).v), ENTL), ico: meshVao(new Float32Array(icosa()), ENTL),
       ring: meshVao(new Float32Array(ring(1, 0.12, 40)), ENTL), plus: meshVao(new Float32Array(plus()), ENTL), gun: meshVao(new Float32Array(gun()), ENTL),
-      avatar: meshVao(new Float32Array(avatar()), ENTL) };
+      avatar: meshVao(new Float32Array(avatar()), ENTL), fan: meshVao(new Float32Array(fan()), ENTL),
+      thigh: meshVao(new Float32Array(limb(0.075, 0.42, 0.075)), ENTL), shin: meshVao(new Float32Array(limb(0.065, 0.42, 0.065)), ENTL),
+      uarm: meshVao(new Float32Array(limb(0.06, 0.3, 0.06)), ENTL), farm: meshVao(new Float32Array(limb(0.052, 0.28, 0.052)), ENTL),
+      torso: meshVao(new Float32Array(box(0.19, 0.3, 0.12, 0, 0.3, 0).v), ENTL), head: meshVao(new Float32Array(box(0.14, 0.15, 0.14, 0, 0.17, 0).v), ENTL),
+      hand: meshVao(new Float32Array(box(0.045, 0.05, 0.055).v), ENTL) };
     let levelGL = null;
     // the particles (sparks, shots, orbs): one dynamic buffer
     const PMAX = 6000, pData = new Float32Array(PMAX * 8), pVao = gl.createVertexArray(), pBuf = gl.createBuffer();
@@ -547,6 +562,8 @@ void main() {
       orb() { osc('sine', 300, 600, 0.18, 0.08); },
       fold() { osc('sine', 1400, 90, 0.7, 0.18); osc('triangle', 90, 900, 0.7, 0.1); noise(0.6, 0.18, 'bandpass', 300, 3000, sfx, A.currentTime, 2); },
       jump() { osc('square', 260, 520, 0.09, 0.05); },
+      fan() { noise(0.22, 0.32, 'lowpass', 4000, 300); osc('sawtooth', 220, 55, 0.2, 0.16); },
+      swap() { osc('triangle', 700, 1100, 0.06, 0.06); setTimeout(() => A && osc('triangle', 1100, 1300, 0.05, 0.05), 60); },
       blink() { osc('sine', 1600, 180, 0.14, 0.09); noise(0.1, 0.08, 'bandpass', 2500, 600, sfx, A.currentTime, 3); },
       talk() { osc('triangle', 520 + Math.random() * 200, 520 + Math.random() * 200, 0.03, 0.025); },
       npc() { [0, 3, 7, 10, 14].forEach((s, i) => setTimeout(() => A && osc('sine', 330 * 2 ** (s / 12), 330 * 2 ** (s / 12), 0.5, 0.07), i * 120)); },
@@ -594,14 +611,15 @@ void main() {
     function big(msg, sub) { bigEl.innerHTML = ''; bigEl.append(el('b', null, msg)); if (sub) bigEl.append(el('small', null, sub)); bigEl.classList.add('on'); }
     // touch controls
     const tc = touch ? el('div', 'nc-touch') : null;
-    let stick = null, look = null; const fireBtn = el('button', 'nc-fire', '◉'), dashBtn = el('button', 'nc-dashbtn', '»'), jumpBtn = el('button', 'nc-jumpbtn', '▲'), stickEl = el('div', 'nc-stick'), knob = el('i');
-    if (tc) { stickEl.append(knob); tc.append(stickEl, fireBtn, dashBtn, jumpBtn); wrap.append(tc); }
+    let stick = null, look = null; const fireBtn = el('button', 'nc-fire', '◉'), dashBtn = el('button', 'nc-dashbtn', '»'), jumpBtn = el('button', 'nc-jumpbtn', '▲'), swapBtn = el('button', 'nc-swapbtn', '⇄'), stickEl = el('div', 'nc-stick'), knob = el('i');
+    if (tc) { stickEl.append(knob); tc.append(stickEl, fireBtn, dashBtn, jumpBtn, swapBtn); wrap.append(tc); }
+    const weaponEl = el('div', 'nc-weapon'); hudEl.append(weaponEl);
     jumpBtn.hidden = true;
 
     /* ── state ── */
     const seed = Math.floor(ctx.rnd() * 4294967296);
     const S = { level: 1, score: 0, kills: 0, hp: 100, t: 0, state: 'play', M: null, psy: 0, errat: 0, npc: null, canTalk: false, talk: null, mode: '3d', portal: null, fold: null, fx: 0, enemies: [], bolts: [], orbs: [], parts: [], flashes: [], pickups: [], cores: [], exit: null, seen: null, roomGlow: [], flow: null, flowCell: -1, endT: 0 };
-    const pl = { x: 0, z: 0, vx: 0, vz: 0, yaw: 0, pitch: 0, dashT: 0, dashCd: 0, hurtT: 0, shake: 0, fireCd: 0, recoil: 0, bob: 0, roll: 0, fov: 1.32 };
+    const pl = { x: 0, z: 0, vx: 0, vz: 0, yaw: 0, pitch: 0, dashT: 0, dashCd: 0, hurtT: 0, shake: 0, fireCd: 0, recoil: 0, bob: 0, roll: 0, fov: 1.32, weapon: 0, swap: 0 };
     const K = {}; let firing = false, mx = 0, my = 0;
     const EYE = 1.6;
     function isSolid(i, j) { const M = S.M; return i < 0 || j < 0 || i >= M.W || j >= M.H || M.grid[j * M.W + i] === 1; }
@@ -620,6 +638,11 @@ void main() {
     }
     function los(ax, az, bx, bz) { const dx = bx - ax, dz = bz - az, n = Math.ceil(Math.hypot(dx, dz) / (CS * 0.25)); for (let i = 1; i < n; i++) { const t = i / n; if (solidAt(ax + dx * t, az + dz * t)) return false; } return true; }
 
+    // the weapons: «Pulso» (fast, precise) and «Abanico» (a fan of 8, slow, devastating up close, pushes back)
+    const WEAPONS = [
+      { name: tr('Pulso', 'Pulse'), rate: 0.125, pellets: 1, spread: 0.012, speed: 48, life: 1.2, col: [0.3, 0.85, 1], hot: [0.7, 2.2, 3.4], shake: 0.06, recoil: 1, push: 0, mesh: 'gun' },
+      { name: tr('Abanico', 'Fan'), rate: 0.62, pellets: 8, spread: 0.2, speed: 40, life: 0.38, col: [1, 0.42, 0.85], hot: [3.2, 1.0, 2.6], shake: 0.28, recoil: 2.2, push: 3.5, mesh: 'fan' },
+    ];
     const HP = { drone: 2, shoot: 4, split: 5, mini: 1, phase: 3 }, PTS = { drone: 100, shoot: 150, split: 200, mini: 50, phase: 180 };
     const COL = { drone: [1, 0.16, 0.24], shoot: [1, 0.55, 0.08], split: [1, 0.92, 0.2], mini: [1, 0.3, 0.3], phase: [0.8, 0.35, 1] };
     function spawnEnemy(type, x, z, awake) {
@@ -682,6 +705,8 @@ void main() {
       if (down && k === 'Escape' && S.state === 'talk') { endTalk(); e.stopImmediatePropagation(); e.preventDefault(); return; }
       if (down && (k === 'KeyE' || k === 'KeyF' || (k === 'Space' && S.state === 'talk') || (k === 'Enter' && S.state === 'talk'))) { if (S.state === 'talk') advance(); else if (S.state === 'play' && S.canTalk) talk(); }
       if (down && k === 'KeyM') setMute(!muted);
+      if (down && (k === 'KeyQ')) setWeapon(pl.weapon + 1);
+      if (down && (k === 'Digit1' || k === 'Digit2')) setWeapon(+k.slice(5) - 1);
       if (down && k === 'KeyP') pause(S.state === 'play');
     };
     addEventListener('keydown', onKey, true); addEventListener('keyup', onKey, true);
@@ -689,6 +714,7 @@ void main() {
     document.addEventListener('mousemove', onMove);
     cv.addEventListener('mousedown', e => { if (touch) return; if (S.state === 'talk') { advance(); return; } if (S.state === 'pause') { pause(false); return; } if (!locked()) { lock(); return; } if (e.button === 0) firing = true; if (e.button === 2) { if (S.mode === 'fold') dash2(); else dash(); } });
     const onUp = e => { if (e.button === 0) firing = false; };
+    cv.addEventListener('wheel', e => { e.preventDefault(); if (Math.abs(e.deltaY) > 4) setWeapon(pl.weapon + (e.deltaY > 0 ? 1 : -1)); }, { passive: false });
     document.addEventListener('mouseup', onUp);
     cv.addEventListener('contextmenu', e => e.preventDefault());
     const onLock = () => { if (!locked() && S.state === 'play' && !touch) pause(true); };
@@ -705,7 +731,7 @@ void main() {
       const pts = new Map();
       const rect = () => wrap.getBoundingClientRect();
       tc.addEventListener('pointerdown', e => {
-        if (e.target === fireBtn || e.target === dashBtn || e.target === jumpBtn) return;
+        if (e.target === fireBtn || e.target === dashBtn || e.target === jumpBtn || e.target === swapBtn) return;
         const R = rect(), x = e.clientX - R.left, y = e.clientY - R.top;
         if (S.state === 'pause') { pause(false); return; }
         if (S.state === 'talk') { advance(); return; }
@@ -727,6 +753,7 @@ void main() {
       fireBtn.addEventListener('pointermove', e => { if (!firing) { fl = null; return; } if (fl) { mx += (e.clientX - fl[0]) * 1.6; my += (e.clientY - fl[1]) * 1.6; } fl = [e.clientX, e.clientY]; });
       fireBtn.addEventListener('pointerup', () => { fl = null; });
       dashBtn.addEventListener('pointerdown', e => { e.stopPropagation(); e.preventDefault(); if (S.mode === 'fold') dash2(); else dash(); });
+      swapBtn.addEventListener('pointerdown', e => { e.stopPropagation(); e.preventDefault(); setWeapon(pl.weapon + 1); });
       jumpBtn.addEventListener('pointerdown', e => { e.stopPropagation(); e.preventDefault(); f2.buf = 0.13; f2.held = true; try { jumpBtn.setPointerCapture(e.pointerId); } catch (er) { /* ignore */ } });
       ['pointerup', 'pointercancel'].forEach(t => jumpBtn.addEventListener(t, () => { f2.held = false; }));
     }
@@ -743,6 +770,12 @@ void main() {
     }
 
     /* ── actions ── */
+    function setWeapon(i) {
+      i = ((i % WEAPONS.length) + WEAPONS.length) % WEAPONS.length;
+      if (i === pl.weapon || S.state !== 'play') return;
+      pl.weapon = i; pl.swap = 1; pl.fireCd = Math.max(pl.fireCd, 0.22); play('swap'); paintWeapon();
+    }
+    function paintWeapon() { weaponEl.innerHTML = ''; WEAPONS.forEach((w, i) => { const b = el('span', i === pl.weapon ? 'on' : '', w.name); weaponEl.append(b); }); if (!touch) weaponEl.append(el('small', null, 'Q')); }
     function dash() {
       if (S.state !== 'play' || pl.dashCd > 0) return;
       let ix = 0, iz = 0; const f = [Math.sin(pl.yaw), -Math.cos(pl.yaw)], r = [Math.cos(pl.yaw), Math.sin(pl.yaw)];
@@ -758,12 +791,16 @@ void main() {
       const start = [e[0] + B.f[0] * 0.55 + B.r[0] * 0.16 - B.u[0] * 0.12, e[1] + B.f[1] * 0.55 + B.r[1] * 0.16 - B.u[1] * 0.12, e[2] + B.f[2] * 0.55 + B.r[2] * 0.16 - B.u[2] * 0.12];
       // aim where the crosshair points (the first wall along the view), so the shots converge on it
       let d = 0.5; while (d < 40) { const x = e[0] + B.f[0] * d, y = e[1] + B.f[1] * d, z = e[2] + B.f[2] * d; if (solidAt(x, z) || y < 0 || y > ceilAt(x, z)) break; d += 0.25; }
-      const tgt = [e[0] + B.f[0] * d, e[1] + B.f[1] * d, e[2] + B.f[2] * d], dir = norm(sub(tgt, start));
-      const spr = 0.012; dir[0] += (Math.random() - 0.5) * spr; dir[1] += (Math.random() - 0.5) * spr; dir[2] += (Math.random() - 0.5) * spr;
-      S.bolts.push({ x: start[0], y: start[1], z: start[2], vx: dir[0] * 48, vy: dir[1] * 48, vz: dir[2] * 48, life: 1.2 });
-      pl.fireCd = 0.125; pl.recoil = 1; pl.shake = Math.min(1, pl.shake + 0.08); pl.pitch += 0.004;
-      flash(start[0], start[1], start[2], [0.4, 1.4, 2.4], 6, 0.06);
-      play('shot');
+      const Wp = WEAPONS[pl.weapon], tgt = [e[0] + B.f[0] * d, e[1] + B.f[1] * d, e[2] + B.f[2] * d], d0 = norm(sub(tgt, start));
+      for (let k = 0; k < Wp.pellets; k++) {
+        const dir = d0.slice(), spr = Wp.spread;
+        if (Wp.pellets > 1) { const a = (k / (Wp.pellets - 1) - 0.5) * 2 * spr + (Math.random() - 0.5) * spr * 0.3, b = (Math.random() - 0.5) * spr * 0.6; for (let q = 0; q < 3; q++) dir[q] += B.r[q] * a + B.u[q] * b; }
+        else for (let q = 0; q < 3; q++) dir[q] += (Math.random() - 0.5) * spr;
+        const n2 = norm(dir); S.bolts.push({ x: start[0], y: start[1], z: start[2], vx: n2[0] * Wp.speed, vy: n2[1] * Wp.speed, vz: n2[2] * Wp.speed, life: Wp.life, w: pl.weapon });
+      }
+      pl.fireCd = Wp.rate; pl.recoil = Wp.recoil; pl.shake = Math.min(1, pl.shake + Wp.shake); pl.pitch += 0.004 * Wp.recoil;
+      flash(start[0], start[1], start[2], Wp.hot.map(v => v * 0.6), 6 + Wp.pellets * 0.5, 0.07);
+      play(pl.weapon ? 'fan' : 'shot');
     }
     function hurt(d, fx, fz) {
       if (S.state !== 'play') return;
@@ -811,7 +848,7 @@ void main() {
     }
 
     /* ── folds: a side-scrolling zone (same world, one dimension less) ── */
-    const f2 = { x: 0, y: 0, vx: 0, vy: 0, ground: false, coyote: 0, buf: 0, held: false, face: 1, ax: 4, ay: 0.5, dashT: 0, airDash: true, sx: 0, sy: 0, run: 0 };
+    const f2 = { x: 0, y: 0, vx: 0, vy: 0, ground: false, coyote: 0, buf: 0, held: false, face: 1, ax: 4, ay: 0.5, aimA: 0.12, dashT: 0, airDash: true, sx: 0, sy: 0, run: 0 };
     let foldGL = null;
     function enterFold() {
       const Pt = S.portal; if (!Pt || Pt.done) return;
@@ -844,25 +881,34 @@ void main() {
     }
     const inPlat = (x, y) => { const P = S.fold.F.P; for (let i = 0; i < P.length; i++) { const q = P[i]; if (x > q.x0 && x < q.x1 && y > q.y0 && y < q.y1) return true; } return false; };
     function fire2() {
-      const ox = f2.x + f2.face * 0.35, oy = f2.y + 1.08;
       let dx = f2.ax, dy = f2.ay;
       if (touch) {   // on a phone it aims by itself at the nearest thing in front
         let best = null, bd = 16;
         for (const e of S.enemies) { if (e.dead || (e.type === 'phase' && Math.abs(e.z) > 0.8)) continue; const ex = e.x - ox, ey = e.y - oy, d = Math.hypot(ex, ey); if (d < bd && ex * f2.face > -0.5) { bd = d; best = [ex, ey]; } }
         S.cores.forEach(c => { if (c.fold && c.alive) { const ex = c.x - ox, ey = c.y - oy, d = Math.hypot(ex, ey); if (d < bd && ex * f2.face > 0) { bd = d; best = [ex, ey]; } } });
         [dx, dy] = best || [f2.face, 0];
+        f2.aimA = Math.atan2(dy, dx); if (Math.abs(dx) > 0.2) f2.face = Math.sign(dx);
       }
-      const l = Math.hypot(dx, dy) || 1; dx /= l; dy /= l; dy += (Math.random() - 0.5) * 0.02;
-      S.bolts.push({ x: ox, y: oy, z: 0, vx: dx * 40, vy: dy * 40, vz: 0, life: 1 });
-      pl.fireCd = 0.125; pl.shake = Math.min(1, pl.shake + 0.06);
-      flash(ox, oy, 0.6, [0.4, 1.4, 2.4], 5, 0.06); play('shot');
+      const l = Math.hypot(dx, dy) || 1; dx /= l; dy /= l;
+      const Wp = WEAPONS[pl.weapon], sh = shoulder2(), ox = sh[0] + dx * 0.9, oy = sh[1] + dy * 0.9, a0 = Math.atan2(dy, dx);   // out of the barrel
+      for (let k = 0; k < Wp.pellets; k++) {
+        const a = a0 + (Wp.pellets > 1 ? (k / (Wp.pellets - 1) - 0.5) * 2 * Wp.spread : 0) + (Math.random() - 0.5) * (Wp.pellets > 1 ? 0.05 : 0.02);
+        S.bolts.push({ x: ox, y: oy, z: 0, vx: Math.cos(a) * Wp.speed * 0.85, vy: Math.sin(a) * Wp.speed * 0.85, vz: 0, life: Wp.life * 0.85, w: pl.weapon });
+      }
+      pl.fireCd = Wp.rate; pl.recoil = Wp.recoil; pl.shake = Math.min(1, pl.shake + Wp.shake * 0.8);
+      if (Wp.push) f2.vx -= dx * 2.5;   // the fan kicks you back a little
+      flash(ox, oy, 0.6, Wp.hot.map(v => v * 0.6), 5, 0.07); play(pl.weapon ? 'fan' : 'shot');
     }
+    // where the shoulder is (the arms and the shots start there), and the run cycle
+    function shoulder2() { return [f2.x - f2.face * 0.02, f2.y + 0.84 + bob2() + 0.56]; }
+    function bob2() { return f2.ground && Math.abs(f2.vx) > 0.5 ? Math.abs(Math.sin(f2.run * 2.4)) * 0.05 : 0; }
     function updateFold(dt) {
       const Fo = S.fold, Fd = Fo.F;
       Fo.tr = Math.min(1, Fo.tr + dt / 1.0);
       if (Fo.outT > 0) { Fo.outT -= dt; if (Fo.outT <= 0) { exitFold(); return; } }
       // aim: the mouse moves a sight around you
-      if (!touch) { f2.ax += mx * 0.012; f2.ay -= my * 0.012; const l = Math.hypot(f2.ax, f2.ay); if (l > 5) { f2.ax *= 5 / l; f2.ay *= 5 / l; } }
+      if (!touch) { f2.ax += mx * 0.012; f2.ay -= my * 0.012; const l = Math.hypot(f2.ax, f2.ay); if (l > 5) { f2.ax *= 5 / l; f2.ay *= 5 / l; } f2.aimA = Math.atan2(f2.ay, f2.ax); }
+      else if (!firing) { let d = (f2.face > 0 ? 0 : Math.PI) - f2.aimA; d = Math.atan2(Math.sin(d), Math.cos(d)); f2.aimA += d * Math.min(1, dt * 8); }   // a phone: the arms rest pointing ahead
       mx = my = 0;
       const ready = Fo.tr >= 1;
       let mv = ready ? (K.KeyD || K.ArrowRight ? 1 : 0) - (K.KeyA || K.ArrowLeft ? 1 : 0) + (stick ? stick.dx : 0) : 0;
@@ -893,7 +939,7 @@ void main() {
       }
       f2.run += Math.abs(f2.vx) * dt;
       pl.fireCd -= dt; if (firing && ready && pl.fireCd <= 0) fire2();
-      pl.hurtT = Math.max(0, pl.hurtT - dt); pl.recoil = Math.max(0, pl.recoil - dt * 8);
+      pl.hurtT = Math.max(0, pl.hurtT - dt); pl.recoil = Math.max(0, pl.recoil - dt * 8); pl.swap = Math.max(0, pl.swap - dt * 4);
       // the camera follows, a little ahead
       Fo.cam[0] += (f2.x + f2.face * 2.2 - Fo.cam[0]) * Math.min(1, dt * 4); Fo.cam[1] += (f2.y + 1.6 - Fo.cam[1]) * Math.min(1, dt * 3);
       // enemies, in the plane
@@ -931,7 +977,7 @@ void main() {
         for (let s = 0; s < 3 && b.life > 0; s++) {
           b.x += b.vx * dt / 3; b.y += b.vy * dt / 3;
           if (inPlat(b.x, b.y)) { b.life = 0; burst(b.x - b.vx * 0.004, b.y - b.vy * 0.004, 0, [0.5, 1.6, 2.6], 8, 3, 0.35, 0.07); flash(b.x, b.y, 0.5, [0.4, 1.2, 2], 4, 0.12); break; }
-          for (const e of S.enemies) { if (e.dead || (e.type === 'phase' && Math.abs(e.z) > 0.8)) continue; if ((b.x - e.x) ** 2 + (b.y - e.y) ** 2 < (e.r + 0.2) ** 2) { b.life = 0; e.awake = true; e.flash = 1; e.hp--; play('hit'); burst(b.x, b.y, 0, [2, 2, 2], 6, 3, 0.25, 0.06); if (e.hp <= 0) killEnemy(e); hitMark(); break; } }
+          for (const e of S.enemies) { if (e.dead || (e.type === 'phase' && Math.abs(e.z) > 0.8)) continue; if ((b.x - e.x) ** 2 + (b.y - e.y) ** 2 < (e.r + 0.2) ** 2) { b.life = 0; e.awake = true; e.flash = 1; e.hp--; if (b.w) { const l = Math.hypot(b.vx, b.vy) || 1; e.vx += b.vx / l * WEAPONS[b.w].push; e.vy = (e.vy || 0) + b.vy / l * WEAPONS[b.w].push; } play('hit'); burst(b.x, b.y, 0, [2, 2, 2], 6, 3, 0.25, 0.06); if (e.hp <= 0) killEnemy(e); hitMark(); break; } }
           if (b.life <= 0) break;
           for (const c of S.cores) { if (!c.fold || !c.alive) continue; if ((b.x - c.x) ** 2 + (b.y - c.y) ** 2 < 1.15 ** 2) { b.life = 0; hitCore(c); burst(b.x, b.y, 0, [2.4, 2.2, 1.4], 8, 3, 0.3, 0.07); hitMark(); break; } }
         }
@@ -1047,7 +1093,7 @@ void main() {
         pl.fov += ((pl.dashT > 0 ? 1.5 : 1.32) - pl.fov) * Math.min(1, dt * 10);
         // shooting
         pl.fireCd -= dt; if (firing && pl.fireCd <= 0) fire();
-        pl.recoil = Math.max(0, pl.recoil - dt * 8); pl.hurtT = Math.max(0, pl.hurtT - dt);
+        pl.recoil = Math.max(0, pl.recoil - dt * 8); pl.hurtT = Math.max(0, pl.hurtT - dt); pl.swap = Math.max(0, pl.swap - dt * 4);
         // what you have seen (for the map): the rooms you walk into, and a few cells around you
         const ci = Math.floor(pl.x / CS), cj = Math.floor(pl.z / CS), here = M.rid[cj * M.W + ci];
         if (here >= 0) revealRoom(here);
@@ -1114,7 +1160,7 @@ void main() {
           for (let s = 0; s < n && b.life > 0; s++) {
             b.x += b.vx * dt / n; b.y += b.vy * dt / n; b.z += b.vz * dt / n;
             if (solidAt(b.x, b.z) || b.y < 0.02 || b.y > ceilAt(b.x, b.z)) { b.life = 0; burst(b.x - b.vx * 0.004, b.y - b.vy * 0.004, b.z - b.vz * 0.004, [0.5, 1.6, 2.6], 8, 3, 0.35, 0.07); flash(b.x, b.y, b.z, [0.4, 1.2, 2], 4, 0.12); break; }
-            for (const e of S.enemies) { if (e.dead) continue; const dx = b.x - e.x, dy = b.y - e.y, dz = b.z - e.z; if (dx * dx + dy * dy + dz * dz < (e.r + 0.18) ** 2) { b.life = 0; e.awake = true; e.flash = 1; e.hp--; play('hit'); burst(b.x, b.y, b.z, [2, 2, 2], 6, 3, 0.25, 0.06); if (e.hp <= 0) killEnemy(e); hitMark(); break; } }
+            for (const e of S.enemies) { if (e.dead) continue; const dx = b.x - e.x, dy = b.y - e.y, dz = b.z - e.z; if (dx * dx + dy * dy + dz * dz < (e.r + 0.18) ** 2) { b.life = 0; e.awake = true; e.flash = 1; e.hp--; if (b.w) { const l = Math.hypot(b.vx, b.vz) || 1; e.vx += b.vx / l * WEAPONS[b.w].push; e.vz += b.vz / l * WEAPONS[b.w].push; } play('hit'); burst(b.x, b.y, b.z, [2, 2, 2], 6, 3, 0.25, 0.06); if (e.hp <= 0) killEnemy(e); hitMark(); break; } }
             if (b.life <= 0) break;
             for (const c of S.cores) { if (!c.alive || c.fold) continue; const dx = b.x - c.x, dy = b.y - c.y, dz = b.z - c.z; if (dx * dx + dy * dy + dz * dz < 1.05 ** 2) { b.life = 0; hitCore(c); burst(b.x, b.y, b.z, [2.4, 2.2, 1.4], 8, 3, 0.3, 0.07); hitMark(); break; } }
           }
@@ -1155,7 +1201,7 @@ void main() {
       let B = basis(yaw, pitch, pl.roll), eye = [pl.x, EYE + Math.sin(pl.bob * 2) * 0.05 * Math.min(1, sp / 7), pl.z], fov = pl.fov;
       const FO = S.mode === 'fold' ? S.fold : null;
       if (FO) {   // a fold: seen from the side (going in, the camera turns from your eyes to there)
-        const k = FO.tr * FO.tr * (3 - 2 * FO.tr), cx = FO.cam[0], cy = FO.cam[1], D = touch ? 10 : 13;
+        const k = FO.tr * FO.tr * (3 - 2 * FO.tr), cx = FO.cam[0], cy = FO.cam[1], D = window.__ncD || (touch ? 10 : 13);
         const ey = [cx * k + (f2.x - 0.4) * (1 - k), (cy + 1.4) * k + (f2.y + 1.6) * (1 - k), D * k];
         const jit = (Math.random() - 0.5) * sh * 0.04;
         B = basis(Math.PI / 2 * (1 - k) + jit, Math.atan2(-1.4, D) * k + jit, (1 - k) * 0.5 * Math.sin(k * Math.PI));
@@ -1165,7 +1211,7 @@ void main() {
       // the lights: the 16 nearest of everything that glows
       const lights = [];
       S.flashes.forEach(f => lights.push([f.x, f.y, f.z, f.r * (0.5 + 0.5 * f.life / f.max), f.col[0] * f.life / f.max, f.col[1] * f.life / f.max, f.col[2] * f.life / f.max]));
-      S.bolts.forEach(b => lights.push([b.x, b.y, b.z, 3.5, 0.2, 0.6, 1.1]));
+      S.bolts.forEach(b => { const c = WEAPONS[b.w || 0].col; lights.push([b.x, b.y, b.z, 3.5, c[0] * 1.1, c[1] * 1.1, c[2] * 1.1]); });
       S.orbs.forEach(o => lights.push([o.x, o.y, o.z, 4, 1.6, 0.5, 0.1]));
       const here = c => c.alive && !!c.fold === !!FO;   // the cores of the world you are in
       S.cores.forEach(c => { if (here(c)) { const p = 1 + 0.35 * Math.sin(c.t * 3); lights.push([c.x, c.y, c.z, 9, 1.0 * p, 0.85 * p, 0.5 * p]); } });
@@ -1222,7 +1268,36 @@ void main() {
         draw(MESH.ring, modelM(c.x, c.y, c.z, 1.25, c.t * 1.4, Math.PI / 2 + 0.3 * Math.sin(c.t)), [1, 0.86, 0.45], 0.8, 0.05, 0);
       }
       // you, in a fold
-      if (FO) draw(MESH.avatar, modelM(f2.x, f2.y + (f2.ground ? Math.abs(Math.sin(f2.run * 2.2)) * 0.06 : 0), 0, 1, f2.face > 0 ? 0 : Math.PI, 0), [0.35, 0.9, 1], 1.1, 0.12, pl.hurtT > 0 ? pl.hurtT : 0);
+      if (FO) {   // you, from the side: a jointed figure (legs that run, knees tucked in the air, both arms aiming the weapon)
+        const fc = f2.face, col = [0.35, 0.9, 1], fl = pl.hurtT > 0 ? pl.hurtT : 0, ph = f2.run * 2.4, moving = f2.ground && Math.abs(f2.vx) > 0.5;
+        const root = chain(T4(f2.x, f2.y, 0), SC(fc, 1, 1)), lean = -0.18 * Math.max(-1, Math.min(1, f2.vx * fc / 8));
+        const hip = chain(root, T4(0, 0.84 + bob2(), 0));
+        let legs;
+        if (!f2.ground) legs = [[0.75, 1.3], [-0.35, 0.45]];   // in the air: one knee up, the other trailing
+        else if (moving) { const s = Math.sin(ph); legs = [[0.65 * s, Math.max(0, Math.cos(ph)) * 1.1 + 0.08], [-0.65 * s, Math.max(0, -Math.cos(ph)) * 1.1 + 0.08]]; }
+        else legs = [[0.12, 0.12], [-0.08, 0.06]];
+        legs.forEach(([th, kn], i) => {
+          const thigh = chain(hip, T4(0, 0, i ? -0.09 : 0.09), RZ(th));
+          draw(MESH.thigh, thigh, col, 1.0, 0.12, fl);
+          draw(MESH.shin, chain(thigh, T4(0, -0.42, 0), RZ(-kn)), col, 1.0, 0.12, fl);
+        });
+        const torso = chain(hip, RZ(lean));
+        draw(MESH.torso, torso, col, 1.1, 0.12, fl);
+        draw(MESH.head, chain(torso, T4(0, 0.62, 0)), col, 1.2, 0.15, fl);
+        // both arms point at the sight (the angle is mirrored when you face left)
+        const aL = Math.atan2(Math.sin(f2.aimA), Math.cos(f2.aimA) * fc) - lean, Wp = WEAPONS[pl.weapon], kick = pl.recoil * 0.05;
+        [[0.13, 0.25], [-0.13, 0.5]].forEach(([z, bend], i) => {
+          const ua = chain(torso, T4(0, 0.56, z), RZ(aL + Math.PI / 2 - bend - pl.swap * 1.2));
+          draw(MESH.uarm, ua, col, 1.0, 0.12, fl);
+          const fa = chain(ua, T4(0, -0.3, 0), RZ(bend));   // the elbow bends down, the forearm comes back on the line of aim
+          draw(MESH.farm, fa, col, 1.0, 0.12, fl);
+          if (!i) {
+            const hand = chain(fa, T4(0, -0.28 + kick, 0));
+            draw(MESH.hand, hand, [0.6, 0.95, 1], 1.1, 0.2, fl);
+            draw(MESH[Wp.mesh], chain(hand, RZ(-Math.PI / 2), RY(-Math.PI / 2), T4(0, 0.12, -0.15), SC(1.5, 1.5, 1.5)), Wp.col, 1.0 + pl.recoil * 0.4, 0.08, 0);
+          }
+        });
+      }
       // a portal into a fold: two rings on the wall, magenta
       if (!FO && S.portal && !S.portal.done) {
         const q = S.portal, a = Math.atan2(q.nx, q.nz), pu = 1 + 0.05 * Math.sin(q.t * 4);
@@ -1246,7 +1321,7 @@ void main() {
       // light: shots, orbs, sparks, the exit's glow
       let n = 0;
       const pt = (x, y, z, s, r, g, b, a) => { if (n >= PMAX) return; pData.set([x, y, z, s, r, g, b, a], n * 8); n++; };
-      S.bolts.forEach(b => { for (let k = 0; k < 5; k++) pt(b.x - b.vx * 0.005 * k, b.y - b.vy * 0.005 * k, b.z - b.vz * 0.005 * k, 0.13 - k * 0.018, 0.7, 2.2, 3.4, 1 - k * 0.17); });
+      S.bolts.forEach(b => { const c = WEAPONS[b.w || 0].hot; for (let k = 0; k < 5; k++) pt(b.x - b.vx * 0.005 * k, b.y - b.vy * 0.005 * k, b.z - b.vz * 0.005 * k, 0.13 - k * 0.018, c[0], c[1], c[2], 1 - k * 0.17); });
       S.orbs.forEach(o => { pt(o.x, o.y, o.z, 0.7, 3, 1.1, 0.25, 1); pt(o.x, o.y, o.z, 0.3, 3, 2.5, 2, 1); });
       S.parts.forEach(q => { const a = q.life / q.max; pt(q.x, q.y, q.z, q.size, q.col[0], q.col[1], q.col[2], a); });
       S.cores.forEach(c => { if (here(c)) pt(c.x, c.y, c.z, 1.7, 1.2, 1, 0.6, 0.28 + 0.1 * Math.sin(c.t * 3)); });
@@ -1268,8 +1343,12 @@ void main() {
         gl.uniformMatrix4fv(p.L.u_vp, false, persp(1.1, W / H, 0.01, 10)); gl.uniform3fv(p.L.u_eye, [0, 0, 0]); gl.uniform1f(p.L.u_fog, 0);
         const bx = Math.cos(pl.bob) * 0.012 * Math.min(1, sp / 7), by = Math.abs(Math.sin(pl.bob)) * 0.012 * Math.min(1, sp / 7);
         const gx = 0.22 * Math.min(1, W / H / 1.4);   // closer to the middle on a tall (portrait) screen
-        const gm = modelM(gx + bx, -0.2 - by - pl.recoil * 0.01, -0.62 + pl.recoil * 0.05, 0.62, -0.08, pl.recoil * 0.08);
-        draw(MESH.gun, gm, [0.3, 0.85, 1], 0.9 + pl.recoil * 0.8, 0.07, 0);
+        const Wp = WEAPONS[pl.weapon], rc = Math.min(1.6, pl.recoil);
+        const gm = modelM(gx + bx, -0.2 - by - rc * 0.012 - pl.swap * 0.3, -0.62 + rc * 0.05, 0.62, -0.08, rc * 0.08 - pl.swap * 0.6);
+        draw(MESH[Wp.mesh], gm, Wp.col, 0.9 + rc * 0.6, 0.07, 0);
+        const hand = chain(gm, T4(0, -0.085, 0.1));   // a hand on the grip, the forearm going back down out of view
+        draw(MESH.hand, chain(hand, SC(1.15, 1.25, 1.2)), [0.75, 0.6, 1], 0.75, 0.1, 0);
+        draw(MESH.farm, chain(hand, T4(0.01, -0.02, 0.03), RX(-1.05), RZ(-0.15), SC(1.5, 1.6, 1.5)), [0.75, 0.6, 1], 0.7, 0.1, 0);
       }
       gl.disable(gl.DEPTH_TEST);
       // bloom: bright parts at a quarter size, blurred twice
@@ -1297,7 +1376,7 @@ void main() {
       dashFill.style.width = (100 - pl.dashCd / 0.9 * 100) + '%';
       if (hitT > 0) { hitT -= dt; if (hitT <= 0) cross.classList.remove('hit'); }
       if (FO) {   // the sight: where the shots go (on a phone, ahead of you)
-        const ax = touch ? f2.face * 3 : f2.ax, ay = touch ? 0 : f2.ay, wx = f2.x + ax, wy = f2.y + 1.08 + ay;
+        const ax = touch ? Math.cos(f2.aimA) * 3 : f2.ax, ay = touch ? Math.sin(f2.aimA) * 3 : f2.ay, sh2 = shoulder2(), wx = sh2[0] + ax, wy = sh2[1] + ay;
         const c4 = [vp[0] * wx + vp[4] * wy + vp[12], vp[1] * wx + vp[5] * wy + vp[13], vp[3] * wx + vp[7] * wy + vp[15]];
         if (c4[2] > 0) { cross.style.left = ((c4[0] / c4[2]) * 0.5 + 0.5) * 100 + '%'; cross.style.top = (0.5 - (c4[1] / c4[2]) * 0.5) * 100 + '%'; }
       }
@@ -1344,7 +1423,7 @@ void main() {
       if ((musT -= dt) <= 0) { musT = 0.025; musicTick(); }
     }
     audio(); if (A && A.state === 'suspended') A.resume();
-    loadLevel();
+    loadLevel(); paintWeapon();
     toast(tr(`Nivel 1: encontrá y destruí ${S.cores.length} núcleos`, `Level 1: find and destroy ${S.cores.length} cores`), 3.5);
     lock();
     // on a phone: the whole screen, sideways (the Start tap allows it)
@@ -1360,7 +1439,7 @@ void main() {
       aimAt(x, y, z) { const dx = x - pl.x, dy = y - EYE, dz = z - pl.z; pl.yaw = Math.atan2(dx, -dz); pl.pitch = Math.atan2(dy, Math.hypot(dx, dz)); },
       hurt, nextLevel, talk, advance, endTalk,
       setLevel(n) { S.level = n; loadLevel(); },
-      get f2() { return f2; }, enterFold, exitFold, jump() { f2.buf = 0.13; f2.held = true; },
+      get f2() { return f2; }, setWeapon, enterFold, exitFold, jump() { f2.buf = 0.13; f2.held = true; },
       setPat(f, w) { S.M.rooms.forEach(r => { r.pf = f; r.pw = w; }); S.M.corrPat = [f, w]; },
     });
 
