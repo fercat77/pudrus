@@ -265,6 +265,8 @@ void main() {
   const plus = () => box(0.12, 0.42, 0.12, 0, 0, 0, box(0.42, 0.12, 0.12)).v;
   const limb = (w, l, d) => box(w, l / 2, d, 0, -l / 2, 0).v;   // hangs from its joint (the origin), length l
   const fan = () => { const s = box(0.06, 0.05, 0.2, 0, 0, -0.04); box(0.02, 0.02, 0.13, -0.028, 0.03, -0.33, s); box(0.02, 0.02, 0.13, 0.028, 0.03, -0.33, s); box(0.035, 0.07, 0.04, 0, -0.09, 0.1, s); box(0.05, 0.03, 0.07, 0, -0.045, -0.14, s); return s.v; };
+  const beamgun = () => { const s = box(0.04, 0.045, 0.24, 0, 0, -0.06); box(0.016, 0.016, 0.16, 0, 0, -0.38, s); [-0.24, -0.32, -0.4].forEach(z => box(0.034, 0.034, 0.012, 0, 0, z, s)); box(0.035, 0.07, 0.04, 0, -0.09, 0.1, s); box(0.02, 0.04, 0.08, 0, 0.065, -0.02, s); return s.v; };
+  const bouncer = () => { const s = box(0.05, 0.05, 0.18, 0, 0, -0.04); box(0.03, 0.03, 0.08, 0, 0, -0.27, s); box(0.06, 0.06, 0.06, 0, 0.08, -0.06, s); box(0.035, 0.07, 0.04, 0, -0.09, 0.1, s); return s.v; };
   const avatar = () => { const s = box(0.2, 0.32, 0.14, 0, 0.95, 0); box(0.15, 0.15, 0.15, 0, 1.5, 0, s); box(0.07, 0.3, 0.08, -0.1, 0.32, 0, s); box(0.07, 0.3, 0.08, 0.1, 0.32, 0, s); box(0.24, 0.05, 0.05, 0.28, 1.08, 0, s); return s.v; };
   const gun = () => { const s = box(0.045, 0.05, 0.26, 0, 0, -0.06); box(0.03, 0.03, 0.1, 0, 0.065, -0.2, s); box(0.035, 0.07, 0.04, 0, -0.08, 0.1, s); box(0.05, 0.012, 0.18, 0, 0.0, -0.06, s); return s.v; };
 
@@ -282,14 +284,15 @@ void main() {
     WP = [...open, newest, newest, ...(level >= 3 ? [1] : [])];   // and hexagons, a favourite on walls
     const W = Math.min(60, 26 + level * 5), H = W;
     const grid = new Uint8Array(W * H).fill(1), ceil = new Float32Array(W * H), rid = new Int16Array(W * H).fill(-1), corr = new Uint8Array(W * H);
-    const rooms = [], want = Math.min(14, 5 + Math.floor(level * 1.5));
+    const rooms = [], want = Math.min(14, 5 + Math.floor(level * 1.5)), boss = level % 5 === 0;
     for (let t = 0; t < 800 && rooms.length < want; t++) {
-      const w = 4 + Math.floor(rnd() * 6), h = 4 + Math.floor(rnd() * 6);
+      const arena = boss && rooms.length === 1 && t < 500;   // every 5 levels: a big arena for the Great Core (the room after the start)
+      const w = arena ? 13 : 4 + Math.floor(rnd() * 6), h = arena ? 13 : 4 + Math.floor(rnd() * 6);
       const x = 1 + Math.floor(rnd() * (W - w - 2)), y = 1 + Math.floor(rnd() * (H - h - 2));
       if (rooms.some(r => x < r.x + r.w + 2 && x + w + 2 > r.x && y < r.y + r.h + 2 && y + h + 2 > r.y)) continue;
       const big = w * h >= 42;
-      rooms.push({ x, y, w, h, cx: x + (w >> 1), cy: y + (h >> 1), hgt: [4, 4, 6, 8][Math.floor(rnd() * (big ? 4 : 3))], hue: Math.floor(rnd() * PAL.length),
-        pf: pickOf(FP, rnd), pw: pickOf(WP, rnd) });
+      rooms.push({ x, y, w, h, cx: x + (w >> 1), cy: y + (h >> 1), hgt: arena ? 8 : [4, 4, 6, 8][Math.floor(rnd() * (big ? 4 : 3))], hue: Math.floor(rnd() * PAL.length),
+        pf: pickOf(FP, rnd), pw: pickOf(WP, rnd), arena });
     }
     rooms.forEach((r, k) => { for (let y = r.y; y < r.y + r.h; y++) for (let x = r.x; x < r.x + r.w; x++) { const i = y * W + x; grid[i] = 0; ceil[i] = r.hgt; rid[i] = k; } });
     // corridors: a spanning tree (every room reachable) plus a few loops (so it isn't a maze of dead ends)
@@ -318,14 +321,16 @@ void main() {
     // how far each room is from the first one (walking): the cores and the exit go to the far ones
     const dist = bfs(grid, W, H, rooms[0].cx, rooms[0].cy);
     const order = rooms.map((r, k) => k).slice(1).sort((a, b) => dist[rooms[b].cy * W + rooms[b].cx] - dist[rooms[a].cy * W + rooms[a].cx]);
-    const exitRoom = order[0];
-    const nCores = Math.max(1, Math.min(order.length - 1, 2 + Math.floor((level - 1) / 2), 5));
-    const coreRooms = order.slice(1, 1 + nCores);
+    const arena = rooms.findIndex(r => r.arena);
+    const exitRoom = arena > 0 ? arena : order[0];   // a boss level: the exit appears where the Great Core was
+    const rest = order.filter(k => k !== exitRoom);
+    const nCores = arena > 0 ? 1 : Math.max(1, Math.min(order.length - 1, 2 + Math.floor((level - 1) / 2), 5));
+    const coreRooms = rest.slice(0, nCores);
     if (!coreRooms.length) coreRooms.push(exitRoom);
     const free = r => { const c = []; for (let y = r.y; y < r.y + r.h; y++) for (let x = r.x; x < r.x + r.w; x++) if (!grid[y * W + x] && (Math.abs(x - r.cx) > 1 || Math.abs(y - r.cy) > 1)) c.push([x, y]); return c; };
     const enemies = [], cap = 8 + level * 6;
     rooms.forEach((r, k) => {
-      if (k === 0) return;
+      if (k === 0 || k === arena) return;
       const cells = free(r); let m = Math.round((r.w * r.h / 24) * (0.55 + level * 0.25) * (0.7 + rnd() * 0.6));
       while (m-- > 0 && cells.length && enemies.length < cap) {
         const [x, y] = cells.splice(Math.floor(rnd() * cells.length), 1)[0];
@@ -351,7 +356,9 @@ void main() {
     }
     // now and then (never on level 1) a strange one waits in a quiet room
     let npc = null;
-    const quiet = rooms.map((r, k) => k).filter(k => k > 0 && !coreRooms.includes(k));
+    const quiet = rooms.map((r, k) => k).filter(k => k > 0 && k !== arena && !coreRooms.includes(k));
+    // a weapon may be waiting somewhere (the game decides which, if any)
+    let wspot = null; { const ks = rooms.map((r, k) => k).filter(k => k > 0 && k !== arena); const r = rooms[ks[Math.floor(rnd() * ks.length)]]; const c = r ? free(r) : []; if (c.length) { const [x, y] = c[Math.floor(rnd() * c.length)]; wspot = { x: (x + 0.5) * CS, z: (y + 0.5) * CS }; } }
     if (level >= 2 && quiet.length && rnd() < 0.45) {
       const r = rooms[quiet[Math.floor(rnd() * quiet.length)]], c = free(r);
       if (c.length) {
@@ -360,7 +367,7 @@ void main() {
         npc = { x: (x + 0.5) * CS, z: (y + 0.5) * CS, name: pick(NAMES), lines: [pick(OPEN), ...mids], gift: pick(GIFTS), hue: rnd() };
       }
     }
-    return { W, H, grid, ceil, rid, rooms, exitRoom, coreRooms, enemies, pickups, npc, portal, start: rooms[0], corrPat: [pickOf(FP, rnd), pickOf(WP, rnd)] };
+    return { W, H, grid, ceil, rid, rooms, exitRoom, coreRooms, enemies, pickups, npc, portal, wspot, arena, start: rooms[0], corrPat: [pickOf(FP, rnd), pickOf(WP, rnd)] };
   }
   // the fold's course: platforms laid out in the style of its room's pattern (hexagons: staggered; triangles: stairs; spirals: a tower…)
   function genFold(level, rnd, pat) {
@@ -447,8 +454,8 @@ void main() {
   const GAME = {
     id: 'nucleo', solo: true, title: tr('Núcleo', 'Core'), tag: tr('Acción', 'Action'),
     desc: tr('Una estructura de neón que se arma distinta cada vez. Apagá sus núcleos y escapá.', 'A neon structure built anew every time. Shut down its cores and get out.'),
-    how: tr('Cada nivel tiene núcleos escondidos: destruilos todos (cada uno que cae deja su sala a oscuras) y llegá a la salida, que se abre al final. Cada nivel es más grande y con más enemigos. Compu: W A S D para moverte, mouse para mirar, clic para disparar, Shift o Espacio para el impulso, Q (o 1 / 2, o la ruedita) para cambiar de arma, Esc para pausar, M para el sonido. Celular: palanca a la izquierda para moverte, arrastrá a la derecha para mirar, botones para disparar, para el impulso y ⇄ para cambiar de arma. Dos armas: el Pulso (rápido y preciso) y el Abanico (ocho disparos en abanico: lento pero demoledor de cerca, y empuja). Los rojos te persiguen, los naranjas disparan de lejos (esquivá sus esferas), los amarillos se parten en dos y los violetas atraviesan las paredes. Cuanto más hondo, más rara se pone la estructura. A veces aparece alguien que no ataca: acercate y apretá E para hablar. Desde el nivel 3, algún núcleo está dentro de un pliegue (un portal magenta en una pared): adentro el mundo se ve de costado, con plataformas; A D para moverte, W o Espacio para saltar (más alto si lo mantenés), Shift para el impulso (también en el aire) y el mouse para apuntar.',
-      'Every level hides cores: destroy them all (each one that falls blacks out its room) and reach the exit, which opens at the end. Every level is bigger and has more enemies. Computer: W A S D to move, mouse to look, click to shoot, Shift or Space to dash, Q (or 1 / 2, or the wheel) to switch weapons, Esc to pause, M for sound. Phone: stick on the left to move, drag on the right to look, buttons to shoot, to dash and ⇄ to switch weapons. Two weapons: the Pulse (fast and precise) and the Fan (eight shots in a fan: slow but crushing up close, and it pushes). Red ones chase you, orange ones shoot from afar (dodge their orbs), yellow ones split in two and violet ones go through walls. The deeper you go, the stranger the structure gets. Now and then someone appears who doesn’t attack: go up to them and press E to talk. From level 3, a core may sit inside a fold (a magenta portal on a wall): inside, the world is seen from the side, with platforms; A D to move, W or Space to jump (higher if you hold it), Shift to dash (in the air too) and the mouse to aim.'),
+    how: tr('Cada nivel tiene núcleos escondidos: destruilos todos (cada uno que cae deja su sala a oscuras) y llegá a la salida, que se abre al final. Cada nivel es más grande y con más enemigos. Compu: W A S D para moverte, mouse para mirar, clic para disparar, Shift o Espacio para el impulso, Q (o 1–4, o la ruedita) para cambiar de arma, Esc para pausar, M para el sonido. Celular: palanca a la izquierda para moverte, arrastrá a la derecha para mirar, botones para disparar, para el impulso y ⇄ para cambiar de arma. Dos armas: el Pulso (rápido y preciso) y el Abanico (ocho disparos en abanico: lento pero demoledor de cerca, y empuja); en los niveles podés encontrar el Rayo y el Rebote. Cada 5 niveles te espera el Gran Núcleo en su arena. Los rojos te persiguen, los naranjas disparan de lejos (esquivá sus esferas), los amarillos se parten en dos y los violetas atraviesan las paredes. Cuanto más hondo, más rara se pone la estructura. A veces aparece alguien que no ataca: acercate y apretá E para hablar. Desde el nivel 3, algún núcleo está dentro de un pliegue (un portal magenta en una pared): adentro el mundo se ve de costado, con plataformas; A D para moverte, W o Espacio para saltar (más alto si lo mantenés), Shift para el impulso (también en el aire) y el mouse para apuntar.',
+      'Every level hides cores: destroy them all (each one that falls blacks out its room) and reach the exit, which opens at the end. Every level is bigger and has more enemies. Computer: W A S D to move, mouse to look, click to shoot, Shift or Space to dash, Q (or 1–4, or the wheel) to switch weapons, Esc to pause, M for sound. Phone: stick on the left to move, drag on the right to look, buttons to shoot, to dash and ⇄ to switch weapons. Two weapons: the Pulse (fast and precise) and the Fan (eight shots in a fan: slow but crushing up close, and it pushes); in the levels you can find the Beam and the Bounce. Every 5 levels the Great Core waits in its arena. Red ones chase you, orange ones shoot from afar (dodge their orbs), yellow ones split in two and violet ones go through walls. The deeper you go, the stranger the structure gets. Now and then someone appears who doesn’t attack: go up to them and press E to talk. From level 3, a core may sit inside a fold (a magenta portal on a wall): inside, the world is seen from the side, with platforms; A D to move, W or Space to jump (higher if you hold it), Shift to dash (in the air too) and the mouse to aim.'),
     better: 'high', fmt: n => Number(n).toLocaleString(J.LOCALE),
     start: ctx => run(ctx),
   };
@@ -486,7 +493,7 @@ void main() {
     const ENTL = [[0, 3], [1, 3], [2, 4]];
     const MESH = { octa: meshVao(new Float32Array(octa()), ENTL), cube: meshVao(new Float32Array(box(1, 1, 1).v), ENTL), ico: meshVao(new Float32Array(icosa()), ENTL),
       ring: meshVao(new Float32Array(ring(1, 0.12, 40)), ENTL), plus: meshVao(new Float32Array(plus()), ENTL), gun: meshVao(new Float32Array(gun()), ENTL),
-      avatar: meshVao(new Float32Array(avatar()), ENTL), fan: meshVao(new Float32Array(fan()), ENTL),
+      avatar: meshVao(new Float32Array(avatar()), ENTL), fan: meshVao(new Float32Array(fan()), ENTL), beamgun: meshVao(new Float32Array(beamgun()), ENTL), bouncer: meshVao(new Float32Array(bouncer()), ENTL),
       thigh: meshVao(new Float32Array(limb(0.075, 0.42, 0.075)), ENTL), shin: meshVao(new Float32Array(limb(0.065, 0.42, 0.065)), ENTL),
       uarm: meshVao(new Float32Array(limb(0.06, 0.3, 0.06)), ENTL), farm: meshVao(new Float32Array(limb(0.052, 0.28, 0.052)), ENTL),
       torso: meshVao(new Float32Array(box(0.19, 0.3, 0.12, 0, 0.3, 0).v), ENTL), head: meshVao(new Float32Array(box(0.14, 0.15, 0.14, 0, 0.17, 0).v), ENTL),
@@ -527,7 +534,7 @@ void main() {
     /* ── sound: a tiny synth (effects) and a generated soundtrack that rises with the fight ── */
     const MUTE_KEY = 'pudrus_nucleo_mute';
     let muted = false; try { muted = localStorage.getItem(MUTE_KEY) === '1'; } catch (e) { /* private mode */ }
-    let A = null, master = null, sfx = null, mus = null, noiseBuf = null;
+    let A = null, master = null, sfx = null, mus = null, noiseBuf = null, echo = null, echoFb = null, echoWet = null;
     function audio() {
       if (A) return A;
       try {
@@ -536,6 +543,9 @@ void main() {
         master = A.createGain(); master.gain.value = muted ? 0 : 0.7; master.connect(comp);
         sfx = A.createGain(); sfx.gain.value = 0.9; sfx.connect(master);
         mus = A.createGain(); mus.gain.value = 0.32; mus.connect(master);
+        // an echo on the music: it grows with the psychedelia (and in the folds)
+        echo = A.createDelay(1.5); echo.delayTime.value = 60 / 124 * 0.75; echoFb = A.createGain(); echoFb.gain.value = 0.15; echoWet = A.createGain(); echoWet.gain.value = 0.05;
+        mus.connect(echo); echo.connect(echoFb).connect(echo); echo.connect(echoWet).connect(master);
         noiseBuf = A.createBuffer(1, A.sampleRate, A.sampleRate); const d = noiseBuf.getChannelData(0); for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
       } catch (e) { A = null; }
       return A;
@@ -562,6 +572,11 @@ void main() {
       orb() { osc('sine', 300, 600, 0.18, 0.08); },
       fold() { osc('sine', 1400, 90, 0.7, 0.18); osc('triangle', 90, 900, 0.7, 0.1); noise(0.6, 0.18, 'bandpass', 300, 3000, sfx, A.currentTime, 2); },
       jump() { osc('square', 260, 520, 0.09, 0.05); },
+      zap() { osc('sawtooth', 900 + Math.random() * 300, 500, 0.06, 0.03); },
+      ping() { osc('triangle', 1500 + Math.random() * 400, 900, 0.07, 0.05); },
+      clang() { osc('square', 300, 280, 0.09, 0.05); noise(0.06, 0.08, 'bandpass', 2400, 2400, sfx, A.currentTime, 4); },
+      boss() { osc('sawtooth', 55, 55, 2.2, 0.25); osc('sawtooth', 55 * 1.5, 55 * 1.49, 2.2, 0.15); noise(1.8, 0.2, 'lowpass', 200, 1600); },
+      warn() { osc('square', 880, 880, 0.08, 0.06); setTimeout(() => A && osc('square', 880, 880, 0.08, 0.06), 140); },
       fan() { noise(0.22, 0.32, 'lowpass', 4000, 300); osc('sawtooth', 220, 55, 0.2, 0.16); },
       swap() { osc('triangle', 700, 1100, 0.06, 0.06); setTimeout(() => A && osc('triangle', 1100, 1300, 0.05, 0.05), 60); },
       blink() { osc('sine', 1600, 180, 0.14, 0.09); noise(0.1, 0.08, 'bandpass', 2500, 600, sfx, A.currentTime, 3); },
@@ -574,19 +589,44 @@ void main() {
     const play = (k, ...a) => { if (A && !muted && A.state === 'running') try { SND[k](...a); } catch (e) { /* ignore */ } };
     // the soundtrack: 124 bpm; kick and bass always, hats and an arpeggio as the fight heats up
     const MU = { next: 0, step: 0, int: 0, roots: [0, -2, 3, -5] };
+    const SCALES = { pent: [0, 3, 5, 7, 10], phryg: [0, 1, 4, 5, 7, 8, 10], whole: [0, 2, 4, 6, 8, 10] };
     function musicTick() {
       if (!A || A.state !== 'running' || muted) return;
-      const t0 = A.currentTime, sp = 60 / 124 / 4;
+      const style = S.mode === 'fold' ? 'fold' : S.boss && S.boss.alive && S.boss.awake ? 'boss' : 'level', psy = S.psy || 0;
+      const bpm = style === 'fold' ? 138 : style === 'boss' ? 142 : 124 + psy * 8, t0 = A.currentTime, sp = 60 / bpm / 4;
+      if (echo) {
+        echo.delayTime.setTargetAtTime(60 / bpm * (style === 'fold' ? 0.5 : 0.75), t0, 0.3);
+        echoFb.gain.setTargetAtTime(Math.min(0.62, 0.12 + psy * 0.42 + (style === 'fold' ? 0.12 : 0)), t0, 0.5);
+        echoWet.gain.setTargetAtTime(0.04 + psy * 0.42 + (style === 'fold' ? 0.18 : 0), t0, 0.5);
+      }
+      // deeper = stranger scales: pentatonic → phrygian → whole tone
+      const sc = psy > 0.8 ? SCALES.whole : psy > 0.45 ? SCALES.phryg : SCALES.pent;
+      const note = deg => { const n = sc.length, d = ((deg % n) + n) % n; return 2 ** ((sc[d] + 12 * Math.floor(deg / n)) / 12); };
       if (MU.next < t0) MU.next = t0 + 0.05;
       while (MU.next < t0 + 0.12) {
         const s = MU.step, st = s & 15, bar = s >> 4, t = MU.next, root = 55 * 2 ** (MU.roots[(bar >> 1) & 3] / 12), I = MU.int;
-        if (st % 4 === 0) { osc('sine', 140, 42, 0.28, 0.55, mus, t); }
-        if (st % 4 === 2) osc('sawtooth', root * (st === 14 ? 2 : 1), root * (st === 14 ? 2 : 1), 0.16, 0.16, mus, t);
-        if (st % 2 === 1 && I > 0.15) osc('sawtooth', root * 2, root * 2, 0.09, 0.05 + 0.08 * I, mus, t);
-        if (I > 0.3 && st % 2 === 0) noise(0.04, 0.05 * I, 'highpass', 7000, 7000, mus, t);
-        if (I > 0.3 && st % 4 === 2) noise(0.14, 0.05 * I, 'highpass', 6000, 6000, mus, t);
-        if (I > 0.6) { const ar = [0, 3, 7, 10, 12, 7, 3, 10][st & 7]; osc('square', root * 4 * 2 ** (ar / 12), root * 4 * 2 ** (ar / 12), 0.08, 0.035 * I, mus, t); }
-        if (st === 0 && bar % 4 === 0) osc('triangle', root * 4, root * 4, 3.5, 0.03, mus, t);
+        if (style === 'fold') {   // in a fold: quicker, square-wave arpeggios, like an old console
+          if (st % 4 === 0) osc('sine', 160, 45, 0.2, 0.5, mus, t);
+          if (st % 4 === 2) noise(0.04, 0.06, 'highpass', 8000, 8000, mus, t);
+          const ar = note([0, 2, 4, 7, 4, 2, 5, 3][st & 7] + ((bar & 2) ? 2 : 0)); osc('square', root * 4 * ar, root * 4 * ar, 0.07, 0.035, mus, t);
+          if (st % 2 === 0) { const b = root * (st % 8 === 0 ? 1 : 2); osc('square', b, b, 0.1, 0.07, mus, t); }
+        } else if (style === 'boss') {   // the Great Core: drums, a driving bass, sawtooth arpeggios
+          if (st % 4 === 0) osc('sine', 150, 40, 0.3, 0.62, mus, t);
+          if (st === 4 || st === 12) noise(0.14, 0.2, 'bandpass', 1800, 900, mus, t, 1.2);
+          noise(0.03, st % 2 ? 0.03 : 0.05, 'highpass', 7500, 7500, mus, t);
+          if (st % 2 === 0) { const b = root * (st % 4 === 0 ? 1 : 2); osc('sawtooth', b, b, 0.12, 0.13, mus, t); }
+          const ar = note([0, 3, 1, 4, 2, 5, 3, 6][st & 7]); osc('sawtooth', root * 4 * ar, root * 4 * ar, 0.07, 0.03, mus, t);
+        } else {
+          if (st % 4 === 0) { osc('sine', 140, 42, 0.28, 0.55, mus, t); }
+          if (st % 4 === 2) { const b = root * (st === 14 ? 2 : 1); osc('sawtooth', b, b, 0.16, 0.16, mus, t); }
+          if (st % 2 === 1 && I > 0.15) osc('sawtooth', root * 2, root * 2, 0.09, 0.05 + 0.08 * I, mus, t);
+          if (I > 0.3 && st % 2 === 0) noise(0.04, 0.05 * I, 'highpass', 7000, 7000, mus, t);
+          if (I > 0.3 && st % 4 === 2) noise(0.14, 0.05 * I, 'highpass', 6000, 6000, mus, t);
+          if (I > 0.6) { const ar = note([0, 2, 4, 6, 7, 4, 2, 6][st & 7]); osc('square', root * 4 * ar, root * 4 * ar, 0.08, 0.035 * I, mus, t); }
+          if (st === 0 && bar % 4 === 0) osc('triangle', root * 4, root * 4, 3.5, 0.03, mus, t);
+          // deep levels: stray bells, slightly out of tune
+          if (psy > 0.25 && st % 3 === 0 && Math.random() < psy * 0.45) { const f = root * 8 * note(Math.floor(Math.random() * 9)) * (1 + (Math.random() - 0.5) * 0.03 * psy); osc('sine', f, f * (1 + (Math.random() - 0.5) * 0.04 * psy), 0.35, 0.025 + 0.02 * psy, mus, t); }
+        }
         MU.next += sp; MU.step++;
       }
     }
@@ -614,12 +654,13 @@ void main() {
     let stick = null, look = null; const fireBtn = el('button', 'nc-fire', '◉'), dashBtn = el('button', 'nc-dashbtn', '»'), jumpBtn = el('button', 'nc-jumpbtn', '▲'), swapBtn = el('button', 'nc-swapbtn', '⇄'), stickEl = el('div', 'nc-stick'), knob = el('i');
     if (tc) { stickEl.append(knob); tc.append(stickEl, fireBtn, dashBtn, jumpBtn, swapBtn); wrap.append(tc); }
     const weaponEl = el('div', 'nc-weapon'); hudEl.append(weaponEl);
+    const bossEl = el('div', 'nc-boss'), bossFill = el('i'); bossEl.append(el('span', null, tr('Gran Núcleo', 'Great Core')), el('div', 'bar')); bossEl.querySelector('.bar').append(bossFill); bossEl.hidden = true; hudEl.append(bossEl);
     jumpBtn.hidden = true;
 
     /* ── state ── */
     const seed = Math.floor(ctx.rnd() * 4294967296);
     const S = { level: 1, score: 0, kills: 0, hp: 100, t: 0, state: 'play', M: null, psy: 0, errat: 0, npc: null, canTalk: false, talk: null, mode: '3d', portal: null, fold: null, fx: 0, enemies: [], bolts: [], orbs: [], parts: [], flashes: [], pickups: [], cores: [], exit: null, seen: null, roomGlow: [], flow: null, flowCell: -1, endT: 0 };
-    const pl = { x: 0, z: 0, vx: 0, vz: 0, yaw: 0, pitch: 0, dashT: 0, dashCd: 0, hurtT: 0, shake: 0, fireCd: 0, recoil: 0, bob: 0, roll: 0, fov: 1.32, weapon: 0, swap: 0 };
+    const pl = { x: 0, z: 0, vx: 0, vz: 0, yaw: 0, pitch: 0, dashT: 0, dashCd: 0, hurtT: 0, shake: 0, fireCd: 0, recoil: 0, bob: 0, roll: 0, fov: 1.32, weapon: 0, swap: 0, owned: [true, true, false, false], beamT: 0 };
     const K = {}; let firing = false, mx = 0, my = 0;
     const EYE = 1.6;
     function isSolid(i, j) { const M = S.M; return i < 0 || j < 0 || i >= M.W || j >= M.H || M.grid[j * M.W + i] === 1; }
@@ -642,6 +683,8 @@ void main() {
     const WEAPONS = [
       { name: tr('Pulso', 'Pulse'), rate: 0.125, pellets: 1, spread: 0.012, speed: 48, life: 1.2, col: [0.3, 0.85, 1], hot: [0.7, 2.2, 3.4], shake: 0.06, recoil: 1, push: 0, mesh: 'gun' },
       { name: tr('Abanico', 'Fan'), rate: 0.62, pellets: 8, spread: 0.2, speed: 40, life: 0.38, col: [1, 0.42, 0.85], hot: [3.2, 1.0, 2.6], shake: 0.28, recoil: 2.2, push: 3.5, mesh: 'fan' },
+      { name: tr('Rayo', 'Beam'), beam: true, rate: 0.1, range: 22, col: [0.35, 1, 0.55], hot: [1.0, 3.2, 1.6], shake: 0.012, recoil: 0.25, push: 0, mesh: 'beamgun', find: tr('un rayo continuo: mantené apretado', 'a continuous beam: hold to fire') },
+      { name: tr('Rebote', 'Bounce'), rate: 0.22, pellets: 1, spread: 0.01, speed: 28, life: 2.4, bounce: 4, col: [1, 0.85, 0.25], hot: [3.2, 2.6, 0.8], shake: 0.1, recoil: 1.3, push: 1.2, mesh: 'bouncer', find: tr('rebota en paredes, piso y techo', 'it bounces off walls, floor and ceiling') },
     ];
     const HP = { drone: 2, shoot: 4, split: 5, mini: 1, phase: 3 }, PTS = { drone: 100, shoot: 150, split: 200, mini: 50, phase: 180 };
     const COL = { drone: [1, 0.16, 0.24], shoot: [1, 0.55, 0.08], split: [1, 0.92, 0.2], mini: [1, 0.3, 0.3], phase: [0.8, 0.35, 1] };
@@ -656,6 +699,12 @@ void main() {
       S.enemies = []; S.bolts = []; S.orbs = []; S.parts = []; S.flashes = [];
       M.enemies.forEach(e => spawnEnemy(e.type, e.x, e.z, false));
       S.pickups = M.pickups.map(p => ({ ...p, t: Math.random() * 6 }));
+      // a weapon you don't have yet (the Beam from level 2, the Bounce from level 3); missed, it comes back next level
+      const nextW = pl.owned.indexOf(false);
+      if (M.wspot && nextW >= 0 && S.level >= nextW) S.pickups.push({ ...M.wspot, t: 0, kind: 'weapon', w: nextW });
+      // the Great Core
+      S.boss = null; bossEl.hidden = true;
+      if (M.arena > 0) { const r = M.rooms[M.arena], hp = 140 + S.level * 16; S.boss = { room: M.arena, x: (r.x + r.w / 2) * CS, z: (r.y + r.h / 2) * CS, y: 3.4, hp, max: hp, alive: true, awake: false, t: 0, phase: 1, cd: 2, flash: 0, warn: 0, stream: 0, sT: 0, spin: 0, charge: 0, chargeT: 4, cTo: [0, 0] }; }
       S.cores = M.coreRooms.map(k => { const r = M.rooms[k]; return { x: (r.cx + 0.5) * CS, z: (r.cy + 0.5) * CS, y: Math.min(2.2, r.hgt - 1.3), room: k, hp: 22 + S.level * 6, max: 22 + S.level * 6, alive: true, flash: 0, t: 0, calls: 0 }; });
       const er = M.rooms[M.exitRoom]; S.exit = { x: (er.cx + 0.5) * CS, z: (er.cy + 0.5) * CS, open: false, t: 0, room: M.exitRoom };
       S.roomGlow = M.rooms.map(() => 1); S.roomTarget = M.rooms.map(() => 1);
@@ -679,7 +728,8 @@ void main() {
     }
     function revealRoom(k) { const M = S.M, r = M.rooms[k]; for (let y = r.y - 1; y <= r.y + r.h; y++) for (let x = r.x - 1; x <= r.x + r.w; x++) if (x >= 0 && y >= 0 && x < M.W && y < M.H) S.seen[y * M.W + x] = 1; }
     const coresLeft = () => S.cores.filter(c => c.alive).length;
-    function paintCores() { const n = S.cores.length, left = coresLeft(); coresEl.innerHTML = ''; coresEl.append(el('span', null, left ? tr('Núcleos', 'Cores') : tr('Salida abierta', 'Exit open'))); S.cores.forEach(c => coresEl.append(el('i', (c.alive ? 'on' : '') + (c.fold ? ' fold' : '')))); coresEl.classList.toggle('open', !left); coresEl.title = `${n - left}/${n}`; }
+    const allDown = () => !coresLeft() && !(S.boss && S.boss.alive);   // the exit opens when the cores (and the Great Core) are down
+    function paintCores() { const n = S.cores.length, left = coresLeft(); coresEl.innerHTML = ''; coresEl.append(el('span', null, allDown() ? tr('Salida abierta', 'Exit open') : left ? tr('Núcleos', 'Cores') : tr('Queda el Gran Núcleo', 'The Great Core remains'))); S.cores.forEach(c => coresEl.append(el('i', (c.alive ? 'on' : '') + (c.fold ? ' fold' : '')))); coresEl.classList.toggle('open', allDown()); coresEl.title = `${n - left}/${n}`; }
     function paintHud() { ctx.hud(`${tr('Nivel', 'Level')}<b>${S.level}</b> ${tr('Puntos', 'Points')}<b>${S.score.toLocaleString(J.LOCALE)}</b>`); }
 
     /* ── effects ── */
@@ -706,7 +756,7 @@ void main() {
       if (down && (k === 'KeyE' || k === 'KeyF' || (k === 'Space' && S.state === 'talk') || (k === 'Enter' && S.state === 'talk'))) { if (S.state === 'talk') advance(); else if (S.state === 'play' && S.canTalk) talk(); }
       if (down && k === 'KeyM') setMute(!muted);
       if (down && (k === 'KeyQ')) setWeapon(pl.weapon + 1);
-      if (down && (k === 'Digit1' || k === 'Digit2')) setWeapon(+k.slice(5) - 1);
+      if (down && /^Digit[1-4]$/.test(k) && pl.owned[+k.slice(5) - 1]) setWeapon(+k.slice(5) - 1);
       if (down && k === 'KeyP') pause(S.state === 'play');
     };
     addEventListener('keydown', onKey, true); addEventListener('keyup', onKey, true);
@@ -714,7 +764,7 @@ void main() {
     document.addEventListener('mousemove', onMove);
     cv.addEventListener('mousedown', e => { if (touch) return; if (S.state === 'talk') { advance(); return; } if (S.state === 'pause') { pause(false); return; } if (!locked()) { lock(); return; } if (e.button === 0) firing = true; if (e.button === 2) { if (S.mode === 'fold') dash2(); else dash(); } });
     const onUp = e => { if (e.button === 0) firing = false; };
-    cv.addEventListener('wheel', e => { e.preventDefault(); if (Math.abs(e.deltaY) > 4) setWeapon(pl.weapon + (e.deltaY > 0 ? 1 : -1)); }, { passive: false });
+    cv.addEventListener('wheel', e => { e.preventDefault(); if (Math.abs(e.deltaY) > 4) setWeapon(pl.weapon + (e.deltaY > 0 ? 1 : -1), e.deltaY > 0 ? 1 : -1); }, { passive: false });
     document.addEventListener('mouseup', onUp);
     cv.addEventListener('contextmenu', e => e.preventDefault());
     const onLock = () => { if (!locked() && S.state === 'play' && !touch) pause(true); };
@@ -770,12 +820,13 @@ void main() {
     }
 
     /* ── actions ── */
-    function setWeapon(i) {
-      i = ((i % WEAPONS.length) + WEAPONS.length) % WEAPONS.length;
-      if (i === pl.weapon || S.state !== 'play') return;
+    function setWeapon(i, dir = 1) {
+      const n = WEAPONS.length; i = ((i % n) + n) % n;
+      let g = 0; while (!pl.owned[i] && g++ < n) i = (((i + dir) % n) + n) % n;   // only the ones you have
+      if (i === pl.weapon || S.state !== 'play' || !pl.owned[i]) return;
       pl.weapon = i; pl.swap = 1; pl.fireCd = Math.max(pl.fireCd, 0.22); play('swap'); paintWeapon();
     }
-    function paintWeapon() { weaponEl.innerHTML = ''; WEAPONS.forEach((w, i) => { const b = el('span', i === pl.weapon ? 'on' : '', w.name); weaponEl.append(b); }); if (!touch) weaponEl.append(el('small', null, 'Q')); }
+    function paintWeapon() { weaponEl.innerHTML = ''; WEAPONS.forEach((w, i) => { if (!pl.owned[i]) return; const b = el('span', i === pl.weapon ? 'on' : '', w.name); weaponEl.append(b); }); if (!touch) weaponEl.append(el('small', null, 'Q')); }
     function dash() {
       if (S.state !== 'play' || pl.dashCd > 0) return;
       let ix = 0, iz = 0; const f = [Math.sin(pl.yaw), -Math.cos(pl.yaw)], r = [Math.cos(pl.yaw), Math.sin(pl.yaw)];
@@ -796,7 +847,7 @@ void main() {
         const dir = d0.slice(), spr = Wp.spread;
         if (Wp.pellets > 1) { const a = (k / (Wp.pellets - 1) - 0.5) * 2 * spr + (Math.random() - 0.5) * spr * 0.3, b = (Math.random() - 0.5) * spr * 0.6; for (let q = 0; q < 3; q++) dir[q] += B.r[q] * a + B.u[q] * b; }
         else for (let q = 0; q < 3; q++) dir[q] += (Math.random() - 0.5) * spr;
-        const n2 = norm(dir); S.bolts.push({ x: start[0], y: start[1], z: start[2], vx: n2[0] * Wp.speed, vy: n2[1] * Wp.speed, vz: n2[2] * Wp.speed, life: Wp.life, w: pl.weapon });
+        const n2 = norm(dir); S.bolts.push({ x: start[0], y: start[1], z: start[2], vx: n2[0] * Wp.speed, vy: n2[1] * Wp.speed, vz: n2[2] * Wp.speed, life: Wp.life, w: pl.weapon, bounce: Wp.bounce || 0 });
       }
       pl.fireCd = Wp.rate; pl.recoil = Wp.recoil; pl.shake = Math.min(1, pl.shake + Wp.shake); pl.pitch += 0.004 * Wp.recoil;
       flash(start[0], start[1], start[2], Wp.hot.map(v => v * 0.6), 6 + Wp.pellets * 0.5, 0.07);
@@ -838,13 +889,130 @@ void main() {
         S.roomTarget[c.room] = 0.1;   // «apagón»: its room goes dark
         if (c.fold && S.fold) { S.fold.outT = 1.8; }   // and the fold comes undone
         const left = coresLeft(); paintCores();
-        if (!left) { S.exit.open = true; play('open'); toast(tr('Todos los núcleos apagados: ¡la salida se abrió!', 'All cores down: the exit is open!'), 3.5); }
+        if (allDown()) { S.exit.open = true; play('open'); toast(tr('Todos los núcleos apagados: ¡la salida se abrió!', 'All cores down: the exit is open!'), 3.5); }
+        else if (!left) toast(tr('Queda el Gran Núcleo', 'The Great Core remains'), 3);
         else toast(tr(`Núcleo apagado · quedan ${left}`, `Core down · ${left} left`));
       }
     }
     function nextLevel() {
       S.state = 'trans'; S.endT = 1.6; S.score += 1000 * S.level; paintHud(); play('level');
       big(tr(`Nivel ${S.level + 1}`, `Level ${S.level + 1}`), tr('La estructura se rearma…', 'The structure rebuilds itself…'));
+    }
+
+    /* ── hitting things (shared by bolts and the beam) ── */
+    function hitEnemy(e) { e.awake = true; e.flash = 1; e.hp--; if (e.hp <= 0 && !e.dead) killEnemy(e); }
+    function hitTarget(h, p) {
+      if (h.e) { hitEnemy(h.e); burst(p[0], p[1], p[2], [2, 2, 2], 4, 3, 0.2, 0.05); }
+      else if (h.c) { hitCore(h.c); burst(p[0], p[1], p[2], [2.4, 2.2, 1.4], 5, 3, 0.25, 0.06); }
+      else if (h.boss) hitBoss(p);
+      else if (h.shield) { play('clang'); burst(p[0], p[1], p[2], [1.2, 2, 2.6], 6, 3, 0.25, 0.06); return; }
+      hitMark();
+    }
+    // the beam: from the barrel to the first thing along the line of aim (a wall, a platform, an enemy, a core, the boss)
+    function beamTick(dt) {
+      const Wp = WEAPONS[pl.weapon];
+      let a, dir, hit = null, d = 0.3, end;
+      if (S.mode === 'fold') {
+        let dx = f2.ax, dy = f2.ay;
+        if (touch) { dx = Math.cos(f2.aimA); dy = Math.sin(f2.aimA); }
+        const l = Math.hypot(dx, dy) || 1; dir = [dx / l, dy / l, 0]; const sh = shoulder2(); a = [sh[0] + dir[0] * 0.9, sh[1] + dir[1] * 0.9, 0];
+        for (; d < Wp.range; d += 0.15) {
+          const x = a[0] + dir[0] * d, y = a[1] + dir[1] * d;
+          if (inPlat(x, y)) break;
+          for (const e of S.enemies) if (!e.dead && !(e.type === 'phase' && Math.abs(e.z) > 0.8) && (x - e.x) ** 2 + (y - e.y) ** 2 < (e.r + 0.1) ** 2) { hit = { e }; break; }
+          if (!hit) for (const c of S.cores) if (c.fold && c.alive && (x - c.x) ** 2 + (y - c.y) ** 2 < 1.15 ** 2) { hit = { c }; break; }
+          if (hit) break;
+        }
+        end = [a[0] + dir[0] * d, a[1] + dir[1] * d, 0];
+      } else {
+        const B = basis(pl.yaw, pl.pitch, 0), e = [pl.x, EYE, pl.z];
+        a = [e[0] + B.f[0] * 0.75 + B.r[0] * 0.16 - B.u[0] * 0.12, e[1] + B.f[1] * 0.75 + B.r[1] * 0.16 - B.u[1] * 0.12, e[2] + B.f[2] * 0.75 + B.r[2] * 0.16 - B.u[2] * 0.12];
+        for (; d < Wp.range; d += 0.2) {
+          const x = e[0] + B.f[0] * d, y = e[1] + B.f[1] * d, z = e[2] + B.f[2] * d;
+          if (solidAt(x, z) || y < 0 || y > ceilAt(x, z)) break;
+          for (const en of S.enemies) if (!en.dead && (x - en.x) ** 2 + (y - en.y) ** 2 + (z - en.z) ** 2 < (en.r + 0.12) ** 2) { hit = { e: en }; break; }
+          if (!hit) for (const c of S.cores) if (c.alive && !c.fold && (x - c.x) ** 2 + (y - c.y) ** 2 + (z - c.z) ** 2 < 1.05 ** 2) { hit = { c }; break; }
+          if (!hit && S.boss && S.boss.alive) hit = bossHit(x, y, z);
+          if (hit) break;
+        }
+        end = [e[0] + B.f[0] * d, e[1] + B.f[1] * d, e[2] + B.f[2] * d];
+      }
+      S.beam = { a, b: end, t: S.t };
+      pl.beamT -= dt;
+      if (pl.beamT <= 0) {
+        pl.beamT = Wp.rate; pl.recoil = Math.max(pl.recoil, Wp.recoil); pl.shake = Math.min(1, pl.shake + Wp.shake);
+        if (hit) hitTarget(hit, end); else burst(end[0], end[1], end[2], Wp.hot.map(v => v * 0.6), 3, 2, 0.2, 0.05);
+        play('zap');
+      }
+    }
+
+    /* ── the Great Core (every 5 levels): it floats around its arena, attacks in three phases, guards itself with shields ── */
+    function bossShields(Bo) {
+      if (Bo.phase < 2) return [];
+      const n = Bo.phase === 2 ? 3 : 5, sp = Bo.phase === 2 ? 1.1 : 1.9, o = [];
+      for (let k = 0; k < n; k++) { const a = Bo.t * sp + k * Math.PI * 2 / n; o.push([Bo.x + Math.cos(a) * 3.3, Bo.y + Math.sin(a * 2) * 0.7, Bo.z + Math.sin(a) * 3.3]); }
+      return o;
+    }
+    function bossHit(x, y, z) {
+      const Bo = S.boss;
+      for (const s of bossShields(Bo)) if ((x - s[0]) ** 2 + (y - s[1]) ** 2 + (z - s[2]) ** 2 < 0.8 ** 2) return { shield: true };
+      if ((x - Bo.x) ** 2 + (y - Bo.y) ** 2 + (z - Bo.z) ** 2 < 2.1 ** 2) return { boss: true };
+      return null;
+    }
+    function hitBoss(p) {
+      const Bo = S.boss; if (!Bo.alive) return;
+      Bo.hp--; Bo.flash = 1; Bo.awake = true;
+      if (Math.random() < 0.5) play('hit');
+      burst(p[0], p[1], p[2], [2.6, 2, 1.2], 5, 3, 0.3, 0.07);
+      if (Bo.hp <= 0) {
+        Bo.alive = false; bossEl.hidden = true; S.score += 3000 + 500 * S.level; paintHud(); play('core'); pl.shake = 1;
+        for (let k = 0; k < 4; k++) burst(Bo.x + (Math.random() - 0.5) * 2, Bo.y + (Math.random() - 0.5) * 2, Bo.z + (Math.random() - 0.5) * 2, [3, 2.4, 1.4], 120, 12, 2, 0.2);
+        flash(Bo.x, Bo.y, Bo.z, [12, 9, 6], 30, 1.8);
+        S.roomTarget[Bo.room] = 0.1;
+        S.enemies.forEach(e => { if (e.boss) { e.hp = 0; killEnemy(e); } });
+        paintCores();
+        if (allDown()) { S.exit.open = true; play('open'); toast(tr('¡El Gran Núcleo cayó! La salida se abrió', 'The Great Core fell! The exit is open'), 4); }
+        else toast(tr(`¡El Gran Núcleo cayó! Quedan ${coresLeft()} núcleos`, `The Great Core fell! ${coresLeft()} cores left`), 4);
+      }
+    }
+    function updateBoss(dt) {
+      const Bo = S.boss; if (!Bo || !Bo.alive) return;
+      const M = S.M, r = M.rooms[Bo.room];
+      Bo.t += dt; Bo.flash = Math.max(0, Bo.flash - dt * 5); Bo.warn = Math.max(0, Bo.warn - dt);
+      if (!Bo.awake) {
+        if (M.rid[Math.floor(pl.z / CS) * M.W + Math.floor(pl.x / CS)] !== Bo.room) return;
+        Bo.awake = true; bossEl.hidden = false; play('boss'); pl.shake = 0.7;
+        toast(tr('El Gran Núcleo despertó', 'The Great Core woke up'), 3);
+      }
+      const ph = Bo.hp / Bo.max > 0.66 ? 1 : Bo.hp / Bo.max > 0.33 ? 2 : 3;
+      if (ph !== Bo.phase) { Bo.phase = ph; play('warn'); flash(Bo.x, Bo.y, Bo.z, [6, 3, 2], 20, 0.8); toast(ph === 2 ? tr('Se rodea de escudos', 'It surrounds itself with shields') : tr('Está furioso', 'It is furious'), 2.5); }
+      bossFill.style.width = (Bo.hp / Bo.max * 100) + '%'; bossEl.className = 'nc-boss p' + ph;
+      // it floats around its arena (faster each phase); in the last one it charges at you, warning first
+      const cx = (r.x + r.w / 2) * CS, cz = (r.y + r.h / 2) * CS, ax = (r.w / 2 - 3) * CS, az = (r.h / 2 - 3) * CS, k = 0.6 + ph * 0.35;
+      let tx = cx + ax * Math.sin(Bo.t * 0.23 * k), tz = cz + az * Math.sin(Bo.t * 0.31 * k + 1), ty = 3.4 + Math.sin(Bo.t * 0.8) * 0.5;
+      if (ph === 3) {
+        Bo.chargeT -= dt;
+        if (Bo.chargeT <= 0 && !Bo.charge) { Bo.warn = 0.7; Bo.chargeT = 5.5; Bo.charge = 0.0001; Bo.cTo = [pl.x, pl.z]; play('warn'); }
+        if (Bo.charge && Bo.warn <= 0) { Bo.charge += dt; tx = Bo.cTo[0]; tz = Bo.cTo[1]; ty = 2.4; if (Bo.charge > 1.1) Bo.charge = 0; }
+      }
+      const fol = Bo.charge && Bo.warn <= 0 ? 3.2 : 0.9;
+      Bo.x += (tx - Bo.x) * Math.min(1, dt * fol); Bo.z += (tz - Bo.z) * Math.min(1, dt * fol); Bo.y += (ty - Bo.y) * Math.min(1, dt * 2);
+      Bo.x = Math.max((r.x + 2) * CS, Math.min((r.x + r.w - 2) * CS, Bo.x)); Bo.z = Math.max((r.y + 2) * CS, Math.min((r.y + r.h - 2) * CS, Bo.z));
+      // attacks
+      const dx = pl.x - Bo.x, dz = pl.z - Bo.z, d = Math.hypot(dx, dz) || 1, toY = (EYE - 0.3 - Bo.y);
+      const orb = (a, v, wob) => S.orbs.push({ x: Bo.x + Math.cos(a) * 2, y: Bo.y, z: Bo.z + Math.sin(a) * 2, vx: Math.cos(a) * v, vy: toY * v / Math.max(4, d), vz: Math.sin(a) * v, life: 5, wob: wob || 0, ph: Math.random() * 6 });
+      Bo.cd -= dt;
+      if (Bo.stream > 0) { Bo.stream -= dt; Bo.sT -= dt; if (Bo.sT <= 0) { Bo.sT = 0.11; Bo.spin += 0.45; orb(Bo.spin, 7); orb(Bo.spin + Math.PI, 7); } }
+      if (Bo.cd <= 0) {
+        if (ph === 1) { for (let q = 0; q < 14; q++) orb(q / 14 * Math.PI * 2 + Bo.t, 6.5); Bo.cd = 2.6; }
+        else if (ph === 2) { Bo.stream = 1.6; Bo.sT = 0; Bo.cd = 3.4; if ((Bo.n2 = (Bo.n2 || 0) + 1) % 2 === 0) for (let q = 0; q < 2 + Math.floor(S.level / 5); q++) { const a = Math.random() * 6.28; const e = spawnEnemy('drone', Bo.x + Math.cos(a) * 3, Bo.z + Math.sin(a) * 3, true); e.boss = true; collide(e, e.r); } }
+        else { const a0 = Math.atan2(dz, dx); for (let q = -2; q <= 2; q++) orb(a0 + q * 0.16, 9, 0.5); if (Math.random() < 0.5) for (let q = 0; q < 10; q++) orb(q / 10 * Math.PI * 2, 6); Bo.cd = 1.4; }
+        play('orb');
+      }
+      // touching it hurts; it is solid
+      const hd = Math.hypot(pl.x - Bo.x, pl.z - Bo.z);
+      if (hd < 2.3 && Math.abs(Bo.y - EYE) < 2.4) { if (hd > 0) { pl.x = Bo.x + (pl.x - Bo.x) / hd * 2.3; pl.z = Bo.z + (pl.z - Bo.z) / hd * 2.3; } if (!Bo.touchCd || S.t > Bo.touchCd) { Bo.touchCd = S.t + 1; hurt(18, Bo.x, Bo.z); } }
+      MU.int = 1;
     }
 
     /* ── folds: a side-scrolling zone (same world, one dimension less) ── */
@@ -893,7 +1061,7 @@ void main() {
       const Wp = WEAPONS[pl.weapon], sh = shoulder2(), ox = sh[0] + dx * 0.9, oy = sh[1] + dy * 0.9, a0 = Math.atan2(dy, dx);   // out of the barrel
       for (let k = 0; k < Wp.pellets; k++) {
         const a = a0 + (Wp.pellets > 1 ? (k / (Wp.pellets - 1) - 0.5) * 2 * Wp.spread : 0) + (Math.random() - 0.5) * (Wp.pellets > 1 ? 0.05 : 0.02);
-        S.bolts.push({ x: ox, y: oy, z: 0, vx: Math.cos(a) * Wp.speed * 0.85, vy: Math.sin(a) * Wp.speed * 0.85, vz: 0, life: Wp.life * 0.85, w: pl.weapon });
+        S.bolts.push({ x: ox, y: oy, z: 0, vx: Math.cos(a) * Wp.speed * 0.85, vy: Math.sin(a) * Wp.speed * 0.85, vz: 0, life: Wp.life * 0.85, w: pl.weapon, bounce: Wp.bounce || 0 });
       }
       pl.fireCd = Wp.rate; pl.recoil = Wp.recoil; pl.shake = Math.min(1, pl.shake + Wp.shake * 0.8);
       if (Wp.push) f2.vx -= dx * 2.5;   // the fan kicks you back a little
@@ -938,7 +1106,8 @@ void main() {
         hurt(12); f2.x = f2.sx; f2.y = f2.sy + 0.2; f2.vx = f2.vy = 0; S.fx = 0.6;
       }
       f2.run += Math.abs(f2.vx) * dt;
-      pl.fireCd -= dt; if (firing && ready && pl.fireCd <= 0) fire2();
+      pl.fireCd -= dt;
+      if (firing && ready && WEAPONS[pl.weapon].beam) beamTick(dt); else { S.beam = null; if (firing && ready && pl.fireCd <= 0) fire2(); }
       pl.hurtT = Math.max(0, pl.hurtT - dt); pl.recoil = Math.max(0, pl.recoil - dt * 8); pl.swap = Math.max(0, pl.swap - dt * 4);
       // the camera follows, a little ahead
       Fo.cam[0] += (f2.x + f2.face * 2.2 - Fo.cam[0]) * Math.min(1, dt * 4); Fo.cam[1] += (f2.y + 1.6 - Fo.cam[1]) * Math.min(1, dt * 3);
@@ -975,7 +1144,13 @@ void main() {
       // shots and orbs in the plane
       for (const b of S.bolts) {
         for (let s = 0; s < 3 && b.life > 0; s++) {
+          const px = b.x, py = b.y;
           b.x += b.vx * dt / 3; b.y += b.vy * dt / 3;
+          if (inPlat(b.x, b.y) && b.bounce > 0) {
+            b.bounce--; let f = false;
+            if (inPlat(px, b.y)) { b.vy = -b.vy; f = true; } if (inPlat(b.x, py)) { b.vx = -b.vx; f = true; } if (!f) { b.vx = -b.vx; b.vy = -b.vy; }
+            b.x = px; b.y = py; burst(b.x, b.y, 0, WEAPONS[b.w].hot.map(v => v * 0.7), 6, 2.5, 0.25, 0.06); play('ping'); continue;
+          }
           if (inPlat(b.x, b.y)) { b.life = 0; burst(b.x - b.vx * 0.004, b.y - b.vy * 0.004, 0, [0.5, 1.6, 2.6], 8, 3, 0.35, 0.07); flash(b.x, b.y, 0.5, [0.4, 1.2, 2], 4, 0.12); break; }
           for (const e of S.enemies) { if (e.dead || (e.type === 'phase' && Math.abs(e.z) > 0.8)) continue; if ((b.x - e.x) ** 2 + (b.y - e.y) ** 2 < (e.r + 0.2) ** 2) { b.life = 0; e.awake = true; e.flash = 1; e.hp--; if (b.w) { const l = Math.hypot(b.vx, b.vy) || 1; e.vx += b.vx / l * WEAPONS[b.w].push; e.vy = (e.vy || 0) + b.vy / l * WEAPONS[b.w].push; } play('hit'); burst(b.x, b.y, 0, [2, 2, 2], 6, 3, 0.25, 0.06); if (e.hp <= 0) killEnemy(e); hitMark(); break; } }
           if (b.life <= 0) break;
@@ -1062,7 +1237,7 @@ void main() {
       if (S.npc && !S.npc.gone) S.npc.t += dt; else if (S.npc) S.npc.fade = Math.max(0, S.npc.fade - dt * 1.5);
       if (S.state === 'dead' || S.state === 'trans') {
         S.endT -= dt;
-        if (S.state === 'trans' && S.endT <= 0) { S.level++; S.hp = Math.min(100, S.hp + 30); loadLevel(); S.state = 'play'; bigEl.classList.remove('on'); toast(tr(`Nivel ${S.level}: ${S.cores.length} núcleos`, `Level ${S.level}: ${S.cores.length} cores`)); }
+        if (S.state === 'trans' && S.endT <= 0) { S.level++; S.hp = Math.min(100, S.hp + 30); loadLevel(); S.state = 'play'; bigEl.classList.remove('on'); toast(S.boss ? tr(`Nivel ${S.level}: el Gran Núcleo te espera`, `Level ${S.level}: the Great Core awaits`) : tr(`Nivel ${S.level}: ${S.cores.length} núcleos`, `Level ${S.level}: ${S.cores.length} cores`), 3); }
         if (S.state === 'dead' && S.endT <= 0) { S.state = 'over'; ctx.done({ score: S.score, text: tr(`Llegaste al nivel ${S.level}`, `You reached level ${S.level}`), detail: tr(`${S.kills} enemigos · ${S.level - 1} niveles completos`, `${S.kills} enemies · ${S.level - 1} levels cleared`), better: 'high' }); }
       }
       S.fx = Math.max(0, S.fx - dt * 2.2);
@@ -1092,7 +1267,8 @@ void main() {
         pl.roll += ((-st * 0.035) - pl.roll) * Math.min(1, dt * 8);
         pl.fov += ((pl.dashT > 0 ? 1.5 : 1.32) - pl.fov) * Math.min(1, dt * 10);
         // shooting
-        pl.fireCd -= dt; if (firing && pl.fireCd <= 0) fire();
+        pl.fireCd -= dt;
+        if (firing && WEAPONS[pl.weapon].beam) beamTick(dt); else { S.beam = null; if (firing && pl.fireCd <= 0) fire(); }
         pl.recoil = Math.max(0, pl.recoil - dt * 8); pl.hurtT = Math.max(0, pl.hurtT - dt); pl.swap = Math.max(0, pl.swap - dt * 4);
         // what you have seen (for the map): the rooms you walk into, and a few cells around you
         const ci = Math.floor(pl.x / CS), cj = Math.floor(pl.z / CS), here = M.rid[cj * M.W + ci];
@@ -1100,7 +1276,9 @@ void main() {
         for (let j = cj - 2; j <= cj + 2; j++) for (let i = ci - 2; i <= ci + 2; i++) if (i >= 0 && j >= 0 && i < M.W && j < M.H) S.seen[j * M.W + i] = 1;
         updateFlow();
         // pickups and the exit
-        S.pickups = S.pickups.filter(p => { p.t += dt; if (Math.hypot(p.x - pl.x, p.z - pl.z) < 1.1 && S.hp < 100) { S.hp = Math.min(100, S.hp + 25); play('pickup'); toast(tr('+25 de energía', '+25 energy'), 1.2); burst(p.x, 1, p.z, [0.6, 2.4, 0.5], 24, 3, 0.6); return false; } return true; });
+        S.pickups = S.pickups.filter(p => { p.t += dt;
+          if (p.kind === 'weapon') { if (Math.hypot(p.x - pl.x, p.z - pl.z) > 1.3) return true; const Wp = WEAPONS[p.w]; pl.owned[p.w] = true; setWeapon(p.w); paintWeapon(); play('open'); toast(`${tr('Encontraste', 'You found')}: ${Wp.name} — ${Wp.find}`, 4); burst(p.x, 1.1, p.z, Wp.hot, 50, 4, 0.9); return false; }
+          if (Math.hypot(p.x - pl.x, p.z - pl.z) < 1.1 && S.hp < 100) { S.hp = Math.min(100, S.hp + 25); play('pickup'); toast(tr('+25 de energía', '+25 energy'), 1.2); burst(p.x, 1, p.z, [0.6, 2.4, 0.5], 24, 3, 0.6); return false; } return true; });
         if (S.exit.open && Math.hypot(S.exit.x - pl.x, S.exit.z - pl.z) < 1.4) nextLevel();
         if (S.portal && !S.portal.done && Math.hypot(S.portal.fx - pl.x, S.portal.fz - pl.z) < 1.0) { enterFold(); return; }
         // a strange one near you, in front of you: you can talk
@@ -1151,18 +1329,27 @@ void main() {
         e.y = Math.max(0.6, Math.min(top - 0.6, (e.type === 'shoot' ? 2.2 : e.type === 'mini' ? 1.1 : 1.35) + Math.sin(e.t * 2.3) * 0.22 + swoop));
         if (e.type !== 'shoot' && d < e.r + 0.55 && e.cd <= 0) { e.cd = 0.75; hurt(e.type === 'mini' ? 6 : e.type === 'split' ? 15 : 11, e.x, e.z); }
       }
-      if (S.mode === '3d') { S.enemies = S.enemies.filter(e => !e.dead); MU.int += (Math.min(1, near / 4) - MU.int) * Math.min(1, dt * 0.8); }
+      if (S.mode === '3d') { S.enemies = S.enemies.filter(e => !e.dead); MU.int += (Math.min(1, near / 4) - MU.int) * Math.min(1, dt * 0.8); if (S.state === 'play') updateBoss(dt); }
       // the shots
       if (S.state !== 'pause') {
         if (S.mode === '3d') {
         for (const b of S.bolts) {
           const n = 3;
           for (let s = 0; s < n && b.life > 0; s++) {
+            const px = b.x, py = b.y, pz = b.z;
             b.x += b.vx * dt / n; b.y += b.vy * dt / n; b.z += b.vz * dt / n;
+            if ((solidAt(b.x, b.z) || b.y < 0.02 || b.y > ceilAt(b.x, b.z)) && b.bounce > 0) {   // «Rebote»: it bounces
+              b.bounce--;
+              if (solidAt(b.x, b.z)) { let f = false; if (solidAt(b.x, pz)) { b.vx = -b.vx; f = true; } if (solidAt(px, b.z)) { b.vz = -b.vz; f = true; } if (!f) { b.vx = -b.vx; b.vz = -b.vz; } }
+              else b.vy = -b.vy;
+              b.x = px; b.y = py; b.z = pz; burst(b.x, b.y, b.z, WEAPONS[b.w].hot.map(v => v * 0.7), 6, 2.5, 0.25, 0.06); play('ping');
+              continue;
+            }
             if (solidAt(b.x, b.z) || b.y < 0.02 || b.y > ceilAt(b.x, b.z)) { b.life = 0; burst(b.x - b.vx * 0.004, b.y - b.vy * 0.004, b.z - b.vz * 0.004, [0.5, 1.6, 2.6], 8, 3, 0.35, 0.07); flash(b.x, b.y, b.z, [0.4, 1.2, 2], 4, 0.12); break; }
             for (const e of S.enemies) { if (e.dead) continue; const dx = b.x - e.x, dy = b.y - e.y, dz = b.z - e.z; if (dx * dx + dy * dy + dz * dz < (e.r + 0.18) ** 2) { b.life = 0; e.awake = true; e.flash = 1; e.hp--; if (b.w) { const l = Math.hypot(b.vx, b.vz) || 1; e.vx += b.vx / l * WEAPONS[b.w].push; e.vz += b.vz / l * WEAPONS[b.w].push; } play('hit'); burst(b.x, b.y, b.z, [2, 2, 2], 6, 3, 0.25, 0.06); if (e.hp <= 0) killEnemy(e); hitMark(); break; } }
             if (b.life <= 0) break;
             for (const c of S.cores) { if (!c.alive || c.fold) continue; const dx = b.x - c.x, dy = b.y - c.y, dz = b.z - c.z; if (dx * dx + dy * dy + dz * dz < 1.05 ** 2) { b.life = 0; hitCore(c); burst(b.x, b.y, b.z, [2.4, 2.2, 1.4], 8, 3, 0.3, 0.07); hitMark(); break; } }
+            if (b.life > 0 && S.boss && S.boss.alive) { const h = bossHit(b.x, b.y, b.z); if (h) { b.life = 0; hitTarget(h, [b.x, b.y, b.z]); } }
           }
           b.life -= dt;
         }
@@ -1217,6 +1404,10 @@ void main() {
       S.cores.forEach(c => { if (here(c)) { const p = 1 + 0.35 * Math.sin(c.t * 3); lights.push([c.x, c.y, c.z, 9, 1.0 * p, 0.85 * p, 0.5 * p]); } });
       if (!FO && S.portal && !S.portal.done) { const q = S.portal, p = 1 + 0.3 * Math.sin(q.t * 3); lights.push([q.x + q.nx * 0.6, 1.7, q.z + q.nz * 0.6, 6, 1.4 * p, 0.4 * p, 1.6 * p]); }
       if (FO) lights.push([f2.x, f2.y + 1.2, 1.2, 4, 0.25, 0.6, 0.9]);
+      if (S.beam && S.t - S.beam.t < 0.06) { const c = WEAPONS[2].col, q = S.beam; lights.push([q.b[0], q.b[1], q.b[2], 5, c[0] * 2, c[1] * 2, c[2] * 2], [(q.a[0] + q.b[0]) / 2, (q.a[1] + q.b[1]) / 2, (q.a[2] + q.b[2]) / 2, 6, c[0], c[1], c[2]]); }
+      const Bo = !FO && S.boss && S.boss.alive ? S.boss : null;
+      if (Bo) { const p = 1 + 0.3 * Math.sin(Bo.t * 3), c = Bo.warn > 0 ? [3, 0.3, 0.3] : Bo.phase === 1 ? [1.6, 1.2, 0.6] : Bo.phase === 2 ? [1.8, 0.8, 0.4] : [2, 0.4, 0.5]; lights.push([Bo.x, Bo.y, Bo.z, 16, c[0] * p, c[1] * p, c[2] * p]); }
+      if (!FO) S.pickups.forEach(q => { if (q.kind === 'weapon') { const c = WEAPONS[q.w].col; lights.push([q.x, 1.2, q.z, 5, c[0] * 1.4, c[1] * 1.4, c[2] * 1.4]); } });
       if (!FO && S.exit.open) { const p = 1 + 0.4 * Math.sin(S.exit.t * 4); lights.push([S.exit.x, 1.6, S.exit.z, 12, 0.6 * p, 2.4 * p, 2.6 * p]); }
       S.enemies.forEach(e => { if (e.awake) { const c = COL[e.type]; lights.push([e.x, e.y, e.z, 3.5, c[0] * 0.8, c[1] * 0.8, c[2] * 0.8]); } });
       if (!FO && S.npc && !S.npc.gone) { const c = hsv((S.npc.hue + S.npc.t * 0.08) % 1, 0.5, 1); lights.push([S.npc.x, 1.7, S.npc.z, 5, c[0] * 0.55, c[1] * 0.55, c[2] * 0.55]); }
@@ -1314,8 +1505,22 @@ void main() {
         draw(MESH.ico, modelM(n.x, y, n.z, 0.22 * f, n.t * 2, n.t), [1, 1, 1], 1.4 * f, 0.6, 0);
         wob(PS * 0.12, PS > 0 ? S.t * 0.1 * PS : 0);
       }
-      if (!FO) for (const q of S.pickups) draw(MESH.plus, modelM(q.x, 0.9 + Math.sin(q.t * 3) * 0.12, q.z, 0.9, q.t * 1.6, 0), [0.35, 1, 0.3], 1.2, 0.1, 0);
-      if (!FO) { const X = S.exit, op = X.open, pu = op ? 1 + 0.05 * Math.sin(X.t * 4) : 1;
+      if (!FO) for (const q of S.pickups) {
+        if (q.kind === 'weapon') { const Wq = WEAPONS[q.w]; draw(MESH[Wq.mesh], modelM(q.x, 1.15 + Math.sin(q.t * 2.5) * 0.15, q.z, 2.6, q.t * 1.3, 0.25), Wq.col, 1.6, 0.12, 0); draw(MESH.ring, modelM(q.x, 0.15, q.z, 0.9, q.t, Math.PI / 2), Wq.col, 1.2, 0.05, 0); }
+        else draw(MESH.plus, modelM(q.x, 0.9 + Math.sin(q.t * 3) * 0.12, q.z, 0.9, q.t * 1.6, 0), [0.35, 1, 0.3], 1.2, 0.1, 0);
+      }
+      // the Great Core: a huge crystal, rings, its shields
+      if (Bo) {
+        const pu = 1 + 0.05 * Math.sin(Bo.t * 3), pc = Bo.warn > 0 && Math.floor(Bo.t * 12) % 2 ? [1, 0.15, 0.2] : Bo.phase === 1 ? [1, 0.82, 0.45] : Bo.phase === 2 ? [1, 0.55, 0.3] : [1, 0.25, 0.35];
+        wob(PS * 0.2 + (Bo.phase === 3 ? 0.08 : 0), PS > 0 ? S.t * 0.15 * PS : 0);
+        draw(MESH.octa, modelM(Bo.x, Bo.y, Bo.z, 2.1 * pu, Bo.t * 0.5, 0), pc, 1.4, 0.22, Bo.flash * 0.7);
+        draw(MESH.ico, modelM(Bo.x, Bo.y, Bo.z, 1.15, -Bo.t * 1.3, Bo.t * 0.7), [1, 1, 1], 1.8, 0.5, Bo.flash);
+        draw(MESH.ring, modelM(Bo.x, Bo.y, Bo.z, 3.0, Bo.t * 0.8, Math.PI / 2 + 0.4 * Math.sin(Bo.t * 0.6)), pc, 1.1, 0.05, 0);
+        draw(MESH.ring, modelM(Bo.x, Bo.y, Bo.z, 2.6, -Bo.t * 1.1, Math.PI / 2 - 0.7), pc, 0.9, 0.05, 0);
+        for (const s of bossShields(Bo)) draw(MESH.cube, modelM(s[0], s[1], s[2], 0.55, Bo.t * 3, Bo.t * 2), [0.6, 0.9, 1], 1.5, 0.18, 0);
+        wob(PS * 0.12, PS > 0 ? S.t * 0.1 * PS : 0);
+      }
+      if (!FO && !Bo) { const X = S.exit, op = X.open, pu = op ? 1 + 0.05 * Math.sin(X.t * 4) : 1;
         draw(MESH.ring, modelM(X.x, 1.6, X.z, 1.35 * pu, X.t * (op ? 0.8 : 0.15), 0), op ? [0.4, 1, 1] : [0.25, 0.3, 0.4], op ? 1.6 : 0.35, 0.05, 0);
         draw(MESH.ring, modelM(X.x, 1.6, X.z, 1.0 * pu, -X.t * (op ? 1.3 : 0.2), 0), op ? [0.4, 1, 1] : [0.25, 0.3, 0.4], op ? 1.2 : 0.25, 0.05, 0); }
       // light: shots, orbs, sparks, the exit's glow
@@ -1326,7 +1531,13 @@ void main() {
       S.parts.forEach(q => { const a = q.life / q.max; pt(q.x, q.y, q.z, q.size, q.col[0], q.col[1], q.col[2], a); });
       S.cores.forEach(c => { if (here(c)) pt(c.x, c.y, c.z, 1.7, 1.2, 1, 0.6, 0.28 + 0.1 * Math.sin(c.t * 3)); });
       if (!FO && S.portal && !S.portal.done) { const q = S.portal; for (let k = 0; k < 14; k++) { const a = q.t * 1.2 + k * 0.449, r = 0.3 + 0.8 * ((k * 0.37 + q.t * 0.25) % 1), px = Math.cos(a) * r, py = Math.sin(a) * r; pt(q.x + q.nx * 0.15 - q.nz * px, 1.8 + py, q.z + q.nz * 0.15 + q.nx * px, 0.1, 2.6, 0.7, 2.6, 0.9); } }
-      if (FO) { pt(f2.x + f2.face * 0.5, f2.y + 1.08, 0, 0.12, 0.6, 1.6, 2.4, 0.6); }
+      if (S.beam && S.t - S.beam.t < 0.06) {   // the beam: a line of light, thicker where it hits
+        const q = S.beam, c = WEAPONS[2].hot, L = Math.hypot(q.b[0] - q.a[0], q.b[1] - q.a[1], q.b[2] - q.a[2]), nseg = Math.min(160, Math.ceil(L / 0.18));
+        for (let k = 0; k <= nseg; k++) { const f = k / nseg, w = 0.07 + 0.03 * Math.sin(S.t * 60 + k); pt(q.a[0] + (q.b[0] - q.a[0]) * f, q.a[1] + (q.b[1] - q.a[1]) * f, q.a[2] + (q.b[2] - q.a[2]) * f, w, c[0], c[1], c[2], 0.9); }
+        pt(q.b[0], q.b[1], q.b[2], 0.5, c[0], c[1], c[2], 0.8);
+      }
+      if (Bo) pt(Bo.x, Bo.y, Bo.z, 4.5, 1.4, 0.9, 0.5, 0.35 + 0.1 * Math.sin(Bo.t * 3));
+      if (!FO) S.pickups.forEach(q => { if (q.kind === 'weapon') { const c = WEAPONS[q.w].hot; for (let k = 0; k < 6; k++) { const a = q.t * 2 + k * 1.047; pt(q.x + Math.cos(a) * 0.9, 0.4 + ((q.t * 0.6 + k * 0.17) % 1) * 1.6, q.z + Math.sin(a) * 0.9, 0.07, c[0], c[1], c[2], 0.9); } } });
       if (!FO && S.exit.open) pt(S.exit.x, 1.6, S.exit.z, 3.2, 0.3, 1.4, 1.6, 0.8 + 0.3 * Math.sin(S.exit.t * 4));
       if (!FO && S.npc && S.npc.fade > 0.01) { const n = S.npc; for (let k = 0; k < 10; k++) { const a = n.t * 0.9 + k * 0.628, c = hsv((n.hue + k * 0.1 + n.t * 0.1) % 1, 0.6, 1); pt(n.x + Math.cos(a) * 1.3, 1.7 + Math.sin(a * 2.3) * 0.6, n.z + Math.sin(a) * 1.3, 0.09, c[0] * 2.5, c[1] * 2.5, c[2] * 2.5, n.fade); } }
       if (n) {
@@ -1402,6 +1613,8 @@ void main() {
       const dot = (x, z, col, r) => { const px = Wm / 2 + (x / CS - cx) * s, pz = Wm / 2 + (z / CS - cz) * s; g.fillStyle = col; g.beginPath(); g.arc(px, pz, r, 0, Math.PI * 2); g.fill(); return [px, pz]; };
       S.cores.forEach(c => { if (c.alive && !c.fold && S.seen[Math.floor(c.z / CS) * M.W + Math.floor(c.x / CS)]) dot(c.x, c.z, '#ffd23f', 3.5); });
       if (S.portal && !S.portal.done && S.seen[Math.floor(S.portal.fz / CS) * M.W + Math.floor(S.portal.fx / CS)]) dot(S.portal.x, S.portal.z, '#ff5af0', 4);
+      if (S.boss && S.boss.alive && S.seen[Math.floor(S.boss.z / CS) * M.W + Math.floor(S.boss.x / CS)]) dot(S.boss.x, S.boss.z, '#ff4a4a', 6);
+      S.pickups.forEach(q => { if (q.kind === 'weapon' && S.seen[Math.floor(q.z / CS) * M.W + Math.floor(q.x / CS)]) dot(q.x, q.z, '#9dffb0', 3.5); });
       if (S.npc && !S.npc.gone && S.seen[Math.floor(S.npc.z / CS) * M.W + Math.floor(S.npc.x / CS)]) dot(S.npc.x, S.npc.z, '#e9b8ff', 3);
       if (S.exit.open) {   // the exit always shows (on the rim when it is far)
         let ex = (S.exit.x / CS - cx) * s, ez = (S.exit.z / CS - cz) * s; const l = Math.hypot(ex, ez), m = Wm / 2 - 8; if (l > m) { ex *= m / l; ez *= m / l; }
@@ -1439,9 +1652,10 @@ void main() {
       aimAt(x, y, z) { const dx = x - pl.x, dy = y - EYE, dz = z - pl.z; pl.yaw = Math.atan2(dx, -dz); pl.pitch = Math.atan2(dy, Math.hypot(dx, dz)); },
       hurt, nextLevel, talk, advance, endTalk,
       setLevel(n) { S.level = n; loadLevel(); },
-      get f2() { return f2; }, setWeapon, enterFold, exitFold, jump() { f2.buf = 0.13; f2.held = true; },
+      get f2() { return f2; }, setWeapon, giveAll() { pl.owned = pl.owned.map(() => true); paintWeapon(); }, enterFold, exitFold, jump() { f2.buf = 0.13; f2.held = true; },
       setPat(f, w) { S.M.rooms.forEach(r => { r.pf = f; r.pw = w; }); S.M.corrPat = [f, w]; },
     });
+    Object.defineProperty(ctx.test, 'boss', { get: () => S.boss, configurable: true });   // (Object.assign would freeze a getter's value)
 
     return () => {
       cancelAnimationFrame(raf);
