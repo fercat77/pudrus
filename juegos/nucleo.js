@@ -19,25 +19,41 @@ in vec3 vP; in vec3 vN; in vec2 vUV; in vec4 vI;
 uniform vec3 u_eye; uniform float u_time;
 uniform vec4 u_lp[16]; uniform vec4 u_lc[16]; uniform int u_nl;
 uniform vec4 u_rc[16];
+uniform vec4 u_rp[16];   // each room's patterns: x = floor, y = walls (0 grid, 1 hexagons, 2 diamonds, 3 panels, 4 triangles)
 out vec4 o;
 const float CS = 2.0;
 float line(float x, float w) { float d = abs(fract(x + 0.5) - 0.5); float fw = fwidth(x); return (1.0 - smoothstep(w, w + fw * 1.5, d)) * clamp(1.2 - fw * 3.0, 0.0, 1.0); }
+float edge(float d, float w) { float fw = fwidth(d); return (1.0 - smoothstep(w, w + fw * 1.5, d)) * clamp(1.2 - fw * 3.0, 0.0, 1.0); }
+float hexL(vec2 p, float w) {   // the edges of a honeycomb (one hexagon per unit)
+  const vec2 r = vec2(1.0, 1.7320508); vec2 h = r * 0.5;
+  vec2 a = mod(p, r) - h, b = mod(p - h, r) - h, g = dot(a, a) < dot(b, b) ? a : b, q = abs(g);
+  return edge(0.5 - max(dot(q, vec2(0.5, 0.8660254)), q.x), w);
+}
+float pattern(int k, vec2 p, float w) {
+  if (k == 1) return hexL(p * 1.35, w * 1.2);
+  if (k == 2) { vec2 d = vec2(p.x + p.y, p.x - p.y) * 0.7071 * 1.4; return max(line(d.x, w), line(d.y, w)); }
+  if (k == 3) { vec2 f = abs(fract(p) - 0.5); float m = max(f.x, f.y); return max(max(line(p.x, w), line(p.y, w)), edge(abs(m - 0.36), w) * 0.7); }
+  if (k == 4) { vec2 q = p * 1.6; return max(line(q.y, w), max(line(dot(q, vec2(0.8660254, 0.5)), w), line(dot(q, vec2(-0.8660254, 0.5)), w))); }
+  return max(line(p.x, w), line(p.y, w));
+}
 void main() {
-  vec4 rc = u_rc[clamp(int(vI.z + 0.5), 0, 15)];
+  int slot = clamp(int(vI.z + 0.5), 0, 15);
+  vec4 rc = u_rc[slot];
+  int pf = int(u_rp[slot].x + 0.5), pw = int(u_rp[slot].y + 0.5);
   float kind = vI.y, dist = length(vP - u_eye), em = 0.0;
-  if (kind < 0.5) {   // the floor: the cell grid, a finer one, and pulses of light running along the lines
+  if (kind < 0.5) {   // the floor: this room's pattern, a faint fine grid, and pulses of light running along the lines
     vec2 g = vP.xz / CS;
-    float L = max(line(g.x, 0.018), line(g.y, 0.018));
+    float L = pattern(pf, g, 0.018);
     em += L * (0.35 + 1.4 * pow(0.5 + 0.5 * sin((vP.x + vP.z) * 0.45 - u_time * 2.6), 12.0));
-    em += max(line(g.x * 4.0, 0.025), line(g.y * 4.0, 0.025)) * 0.05;
+    if (pf == 0) em += max(line(g.x * 4.0, 0.025), line(g.y * 4.0, 0.025)) * 0.05;
   } else if (kind < 1.5) {
-    vec2 g = vP.xz / CS; em += max(line(g.x, 0.012), line(g.y, 0.012)) * 0.1;
-  } else {   // walls: a bright line where they meet the floor, another at the top, seams at the cells, faint bands
+    em += pattern(pf, vP.xz / CS, 0.012) * 0.1;
+  } else {   // walls: a bright line where they meet the floor, another at the top, and this room's pattern
     float h = vI.x, v = vUV.y, fv = fwidth(v);
     em += (1.0 - smoothstep(0.0, 0.05 + fv * 1.5, v)) * (kind < 2.5 ? 2.2 : 1.2);
     em += (1.0 - smoothstep(0.0, 0.04 + fv * 1.5, h - v)) * 0.9;
-    em += line(vUV.x / CS, 0.01) * 0.5;
-    em += line(v, 0.008) * 0.07;
+    if (pw == 0) { em += line(vUV.x / CS, 0.01) * 0.5; em += line(v, 0.008) * 0.07; }
+    else em += pattern(pw, vec2(vUV.x, v) / CS, 0.014) * (0.32 + 0.5 * pow(0.5 + 0.5 * sin(v * 1.2 - u_time * 1.6 + vUV.x * 0.15), 10.0));   // with a slow glow climbing the walls
   }
   vec3 N = normalize(vN), V = normalize(u_eye - vP), col = vec3(0.012, 0.014, 0.022);
   for (int i = 0; i < 16; i++) {
@@ -188,7 +204,8 @@ void main() {
       const x = 1 + Math.floor(rnd() * (W - w - 2)), y = 1 + Math.floor(rnd() * (H - h - 2));
       if (rooms.some(r => x < r.x + r.w + 2 && x + w + 2 > r.x && y < r.y + r.h + 2 && y + h + 2 > r.y)) continue;
       const big = w * h >= 42;
-      rooms.push({ x, y, w, h, cx: x + (w >> 1), cy: y + (h >> 1), hgt: [3.6, 4.6, 6, 8][Math.floor(rnd() * (big ? 4 : 3))], hue: Math.floor(rnd() * PAL.length) });
+      rooms.push({ x, y, w, h, cx: x + (w >> 1), cy: y + (h >> 1), hgt: [3.6, 4.6, 6, 8][Math.floor(rnd() * (big ? 4 : 3))], hue: Math.floor(rnd() * PAL.length),
+        pf: [0, 0, 1, 2, 3, 4][Math.floor(rnd() * 6)], pw: [0, 1, 1, 1, 2, 3, 4][Math.floor(rnd() * 7)] });
     }
     rooms.forEach((r, k) => { for (let y = r.y; y < r.y + r.h; y++) for (let x = r.x; x < r.x + r.w; x++) { const i = y * W + x; grid[i] = 0; ceil[i] = r.hgt; rid[i] = k; } });
     // corridors: a spanning tree (every room reachable) plus a few loops (so it isn't a maze of dead ends)
@@ -234,7 +251,7 @@ void main() {
     });
     const pickups = [];
     for (let k = 0; k < 2 + Math.floor(level / 2); k++) { const r = rooms[1 + Math.floor(rnd() * (n - 1))]; const c = free(r); if (c.length) { const [x, y] = c[Math.floor(rnd() * c.length)]; pickups.push({ x: (x + 0.5) * CS, z: (y + 0.5) * CS }); } }
-    return { W, H, grid, ceil, rid, rooms, exitRoom, coreRooms, enemies, pickups, start: rooms[0] };
+    return { W, H, grid, ceil, rid, rooms, exitRoom, coreRooms, enemies, pickups, start: rooms[0], corrPat: [[0, 3], [0, 1], [2, 3], [4, 1]][level % 4] };
   }
   function bfs(grid, W, H, sx, sy) {
     const d = new Int32Array(W * H).fill(1e9), q = new Int32Array(W * H); let h = 0, t = 0;
@@ -765,13 +782,16 @@ void main() {
       const RC = new Float32Array(64);
       for (let k = 0; k < 15; k++) { const r = M.rooms[k]; if (!r) break; const c = PAL[r.hue]; RC.set([c[0], c[1], c[2], S.roomGlow[k]], k * 4); }
       RC.set([0, 0.62, 0.95, 0.85], CORR * 4);
+      const RP = new Float32Array(64);
+      for (let k = 0; k < 15; k++) { const r = M.rooms[k]; if (!r) break; RP.set([r.pf, r.pw, 0, 0], k * 4); }
+      RP.set([M.corrPat[0], M.corrPat[1], 0, 0], CORR * 4);
       // the scene, in HDR
       gl.bindFramebuffer(gl.FRAMEBUFFER, RT.fMain); gl.viewport(0, 0, W, H);
       gl.clearColor(0.004, 0, 0.01, 1); gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
       gl.enable(gl.DEPTH_TEST); gl.depthFunc(gl.LEQUAL); gl.disable(gl.BLEND); gl.enable(gl.CULL_FACE); gl.cullFace(gl.BACK);
       let p = P.level; gl.useProgram(p.p);
       gl.uniformMatrix4fv(p.L.u_vp, false, vp); gl.uniform3fv(p.L.u_eye, eye); gl.uniform1f(p.L.u_time, S.t);
-      gl.uniform4fv(p.L.u_lp, LP); gl.uniform4fv(p.L.u_lc, LC); gl.uniform1i(p.L.u_nl, NL); gl.uniform4fv(p.L.u_rc, RC);
+      gl.uniform4fv(p.L.u_lp, LP); gl.uniform4fv(p.L.u_lc, LC); gl.uniform1i(p.L.u_nl, NL); gl.uniform4fv(p.L.u_rc, RC); gl.uniform4fv(p.L.u_rp, RP);
       gl.bindVertexArray(levelGL.vao); gl.drawArrays(gl.TRIANGLES, 0, levelGL.n);
       // things
       gl.disable(gl.CULL_FACE);
