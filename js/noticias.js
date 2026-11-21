@@ -27,6 +27,7 @@
     if (text != null) e.textContent = text;
     return e;
   }
+  const head = s => String(s || '').trim().replace(/\.$/, '');   // headlines carry no full stop
   const safeUrl = u => (/^https?:\/\//i.test(u || '') ? u : '#');
   const level = n => (n >= 6 ? 'h' : n >= 3 ? 'm' : '');
 
@@ -88,7 +89,7 @@
     const box = $('lead'); box.textContent = '';
     if (!h) return;
     const m = el('div', 'nx-lead-main');
-    m.append(kicker(h), el('h2', '', h.titulo), el('p', 'nx-sum', h.resumen));
+    m.append(kicker(h), el('h2', '', head(h.titulo)), el('p', 'nx-sum', h.resumen));
     if (h.datos && h.datos.length) {
       const dl = el('dl', 'nx-data');
       h.datos.forEach(d => { const w = el('div'); w.append(el('dt', '', d.etiqueta), el('dd', '', d.texto)); dl.append(w); });
@@ -102,7 +103,7 @@
 
   function card(h) {
     const c = el('article', 'nx-card');
-    c.append(kicker(h), el('h2', '', h.titulo), el('p', 'nx-sum', h.resumen));
+    c.append(kicker(h), el('h2', '', head(h.titulo)), el('p', 'nx-sum', h.resumen));
     if (h.contexto) c.append(el('p', 'nx-ctx', h.contexto));
     const d = el('details');
     const s = el('summary');

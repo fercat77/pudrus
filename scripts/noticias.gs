@@ -127,7 +127,8 @@ function doGet() {
   let txt = cache.get('salida');
   if (!txt) {
     const ss = SpreadsheetApp.getActive();
-    txt = JSON.stringify(construirSalida_(leer_(ss, CONFIG.tabs.historias, COLS_HIST), leer_(ss, CONFIG.tabs.notas, COLS_NOTAS), new Date()));
+    const ultima = PropertiesService.getScriptProperties().getProperty('ULTIMA_VUELTA');   // «actualizado» = the last run, not this request
+    txt = JSON.stringify(construirSalida_(leer_(ss, CONFIG.tabs.historias, COLS_HIST), leer_(ss, CONFIG.tabs.notas, COLS_NOTAS), ultima ? new Date(ultima) : new Date()));
     if (txt.length < 95000) cache.put('salida', txt, CONFIG.cacheSegundos);
   }
   return ContentService.createTextOutput(txt).setMimeType(ContentService.MimeType.JSON);
@@ -182,6 +183,7 @@ function actualizar() {
     hist.forEach(h => { h.principal = !!top && h === top; });
     escribir_(ss, CONFIG.tabs.notas, COLS_NOTAS, notas.sort((a, b) => fecha_(b.publicado) - fecha_(a.publicado)));
     escribir_(ss, CONFIG.tabs.historias, COLS_HIST, hist);
+    PropertiesService.getScriptProperties().setProperty('ULTIMA_VUELTA', ahora.toISOString());
     limpiarCache();
     console.log('NoticIAs: %s notas nuevas, %s historias, %s reescritas, %s quedan para la próxima', nuevas.length, hist.length, hechas, cola.length - hechas);
   } finally {
@@ -331,7 +333,7 @@ function aplicarAnalisis_(h, ns, r, ahora) {
   h.fuentes = JSON.stringify(ok.map(x => ({ medio: x.n.medio, titulo: x.n.titulo, url: x.n.url, publicado: x.n.publicado, puntaje: puntaje_(senales[x.k] || []), senales: senales[x.k] || [] })));
   ns = ok.map(x => x.n);
   if (!esVerdadero_(h.editada)) {   // a hand-edited story keeps its text
-    h.titulo = String(r.titulo || '').slice(0, 160);
+    h.titulo = String(r.titulo || '').trim().replace(/\.$/, '').slice(0, 160);   // headlines carry no full stop
     h.resumen = r.resumen || '';
     h.contexto = r.contexto || '';
     h.datos = JSON.stringify((r.datos || []).slice(0, 2));
