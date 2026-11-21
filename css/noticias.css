@@ -81,6 +81,12 @@
 .nx-card details[open] summary::after { content: '−'; }
 .nx-card details .nx-heads { margin-top: 12px; }
 
+/* science: the same list as the briefs, in two columns on wide screens */
+.nx-sci .nx-briefs { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); column-gap: 28px; }
+.nx-sci .nx-briefs li:nth-child(2) { border-top: 0; }
+.nx-sci .nx-briefs li { grid-template-columns: 9.5em minmax(0, 1fr); }
+.nx-when { display: block; color: var(--text2); letter-spacing: 1px; margin-top: 2px; }
+
 /* briefs + meter */
 .nx-cols { display: grid; grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr); gap: 14px; }
 .nx-box { padding: clamp(16px, 2.4vw, 26px); background: var(--bg2); border: 1px solid var(--border); }
@@ -116,11 +122,14 @@
   .nx-lead { grid-template-columns: minmax(0, 1fr); }
   .nx-lead-side { border-left: 0; border-top: 1px solid var(--border); }
   .nx-cols { grid-template-columns: minmax(0, 1fr); }
+  .nx-sci .nx-briefs { grid-template-columns: minmax(0, 1fr); }
+  .nx-sci .nx-briefs li:nth-child(2) { border-top: 1px solid rgba(var(--line-rgb),0.08); }
   .nx-steps { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 @media (max-width: 480px) {
   .nx-steps { grid-template-columns: minmax(0, 1fr); }
-  .nx-briefs li { grid-template-columns: minmax(0, 1fr); gap: 2px; }
+  .nx-briefs li, .nx-sci .nx-briefs li { grid-template-columns: minmax(0, 1fr); gap: 2px; }
+  .nx-when { display: inline; margin: 0 0 0 8px; }
   .nx-meter li { grid-template-columns: 8em minmax(0, 1fr) auto; }
   .nx-meter em { min-width: 0; }
   .nx-meter em b { display: none; }

@@ -1,9 +1,9 @@
 /**
  * PUDRUS.XYZ — NoticIAs (Google Apps Script)
  * ===========================================
- * Lives inside a Google Sheet (Extensions → Apps Script). Every 30 minutes it:
+ * Lives inside a Google Sheet (Extensions → Apps Script). Three times a day (7, 13 and 20 h) it:
  *
- *   1. reads the RSS feeds listed in the «Fuentes» tab,
+ *   1. reads the RSS feeds listed in the «Fuentes» tab (news papers + science sites),
  *   2. groups the notes that tell the same event (Claude),
  *   3. writes a clear headline, an own summary and a sensationalism score for every
  *      original headline of each story (Claude),
@@ -17,8 +17,8 @@
  *   1. Paste this file into Apps Script and save.
  *   2. Project Settings → Script Properties → add ANTHROPIC_API_KEY (your key from
  *      console.anthropic.com). No secret lives in this file.
- *   3. Run preparar() once and accept the permissions: it creates the tabs and the
- *      30-minute trigger.
+ *   3. Project Settings → Time zone: (GMT-03:00) Buenos Aires, so the runs land at 7, 13 and 20 h.
+ *      Run preparar() once and accept the permissions: it creates the tabs and the three daily triggers.
  *   4. Deploy → New deployment → Web app, execute as «Me», access «Anyone».
  *      Paste the /exec URL in noticias/index.html (data-src).
  */
@@ -27,28 +27,37 @@ const CONFIG = {
   model: 'claude-haiku-5-5',
   apiVersion: '2026-10-21',
   userAgent: 'NoticIAs-bot/1.0 (+https://pudrus.xyz/noticias/)',
-  ventanaHoras: 36,        // notes older than this are dropped
+  horas: [7, 13, 20],      // the daily runs (script time zone)
+  ventanaHoras: 36,        // notes older than this are dropped…
+  cienciaDias: 10,         // …except science notes: those sites publish a few a week
+  maxCiencia: 8,
   agruparHoras: 24,        // loose notes this recent can still join a story
-  brevesHoras: 12,         // loose notes shown as «breves»
+  brevesHoras: 18,         // loose notes shown as «breves» (covers the night between runs)
   maxBreves: 14,
-  maxNotasPorLlamada: 260, // grouping call: the newest loose notes, at most
-  maxAnalisisPorVuelta: 25,// stories (re)written per run, the most relevant first
+  maxNotasPorLlamada: 320, // grouping call: the newest loose notes, at most
+  maxAnalisisPorVuelta: 45,// stories (re)written per run, the most relevant first…
+  maxSegundos: 270,        // …while there's time: Apps Script stops a run at 6 min; the rest goes next run
   autoAprobarDesde: 0,     // 0 = everything waits for review; 3 = approve stories with 3+ media by itself
-  cacheSegundos: 300,
+  cacheSegundos: 3600,     // every run and every edit in the Sheet clears it
   tabs: { fuentes: 'Fuentes', notas: 'Notas', historias: 'Historias' },
 };
 
 const FUENTES_INICIALES = [
-  // medio, feed, sección por defecto, activo, excluir (regex sobre la URL de la nota)
-  ['La Nación', 'https://www.lanacion.com.ar/arc/outboundfeeds/rss/?outputType=xml', 'Argentina', true, ''],
-  ['Infobae', 'https://www.infobae.com/arc/outboundfeeds/rss/', 'Argentina', true, '/espana/|/america/|/agencias/'],
-  ['Clarín', 'https://www.clarin.com/rss/lo-ultimo/', 'Argentina', true, ''],
-  ['Página/12', 'https://www.pagina12.com.ar/arc/outboundfeeds/rss/', 'Argentina', true, ''],
-  ['Perfil', 'https://www.perfil.com/feed', 'Argentina', true, ''],
-  ['Ámbito', 'https://www.ambito.com/rss/pages/home.xml', 'Economía', true, ''],
-  ['elDiarioAR', 'https://www.eldiarioar.com/rss/', 'Argentina', true, ''],
-  ['TN', 'https://tn.com.ar/arc/outboundfeeds/rss/?outputType=xml', 'Argentina', true, ''],
-  ['El Cronista', 'https://www.cronista.com/files/rss/news.xml', 'Economía', true, ''],
+  // medio, feed, sección por defecto, activo, excluir (regex sobre la URL de la nota), tipo (general | ciencia)
+  ['La Nación', 'https://www.lanacion.com.ar/arc/outboundfeeds/rss/?outputType=xml', 'Argentina', true, '', 'general'],
+  ['Infobae', 'https://www.infobae.com/arc/outboundfeeds/rss/', 'Argentina', true, '/espana/|/america/|/agencias/', 'general'],
+  ['Clarín', 'https://www.clarin.com/rss/lo-ultimo/', 'Argentina', true, '', 'general'],
+  ['Página/12', 'https://www.pagina12.com.ar/arc/outboundfeeds/rss/', 'Argentina', true, '', 'general'],
+  ['Perfil', 'https://www.perfil.com/feed', 'Argentina', true, '', 'general'],
+  ['Ámbito', 'https://www.ambito.com/rss/pages/home.xml', 'Economía', true, '', 'general'],
+  ['elDiarioAR', 'https://www.eldiarioar.com/rss/', 'Argentina', true, '', 'general'],
+  ['TN', 'https://tn.com.ar/arc/outboundfeeds/rss/?outputType=xml', 'Argentina', true, '', 'general'],
+  ['El Cronista', 'https://www.cronista.com/files/rss/news.xml', 'Economía', true, '', 'general'],
+  ['Infobae', 'https://www.infobae.com/arc/outboundfeeds/rss/category/america/ciencia-america/', 'Ciencia y tecnología', true, '', 'ciencia'],
+  ['La Nación', 'https://www.lanacion.com.ar/arc/outboundfeeds/rss/category/ciencia/?outputType=xml', 'Ciencia y tecnología', true, '', 'ciencia'],
+  ['elDiarioAR', 'https://www.eldiarioar.com/rss/ciencia/', 'Ciencia y tecnología', true, '', 'ciencia'],
+  ['NEX Ciencia (UBA)', 'https://nexciencia.exactas.uba.ar/feed', 'Ciencia y tecnología', true, '', 'ciencia'],
+  ['Agencia CTyS', 'https://www.ctys.com.ar/feed/', 'Ciencia y tecnología', true, '', 'ciencia'],
 ];
 
 const SECCIONES = ['Argentina', 'Política', 'Economía', 'Mundo', 'Sociedad', 'Policiales', 'Deportes', 'Cultura', 'Espectáculos', 'Ciencia y tecnología', 'Salud'];
@@ -65,8 +74,9 @@ const SENALES = {
   'Pregunta con respuesta conocida': 1,
 };
 
-const COLS_NOTAS = ['url', 'medio', 'titulo', 'bajada', 'publicado', 'historia'];
-const COLS_HIST = ['id', 'estado', 'principal', 'seccion', 'titulo', 'resumen', 'contexto', 'datos', 'relevancia', 'medios', 'fuentes', 'editada', 'creada', 'actualizada'];
+const COLS_FUENTES = ['medio', 'feed', 'seccion', 'activo', 'excluir', 'tipo'];
+const COLS_NOTAS = ['url', 'medio', 'titulo', 'bajada', 'publicado', 'historia', 'ciencia'];
+const COLS_HIST = ['id', 'estado', 'principal', 'seccion', 'titulo', 'resumen', 'contexto', 'datos', 'relevancia', 'medios', 'fuentes', 'editada', 'analizadas', 'creada', 'actualizada'];
 const ESTADOS = ['pendiente', 'aprobada', 'descartada'];
 
 // ───────────────────────────── menu, setup, triggers ─────────────────────────────
@@ -83,8 +93,8 @@ function onOpen() {
 /** Creates the tabs, the review dropdown and the 30-minute trigger. Safe to run again. */
 function preparar() {
   const ss = SpreadsheetApp.getActive();
-  const f = hoja_(ss, CONFIG.tabs.fuentes, ['medio', 'feed', 'seccion', 'activo', 'excluir']);
-  if (f.getLastRow() < 2) f.getRange(2, 1, FUENTES_INICIALES.length, 5).setValues(FUENTES_INICIALES);
+  const f = hoja_(ss, CONFIG.tabs.fuentes, COLS_FUENTES);
+  if (f.getLastRow() < 2) f.getRange(2, 1, FUENTES_INICIALES.length, COLS_FUENTES.length).setValues(FUENTES_INICIALES);
   hoja_(ss, CONFIG.tabs.notas, COLS_NOTAS);
   const h = hoja_(ss, CONFIG.tabs.historias, COLS_HIST);
   const regla = SpreadsheetApp.newDataValidation().requireValueInList(ESTADOS, true).build();
@@ -92,7 +102,7 @@ function preparar() {
   h.setColumnWidth(COLS_HIST.indexOf('titulo') + 1, 360);
   h.setColumnWidth(COLS_HIST.indexOf('resumen') + 1, 480);
   ScriptApp.getProjectTriggers().filter(t => t.getHandlerFunction() === 'actualizar').forEach(t => ScriptApp.deleteTrigger(t));
-  ScriptApp.newTrigger('actualizar').timeBased().everyMinutes(30).create();
+  CONFIG.horas.forEach(h => ScriptApp.newTrigger('actualizar').timeBased().atHour(h).everyDays(1).create());
   if (!PropertiesService.getScriptProperties().getProperty('ANTHROPIC_API_KEY')) {
     SpreadsheetApp.getUi().alert('Falta la clave: Configuración del proyecto → Propiedades del script → ANTHROPIC_API_KEY.');
   }
@@ -130,7 +140,8 @@ function actualizar() {
   if (!lock.tryLock(5000)) return;   // the previous run is still going
   try {
     const ss = SpreadsheetApp.getActive(), ahora = new Date();
-    const fuentes = leer_(ss, CONFIG.tabs.fuentes, ['medio', 'feed', 'seccion', 'activo', 'excluir']).filter(f => f.activo === true || String(f.activo).toUpperCase() === 'TRUE');
+    const t0 = Date.now();
+    const fuentes = leer_(ss, CONFIG.tabs.fuentes, COLS_FUENTES).filter(f => f.activo === true || String(f.activo).toUpperCase() === 'TRUE');
     let notas = leer_(ss, CONFIG.tabs.notas, COLS_NOTAS);
     let hist = leer_(ss, CONFIG.tabs.historias, COLS_HIST);
 
@@ -141,20 +152,22 @@ function actualizar() {
     notas = notas.concat(nuevas);
 
     // 2. forget what is too old
-    const limite = ahora.getTime() - CONFIG.ventanaHoras * 3600e3;
-    notas = notas.filter(n => fecha_(n.publicado) >= limite);
+    notas = notas.filter(n => fecha_(n.publicado) >= limiteNota_(n, ahora));
     const conNotas = {}; notas.forEach(n => { if (n.historia) conNotas[n.historia] = true; });
     hist = hist.filter(h => conNotas[h.id]);
 
     // 3. group (only when something new came in)
-    const tocadas = {};
-    if (nuevas.length) agrupar_(notas, hist, nuevas, ahora, tocadas);
+    if (nuevas.length) agrupar_(notas, hist, nuevas, ahora, {});
 
-    // 4. write / rewrite the stories that changed, the most relevant first
+    // 4. write / rewrite the stories whose notes changed, the most relevant first, while there's time
     const porHist = notasPorHistoria_(notas);
     hist.forEach(h => { h.relevancia = relevancia_(porHist[h.id] || [], ahora); });
-    const cola = hist.filter(h => tocadas[h.id] || !h.titulo).sort((a, b) => b.relevancia - a.relevancia).slice(0, CONFIG.maxAnalisisPorVuelta);
-    cola.forEach(h => analizarHistoria_(h, porHist[h.id] || [], ahora));
+    const cola = hist.filter(h => +h.analizadas !== (porHist[h.id] || []).length || !h.titulo).sort((a, b) => b.relevancia - a.relevancia).slice(0, CONFIG.maxAnalisisPorVuelta);
+    let hechas = 0;
+    for (const h of cola) {
+      if (Date.now() - t0 > CONFIG.maxSegundos * 1000) break;
+      analizarHistoria_(h, porHist[h.id] || [], ahora); hechas++;
+    }
 
     // 5. save
     hist.forEach(h => { h.medios = medios_(porHist[h.id] || []).length; });
@@ -164,7 +177,7 @@ function actualizar() {
     escribir_(ss, CONFIG.tabs.notas, COLS_NOTAS, notas.sort((a, b) => fecha_(b.publicado) - fecha_(a.publicado)));
     escribir_(ss, CONFIG.tabs.historias, COLS_HIST, hist);
     limpiarCache();
-    console.log('NoticIAs: %s notas nuevas, %s historias, %s reescritas', nuevas.length, hist.length, cola.length);
+    console.log('NoticIAs: %s notas nuevas, %s historias, %s reescritas, %s quedan para la próxima', nuevas.length, hist.length, hechas, cola.length - hechas);
   } finally {
     lock.releaseLock();
   }
@@ -173,17 +186,19 @@ function actualizar() {
 function recolectar_(fuentes, ahora) {
   const pedidos = fuentes.map(f => ({ url: f.feed, muteHttpExceptions: true, followRedirects: true, headers: { 'User-Agent': CONFIG.userAgent } }));
   const resp = UrlFetchApp.fetchAll(pedidos);
-  const limite = ahora.getTime() - CONFIG.ventanaHoras * 3600e3, porUrl = {};
+  const porUrl = {};
   resp.forEach((r, i) => {
     const f = fuentes[i];
     if (r.getResponseCode() !== 200) { console.warn('%s respondió %s', f.medio, r.getResponseCode()); return; }
     let excluir = null;
     try { excluir = f.excluir ? new RegExp(f.excluir) : null; } catch (e) { console.warn('excluir inválido en %s', f.medio); }
     parsearFeed_(r.getContentText()).forEach(it => {
-      const t = fecha_(it.publicado);
-      if (!it.url || !it.titulo || !t || t < limite || t > ahora.getTime() + 3600e3) return;
+      const t = fecha_(it.publicado), ciencia = String(f.tipo).toLowerCase() === 'ciencia';
+      if (!it.url || !it.titulo || !t || t > ahora.getTime() + 3600e3) return;
+      if (t < limiteNota_({ ciencia: ciencia }, ahora)) return;
       if (excluir && excluir.test(it.url)) return;
-      if (!porUrl[it.url]) porUrl[it.url] = { url: it.url, medio: f.medio, titulo: it.titulo, bajada: it.bajada, publicado: new Date(t).toISOString(), historia: '' };
+      if (!porUrl[it.url]) porUrl[it.url] = { url: it.url, medio: f.medio, titulo: it.titulo, bajada: it.bajada, publicado: new Date(t).toISOString(), historia: '', ciencia: ciencia };
+      else if (ciencia) porUrl[it.url].ciencia = true;   // in the general feed and in the science one
     });
   });
   return Object.keys(porUrl).map(k => porUrl[k]);
@@ -245,7 +260,7 @@ function nuevaHistoria_(ns, ahora) {
   const base = slug_(ns[0].titulo).slice(0, 40) || 'historia';
   return { id: base + '-' + ahora.getTime().toString(36).slice(-5) + Math.floor(Math.random() * 1296).toString(36),
     estado: 'pendiente', principal: false, seccion: '', titulo: '', resumen: '', contexto: '', datos: '[]', relevancia: 0, medios: 0,
-    fuentes: '[]', editada: false, creada: ahora.toISOString(), actualizada: ahora.toISOString() };
+    fuentes: '[]', editada: false, analizadas: 0, creada: ahora.toISOString(), actualizada: ahora.toISOString() };
 }
 
 // ───────────────────────────── writing a story (Claude) ─────────────────────────────
@@ -306,6 +321,7 @@ function aplicarAnalisis_(h, ns, r, ahora) {
     h.datos = JSON.stringify((r.datos || []).slice(0, 2));
   }
   if (!h.seccion || !esVerdadero_(h.editada)) h.seccion = r.seccion || h.seccion;
+  h.analizadas = ns.length;
   if (h.estado === 'pendiente' && CONFIG.autoAprobarDesde > 0 && medios_(ns).length >= CONFIG.autoAprobarDesde) h.estado = 'aprobada';
   h.actualizada = ahora.toISOString();
 }
@@ -393,6 +409,11 @@ function fecha_(v) {
   return isNaN(t) ? 0 : t;
 }
 
+/** Oldest date a note may have and still be kept: 36 h, or 10 days for science notes. */
+function limiteNota_(n, ahora) {
+  return ahora.getTime() - (esVerdadero_(n.ciencia) ? CONFIG.cienciaDias * 24 : CONFIG.ventanaHoras) * 3600e3;
+}
+
 function medios_(ns) {
   const m = {}; ns.forEach(n => { m[n.medio] = true; });
   return Object.keys(m);
@@ -433,12 +454,18 @@ function construirSalida_(hist, notas, ahora) {
     relevancia: +h.relevancia || 0, fuentes: json_(h.fuentes, []), actualizada: h.actualizada instanceof Date ? h.actualizada.toISOString() : h.actualizada,
   }));
   const desde = ahora.getTime() - CONFIG.brevesHoras * 3600e3, porMedio = {};
-  const breves = notas.filter(n => !n.historia && fecha_(n.publicado) >= desde)
+  const breves = notas.filter(n => !n.historia && !esVerdadero_(n.ciencia) && fecha_(n.publicado) >= desde)
     .sort((a, b) => fecha_(b.publicado) - fecha_(a.publicado))
     .filter(n => { porMedio[n.medio] = (porMedio[n.medio] || 0) + 1; return porMedio[n.medio] <= 3; })   // no single paper fills the list
     .slice(0, CONFIG.maxBreves)
     .map(n => ({ titulo: n.titulo, medio: n.medio, url: n.url, publicado: new Date(fecha_(n.publicado)).toISOString() }));
-  return { generado: ahora.toISOString(), historias: historias, breves: breves };
+  const porMedioC = {};
+  const ciencia = notas.filter(n => !n.historia && esVerdadero_(n.ciencia))   // science on its own: real headlines with their link, newest first
+    .sort((a, b) => fecha_(b.publicado) - fecha_(a.publicado))
+    .filter(n => { porMedioC[n.medio] = (porMedioC[n.medio] || 0) + 1; return porMedioC[n.medio] <= 2; })
+    .slice(0, CONFIG.maxCiencia)
+    .map(n => ({ titulo: n.titulo, medio: n.medio, url: n.url, publicado: new Date(fecha_(n.publicado)).toISOString() }));
+  return { generado: ahora.toISOString(), historias: historias, breves: breves, ciencia: ciencia };
 }
 
 // ───────────────────────────── sheet I/O ─────────────────────────────

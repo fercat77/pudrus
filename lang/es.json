@@ -559,7 +559,7 @@
     "meterDesc": "Promedio de sensacionalismo de sus títulos en esta portada, de 0 a 10.",
     "how": "Cómo se arma esta portada",
     "s1t": "Juntar",
-    "s1": "Cada media hora leemos los RSS de nueve diarios argentinos: solo títulos, bajadas y links.",
+    "s1": "Tres veces por día (mañana, mediodía y noche) leemos los RSS de nueve diarios argentinos y de sitios de ciencia: solo títulos, bajadas y links.",
     "s2t": "Agrupar",
     "s2": "Una IA junta las notas que cuentan el mismo hecho. Si lo publicaron dos medios o más, es una historia; si no, una breve.",
     "s3t": "Escribir",
@@ -581,6 +581,9 @@
     "all": "Todas",
     "noBriefs": "No hay breves por ahora.",
     "empty": "Todavía no hay noticias publicadas. Volvé en un rato.",
-    "error": "No se pudieron cargar las noticias. Probá de nuevo en un rato."
+    "error": "No se pudieron cargar las noticias. Probá de nuevo en un rato.",
+    "sci": "Ciencia",
+    "sciDesc": "Lo último de las secciones y sitios de ciencia, con el título de cada medio y el link a la nota.",
+    "agoD": "hace {n} días"
   }
 }

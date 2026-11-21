@@ -11,15 +11,55 @@
       "resumen": "Una tormenta descargó unos 40 milímetros de agua en dos horas durante la madrugada. La distribuidora informó cortes de luz en tres barrios, que según dos de los medios ya se resolvieron en parte. No hubo heridos. Las fuentes no coinciden en cuántos árboles cayeron: una habla de 12 y otra de «decenas».",
       "contexto": "Es la tercera tormenta fuerte del mes en la región.",
       "datos": [
-        { "etiqueta": "Lluvia", "texto": "40 mm en dos horas" },
-        { "etiqueta": "Qué sigue", "texto": "Alerta amarilla hasta el mediodía" }
+        {
+          "etiqueta": "Lluvia",
+          "texto": "40 mm en dos horas"
+        },
+        {
+          "etiqueta": "Qué sigue",
+          "texto": "Alerta amarilla hasta el mediodía"
+        }
       ],
       "relevancia": 0.92,
       "fuentes": [
-        { "medio": "Diario Uno", "titulo": "Temporal en Villa Ejemplo: cayeron 40 mm y hay cortes de luz en tres barrios", "url": "#", "publicado": "2026-11-21T08:10:00-03:00", "puntaje": 0, "senales": [] },
-        { "medio": "Portal Ya", "titulo": "CAOS TOTAL: el diluvio que hundió a Villa Ejemplo y lo que nadie te cuenta", "url": "#", "publicado": "2026-11-21T08:40:00-03:00", "puntaje": 5, "senales": ["Verbo de catástrofe", "Hueco de curiosidad"] },
-        { "medio": "El Matutino", "titulo": "¿Vuelve la lluvia? Lo que se sabe del temporal que golpeó la ciudad", "url": "#", "publicado": "2026-11-21T09:05:00-03:00", "puntaje": 4, "senales": ["Pregunta con respuesta conocida", "Hueco de curiosidad"] },
-        { "medio": "La Tarde", "titulo": "Tormenta de madrugada: cortes de luz y árboles caídos en Villa Ejemplo", "url": "#", "publicado": "2026-11-21T09:30:00-03:00", "puntaje": 0, "senales": [] }
+        {
+          "medio": "Diario Uno",
+          "titulo": "Temporal en Villa Ejemplo: cayeron 40 mm y hay cortes de luz en tres barrios",
+          "url": "#",
+          "publicado": "2026-11-21T08:10:00-03:00",
+          "puntaje": 0,
+          "senales": []
+        },
+        {
+          "medio": "Portal Ya",
+          "titulo": "CAOS TOTAL: el diluvio que hundió a Villa Ejemplo y lo que nadie te cuenta",
+          "url": "#",
+          "publicado": "2026-11-21T08:40:00-03:00",
+          "puntaje": 5,
+          "senales": [
+            "Verbo de catástrofe",
+            "Hueco de curiosidad"
+          ]
+        },
+        {
+          "medio": "El Matutino",
+          "titulo": "¿Vuelve la lluvia? Lo que se sabe del temporal que golpeó la ciudad",
+          "url": "#",
+          "publicado": "2026-11-21T09:05:00-03:00",
+          "puntaje": 4,
+          "senales": [
+            "Pregunta con respuesta conocida",
+            "Hueco de curiosidad"
+          ]
+        },
+        {
+          "medio": "La Tarde",
+          "titulo": "Tormenta de madrugada: cortes de luz y árboles caídos en Villa Ejemplo",
+          "url": "#",
+          "publicado": "2026-11-21T09:30:00-03:00",
+          "puntaje": 0,
+          "senales": []
+        }
       ]
     },
     {
@@ -29,12 +69,42 @@
       "titulo": "Los precios mayoristas subieron 1,8% en octubre en la provincia de Ejemplo",
       "resumen": "El instituto de estadística provincial informó una suba de 1,8% en los precios mayoristas de octubre, dos décimas menos que en septiembre. Los rubros que más aumentaron fueron alimentos y energía.",
       "contexto": "",
-      "datos": [{ "etiqueta": "Mes anterior", "texto": "2%" }],
+      "datos": [
+        {
+          "etiqueta": "Mes anterior",
+          "texto": "2%"
+        }
+      ],
       "relevancia": 0.71,
       "fuentes": [
-        { "medio": "Agencia Sur", "titulo": "Precios mayoristas: 1,8% en octubre, dos décimas menos que en septiembre", "url": "#", "publicado": "2026-11-21T07:00:00-03:00", "puntaje": 0, "senales": [] },
-        { "medio": "Portal Ya", "titulo": "Se disparan los precios: el dato que preocupa a todos los comerciantes", "url": "#", "publicado": "2026-11-21T07:20:00-03:00", "puntaje": 7, "senales": ["Verbo de catástrofe", "Hueco de curiosidad", "Omite el dato central"] },
-        { "medio": "Diario Uno", "titulo": "La inflación mayorista se desaceleró a 1,8%", "url": "#", "publicado": "2026-11-21T07:45:00-03:00", "puntaje": 0, "senales": [] }
+        {
+          "medio": "Agencia Sur",
+          "titulo": "Precios mayoristas: 1,8% en octubre, dos décimas menos que en septiembre",
+          "url": "#",
+          "publicado": "2026-11-21T07:00:00-03:00",
+          "puntaje": 0,
+          "senales": []
+        },
+        {
+          "medio": "Portal Ya",
+          "titulo": "Se disparan los precios: el dato que preocupa a todos los comerciantes",
+          "url": "#",
+          "publicado": "2026-11-21T07:20:00-03:00",
+          "puntaje": 7,
+          "senales": [
+            "Verbo de catástrofe",
+            "Hueco de curiosidad",
+            "Omite el dato central"
+          ]
+        },
+        {
+          "medio": "Diario Uno",
+          "titulo": "La inflación mayorista se desaceleró a 1,8%",
+          "url": "#",
+          "publicado": "2026-11-21T07:45:00-03:00",
+          "puntaje": 0,
+          "senales": []
+        }
       ]
     },
     {
@@ -47,8 +117,25 @@
       "datos": [],
       "relevancia": 0.55,
       "fuentes": [
-        { "medio": "La Tarde", "titulo": "Atlético Ejemplo empató con Sportivo Muestra y sigue en la cima", "url": "#", "publicado": "2026-11-20T23:10:00-03:00", "puntaje": 0, "senales": [] },
-        { "medio": "El Matutino", "titulo": "«Nos robaron»: la frase del DT de Atlético después del empate", "url": "#", "publicado": "2026-11-20T23:40:00-03:00", "puntaje": 4, "senales": ["Cita cargada como título", "Omite el dato central"] }
+        {
+          "medio": "La Tarde",
+          "titulo": "Atlético Ejemplo empató con Sportivo Muestra y sigue en la cima",
+          "url": "#",
+          "publicado": "2026-11-20T23:10:00-03:00",
+          "puntaje": 0,
+          "senales": []
+        },
+        {
+          "medio": "El Matutino",
+          "titulo": "«Nos robaron»: la frase del DT de Atlético después del empate",
+          "url": "#",
+          "publicado": "2026-11-20T23:40:00-03:00",
+          "puntaje": 4,
+          "senales": [
+            "Cita cargada como título",
+            "Omite el dato central"
+          ]
+        }
       ]
     },
     {
@@ -61,8 +148,25 @@
       "datos": [],
       "relevancia": 0.42,
       "fuentes": [
-        { "medio": "Diario Uno", "titulo": "Crean un sensor de bajo costo para medir la calidad del aire", "url": "#", "publicado": "2026-11-21T06:00:00-03:00", "puntaje": 0, "senales": [] },
-        { "medio": "Portal Ya", "titulo": "El invento que acaba de cambiar todo lo que sabíamos sobre el aire que respiramos", "url": "#", "publicado": "2026-11-21T06:30:00-03:00", "puntaje": 5, "senales": ["Novedad exagerada", "Hueco de curiosidad"] }
+        {
+          "medio": "Diario Uno",
+          "titulo": "Crean un sensor de bajo costo para medir la calidad del aire",
+          "url": "#",
+          "publicado": "2026-11-21T06:00:00-03:00",
+          "puntaje": 0,
+          "senales": []
+        },
+        {
+          "medio": "Portal Ya",
+          "titulo": "El invento que acaba de cambiar todo lo que sabíamos sobre el aire que respiramos",
+          "url": "#",
+          "publicado": "2026-11-21T06:30:00-03:00",
+          "puntaje": 5,
+          "senales": [
+            "Novedad exagerada",
+            "Hueco de curiosidad"
+          ]
+        }
       ]
     },
     {
@@ -72,19 +176,89 @@
       "titulo": "Abre la convocatoria para tocar en el festival de música electrónica de Villa Ejemplo",
       "resumen": "El festival abrió la inscripción para artistas locales hasta fin de mes. Van a elegir doce proyectos, que tocarán en el escenario principal.",
       "contexto": "",
-      "datos": [{ "etiqueta": "Inscripción", "texto": "Hasta el 30 de noviembre" }],
+      "datos": [
+        {
+          "etiqueta": "Inscripción",
+          "texto": "Hasta el 30 de noviembre"
+        }
+      ],
       "relevancia": 0.31,
       "fuentes": [
-        { "medio": "La Tarde", "titulo": "El festival electrónico de Villa Ejemplo busca artistas locales", "url": "#", "publicado": "2026-11-21T05:00:00-03:00", "puntaje": 0, "senales": [] },
-        { "medio": "Agencia Sur", "titulo": "Convocatoria abierta: el festival elegirá doce proyectos locales", "url": "#", "publicado": "2026-11-21T05:20:00-03:00", "puntaje": 0, "senales": [] }
+        {
+          "medio": "La Tarde",
+          "titulo": "El festival electrónico de Villa Ejemplo busca artistas locales",
+          "url": "#",
+          "publicado": "2026-11-21T05:00:00-03:00",
+          "puntaje": 0,
+          "senales": []
+        },
+        {
+          "medio": "Agencia Sur",
+          "titulo": "Convocatoria abierta: el festival elegirá doce proyectos locales",
+          "url": "#",
+          "publicado": "2026-11-21T05:20:00-03:00",
+          "puntaje": 0,
+          "senales": []
+        }
       ]
     }
   ],
   "breves": [
-    { "titulo": "Cortan una avenida por obras durante el fin de semana", "medio": "Diario Uno", "url": "#", "publicado": "2026-11-21T11:50:00-03:00" },
-    { "titulo": "La biblioteca municipal amplía su horario en diciembre", "medio": "La Tarde", "url": "#", "publicado": "2026-11-21T11:20:00-03:00" },
-    { "titulo": "Nueva línea de colectivos conectará la terminal con el puerto", "medio": "El Matutino", "url": "#", "publicado": "2026-11-21T10:40:00-03:00" },
-    { "titulo": "El torneo regional de ajedrez tendrá récord de inscriptos", "medio": "Agencia Sur", "url": "#", "publicado": "2026-11-21T10:05:00-03:00" },
-    { "titulo": "Vacunación antigripal: suman puestos en las plazas", "medio": "Portal Ya", "url": "#", "publicado": "2026-11-21T09:15:00-03:00" }
+    {
+      "titulo": "Cortan una avenida por obras durante el fin de semana",
+      "medio": "Diario Uno",
+      "url": "#",
+      "publicado": "2026-11-21T11:50:00-03:00"
+    },
+    {
+      "titulo": "La biblioteca municipal amplía su horario en diciembre",
+      "medio": "La Tarde",
+      "url": "#",
+      "publicado": "2026-11-21T11:20:00-03:00"
+    },
+    {
+      "titulo": "Nueva línea de colectivos conectará la terminal con el puerto",
+      "medio": "El Matutino",
+      "url": "#",
+      "publicado": "2026-11-21T10:40:00-03:00"
+    },
+    {
+      "titulo": "El torneo regional de ajedrez tendrá récord de inscriptos",
+      "medio": "Agencia Sur",
+      "url": "#",
+      "publicado": "2026-11-21T10:05:00-03:00"
+    },
+    {
+      "titulo": "Vacunación antigripal: suman puestos en las plazas",
+      "medio": "Portal Ya",
+      "url": "#",
+      "publicado": "2026-11-21T09:15:00-03:00"
+    }
+  ],
+  "ciencia": [
+    {
+      "titulo": "Un grupo de investigación midió cuánto crece un glaciar de ejemplo en invierno",
+      "medio": "Revista Ciencia Ejemplo",
+      "url": "#",
+      "publicado": "2026-11-20T18:00:00-03:00"
+    },
+    {
+      "titulo": "Describen una especie nueva de rana en una reserva de Villa Ejemplo",
+      "medio": "Agencia Sur",
+      "url": "#",
+      "publicado": "2026-11-19T10:00:00-03:00"
+    },
+    {
+      "titulo": "Cómo funciona el sensor de aire que se va a probar en diez escuelas",
+      "medio": "Diario Uno",
+      "url": "#",
+      "publicado": "2026-11-18T09:30:00-03:00"
+    },
+    {
+      "titulo": "Un telescopio escolar fotografió el paso de un cometa de ejemplo",
+      "medio": "Revista Ciencia Ejemplo",
+      "url": "#",
+      "publicado": "2026-11-16T21:00:00-03:00"
+    }
   ]
 }

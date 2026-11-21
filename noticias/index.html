@@ -26,7 +26,7 @@
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600;700&display=swap">
   <script src="../js/theme.js"></script>
   <link rel="stylesheet" href="../css/style.css">
-  <link rel="stylesheet" href="../css/noticias.css?v=1">
+  <link rel="stylesheet" href="../css/noticias.css?v=2">
 </head>
 <body class="home">
 
@@ -62,6 +62,12 @@
   <section class="nx-lead" data-nx-lead aria-label="Noticia principal"></section>
   <section class="nx-grid" data-nx-grid aria-label="Más noticias"></section>
 
+  <section class="nx-box nx-sci" aria-labelledby="nxSci" data-nx-sci-box>
+    <h2 class="nx-h2" id="nxSci" data-i18n="news.sci">Ciencia</h2>
+    <p class="nx-sub" data-i18n="news.sciDesc">Lo último de las secciones y sitios de ciencia, con el título de cada medio y el link a la nota.</p>
+    <ol class="nx-briefs" data-nx-sci></ol>
+  </section>
+
   <div class="nx-cols">
     <section class="nx-box" aria-labelledby="nxBriefs">
       <h2 class="nx-h2" id="nxBriefs" data-i18n="news.briefs">Breves</h2>
@@ -78,7 +84,7 @@
   <section class="nx-box nx-about" aria-labelledby="nxHow">
     <h2 class="nx-h2" id="nxHow" data-i18n="news.how">Cómo se arma esta portada</h2>
     <ol class="nx-steps">
-      <li><b data-i18n="news.s1t">Juntar</b><span data-i18n="news.s1">Cada media hora leemos los RSS de nueve diarios argentinos: solo títulos, bajadas y links.</span></li>
+      <li><b data-i18n="news.s1t">Juntar</b><span data-i18n="news.s1">Tres veces por día (mañana, mediodía y noche) leemos los RSS de nueve diarios argentinos y de sitios de ciencia: solo títulos, bajadas y links.</span></li>
       <li><b data-i18n="news.s2t">Agrupar</b><span data-i18n="news.s2">Una IA junta las notas que cuentan el mismo hecho. Si lo publicaron dos medios o más, es una historia; si no, una breve.</span></li>
       <li><b data-i18n="news.s3t">Escribir</b><span data-i18n="news.s3">La IA escribe un título que dice qué pasó y un resumen propio, solo con lo que dicen las fuentes. Una persona lo revisa antes de publicarlo.</span></li>
       <li><b data-i18n="news.s4t">Medir</b><span data-i18n="news.s4">Cada título original suma puntos por las señales de sensacionalismo que tiene, hasta 10.</span></li>
@@ -98,7 +104,7 @@
 </footer>
 
 <script src="../js/i18n.js"></script>
-<script src="../js/noticias.js?v=1"></script>
+<script src="../js/noticias.js?v=2"></script>
 <script src="../js/nav.js"></script>
 <script src="/js/pwa.js"></script>
 </body>

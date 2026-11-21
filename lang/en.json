@@ -559,7 +559,7 @@
     "meterDesc": "Average sensationalism of their headlines on this page, from 0 to 10.",
     "how": "How this front page is made",
     "s1t": "Collect",
-    "s1": "Every half hour we read the RSS feeds of nine Argentine papers: only headlines, standfirsts and links.",
+    "s1": "Three times a day (morning, noon and night) we read the RSS feeds of nine Argentine papers and of science sites: only headlines, standfirsts and links.",
     "s2t": "Group",
     "s2": "An AI groups the notes that tell the same event. If two or more outlets published it, it's a story; otherwise, a brief.",
     "s3t": "Write",
@@ -581,6 +581,9 @@
     "all": "All",
     "noBriefs": "No briefs right now.",
     "empty": "No stories published yet. Come back in a while.",
-    "error": "The news couldn't be loaded. Try again in a while."
+    "error": "The news couldn't be loaded. Try again in a while.",
+    "sci": "Science",
+    "sciDesc": "The latest from science sections and sites, with each outlet's headline and the link to the article.",
+    "agoD": "{n} days ago"
   }
 }

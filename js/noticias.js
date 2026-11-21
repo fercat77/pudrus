@@ -38,6 +38,7 @@
     if (min < 60) return t('agoMin', 'hace {n} min', { n: min });
     const h = Math.round(min / 60);
     if (h < 48) return t('agoH', 'hace {n} h', { n: h });
+    if (h < 24 * 14) return t('agoD', 'hace {n} días', { n: Math.round(h / 24) });
     return new Date(iso).toLocaleDateString('es-AR', { day: 'numeric', month: 'short' });
   }
 
@@ -115,12 +116,14 @@
 
   const avgScore = fs => (fs.length ? fs.reduce((s, f) => s + (f.puntaje || 0), 0) / fs.length : 0);
 
-  function briefs(list) {
-    const ol = $('briefs'); ol.textContent = '';
+  function briefs(list, key = 'briefs') {
+    const ol = $(key); ol.textContent = '';
     if (!list.length) { ol.append(el('li', '', t('noBriefs', 'No hay breves por ahora.'))); return; }
     list.forEach(b => {
       const li = el('li');
-      li.append(el('small', '', b.medio));
+      const who = el('small', '', b.medio);
+      if (key === 'sci' && b.publicado) who.append(el('span', 'nx-when', ago(b.publicado)));
+      li.append(who);
       const a = el('a', '', b.titulo); a.href = safeUrl(b.url); a.target = '_blank'; a.rel = 'noopener noreferrer';
       li.append(a); ol.append(li);
     });
@@ -165,6 +168,9 @@
     const grid = $('grid'); grid.textContent = '';
     hist.slice(1).forEach(h => grid.append(card(h)));
     briefs(data.breves || []);
+    const sci = data.ciencia || [];
+    $('sci-box').hidden = !sci.length;
+    if (sci.length) briefs(sci, 'sci');
     meter(all);
   }
 
@@ -193,5 +199,5 @@
   // the language switch re-runs the static texts; the dynamic ones follow
   const sel = document.getElementById('langSelect');
   if (sel) sel.addEventListener('change', () => setTimeout(() => { if (data) render(); }, 150));
-  setInterval(() => { if (data && main.dataset.src) load(); }, 10 * 60 * 1000);   // a page left open keeps up
+  setInterval(() => { if (data && main.dataset.src) load(); }, 30 * 60 * 1000);   // a page left open keeps up (the news changes 3 times a day)
 })();
