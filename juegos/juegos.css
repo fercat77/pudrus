@@ -453,3 +453,56 @@ html[lang="en"] .jg-drow.me .nm::after, html[lang="en"] .tz-pt.me b::after { con
 .jg-cb.on { color: var(--c1); border-style: solid; border-color: rgba(var(--c1-rgb),0.6); }
 body.cb .st-opt { font-size: clamp(11px, 3.2vw, 14px); font-weight: 700; color: #050508; align-items: center; padding: 4px; text-align: center; }
 body.cb .sd-cell.bad { text-decoration: line-through 3px; text-decoration-color: #ff3355; background: repeating-linear-gradient(45deg, rgba(255,51,85,0.18) 0 4px, transparent 4px 8px); }
+
+/* ── Núcleo: its button (next to Duelo) and the game: the picture fills the stage, the HUD floats over it ── */
+.jg-ncbtn { background: linear-gradient(90deg, rgba(var(--c1-rgb),0.12), rgba(var(--c1-rgb),0.03)); border-color: rgba(var(--c1-rgb),0.45); }
+.jg-ncbtn .ic { color: var(--c1); text-shadow: 0 0 12px rgba(var(--c1-rgb),0.6); }
+.jg-ncbtn:hover, .jg-ncbtn:focus-visible { border-color: var(--c1); box-shadow: 0 0 18px rgba(var(--c1-rgb),0.35); }
+.jg-stage.nc-stage { padding: 0 !important; overflow: hidden !important; justify-content: stretch !important; align-items: stretch !important; background: #000 !important; border-radius: 10px; }
+.nc-wrap { position: relative; flex: 1; min-height: 0; width: 100%; overflow: hidden; background: #000; touch-action: none; -webkit-user-select: none; user-select: none; color: #e8f6ff; font-family: 'IBM Plex Mono', Consolas, monospace; }
+.nc-wrap:fullscreen { border-radius: 0; }
+.nc-cv { position: absolute; inset: 0; width: 100%; height: 100%; display: block; cursor: crosshair; }
+.nc-msg { position: absolute; inset: 0; display: grid; place-items: center; padding: 24px; text-align: center; }
+.nc-hud { position: absolute; inset: 0; pointer-events: none; }
+.nc-hud button { pointer-events: auto; }
+.nc-cross { position: absolute; left: 50%; top: 50%; width: 22px; height: 22px; margin: -11px 0 0 -11px; }
+.nc-cross::before, .nc-cross::after { content: ''; position: absolute; background: rgba(160,240,255,0.85); box-shadow: 0 0 6px #0cf; }
+.nc-cross::before { left: 10px; top: 0; width: 2px; height: 22px; clip-path: polygon(0 0,100% 0,100% 30%,0 30%,0 70%,100% 70%,100% 100%,0 100%); }
+.nc-cross::after { top: 10px; left: 0; height: 2px; width: 22px; clip-path: polygon(0 0,30% 0,30% 100%,0 100%,0 0,70% 0,100% 0,100% 100%,70% 100%); }
+.nc-cross.hit::before, .nc-cross.hit::after { background: #fff; box-shadow: 0 0 10px #fff; }
+.nc-hp { position: absolute; left: 16px; bottom: 16px; display: flex; align-items: center; gap: 8px; font-size: 11px; letter-spacing: .12em; text-transform: uppercase; color: #9fe8ff; text-shadow: 0 0 6px rgba(0,200,255,0.5); }
+.nc-hp .bar { width: clamp(110px, 18vw, 220px); height: 8px; border: 1px solid rgba(0,212,255,0.6); border-radius: 2px; overflow: hidden; background: rgba(0,20,30,0.5); }
+.nc-hp .bar i { display: block; height: 100%; background: linear-gradient(90deg, #00d4ff, #8ff); box-shadow: 0 0 10px #0cf; transition: width .15s; }
+.nc-hp b { font-size: 16px; color: #fff; min-width: 3ch; }
+.nc-hp.low { color: #ff6a7a; } .nc-hp.low .bar { border-color: #ff3355; } .nc-hp.low .bar i { background: #ff3355; box-shadow: 0 0 10px #f35; }
+.nc-dash { position: absolute; left: 16px; bottom: 38px; width: 60px; height: 3px; background: rgba(0,212,255,0.15); }
+.nc-dash i { display: block; height: 100%; background: #8ff; }
+.nc-cores { position: absolute; left: 50%; top: 12px; transform: translateX(-50%); display: flex; align-items: center; gap: 7px; font-size: 11px; letter-spacing: .14em; text-transform: uppercase; color: #ffe7a0; text-shadow: 0 0 6px rgba(255,210,63,0.6); }
+.nc-cores i { width: 10px; height: 10px; transform: rotate(45deg); border: 1.5px solid #ffd23f; opacity: 0.35; }
+.nc-cores i.on { background: #ffd23f; opacity: 1; box-shadow: 0 0 8px #ffd23f; }
+.nc-cores.open { color: #8ff; text-shadow: 0 0 8px #0cf; }
+.nc-toast { position: absolute; left: 50%; top: 22%; transform: translate(-50%, 8px); padding: 6px 14px; font-size: 13px; letter-spacing: .06em; color: #fff; background: rgba(0,10,20,0.55); border: 1px solid rgba(0,212,255,0.4); border-radius: 4px; opacity: 0; transition: opacity .25s, transform .25s; white-space: nowrap; max-width: 92%; overflow: hidden; text-overflow: ellipsis; }
+.nc-toast.on { opacity: 1; transform: translate(-50%, 0); }
+.nc-map { position: absolute; right: 12px; top: 12px; width: clamp(96px, 14vw, 150px); height: clamp(96px, 14vw, 150px); opacity: 0.92; }
+.nc-big { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; opacity: 0; transition: opacity .35s; text-align: center; }
+.nc-big.on { opacity: 1; }
+.nc-big b { font-size: clamp(28px, 7vw, 64px); letter-spacing: .12em; text-transform: uppercase; color: #fff; text-shadow: 0 0 18px #0cf, 0 0 40px rgba(0,212,255,0.5); }
+.nc-big small { font-size: 13px; letter-spacing: .1em; color: #9fe8ff; }
+.nc-tools { position: absolute; left: 12px; top: 12px; display: flex; gap: 6px; }
+.nc-tool { width: 32px; height: 32px; border: 1px solid rgba(0,212,255,0.35); border-radius: 6px; background: rgba(0,10,20,0.5); color: #bdf3ff; font-size: 14px; cursor: pointer; }
+.nc-tool:hover { border-color: #0cf; }
+.nc-pause { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; background: rgba(0,4,10,0.6); cursor: pointer; z-index: 3; }
+.nc-pause[hidden] { display: none; }
+.nc-pause b { font-size: clamp(26px, 6vw, 54px); letter-spacing: .14em; text-transform: uppercase; text-shadow: 0 0 18px #0cf; }
+.nc-pause small { font-size: 13px; color: #9fe8ff; letter-spacing: .06em; padding: 0 16px; text-align: center; }
+.nc-touch { position: absolute; inset: 0; z-index: 2; touch-action: none; }
+.nc-stick { position: absolute; width: 112px; height: 112px; margin: -56px 0 0 -56px; border-radius: 50%; border: 1.5px solid rgba(0,212,255,0.35); opacity: 0; pointer-events: none; transition: opacity .15s; }
+.nc-stick.on { opacity: 1; }
+.nc-stick i { position: absolute; left: 50%; top: 50%; width: 44px; height: 44px; margin: -22px 0 0 -22px; border-radius: 50%; background: rgba(0,212,255,0.3); border: 1.5px solid #0cf; }
+.nc-fire, .nc-dashbtn { position: absolute; border-radius: 50%; border: 2px solid rgba(0,212,255,0.6); background: rgba(0,30,45,0.45); color: #bff6ff; font-size: 26px; touch-action: none; }
+.nc-fire { right: 22px; bottom: 26px; width: 84px; height: 84px; }
+.nc-fire:active { background: rgba(0,212,255,0.35); }
+.nc-dashbtn { right: 118px; bottom: 34px; width: 58px; height: 58px; font-size: 22px; }
+.nc-wrap.touch .nc-hp { bottom: auto; top: 54px; left: 12px; }
+.nc-wrap.touch .nc-dash { bottom: auto; top: 76px; left: 12px; }
+.nc-wrap.touch .nc-map { width: 92px; height: 92px; }
