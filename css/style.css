@@ -590,3 +590,23 @@ footer a:hover { color: var(--c1); }
 @media (max-width: 720px) { .games-card { grid-template-columns: 1fr; } }
 :root[data-theme="light"] .games-card { background: linear-gradient(135deg, rgba(var(--c1-rgb),0.08), rgba(176,35,111,0.05)); box-shadow: 0 1px 3px rgba(43,47,53,0.1); }
 :root[data-theme="light"] .games-art span { border-color: transparent; }
+
+/* ── HOME: NEWS (NoticIAs) ─────────────────────────── */
+.news-card { display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr); gap: clamp(18px, 3vw, 40px); align-items: center; margin-top: clamp(16px, 3vh, 28px);
+  padding: clamp(16px, 2.4vw, 28px); border: 1px solid rgba(var(--c1-rgb),0.35); background: var(--work-bg); color: var(--text); text-decoration: none; position: relative;
+  transition: border-color .2s, box-shadow .2s, transform .2s; }
+.news-card::before { content: ''; position: absolute; inset: 0 0 auto 0; height: 2px; background: var(--c1); }
+.news-card:hover, .news-card:focus-visible { border-color: var(--c1); box-shadow: var(--glow); transform: translateY(-2px); outline: none; }
+.news-heads { list-style: none; display: flex; flex-direction: column; }
+.news-heads li { display: grid; gap: 4px; padding: 12px 0; border-top: 1px solid rgba(var(--line-rgb),0.1); }
+.news-heads li:first-child { border-top: 0; padding-top: 0; }
+.news-heads li:first-child span { font-size: clamp(16px, 1.8vw, 20px); }
+.news-heads small { font-size: 9px; letter-spacing: 2px; text-transform: uppercase; color: var(--c1); }
+.news-heads span { color: var(--head); font-size: 13px; line-height: 1.4; font-weight: 600; text-wrap: balance; }
+.news-heads[hidden] + .news-tx { grid-column: 1 / -1; }
+.news-tx { display: flex; flex-direction: column; gap: 12px; align-items: flex-start; }
+.news-meta { font-size: 11px; letter-spacing: 2px; text-transform: uppercase; color: var(--c2); }
+.news-how { font-size: 12px; line-height: 1.8; color: var(--text2); }
+.news-go { margin-top: 4px; pointer-events: none; }
+@media (max-width: 720px) { .news-card { grid-template-columns: 1fr; } }
+:root[data-theme="light"] .news-card { box-shadow: 0 1px 3px rgba(43,47,53,0.1); }

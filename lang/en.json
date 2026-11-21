@@ -7,7 +7,8 @@
     "gallery": "Gallery",
     "themeLight": "Switch to the light theme",
     "themeDark": "Switch to the dark theme",
-    "games": "Games"
+    "games": "Games",
+    "news": "News"
   },
   "hero": {
     "tag": "◈ Creative Visual Suite",
@@ -22,7 +23,7 @@
     "install": "No install"
   },
   "work": {
-    "sectionTag": "◈ 04 — Work",
+    "sectionTag": "◈ 05 — Work",
     "title": "I create <span>visual work</span>",
     "p1": "I work at the intersection of digital art, visual identity, and interactive experiences.",
     "p2": "I collaborate on commissions for brands, artists, cultural projects, and experimental campaigns that need a strong, distinctive look.",
@@ -377,7 +378,7 @@
     "shapeSquare": "Square"
   },
   "about": {
-    "sectionTag": "◈ 03 — About",
+    "sectionTag": "◈ 04 — About",
     "title": "How it Works",
     "p1": "PUDRUS.XYZ is a creative suite that runs locally in your browser: your images never leave your device.",
     "p2": "Built with vanilla JavaScript. No frameworks, no accounts.",
@@ -587,6 +588,11 @@
     "agoD": "{n} days ago",
     "int": "From the provinces",
     "intDesc": "What the provincial papers are publishing.",
-    "inEnglish": "in English"
+    "inEnglish": "in English",
+    "sectionTag": "◈ 03 — News",
+    "homeDesc": "News from the main Argentine papers, with a clear headline, our own summary and no ads. And how each outlet headlined it.",
+    "homeMeta": "National papers, papers from the provinces and science sites · three times a day",
+    "homeHow": "An AI groups what each outlet reports, writes a headline that says what happened and checks every fact against the sources before publishing. Next to it, the sensationalism meter of every headline.",
+    "read": "Read the news"
   }
 }

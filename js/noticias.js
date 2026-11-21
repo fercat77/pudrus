@@ -27,7 +27,7 @@
     if (text != null) e.textContent = text;
     return e;
   }
-  const head = s => String(s || '').trim().replace(/\.$/, '');   // headlines carry no full stop
+  const head = s => String(s || '').trim().replace(/\.$/, '').replace(/(\d)-(\d)/g, '$1‑$2');   // no full stop; a score like 1-0 never breaks at the hyphen   // headlines carry no full stop
   const safeUrl = u => (/^https?:\/\//i.test(u || '') ? u : '#');
   const level = n => (n >= 6 ? 'h' : n >= 3 ? 'm' : '');
 

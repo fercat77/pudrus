@@ -7,7 +7,8 @@
     "gallery": "Galería",
     "themeLight": "Cambiar al tema claro",
     "themeDark": "Cambiar al tema oscuro",
-    "games": "Juegos"
+    "games": "Juegos",
+    "news": "Noticias"
   },
   "hero": {
     "tag": "◈ Suite Visual Creativa",
@@ -22,7 +23,7 @@
     "install": "instalación"
   },
   "work": {
-    "sectionTag": "◈ 04 — Trabajo",
+    "sectionTag": "◈ 05 — Trabajo",
     "title": "Trabajo entre el arte, la tecnología y la escena",
     "p1": "Durante más de una década desarrollé mi trabajo atravesando distintas disciplinas: diseño gráfico, artes visuales, informática, música y producción audiovisual. Ese recorrido me permitió construir una forma de trabajo donde la creatividad y la técnica no funcionan como áreas separadas, sino como partes de un mismo proceso.",
     "p2": "Me desempeño como artista visual, diseñador gráfico, director de cámaras (CCTV), técnico audiovisual, técnico escénico y VJ, además de desarrollar proyectos musicales y colaborar en la producción de eventos en vivo. Cada una de estas experiencias aporta una mirada diferente sobre la imagen, el sonido, el espacio y la relación entre las personas y la tecnología.",
@@ -377,7 +378,7 @@
     "shapeSquare": "Cuadrado"
   },
   "about": {
-    "sectionTag": "◈ 03 — Acerca de",
+    "sectionTag": "◈ 04 — Acerca de",
     "title": "Cómo funciona",
     "p1": "PUDRUS.XYZ es una suite creativa que corre localmente en tu navegador: tus imágenes nunca salen de tu dispositivo.",
     "p2": "Hecho con JavaScript puro. Sin frameworks ni cuentas.",
@@ -587,6 +588,11 @@
     "agoD": "hace {n} días",
     "int": "Del interior",
     "intDesc": "Lo que publican los diarios de las provincias.",
-    "inEnglish": "en inglés"
+    "inEnglish": "en inglés",
+    "sectionTag": "◈ 03 — Noticias",
+    "homeDesc": "Las noticias de los principales diarios, con un título claro, un resumen propio y sin publicidad. Y cómo lo tituló cada medio.",
+    "homeMeta": "Diarios nacionales, del interior y de ciencia · tres veces por día",
+    "homeHow": "Una IA agrupa lo que cuenta cada medio, escribe un título que dice qué pasó y verifica cada dato contra las fuentes antes de publicarlo. Al lado, el termómetro de sensacionalismo de cada título.",
+    "read": "Leer las noticias"
   }
 }

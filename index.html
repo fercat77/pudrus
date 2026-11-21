@@ -39,6 +39,7 @@
   <ul class="nav-links" id="navLinks">
     <li><a href="#tools" data-i18n="nav.tools">Tools</a></li>
     <li><a href="#games" data-i18n="nav.games">Games</a></li>
+    <li><a href="#news" data-i18n="nav.news">News</a></li>
     <li data-gallery-section hidden><a href="#gallery" data-i18n="nav.gallery">Gallery</a></li>
     <li><a href="#about" data-i18n="nav.about">About</a></li>
     <li><a href="#work" data-i18n="nav.work">Work</a></li>
@@ -189,6 +190,21 @@
     </a>
   </section>
 
+  <!-- ── NEWS (NoticIAs) ───────────────────────────────── -->
+  <section id="news" class="screen section-news">
+    <div class="section-tag" data-i18n="news.sectionTag">◈ 03 — Noticias</div>
+    <h2 class="section-title">Notic<span>IA</span>s</h2>
+    <p class="section-desc" data-i18n="news.homeDesc">Las noticias de los principales diarios, con un título claro, un resumen propio y sin publicidad. Y cómo lo tituló cada medio.</p>
+    <a href="noticias/" class="news-card" data-news-home data-src="https://script.google.com/macros/s/AKfycbyx1Sk_cHqU7vwDP7eMOLAeiPy8-QeLocpd6OMymAo0msq7AgRgl7NucDkWeKyzT_xk7w/exec">
+      <ol class="news-heads" data-news-list hidden></ol>
+      <div class="news-tx">
+        <div class="news-meta" data-news-meta data-i18n="news.homeMeta">Diarios nacionales, del interior y de ciencia · tres veces por día</div>
+        <p class="news-how" data-i18n="news.homeHow">Una IA agrupa lo que cuenta cada medio, escribe un título que dice qué pasó y verifica cada dato contra las fuentes antes de publicarlo. Al lado, el termómetro de sensacionalismo de cada título.</p>
+        <span class="btn btn-primary news-go" data-i18n="news.read">Leer las noticias</span>
+      </div>
+    </a>
+  </section>
+
   <!-- ── GALLERY (hidden until there are images or a submission form) ── -->
   <section id="gallery" class="screen section-gallery" data-gallery-section hidden>
     <div class="gallery-head">
@@ -207,7 +223,7 @@
   <section id="about" class="screen section-about">
     <div class="about-grid">
       <div class="about-text">
-        <div class="section-tag" data-i18n="about.sectionTag">◈ 03 — About</div>
+        <div class="section-tag" data-i18n="about.sectionTag">◈ 04 — About</div>
         <h2 class="section-title" data-i18n="about.title">How it works</h2>
         <p data-i18n="about.p1">PUDRUS.XYZ is a creative suite that runs locally in your browser.</p>
         <p data-i18n="about.p2">Built with vanilla JavaScript. No frameworks, no accounts.</p>
@@ -245,7 +261,7 @@
 
   <!-- ── WORK ─────────────────────────────────────────── -->
   <section id="work" class="screen section-work">
-    <div class="section-tag" data-i18n="work.sectionTag">◈ 04 — Work</div>
+    <div class="section-tag" data-i18n="work.sectionTag">◈ 05 — Work</div>
     <div class="work-card">
       <div class="work-main">
         <div class="work-badge" data-i18n="work.badge">Disponible para comisiones</div>
@@ -297,6 +313,7 @@
 
 <script src="js/i18n.js"></script>
 <script src="js/gallery.js"></script>
+<script src="js/noticias-home.js"></script>
 <script src="js/nav.js"></script>
 <script src="/js/pwa.js"></script>
 </body>
