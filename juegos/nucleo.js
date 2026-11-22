@@ -489,15 +489,16 @@ void main() {
   const GAME = {
     id: 'nucleo', solo: true, title: tr('Núcleo', 'Core'), tag: tr('Acción', 'Action'),
     desc: tr('Una estructura de neón que se arma distinta cada vez. Apagá sus núcleos y escapá.', 'A neon structure built anew every time. Shut down its cores and get out.'),
-    how: tr('Cada nivel tiene núcleos escondidos: destruilos todos (cada uno que cae deja su sala a oscuras) y llegá a la salida, que se abre al final. Cada nivel es más grande y con más enemigos. Compu: W A S D para moverte, mouse para mirar, clic para disparar, Shift o Espacio para el impulso, Q (o 1–4, o la ruedita) para cambiar de arma, Esc para pausar, M para el sonido. Joystick: palanca izquierda para moverte, derecha para mirar, gatillo derecho para disparar, gatillo izquierdo o B para el impulso, A para saltar (en los pliegues) y hablar, LB / RB o Y para cambiar de arma, Start para pausar. Al pasar de nivel elegís una de tres mejoras; algunas paredes esconden salas secretas (dispará donde brilla un dibujo tenue). Celular: palanca a la izquierda para moverte, arrastrá a la derecha para mirar, botones para disparar, para el impulso y ⇄ para cambiar de arma. Dos armas: el Pulso (rápido y preciso) y el Abanico (ocho disparos en abanico: lento pero demoledor de cerca, y empuja); en los niveles podés encontrar el Rayo y el Rebote. Cada 5 niveles te espera el Gran Núcleo en su arena. Los rojos te persiguen, los naranjas disparan de lejos (esquivá sus esferas), los amarillos se parten en dos y los violetas atraviesan las paredes. Cuanto más hondo, más rara se pone la estructura. A veces aparece alguien que no ataca: acercate y apretá E para hablar. Desde el nivel 3, algún núcleo está dentro de un pliegue (un portal magenta en una pared): adentro el mundo se ve de costado, con plataformas; A D para moverte, W o Espacio para saltar (más alto si lo mantenés), S para agacharte, Shift para el impulso (también en el aire) y el mouse para apuntar; en el celular, arrastrá a la derecha para mover la mira (si no la tocás, apunta sola) y bajá la palanca para agacharte.',
-      'Every level hides cores: destroy them all (each one that falls blacks out its room) and reach the exit, which opens at the end. Every level is bigger and has more enemies. Computer: W A S D to move, mouse to look, click to shoot, Shift or Space to dash, Q (or 1–4, or the wheel) to switch weapons, Esc to pause, M for sound. Gamepad: left stick to move, right stick to look, right trigger to shoot, left trigger or B to dash, A to jump (in folds) and talk, LB / RB or Y to switch weapons, Start to pause. Clearing a level you choose one of three upgrades; some walls hide secret rooms (shoot where a faint drawing glows). Phone: stick on the left to move, drag on the right to look, buttons to shoot, to dash and ⇄ to switch weapons. Two weapons: the Pulse (fast and precise) and the Fan (eight shots in a fan: slow but crushing up close, and it pushes); in the levels you can find the Beam and the Bounce. Every 5 levels the Great Core waits in its arena. Red ones chase you, orange ones shoot from afar (dodge their orbs), yellow ones split in two and violet ones go through walls. The deeper you go, the stranger the structure gets. Now and then someone appears who doesn’t attack: go up to them and press E to talk. From level 3, a core may sit inside a fold (a magenta portal on a wall): inside, the world is seen from the side, with platforms; A D to move, W or Space to jump (higher if you hold it), S to crouch, Shift to dash (in the air too) and the mouse to aim; on a phone, drag on the right to move the sight (leave it and it aims by itself) and push the stick down to crouch.'),
+    how: tr('Cada nivel tiene núcleos escondidos: destruilos todos (cada uno que cae deja su sala a oscuras) y llegá a la salida, que se abre al final. Cada nivel es más grande y con más enemigos. Compu: W A S D para moverte, mouse para mirar, clic para disparar, Shift o Espacio para el impulso, Q (o 1–4, o la ruedita) para cambiar de arma, Esc para pausar, M para el sonido. Joystick: palanca izquierda para moverte, derecha para mirar, gatillo derecho para disparar, gatillo izquierdo o B para el impulso, A para saltar (en los pliegues) y hablar, LB / RB o Y para cambiar de arma, Start para pausar. Al pasar de nivel elegís una de tres mejoras; algunas paredes esconden salas secretas (dispará donde brilla un dibujo tenue). Celular: palanca a la izquierda para moverte, arrastrá a la derecha para mirar, botones para disparar, para el impulso y ⇄ para cambiar de arma. Dos armas: el Pulso (rápido y preciso) y el Abanico (ocho disparos en abanico: lento pero demoledor de cerca, y empuja); en los niveles podés encontrar el Rayo y el Rebote. Cada 5 niveles te espera el Gran Núcleo en su arena. Los rojos te persiguen, los naranjas disparan de lejos (esquivá sus esferas), los amarillos se parten en dos y los violetas atraviesan las paredes. Cuanto más hondo, más rara se pone la estructura. A veces aparece alguien que no ataca: acercate y apretá E para hablar. Desde el nivel 3, algún núcleo está dentro de un pliegue (un portal magenta en una pared): adentro el mundo se ve de costado, con plataformas; A D para moverte, W o Espacio para saltar (más alto si lo mantenés), S para agacharte, Shift para el impulso (también en el aire) y el mouse para apuntar; en el celular, arrastrá a la derecha para mover la mira (si no la tocás, apunta sola) y bajá la palanca para agacharte. En red (de 2 a 4, cada uno en su compu o celular): en Cooperativo recorren juntos la misma estructura, con los mismos núcleos y jefes, y si caés volvés al rato junto a tu equipo; en Versus es una arena sin enemigos, todos contra todos, y gana quien llegue primero a 10 bajas.',
+      'Every level hides cores: destroy them all (each one that falls blacks out its room) and reach the exit, which opens at the end. Every level is bigger and has more enemies. Computer: W A S D to move, mouse to look, click to shoot, Shift or Space to dash, Q (or 1–4, or the wheel) to switch weapons, Esc to pause, M for sound. Gamepad: left stick to move, right stick to look, right trigger to shoot, left trigger or B to dash, A to jump (in folds) and talk, LB / RB or Y to switch weapons, Start to pause. Clearing a level you choose one of three upgrades; some walls hide secret rooms (shoot where a faint drawing glows). Phone: stick on the left to move, drag on the right to look, buttons to shoot, to dash and ⇄ to switch weapons. Two weapons: the Pulse (fast and precise) and the Fan (eight shots in a fan: slow but crushing up close, and it pushes); in the levels you can find the Beam and the Bounce. Every 5 levels the Great Core waits in its arena. Red ones chase you, orange ones shoot from afar (dodge their orbs), yellow ones split in two and violet ones go through walls. The deeper you go, the stranger the structure gets. Now and then someone appears who doesn’t attack: go up to them and press E to talk. From level 3, a core may sit inside a fold (a magenta portal on a wall): inside, the world is seen from the side, with platforms; A D to move, W or Space to jump (higher if you hold it), S to crouch, Shift to dash (in the air too) and the mouse to aim; on a phone, drag on the right to move the sight (leave it and it aims by itself) and push the stick down to crouch. Online (2 to 4, each on their own computer or phone): in Co-op you go through the same structure together, with the same cores and bosses, and if you fall you come back a little later next to your team; in Versus it’s an arena with no enemies, everyone against everyone, and the first to 10 takedowns wins.'),
     better: 'high', fmt: n => Number(n).toLocaleString(J.LOCALE),
-    options: [['libre', tr('Partida', 'Run')], ['hoy', tr('Semilla del día', 'Daily seed')], ['visual', tr('Modo visual', 'Visual mode')]], dayOption: 'hoy',
+    options: [['libre', tr('Partida', 'Run')], ['hoy', tr('Semilla del día', 'Daily seed')], ['multi', tr('En red', 'Online')], ['visual', tr('Modo visual', 'Visual mode')]], dayOption: 'hoy',
     startNote(flag) {   // #nucleo/s<code>: a friend's seed · #nucleo/dia: today's seed
-      const m = /^s([0-9a-z]{1,8})$/i.exec(flag || ''), p = el('p', 'jg-note');
+      const m = /^s([0-9a-z]{1,8})$/i.exec(flag || ''), p = el('p', 'jg-note'), mm = /^m([a-z]{4})$/i.exec(flag || '');
+      if (mm) { p.textContent = tr(`Te invitaron a la sala ${mm[1].toUpperCase()}: Núcleo en red`, `You were invited to room ${mm[1].toUpperCase()}: Core online`); return { option: 'multi', el: p }; }
       if (m) { p.textContent = tr(`Semilla compartida ${m[1].toUpperCase()}: el mismo mapa que jugó quien te pasó el link`, `Shared seed ${m[1].toUpperCase()}: the same map whoever sent you the link played`); return { option: 's' + m[1].toLowerCase(), el: p }; }
       if (flag === 'dia') { p.textContent = tr('Semilla del día: hoy todos juegan el mismo mapa', 'Daily seed: today everyone plays the same map'); return { option: 'hoy', el: p }; }
-      p.textContent = tr('Partida: un mapa nuevo cada vez · Semilla del día: hoy, el mismo mapa para todos · Modo visual: se juega solo, para mirar o proyectar (también es un nodo de NODRUS)', 'Run: a new map every time · Daily seed: today, the same map for everyone · Visual mode: it plays itself, to watch or project (also a NODRUS node)');
+      p.textContent = tr('Partida: un mapa nuevo cada vez · Semilla del día: hoy, el mismo mapa para todos · En red: de 2 a 4, en cooperativo o versus · Modo visual: se juega solo, para mirar o proyectar (también es un nodo de NODRUS)', 'Run: a new map every time · Daily seed: today, the same map for everyone · Online: 2 to 4 players, co-op or versus · Visual mode: it plays itself, to watch or project (also a NODRUS node)');
       return { el: p };
     },
     start: ctx => run(ctx),
@@ -537,6 +538,10 @@ void main() {
   window.PudrusNucleo = { source: hostSource, run };
 
   function run(ctx) {
+    if (ctx.option === 'multi' && !ctx.net && !ctx.host) {   // online: the room first (nucleo-net.js), then this same game with the room's seed
+      if (!window.NucleoNet) { ctx.stage.append(el('p', 'jg-dwait', tr('No se pudo cargar el modo en red.', 'Could not load the online mode.'))); return () => {}; }
+      return window.NucleoNet.lobby(ctx, net => run({ ...ctx, net }));
+    }
     const stage = ctx.stage, HOST = ctx.host || null, DEMO = !!HOST || ctx.option === 'visual';   // HOST: drawn into NODRUS, frame by frame; DEMO: it plays itself
     stage.classList.add('nc-stage');
     const wrap = el('div', 'nc-wrap'), cv = el('canvas', 'nc-cv');
@@ -740,10 +745,12 @@ void main() {
     if (DEMO) hudEl.classList.add('demo');   // the visual mode: only the picture (and the pause / sound / full screen buttons)
 
     /* ── state ── */
-    const shared = /^s([0-9a-z]{1,8})$/i.exec(ctx.flag || ''), mode = shared ? 'seed' : ctx.option === 'hoy' ? 'hoy' : 'libre';
-    const seed = shared ? parseInt(shared[1], 36) >>> 0 : HOST ? Math.floor(ctx.rnd() * 4294967296) : mode === 'hoy' ? J.hashStr(J.dayKey() + ':nucleo') : Math.floor(ctx.rnd() * 4294967296);
+    // online (ctx.net, from nucleo-net.js): the host keeps the world; a guest shows it and moves its own body
+    const NET = ctx.net || null, VS = !!NET && NET.mode === 'vs', NHOST = !!NET && NET.role === 'host', GUEST = !!NET && NET.role === 'guest', VS_GOAL = 10;
+    const shared = /^s([0-9a-z]{1,8})$/i.exec(ctx.flag || ''), mode = NET ? NET.mode : shared ? 'seed' : ctx.option === 'hoy' ? 'hoy' : 'libre';
+    const seed = NET ? NET.seed >>> 0 : shared ? parseInt(shared[1], 36) >>> 0 : HOST ? Math.floor(ctx.rnd() * 4294967296) : mode === 'hoy' ? J.hashStr(J.dayKey() + ':nucleo') : Math.floor(ctx.rnd() * 4294967296);
     const seedCode = seed.toString(36).toUpperCase();
-    const S = { level: 1, score: 0, kills: 0, hp: 100, t: 0, time: 0, demo: DEMO, levelT: 0, noGun: false, state: 'play', M: null, psy: 0, errat: 0, npc: null, canTalk: false, talk: null, mode: '3d', portal: null, fold: null, fx: 0, enemies: [], bolts: [], orbs: [], parts: [], flashes: [], pickups: [], cores: [], exit: null, seen: null, roomGlow: [], flow: null, flowCell: -1, endT: 0 };
+    const S = { level: 1, score: 0, kills: 0, hp: 100, t: 0, time: 0, demo: DEMO, levelT: 0, noGun: false, state: 'play', M: null, psy: 0, errat: 0, npc: null, canTalk: false, talk: null, mode: '3d', portal: null, fold: null, fx: 0, enemies: [], bolts: [], orbs: [], parts: [], flashes: [], pickups: [], cores: [], exit: null, seen: null, roomGlow: [], flow: null, flowCell: -1, endT: 0, eid: 0, oid: 0, pid: 0, lastBy: '' };
     const pl = { x: 0, z: 0, vx: 0, vz: 0, yaw: 0, pitch: 0, dashT: 0, dashCd: 0, hurtT: 0, shake: 0, fireCd: 0, recoil: 0, bob: 0, roll: 0, fov: 1.32, weapon: 0, swap: 0, owned: [true, true, false, false], beamT: 0, up: {}, lastHurt: -9, dashMax: 0.9, dashId: 0 };
     const K = {}; let firing = false, mx = 0, my = 0;
     const EYE = 1.6;
@@ -771,31 +778,32 @@ void main() {
 
     // the weapons: «Pulso» (fast, precise) and «Abanico» (a fan of 8, slow, devastating up close, pushes back)
     const WEAPONS = [
-      { name: tr('Pulso', 'Pulse'), rate: 0.125, pellets: 1, spread: 0.012, speed: 48, life: 1.2, col: [0.3, 0.85, 1], hot: [0.7, 2.2, 3.4], shake: 0.06, recoil: 1, push: 0, mesh: 'gun' },
-      { name: tr('Abanico', 'Fan'), rate: 0.55, pellets: 8, spread: 0.14, speed: 44, life: 0.42, dmg: 1.7, coreDmg: 1.15, col: [1, 0.42, 0.85], hot: [3.2, 1.0, 2.6], shake: 0.28, recoil: 2.2, push: 4.5, mesh: 'fan' },
-      { name: tr('Rayo', 'Beam'), beam: true, rate: 0.1, range: 22, col: [0.35, 1, 0.55], hot: [1.0, 3.2, 1.6], shake: 0.012, recoil: 0.25, push: 0, mesh: 'beamgun', find: tr('un rayo continuo: mantené apretado', 'a continuous beam: hold to fire') },
-      { name: tr('Rebote', 'Bounce'), rate: 0.22, pellets: 1, spread: 0.01, speed: 28, life: 2.4, bounce: 4, col: [1, 0.85, 0.25], hot: [3.2, 2.6, 0.8], shake: 0.1, recoil: 1.3, push: 1.2, mesh: 'bouncer', find: tr('rebota en paredes, piso y techo', 'it bounces off walls, floor and ceiling') },
+      { name: tr('Pulso', 'Pulse'), rate: 0.125, pellets: 1, spread: 0.012, speed: 48, life: 1.2, col: [0.3, 0.85, 1], hot: [0.7, 2.2, 3.4], shake: 0.06, recoil: 1, push: 0, mesh: 'gun', pvp: 9 },
+      { name: tr('Abanico', 'Fan'), rate: 0.55, pellets: 8, spread: 0.14, speed: 44, life: 0.42, dmg: 1.7, coreDmg: 1.15, col: [1, 0.42, 0.85], hot: [3.2, 1.0, 2.6], shake: 0.28, recoil: 2.2, push: 4.5, mesh: 'fan', pvp: 7 },
+      { name: tr('Rayo', 'Beam'), beam: true, rate: 0.1, range: 22, col: [0.35, 1, 0.55], hot: [1.0, 3.2, 1.6], shake: 0.012, recoil: 0.25, push: 0, mesh: 'beamgun', pvp: 4, find: tr('un rayo continuo: mantené apretado', 'a continuous beam: hold to fire') },
+      { name: tr('Rebote', 'Bounce'), rate: 0.22, pellets: 1, spread: 0.01, speed: 28, life: 2.4, bounce: 4, col: [1, 0.85, 0.25], hot: [3.2, 2.6, 0.8], shake: 0.1, recoil: 1.3, push: 1.2, mesh: 'bouncer', pvp: 15, find: tr('rebota en paredes, piso y techo', 'it bounces off walls, floor and ceiling') },
     ];
     const BOSS_LIGHT = { core: [[1.6, 1.2, 0.6], [1.8, 0.8, 0.4], [2, 0.4, 0.5]], hive: [[1.6, 1.4, 0.3], [1.8, 1.1, 0.2], [2, 0.7, 0.2]], eye: [[1.4, 0.5, 0.9], [1.7, 0.35, 0.7], [2, 0.2, 0.5]], fold: [[1.4, 0.4, 1.6], [1.6, 0.3, 1.3], [2, 0.3, 0.8]] };
     const HP = { drone: 2, shoot: 4, split: 5, mini: 1, phase: 3 }, PTS = { drone: 100, shoot: 150, split: 200, mini: 50, phase: 180 };
     const COL = { drone: [1, 0.16, 0.24], shoot: [1, 0.55, 0.08], split: [1, 0.92, 0.2], mini: [1, 0.3, 0.3], phase: [0.8, 0.35, 1] };
     function spawnEnemy(type, x, z, awake) {
-      const e = { type, x, z, y: type === 'shoot' ? 2.1 : 1.3, hp: HP[type] + Math.floor((S.level - 1) * (type === 'mini' ? 0 : 0.4)), r: type === 'mini' ? 0.3 : type === 'split' ? 0.55 : 0.45, awake: !!awake, cd: 1 + Math.random(), flash: 0, t: Math.random() * 10, vx: 0, vz: 0, seed: Math.random() * 100, calmT: 0 };
+      const e = { type, x, z, y: type === 'shoot' ? 2.1 : 1.3, hp: HP[type] + Math.floor((S.level - 1) * (type === 'mini' ? 0 : 0.4)), r: type === 'mini' ? 0.3 : type === 'split' ? 0.55 : 0.45, awake: !!awake, cd: 1 + Math.random(), flash: 0, t: Math.random() * 10, vx: 0, vz: 0, seed: Math.random() * 100, calmT: 0, id: ++S.eid };
       S.enemies.push(e); return e;
     }
     function loadLevel() {
-      const rnd = J.mulberry((seed + S.level * 7919) >>> 0), M = S.M = generate(S.level, rnd);
+      const rnd = J.mulberry((seed + S.level * 7919) >>> 0), M = S.M = generate(VS ? 4 : S.level, rnd);   // (versus: one arena, the size of level 4)
       if (levelGL) { gl.deleteBuffer(levelGL.buf); gl.deleteVertexArray(levelGL.vao); }
       levelGL = meshVao(levelMesh(M), [[0, 3], [1, 3], [2, 2], [3, 4]]);
       S.enemies = []; S.bolts = []; S.orbs = []; S.parts = []; S.flashes = [];
-      M.enemies.forEach(e => spawnEnemy(e.type, e.x, e.z, false));
-      S.pickups = M.pickups.map(p => ({ ...p, t: Math.random() * 6 }));
+      if (!GUEST && !VS) M.enemies.forEach(e => spawnEnemy(e.type, e.x, e.z, false));   // (a guest gets them from the host)
+      S.pickups = GUEST ? [] : M.pickups.map(p => ({ ...p, t: Math.random() * 6, id: ++S.pid }));
       // a weapon you don't have yet (the Beam from level 2, the Bounce from level 3); missed, it comes back next level
       const nextW = pl.owned.indexOf(false);
       if (M.wspot && nextW >= 0 && S.level >= nextW) S.pickups.push({ ...M.wspot, t: 0, kind: 'weapon', w: nextW });
       // the Great Core
       S.boss = null; bossEl.hidden = true;
-      if (S.demo) { pl.owned = pl.owned.map(() => true); if (M.bossKind === 'fold') { M.bossKind = 'hive'; M.portal = null; } if (M.portal) M.portal = null; }
+      if (S.demo) pl.owned = pl.owned.map(() => true);
+      if (S.demo || NET) { if (M.bossKind === 'fold') { M.bossKind = 'hive'; M.portal = null; } if (M.portal) M.portal = null; }   // (no folds: the visual mode, and online)
       S.levelT = 0; AI.pfCell = -1; AI.stuckT = 0;
       if (M.arena > 0) S.boss = makeBoss(M);
       S.cores = M.coreRooms.map(k => { const r = M.rooms[k]; return { x: (r.cx + 0.5) * CS, z: (r.cy + 0.5) * CS, y: Math.min(2.2, r.hgt - 1.3), room: k, hp: 22 + S.level * 6, max: 22 + S.level * 6, alive: true, flash: 0, t: 0, calls: 0 }; });
@@ -804,7 +812,7 @@ void main() {
       S.seen = new Uint8Array(M.W * M.H); S.flowCell = -1;
       // deeper = stranger: the psychedelia (level 4 → 10) and how erratic the enemies get (level 3 → 9)
       S.psy = Math.max(0, Math.min(1, (S.level - 3) / 7)); S.errat = Math.max(0, Math.min(1, (S.level - 2) / 7));
-      S.npc = M.npc ? { ...M.npc, t: 0, gone: false, fade: 1 } : null; S.canTalk = false; S.talk = null;
+      S.npc = M.npc && !NET ? { ...M.npc, t: 0, gone: false, fade: 1 } : null; S.canTalk = false; S.talk = null;
       S.secret = M.secret ? { ...M.secret, hits: 0, open: false, flash: 0 } : null;
       // the fold: its course is laid out now (its core is one of this level's cores), its mesh when you go in
       S.mode = '3d'; S.fold = null; S.portal = null;
@@ -820,6 +828,7 @@ void main() {
       pl.x = (M.start.cx + 0.5) * CS; pl.z = (M.start.cy + 0.5) * CS; pl.vx = pl.vz = 0; pl.pitch = 0;
       // look along the first corridor out of the start room
       let best = 0, bl = -1; for (let k = 0; k < 4; k++) { const a = k * Math.PI / 2, dx = Math.sin(a), dz = -Math.cos(a); let l = 0; while (l < 30 && !solidAt(pl.x + dx * l, pl.z + dz * l)) l += 0.5; if (l > bl) { bl = l; best = a; } } pl.yaw = best;
+      if (NET) netLevel(M);
       revealRoom(0);
       paintCores(); paintHud();
     }
@@ -827,7 +836,10 @@ void main() {
     const coresLeft = () => S.cores.filter(c => c.alive).length;
     const allDown = () => !coresLeft() && !(S.boss && S.boss.alive);   // the exit opens when the cores (and the Great Core) are down
     function paintCores() { const n = S.cores.length, left = coresLeft(); coresEl.innerHTML = ''; coresEl.append(el('span', null, allDown() ? tr('Salida abierta', 'Exit open') : left || !S.boss ? tr('Núcleos', 'Cores') : tr('Queda ', 'Left: ') + bossName(S.boss))); S.cores.forEach(c => coresEl.append(el('i', (c.alive ? 'on' : '') + (c.fold ? ' fold' : '')))); coresEl.classList.toggle('open', allDown()); coresEl.title = `${n - left}/${n}`; }
-    function paintHud() { ctx.hud(`${tr('Nivel', 'Level')}<b>${S.level}</b> ${tr('Puntos', 'Points')}<b>${S.score.toLocaleString(J.LOCALE)}</b>`); }
+    function paintHud() {
+      if (VS) { ctx.hud(`${tr('Versus', 'Versus')} ${tr('Bajas', 'Takedowns')}<b>${NT.kills[NET.me] || 0}</b>`); return; }
+      ctx.hud(`${tr('Nivel', 'Level')}<b>${S.level}</b> ${tr('Puntos', 'Points')}<b>${S.score.toLocaleString(J.LOCALE)}</b>`);
+    }
 
     /* ── effects ── */
     function burst(x, y, z, col, n, sp, life = 0.7, size = 0.12) {
@@ -969,14 +981,14 @@ void main() {
       if (S.state === 'dead' || S.state === 'over') return;
       if (on && S.state === 'play') {
         S.state = 'pause'; firing = false; Object.keys(K).forEach(k => { K[k] = false; });
-        pauseEl.innerHTML = ''; pauseEl.append(el('b', null, tr('Pausa', 'Paused')), el('small', null, touch ? tr('Tocá para seguir', 'Tap to go on') : tr('Clic para seguir · Esc otra vez para salir', 'Click to go on · Esc again to leave')));
-        pauseEl.append(el('small', 'nc-seedline', (mode === 'hoy' ? tr('Semilla del día ', 'Daily seed ') : tr('Semilla ', 'Seed ')) + seedCode));
+        pauseEl.innerHTML = ''; pauseEl.append(el('b', null, NET ? tr('Menú', 'Menu') : tr('Pausa', 'Paused')), el('small', null, touch ? tr('Tocá para seguir', 'Tap to go on') : tr('Clic para seguir · Esc otra vez para salir', 'Click to go on · Esc again to leave')));
+        pauseEl.append(el('small', 'nc-seedline', NET ? tr(`En red la partida sigue mientras mirás el menú · sala ${NET.code}`, `Online the game goes on while you look at the menu · room ${NET.code}`) : (mode === 'hoy' ? tr('Semilla del día ', 'Daily seed ') : tr('Semilla ', 'Seed ')) + seedCode));
         if (PAD.on) pauseEl.querySelector('small').textContent = tr('Start para seguir · Back para salir', 'Start to go on · Back to leave');
         const pb = el('div', 'nc-pbtns'), ob = el('button', 'nc-pbtn', '⚙ ' + tr('Opciones', 'Options')), xb = el('button', 'nc-pbtn', '✕ ' + tr('Salir', 'Leave'));
         ob.addEventListener('click', e => { e.stopPropagation(); openOpts(); }); xb.addEventListener('click', e => { e.stopPropagation(); location.hash = ''; });
         pb.append(ob, xb); pauseEl.append(pb);
         const have = UPS.filter(u => upN(u.id)); if (have.length) { const hv = el('div', 'nc-have'); have.forEach(u => hv.append(el('span', null, `${u.ic} ${L2(u.n)}${upN(u.id) > 1 ? ' ×' + upN(u.id) : ''}`))); pauseEl.append(hv); }
-        pauseEl.hidden = false; if (A) A.suspend();
+        pauseEl.hidden = false; if (A && !NET) A.suspend();
         if (locked()) document.exitPointerLock();
       } else if (!on && S.state === 'pause') {
         S.state = 'play'; pauseEl.hidden = true; optsEl.hidden = true; if (A) A.resume(); lock(); last = performance.now();
@@ -1061,9 +1073,10 @@ void main() {
       pl.fireCd = Wp.rate * rateK(); pl.recoil = Wp.recoil; pl.shake = Math.min(1, pl.shake + Wp.shake); pl.pitch += 0.004 * Wp.recoil;
       flash(start[0], start[1], start[2], Wp.hot.map(v => v * 0.6), 6 + Wp.pellets * 0.5, 0.07);
       play(pl.weapon ? 'fan' : 'shot'); if (pl.weapon === 1) rumble(0.5, 0.2, 90);
+      if (NET) NET.send({ t: 'shot', i: NET.me, w: pl.weapon, b: S.bolts.slice(-np).map(b => [r2(b.x), r2(b.y), r2(b.z), r2(b.vx), r2(b.vy), r2(b.vz)]) }, true);
     }
     function hurt(d, fx, fz) {
-      if (S.state !== 'play') return;
+      if (S.state !== 'play' && !(NET && S.state === 'pause')) return;   // (online the menu doesn't stop the world)
       if (S.demo) { pl.hurtT = 0.25; pl.shake = Math.min(1, pl.shake + 0.2); return; }
       S.hp = Math.max(0, S.hp - d); pl.hurtT = 0.5; pl.lastHurt = S.t; rumble(0.7, 0.4, 160); pl.shake = Math.min(1, pl.shake + 0.45); play('hurt');
       if (S.mode === 'fold') { if (fx !== undefined) { f2.vx += Math.sign(f2.x - fx || 1) * 7; f2.vy = Math.max(f2.vy, 5); } }
@@ -1071,20 +1084,27 @@ void main() {
       if (S.hp <= 0) die();
     }
     function die() {
+      if (NET) { down(); return; }
       S.state = 'dead'; S.endT = 1.6; firing = false; big(tr('Sin energía', 'Out of energy'), tr(`Nivel ${S.level} · ${S.score.toLocaleString(J.LOCALE)} puntos`, `Level ${S.level} · ${S.score.toLocaleString(J.LOCALE)} points`));
       play('boom', true); burst(pl.x, 1.2, pl.z, [0.4, 1.2, 2], 60, 6, 1.2);
       if (locked()) document.exitPointerLock();
     }
-    function killEnemy(e) {
+    function killEnemy(e, by) {
       e.dead = true; S.kills++; S.score += PTS[e.type]; paintHud();
-      if (upN('vamp')) S.hp = Math.min(maxHp(), S.hp + 3 * upN('vamp'));
-      const c = COL[e.type]; burst(e.x, e.y, e.z, [c[0] * 2.5, c[1] * 2.5, c[2] * 2.5], e.type === 'mini' ? 18 : 36, 6, 0.8); flash(e.x, e.y, e.z, [c[0] * 4, c[1] * 4, c[2] * 4], 9, 0.35);
-      play('boom', false); pl.shake = Math.min(1, pl.shake + 0.12); rumble(0.15, 0.3, 70);
+      const mine = !by || by === (NET && NET.me);
+      if (upN('vamp') && mine) S.hp = Math.min(maxHp(), S.hp + 3 * upN('vamp'));
+      if (NET) { const who = by || NET.me; NT.kills[who] = (NT.kills[who] || 0) + 1; ev({ t: 'kill', id: e.id, x: r2(e.x), y: r2(e.y), z: r2(e.z), ty: e.type, by: who }); }
+      killFx({ x: e.x, y: e.y, z: e.z, ty: e.type }, mine);
       if (e.type === 'split') for (let k = 0; k < 2; k++) { const m = spawnEnemy('mini', e.x + (k ? 0.5 : -0.5), e.z, true); m.vx = (k ? 1 : -1) * 5; m.y = e.y; m.vy = 0; }
-      if (S.mode === '3d' && Math.random() < 0.12) S.pickups.push({ x: e.x, z: e.z, t: 0 });
+      if (S.mode === '3d' && Math.random() < 0.12) S.pickups.push({ x: e.x, z: e.z, t: 0, id: ++S.pid });
     }
-    function hitCore(c, k = 1) {
-      c.hp -= DMG() * k; c.flash = 1; play('hit');
+    function killFx(m, mine) {   // (also on a guest's screen, when the host says an enemy fell)
+      const c = COL[m.ty] || COL.drone; burst(m.x, m.y, m.z, [c[0] * 2.5, c[1] * 2.5, c[2] * 2.5], m.ty === 'mini' ? 18 : 36, 6, 0.8); flash(m.x, m.y, m.z, [c[0] * 4, c[1] * 4, c[2] * 4], 9, 0.35);
+      play('boom', false); const dd = Math.hypot(m.x - pl.x, m.z - pl.z); if (mine || dd < 10) { pl.shake = Math.min(1, pl.shake + 0.12); rumble(0.15, 0.3, 70); }
+    }
+    function hitCore(c, k = 1, abs) {
+      if (GUEST) { c.flash = 1; play('hit'); NET.send({ t: 'hit', c: S.cores.indexOf(c), d: r2(DMG() * k) }); return; }
+      c.hp -= abs !== undefined ? abs : DMG() * k; c.flash = 1; play('hit');
       const frac = c.hp / c.max;
       if (c.hp > 0 && frac < 0.75 - c.calls * 0.25) {   // it calls defenders as it weakens
         c.calls++; for (let k = 0; k < 1 + Math.min(2, Math.floor(S.level / 2)); k++) {
@@ -1094,29 +1114,38 @@ void main() {
         }
         toast(tr('El núcleo llama defensores', 'The core calls defenders'), 1.6);
       }
-      if (c.hp <= 0) {
-        c.alive = false; S.score += 500; paintHud(); play('core'); pl.shake = 1; rumble(1, 1, 420);
-        burst(c.x, c.y, c.z, [2.6, 2.4, 1.6], 160, 10, 1.6, 0.16); flash(c.x, c.y, c.z, [8, 7, 5], 22, 1.2);
-        S.roomTarget[c.room] = 0.1;   // «apagón»: its room goes dark
-        if (c.fold && S.fold) { S.fold.outT = 1.8; }   // and the fold comes undone
-        const left = coresLeft(); paintCores();
-        if (allDown()) { S.exit.open = true; play('open'); toast(tr('Todos los núcleos apagados: ¡la salida se abrió!', 'All cores down: the exit is open!'), 3.5); }
-        else if (!left) toast(tr('Queda ', 'Left: ') + bossName(S.boss), 3);
-        else toast(tr(`Núcleo apagado · quedan ${left}`, `Core down · ${left} left`));
-      }
+      if (c.hp <= 0) { S.score += 500; paintHud(); ev({ t: 'core', i: S.cores.indexOf(c), l: S.level }); coreFall(c); }
     }
+    function coreFall(c) {   // a core goes out (here, or on the host's screen)
+      c.alive = false; play('core'); pl.shake = 1; rumble(1, 1, 420);
+      burst(c.x, c.y, c.z, [2.6, 2.4, 1.6], 160, 10, 1.6, 0.16); flash(c.x, c.y, c.z, [8, 7, 5], 22, 1.2);
+      S.roomTarget[c.room] = 0.1;   // «apagón»: its room goes dark
+      if (c.fold && S.fold) { S.fold.outT = 1.8; }   // and the fold comes undone
+      const left = coresLeft(); paintCores();
+      if (allDown()) openExit();
+      else if (!left) toast(tr('Queda ', 'Left: ') + bossName(S.boss), 3);
+      else toast(tr(`Núcleo apagado · quedan ${left}`, `Core down · ${left} left`));
+    }
+    function openExit(msg) { if (!S.exit || S.exit.open) return; S.exit.open = true; play('open'); toast(msg || tr('Todos los núcleos apagados: ¡la salida se abrió!', 'All cores down: the exit is open!'), 3.5); }
     function nextLevel() {
+      if (NET) { if (S.state === 'trans' || S.state === 'end' || S.state === 'over') return; ev({ t: 'next', l: S.level + 1 }); pickEl.hidden = true; pickOpts = null; pauseEl.hidden = true; optsEl.hidden = true; }
       S.state = 'trans'; S.endT = 1.6; S.score += 1000 * S.level; paintHud(); play('level');
       big(tr(`Nivel ${S.level + 1}`, `Level ${S.level + 1}`), tr('La estructura se rearma…', 'The structure rebuilds itself…'));
     }
 
     /* ── hitting things (shared by bolts and the beam) ── */
-    function hitEnemy(e) { e.awake = true; e.flash = 1; e.hp -= DMG(); if (e.hp <= 0 && !e.dead) killEnemy(e); }
+    function hitEnemy(e) { dmgEnemy(e, DMG()); }
+    function dmgEnemy(e, d, px = 0, pz = 0, by) {   // a guest asks the host (who has the real enemy); the host and a lone player hit it
+      if (GUEST) { e.flash = 1; NET.send({ t: 'hit', e: e.id, d: r2(d), px: r2(px), pz: r2(pz) }); return; }
+      e.awake = true; e.flash = 1; e.hp -= d; e.vx += px; e.vz += pz;
+      if (e.hp <= 0 && !e.dead) killEnemy(e, by);
+    }
     function hitTarget(h, p, k = 1) {
       if (h.e) { hitEnemy(h.e); burst(p[0], p[1], p[2], [2, 2, 2], 4, 3, 0.2, 0.05); }
       else if (h.c) { hitCore(h.c); burst(p[0], p[1], p[2], [2.4, 2.2, 1.4], 5, 3, 0.25, 0.06); }
       else if (h.boss) hitBoss(p, h.body, k);
       else if (h.shield) { play('clang'); burst(p[0], p[1], p[2], [1.2, 2, 2.6], 6, 3, 0.25, 0.06); return; }
+      else if (h.peer) { hitPeer(h.peer, WEAPONS[2].pvp); burst(p[0], p[1], p[2], h.peer.col.map(v => v * 2.4), 5, 3, 0.25, 0.06); }
       hitMark();
     }
     // the beam: from the barrel to the first thing along the line of aim (a wall, a platform, an enemy, a core, the boss)
@@ -1144,6 +1173,7 @@ void main() {
           for (const en of S.enemies) if (!en.dead && (x - en.x) ** 2 + (y - en.y) ** 2 + (z - en.z) ** 2 < (en.r + 0.12) ** 2) { hit = { e: en }; break; }
           if (!hit) for (const c of S.cores) if (c.alive && !c.fold && (x - c.x) ** 2 + (y - c.y) ** 2 + (z - c.z) ** 2 < 1.05 ** 2) { hit = { c }; break; }
           if (!hit && S.boss && S.boss.alive) hit = bossHit(x, y, z);
+          if (!hit && VS) for (const P of peersOn()) if (Math.hypot(x - P.x, z - P.z) < 0.4 && y > 0.1 && y < 1.85) { hit = { peer: P }; break; }
           if (!hit && solidAt(x + B.f[0] * 0.2, z + B.f[2] * 0.2)) S.beamWall = [x + B.f[0] * 0.2, z + B.f[2] * 0.2];
           if (hit) break;
         }
@@ -1188,9 +1218,10 @@ void main() {
       if ((x - Bo.x) ** 2 + (y - Bo.y) ** 2 + (z - Bo.z) ** 2 < R * R) return { boss: true };
       return null;
     }
-    function hitBoss(p, body, k = 1) {
+    function hitBoss(p, body, k = 1, abs) {
       const Bo = S.boss; if (!Bo.alive) return;
-      const d = DMG() * k; Bo.flash = 1; Bo.awake = true;
+      if (GUEST) { Bo.flash = 1; if (body) body.flash = 1; if (Math.random() < 0.5) play('hit'); burst(p[0], p[1], p[2], [2.6, 2, 1.2], 5, 3, 0.3, 0.07); NET.send({ t: 'hit', b: body && Bo.bodies ? Bo.bodies.indexOf(body) : -1, d: r2(DMG() * k), x: r2(p[0]), y: r2(p[1]), z: r2(p[2]) }); return; }
+      const d = abs !== undefined ? abs : DMG() * k; Bo.flash = 1; Bo.awake = true;
       if (body) {
         if (!body.alive) return;
         body.hp -= d; body.flash = 1;
@@ -1211,16 +1242,22 @@ void main() {
       Bo.bodies = Bo.bodies.filter(q => q.alive);
     }
     function bossDown(at) {
-      const Bo = S.boss; Bo.alive = false; bossEl.hidden = true; S.score += 3000 + 500 * S.level; paintHud(); play('core'); pl.shake = 1; rumble(1, 1, 900);
+      S.score += 3000 + 500 * S.level; paintHud();
+      S.enemies.forEach(e => { if (e.boss && !e.dead) { e.hp = 0; killEnemy(e); } });
+      S.orbs.forEach(o => { o.life = Math.min(o.life, 0.05); });
+      ev({ t: 'bdown', l: S.level, x: r2(at.x), y: r2(at.y), z: r2(at.z) });
+      bossFall(at);
+    }
+    function bossFall(at) {   // (also on a guest's screen)
+      const Bo = S.boss; if (!Bo || !Bo.alive) return;
+      Bo.alive = false; bossEl.hidden = true; play('core'); pl.shake = 1; rumble(1, 1, 900);
       for (let k = 0; k < 4; k++) burst(at.x + (Math.random() - 0.5) * 2, at.y + (Math.random() - 0.5) * 2, at.z + (Bo.fold ? 0 : (Math.random() - 0.5) * 2), [3, 2.4, 1.4], 120, 12, 2, 0.2);
       flash(at.x, at.y, at.z, [12, 9, 6], 30, 1.8);
       S.roomTarget[Bo.room] = 0.1;
-      S.enemies.forEach(e => { if (e.boss && !e.dead) { e.hp = 0; killEnemy(e); } });
-      S.orbs.forEach(o => { o.life = Math.min(o.life, 0.05); });
       if (Bo.fold && S.fold) S.fold.outT = 2.4;   // and its fold comes undone
       paintCores();
       const nm = cap(bossName(Bo));
-      if (allDown()) { S.exit.open = true; play('open'); toast(tr(`¡${nm} cayó! La salida se abrió`, `${nm} fell! The exit is open`), 4); }
+      if (allDown()) openExit(tr(`¡${nm} cayó! La salida se abrió`, `${nm} fell! The exit is open`));
       else toast(tr(`¡${nm} cayó! Quedan ${coresLeft()} núcleos`, `${nm} fell! ${coresLeft()} cores left`), 4);
     }
     function wakeBoss(Bo) { Bo.awake = true; bossEl.hidden = false; play('boss'); pl.shake = 0.7; toast(cap(bossName(Bo)) + tr(' despertó', ' woke up'), 3); }
@@ -1232,14 +1269,17 @@ void main() {
       bossFill.style.width = Math.max(0, Bo.hp / Bo.max * 100) + '%'; bossEl.className = 'nc-boss p' + ph;
       return ph;
     }
+    let BT = pl;   // whom the boss goes after
     function updateBoss(dt) {
       const Bo = S.boss; if (!Bo || !Bo.alive || Bo.fold) return;
       const M = S.M, r = M.rooms[Bo.room];
       Bo.t += dt; Bo.flash = Math.max(0, Bo.flash - dt * 5); Bo.warn = Math.max(0, Bo.warn - dt);
+      const inRoom = P => M.rid[Math.floor(P.z / CS) * M.W + Math.floor(P.x / CS)] === Bo.room;
       if (!Bo.awake) {
-        if (M.rid[Math.floor(pl.z / CS) * M.W + Math.floor(pl.x / CS)] !== Bo.room) return;
+        if (!((!NET || meUp()) && inRoom(pl)) && !(NET && peersOn().some(inRoom))) return;
         wakeBoss(Bo);
       }
+      BT = NET ? nearestP(Bo.x, Bo.z) || pl : pl;
       const ph = bossPhase(Bo);
       if (Bo.kind === 'hive') hiveTick(Bo, r, dt, ph);
       else if (Bo.kind === 'eye') eyeTick(Bo, r, dt, ph);
@@ -1253,14 +1293,14 @@ void main() {
       let tx = cx + ax * Math.sin(Bo.t * 0.23 * k), tz = cz + az * Math.sin(Bo.t * 0.31 * k + 1), ty = 3.4 + Math.sin(Bo.t * 0.8) * 0.5;
       if (ph === 3) {
         Bo.chargeT -= dt;
-        if (Bo.chargeT <= 0 && !Bo.charge) { Bo.warn = 0.7; Bo.chargeT = 5.5; Bo.charge = 0.0001; Bo.cTo = [pl.x, pl.z]; play('warn'); }
+        if (Bo.chargeT <= 0 && !Bo.charge) { Bo.warn = 0.7; Bo.chargeT = 5.5; Bo.charge = 0.0001; Bo.cTo = [BT.x, BT.z]; play('warn'); }
         if (Bo.charge && Bo.warn <= 0) { Bo.charge += dt; tx = Bo.cTo[0]; tz = Bo.cTo[1]; ty = 2.4; if (Bo.charge > 1.1) Bo.charge = 0; }
       }
       const fol = Bo.charge && Bo.warn <= 0 ? 3.2 : 0.9;
       Bo.x += (tx - Bo.x) * Math.min(1, dt * fol); Bo.z += (tz - Bo.z) * Math.min(1, dt * fol); Bo.y += (ty - Bo.y) * Math.min(1, dt * 2);
       Bo.x = Math.max((r.x + 2) * CS, Math.min((r.x + r.w - 2) * CS, Bo.x)); Bo.z = Math.max((r.y + 2) * CS, Math.min((r.y + r.h - 2) * CS, Bo.z));
       // attacks
-      const dx = pl.x - Bo.x, dz = pl.z - Bo.z, d = Math.hypot(dx, dz) || 1, toY = (EYE - 0.3 - Bo.y);
+      const dx = BT.x - Bo.x, dz = BT.z - Bo.z, d = Math.hypot(dx, dz) || 1, toY = (EYE - 0.3 - Bo.y);
       const orb = (a, v, wob) => S.orbs.push({ x: Bo.x + Math.cos(a) * 2, y: Bo.y, z: Bo.z + Math.sin(a) * 2, vx: Math.cos(a) * v, vy: toY * v / Math.max(4, d), vz: Math.sin(a) * v, life: 5, wob: wob || 0, ph: Math.random() * 6 });
       Bo.cd -= dt;
       if (Bo.stream > 0) { Bo.stream -= dt; Bo.sT -= dt; if (Bo.sT <= 0) { Bo.sT = 0.11; Bo.spin += 0.45; orb(Bo.spin, 7); orb(Bo.spin + Math.PI, 7); } }
@@ -1281,14 +1321,14 @@ void main() {
       for (const b of Bo.bodies) {
         if (!b.alive) continue;
         b.t += dt; b.cd -= dt; b.flash = Math.max(0, b.flash - dt * 5); b.warn = Math.max(0, b.warn - dt);
-        const dx = pl.x - b.x, dz = pl.z - b.z, d = Math.hypot(dx, dz) || 1, fast = 1 + (ph - 1) * 0.25;
+        const dx = BT.x - b.x, dz = BT.z - b.z, d = Math.hypot(dx, dz) || 1, fast = 1 + (ph - 1) * 0.25;
         let tx, tz, ty, k;
         if (b.gen === 0) { tx = cx + (x1 - cx) * 0.6 * Math.sin(b.t * 0.3 * fast); tz = cz + (z1 - cz) * 0.6 * Math.sin(b.t * 0.37 * fast + 1); ty = 3.4 + Math.sin(b.t) * 0.4; k = 0.8; }
-        else if (b.gen === 1) { const a = Math.atan2(-dz, -dx) + Math.sin(b.t * 0.7 + b.seed) * 1.1; tx = pl.x + Math.cos(a) * 6.5; tz = pl.z + Math.sin(a) * 6.5; ty = 2.6 + Math.sin(b.t * 1.3 + b.seed) * 0.6; k = 1.3 * fast; }
+        else if (b.gen === 1) { const a = Math.atan2(-dz, -dx) + Math.sin(b.t * 0.7 + b.seed) * 1.1; tx = BT.x + Math.cos(a) * 6.5; tz = BT.z + Math.sin(a) * 6.5; ty = 2.6 + Math.sin(b.t * 1.3 + b.seed) * 0.6; k = 1.3 * fast; }
         else {
-          if (!b.ch && b.cd <= 0) { b.warn = 0.55; b.ch = 0.0001; b.cTo = [pl.x, pl.z]; play('warn'); }
+          if (!b.ch && b.cd <= 0) { b.warn = 0.55; b.ch = 0.0001; b.cTo = [BT.x, BT.z]; play('warn'); }
           if (b.ch && b.warn <= 0) { tx = b.cTo[0]; tz = b.cTo[1]; k = 4.5; b.ch += dt; if (b.ch > 1) { b.ch = 0; b.cd = 1.4 + Math.random(); } }
-          else { const a = b.t * 0.9 * fast + b.seed; tx = pl.x + Math.cos(a) * 5; tz = pl.z + Math.sin(a) * 5; k = 1.6; }
+          else { const a = b.t * 0.9 * fast + b.seed; tx = BT.x + Math.cos(a) * 5; tz = BT.z + Math.sin(a) * 5; k = 1.6; }
           ty = 1.5;
         }
         b.x += (tx - b.x) * Math.min(1, dt * k) + b.vx * dt; b.z += (tz - b.z) * Math.min(1, dt * k) + b.vz * dt; b.y += (ty - b.y) * Math.min(1, dt * 2);
@@ -1313,7 +1353,7 @@ void main() {
       let tx = cx, tz = cz;
       if (ph === 3) { tx += Math.sin(Bo.t * 0.35) * (r.w / 2 - 4) * CS * 0.6; tz += Math.sin(Bo.t * 0.47 + 1) * (r.h / 2 - 4) * CS * 0.6; }
       Bo.x += (tx - Bo.x) * Math.min(1, dt * 0.6); Bo.z += (tz - Bo.z) * Math.min(1, dt * 0.6); Bo.y = 4.4 + Math.sin(Bo.t * 0.9) * 0.25;
-      const want = Math.atan2(pl.z - Bo.z, pl.x - Bo.x); let dl = want - Bo.look; dl = Math.atan2(Math.sin(dl), Math.cos(dl)); Bo.look += dl * Math.min(1, dt * 2.5);
+      const want = Math.atan2(BT.z - Bo.z, BT.x - Bo.x); let dl = want - Bo.look; dl = Math.atan2(Math.sin(dl), Math.cos(dl)); Bo.look += dl * Math.min(1, dt * 2.5);
       Bo.bT -= dt;
       if (Bo.bs === 'idle' && Bo.bT <= 0) { Bo.bs = 'aim'; Bo.bT = 0.9; Bo.dir = Math.random() < 0.5 ? 1 : -1; Bo.a = want - Bo.dir * (ph === 3 ? 0.35 : 1.0); play('warn'); }
       else if (Bo.bs === 'aim' && Bo.bT <= 0) { Bo.bs = 'fire'; Bo.bT = ph === 1 ? 2.3 : ph === 2 ? 2.8 : 3.6; play('beam'); }
@@ -1335,7 +1375,7 @@ void main() {
       }
       Bo.cd -= dt;
       if (Bo.cd <= 0 && Bo.bs === 'idle') {
-        const d = Math.hypot(pl.x - Bo.x, pl.z - Bo.z) || 1;
+        const d = Math.hypot(BT.x - Bo.x, BT.z - Bo.z) || 1;
         for (let q = 0; q < 10; q++) { const a = q / 10 * 6.283 + Bo.t; S.orbs.push({ x: Bo.x + Math.cos(a) * 1.8, y: Bo.y - 0.5, z: Bo.z + Math.sin(a) * 1.8, vx: Math.cos(a) * 6, vy: (EYE - 0.3 - Bo.y) * 6 / Math.max(4, d), vz: Math.sin(a) * 6, life: 5, wob: ph === 3 ? 0.4 : 0, ph: Math.random() * 6 }); }
         if (ph >= 2) for (let q = 0; q < 2; q++) { const a = Math.random() * 6.283; defender(Bo.x + Math.cos(a) * 3, Bo.z + Math.sin(a) * 3); }
         Bo.cd = ph === 1 ? 1.6 : 1.3; play('orb');
@@ -1429,20 +1469,22 @@ void main() {
     function wallHit(x, z) {
       const Sc = S.secret; if (!Sc || Sc.open) return;
       if (Math.floor(z / CS) * S.M.W + Math.floor(x / CS) !== Sc.door) return;
+      if (GUEST) { Sc.flash = 1; play('clang'); NET.send({ t: 'wall', x: r2(x), z: r2(z) }); return; }
       Sc.hits++; Sc.flash = 1; play('clang'); pl.shake = Math.min(1, pl.shake + 0.1);
       if (Sc.hits >= 3) openSecret();
     }
     function openSecret() {
-      const Sc = S.secret, M = S.M; Sc.open = true;
+      const Sc = S.secret, M = S.M; if (!Sc || Sc.open) return; Sc.open = true;
       M.grid[Sc.door] = 0; M.ceil[Sc.door] = 4; M.rid[Sc.door] = Sc.room;
       if (levelGL) { gl.deleteBuffer(levelGL.buf); gl.deleteVertexArray(levelGL.vao); }
       levelGL = meshVao(levelMesh(M), [[0, 3], [1, 3], [2, 2], [3, 4]]);
       S.flowCell = -1;
       const r = M.rooms[Sc.room], X = (r.cx + 0.5) * CS, Z = (r.cy + 0.5) * CS;
-      S.pickups.push({ x: X, z: Z, t: 0, kind: 'relic' }, { x: (r.x + 0.5) * CS, z: (r.y + 0.5) * CS, t: 0 }, { x: (r.x + 2.5) * CS, z: (r.y + 2.5) * CS, t: 0 });
+      if (!GUEST) S.pickups.push({ x: X, z: Z, t: 0, kind: 'relic', id: ++S.pid }, { x: (r.x + 0.5) * CS, z: (r.y + 0.5) * CS, t: 0, id: ++S.pid }, { x: (r.x + 2.5) * CS, z: (r.y + 2.5) * CS, t: 0, id: ++S.pid });
+      ev({ t: 'secret', l: S.level });
       const fx = (Sc.x + 0.5) * CS, fz = (Sc.y + 0.5) * CS;
       burst(fx, 1.6, fz, [2.6, 0.8, 2.4], 90, 6, 1, 0.12); flash(fx, 1.6, fz, [6, 2, 6], 14, 0.8);
-      S.score += 1500; paintHud(); play('open'); toast(tr('¡Una sala secreta!', 'A secret room!'), 3);
+      if (!GUEST) { S.score += 1500; paintHud(); } play('open'); toast(tr('¡Una sala secreta!', 'A secret room!'), 3);
     }
 
     /* ── folds: a side-scrolling zone (same world, one dimension less) ── */
@@ -1760,6 +1802,320 @@ void main() {
       S.noGun = m.gun === false;
     }
 
+    /* ── online: the others (their bodies, their shots), the world the host sends, the events ── */
+    const r2 = v => Math.round(v * 100) / 100, r3 = v => Math.round(v * 1000) / 1000, fin = v => typeof v === 'number' && Number.isFinite(v);
+    const ETYPES = ['drone', 'shoot', 'split', 'mini', 'phase'], ERAD = { drone: 0.45, shoot: 0.45, split: 0.55, mini: 0.3, phase: 0.45 };
+    const NT = { st: 0, sn: 0, sc: 0, exitT: 0, allDownT: 0, btouch: 0, kills: {}, deaths: {}, orbGone: new Set(), pads: [], vsT: 300, why: '' };
+    const PEERS = new Map();   // the others: id → where they are, how they look
+    const rgb = c => `rgb(${c.map(v => Math.round(Math.min(1, v) * 255)).join(',')})`;
+    let myIdx = 0, myColor = [0.35, 0.9, 1];
+    if (NET) {
+      myIdx = Math.max(0, NET.players.findIndex(q => q.id === NET.me));
+      myColor = NET.COLS[(NET.players[myIdx] || { col: 0 }).col] || myColor;
+      NET.players.forEach(q => {
+        NT.kills[q.id] = 0; NT.deaths[q.id] = 0;
+        if (q.id === NET.me) return;
+        const P = { id: q.id, name: q.name, col: NET.COLS[q.col] || [1, 1, 1], x: 0, z: 0, tx: 0, tz: 0, vx: 0, vz: 0, yaw: 0, pitch: 0, hp: 100, mh: 100, w: 0, alive: true, lv: 0, seen: false, rt: 0, run: 0, spd: 0, beam: null, flow: null, flowCell: -1 };
+        P.tag = el('div', 'nc-tag'); const nm = el('b', null, q.name); nm.style.color = rgb(P.col); const bar = el('i'); P.bar = el('u'); P.bar.style.background = rgb(P.col); bar.append(P.bar); P.tag.append(nm, bar); P.tag.hidden = true; hudEl.append(P.tag);
+        PEERS.set(q.id, P);
+      });
+      NET.onmsg = (from, m) => { try { onNet(from, m); } catch (e) { /* a bad message: ignored */ } };
+      NET.onleave = id => { leftP(id); ev({ t: 'left', i: id }); if (VS && !PEERS.size) endVs(); };
+      NET.onclose = () => endNet('lost');
+    }
+    const scoreEl = el('div', 'nc-score'); scoreEl.hidden = !VS; hudEl.append(scoreEl);
+    if (VS) coresEl.hidden = true;
+    const meUp = () => S.state === 'play' || S.state === 'pause' || S.state === 'pick' || S.state === 'talk';   // on your feet (down, between levels or at the end you are nobody's target)
+    const worldOn = () => S.state === 'pause' || S.state === 'pick' || S.state === 'down' || S.state === 'talk';   // online the world goes on in these too
+    const peersOn = () => { const a = []; PEERS.forEach(P => { if (P.alive && P.seen && P.lv === S.level) a.push(P); }); return a; };
+    function ev(m) { if (NHOST) NET.send(m); }   // the host tells everyone something that happened
+    // the nearest player on their feet: whom an enemy (or a boss) goes after
+    function nearestP(x, z) {
+      let best = !NET || meUp() ? pl : null, bd = best ? (pl.x - x) ** 2 + (pl.z - z) ** 2 : 1e18;
+      if (NET) for (const P of peersOn()) { const d = (P.x - x) ** 2 + (P.z - z) ** 2; if (d < bd) { bd = d; best = P; } }
+      return best;
+    }
+    function flowOf(T) {   // a walking field towards each player (made when someone is chasing them)
+      if (T === pl) { updateFlow(); return S.flow; }
+      const M = S.M, c = Math.floor(T.z / CS) * M.W + Math.floor(T.x / CS);
+      if (c !== T.flowCell || !T.flow) { T.flowCell = c; T.flow = bfs(M.grid, M.W, M.H, Math.max(0, c % M.W), Math.max(0, (c / M.W) | 0)); }
+      return T.flow;
+    }
+    // a new level (or the arena): online there are no folds, no strange ones; versus has no enemies, cores or exit, and weapons lie around
+    function netLevel(M) {
+      NT.orbGone = new Set();
+      PEERS.forEach(P => { P.flow = null; P.flowCell = -1; });
+      if (VS) {
+        S.cores = []; S.boss = null; bossEl.hidden = true; S.secret = null; S.portal = null; S.exit.open = false;
+        S.pickups = GUEST ? [] : S.pickups.filter(q => q.kind !== 'weapon');
+        const rr = J.mulberry((seed ^ 0x2f6b) >>> 0), rooms = M.rooms.filter(q => !q.secret);
+        [2, 2, 3, 3].forEach(w => { const q = rooms[1 + Math.floor(rr() * (rooms.length - 1))]; S.pickups.push({ x: (q.x + 1.5) * CS, z: (q.cy + 0.5) * CS, t: 0, kind: 'weapon', w }); });
+        NT.pads = []; NT.vsT = 300;
+        const sp = vsSpawn(true); pl.x = sp.x; pl.z = sp.z; collide(pl, 0.38);
+      } else { pl.x += ((myIdx % 2) - 0.5) * 1.4; pl.z += myIdx > 1 ? 0.7 : -0.7; collide(pl, 0.38); }
+    }
+    // where to (re)appear in the arena: at first each one in a different room; later, the room furthest from the others
+    function vsSpawn(first) {
+      const rooms = S.M.rooms.filter(q => !q.secret), at = q => ({ x: (q.cx + 0.5) * CS, z: (q.cy + 0.5) * CS });
+      if (first) return at(rooms[(myIdx * Math.max(1, Math.floor(rooms.length / Math.max(1, NET.players.length)))) % rooms.length]);
+      const others = peersOn(); let best = rooms[0], bd = -1;
+      rooms.forEach(q => { const c = at(q), d = others.length ? Math.min(...others.map(P => Math.hypot(P.x - c.x, P.z - c.z))) : Math.random(); if (d > bd) { bd = d; best = q; } });
+      return at(best);
+    }
+    // what I tell the others 20 times a second: where I am, where I look, my energy, my weapon, my beam
+    const myState = () => ({ t: 'st', i: NET.me, l: S.level, x: r2(pl.x), z: r2(pl.z), y: r3(pl.yaw), p: r3(pl.pitch), h: Math.ceil(S.hp), mh: maxHp(), w: pl.weapon,
+      a: S.state === 'down' || S.state === 'end' || S.state === 'over' ? 0 : 1, b: S.beam && S.t - S.beam.t < 0.08 ? [...S.beam.a, ...S.beam.b].map(r2) : 0 });
+    // what the host tells the others 15 times a second: the enemies, the orbs, the cores, the boss, what lies on the floor
+    function snapshot() {
+      const m = { t: 'sn', l: S.level, s: S.score, k: S.kills, x: S.exit && S.exit.open ? 1 : 0,
+        e: S.enemies.filter(e => !e.dead).map(e => [e.id, ETYPES.indexOf(e.type), r2(e.x), r2(e.y), r2(e.z), (e.awake ? 1 : 0) | (e.calmT > 0 ? 2 : 0), r2(e.vx), r2(e.vz)]),
+        o: S.orbs.map(o => { if (!o.id) o.id = ++S.oid; return [o.id, r2(o.x), r2(o.y), r2(o.z), r2(o.vx), r2(o.vy), r2(o.vz), r2(o.wob || 0), r2(o.ph || 0)]; }),
+        c: S.cores.map(c => (c.alive ? r2(Math.max(0.01, c.hp)) : 0)),
+        p: S.pickups.filter(q => q.kind !== 'weapon').map(q => [q.id, r2(q.x), r2(q.z), q.kind === 'relic' ? 1 : 0]) };
+      if (S.boss) {
+        const Bo = S.boss, o = m.b = { k: Bo.kind, x: r2(Bo.x), y: r2(Bo.y), z: r2(Bo.z), hp: r2(Bo.hp), mx: Bo.max, al: Bo.alive ? 1 : 0, aw: Bo.awake ? 1 : 0, t: r2(Bo.t), fl: r2(Bo.flash), wn: r2(Bo.warn), ch: Bo.charge ? 1 : 0 };
+        if (Bo.bodies) o.bd = Bo.bodies.map(b => [r2(b.x), r2(b.y), r2(b.z), r2(b.r), b.gen, b.alive ? 1 : 0, r2(b.t), r2(b.flash), r2(b.warn)]);
+        if (Bo.kind === 'eye') { o.bs = Bo.bs; o.a = r3(Bo.a); o.lk = r3(Bo.look); o.bm = (Bo.beams || []).map(q => [...q.a, ...q.b].map(r2).concat(q.on ? 1 : 0)); }
+      }
+      if (VS) m.vt = Math.round(NT.vsT);
+      return m;
+    }
+    function applySnap(m) {   // a guest: the world as the host has it
+      if (m.l !== S.level || !S.M || S.state === 'trans' || S.state === 'end' || S.state === 'over') return;
+      if (fin(m.s) && m.s !== S.score) { S.score = m.s; paintHud(); }
+      if (fin(m.k)) S.kills = m.k;
+      if (VS && fin(m.vt)) NT.vsT = m.vt;
+      if (Array.isArray(m.e)) {
+        const old = new Map(S.enemies.map(e => [e.id, e])), next = [];
+        for (const a of m.e) {
+          if (!Array.isArray(a) || !fin(a[2]) || !fin(a[3]) || !fin(a[4])) continue;
+          const type = ETYPES[a[1]] || 'drone'; let e = old.get(a[0]);
+          if (!e) e = { id: a[0], type, x: a[2], y: a[3], z: a[4], r: ERAD[type], hp: 1, flash: 0, t: Math.random() * 10, seed: Math.random() * 100, cd: 0, vx: 0, vz: 0, calmT: 0, hcd: 0 };
+          e.tx = a[2]; e.ty = a[3]; e.tz = a[4]; e.awake = !!(a[5] & 1); e.calmT = a[5] & 2 ? 1 : 0; e.vx = fin(a[6]) ? a[6] : 0; e.vz = fin(a[7]) ? a[7] : 0; e.sT = 0;
+          next.push(e);
+        }
+        S.enemies = next;
+      }
+      if (Array.isArray(m.o)) {
+        const old = new Map(S.orbs.map(o => [o.id, o])), next = [];
+        for (const a of m.o) { if (!Array.isArray(a) || NT.orbGone.has(a[0]) || !a.slice(1, 7).every(fin)) continue; const o = old.get(a[0]) || { id: a[0], life: 2 }; Object.assign(o, { x: a[1], y: a[2], z: a[3], vx: a[4], vy: a[5], vz: a[6], wob: fin(a[7]) ? a[7] : 0, ph: fin(a[8]) ? a[8] : 0, life: Math.max(o.life, 1.5) }); next.push(o); }
+        S.orbs = next;
+      }
+      if (Array.isArray(m.c)) m.c.forEach((hp, i) => { const c = S.cores[i]; if (!c || !fin(hp)) return; if (hp <= 0 && c.alive) coreFall(c); else if (hp > 0) c.hp = hp; });
+      if (Array.isArray(m.p)) {
+        const old = new Map(S.pickups.filter(q => q.id).map(q => [q.id, q]));
+        S.pickups = S.pickups.filter(q => q.kind === 'weapon').concat(m.p.filter(a => Array.isArray(a) && fin(a[1]) && fin(a[2])).map(a => old.get(a[0]) || { id: a[0], x: a[1], z: a[2], t: Math.random() * 6, kind: a[3] ? 'relic' : undefined }));
+      }
+      const o = m.b, Bo = S.boss;
+      if (o && Bo && o.k === Bo.kind && [o.x, o.y, o.z, o.hp, o.mx].every(fin)) {
+        Bo.x = o.x; Bo.y = o.y; Bo.z = o.z; Bo.hp = o.hp; Bo.max = o.mx; if (fin(o.t)) Bo.t = o.t; Bo.flash = Math.max(Bo.flash, o.fl || 0); Bo.warn = o.wn || 0; Bo.charge = o.ch ? 1 : 0;
+        if (Array.isArray(o.bd)) Bo.bodies = o.bd.filter(a => Array.isArray(a) && a.slice(0, 4).every(fin) && a[5]).map(a => ({ x: a[0], y: a[1], z: a[2], r: a[3], gen: a[4] | 0, alive: true, t: a[6] || 0, flash: a[7] || 0, warn: a[8] || 0, vx: 0, vz: 0 }));
+        if (Array.isArray(o.bm)) { Bo.bs = ['idle', 'aim', 'fire'].includes(o.bs) ? o.bs : 'idle'; Bo.a = fin(o.a) ? o.a : 0; Bo.look = fin(o.lk) ? o.lk : 0; Bo.beams = o.bm.filter(a => Array.isArray(a) && a.length === 7 && a.every(fin)).map(a => ({ a: a.slice(0, 3), b: a.slice(3, 6), on: !!a[6] })); }
+        if (o.aw && !Bo.awake && Bo.alive) wakeBoss(Bo);
+        if (Bo.alive && Bo.awake) bossPhase(Bo);
+        if (!o.al && Bo.alive) bossFall(Bo);
+      }
+      if (m.x && S.exit && !S.exit.open) openExit();
+    }
+    // a guest: the enemies glide to where the host has them; touching one still hurts you (your body is yours)
+    function guestEnemies(dt) {
+      let near = 0;
+      for (const e of S.enemies) {
+        e.t += dt; e.flash = Math.max(0, e.flash - dt * 6); e.sT = (e.sT || 0) + dt; e.hcd = (e.hcd || 0) - dt;
+        const ah = Math.min(0.15, e.sT), k = Math.min(1, dt * 12);
+        e.x += (e.tx + e.vx * ah - e.x) * k; e.z += (e.tz + e.vz * ah - e.z) * k; e.y += (e.ty - e.y) * k;
+        const d = Math.hypot(pl.x - e.x, pl.z - e.z); if (e.awake && d < 18) near++;
+        if (e.awake && !(e.calmT > 0) && e.type !== 'shoot' && d < e.r + 0.55 && e.hcd <= 0 && S.state === 'play') { e.hcd = 0.75; hurt(e.type === 'mini' ? 6 : e.type === 'split' ? 15 : 11, e.x, e.z); }
+      }
+      MU.int += (Math.min(1, near / 4) - MU.int) * Math.min(1, dt * 0.8);
+    }
+    // a guest: the boss moves on the host, but its body, its beams and its touch hurt you here
+    function guestBoss(dt) {
+      const Bo = S.boss; if (!Bo || !Bo.alive || !Bo.awake) return;
+      Bo.t += dt; Bo.flash = Math.max(0, Bo.flash - dt * 5); Bo.warn = Math.max(0, Bo.warn - dt);
+      if (Bo.bodies) Bo.bodies.forEach(b => { b.t += dt; b.flash = Math.max(0, b.flash - dt * 5); });
+      MU.int = 1;
+      if (S.state !== 'play') return;
+      const touchB = (x, y, z, rr, hy, dmg) => { const hd = Math.hypot(pl.x - x, pl.z - z); if (hd < rr && Math.abs(y - EYE) < hy) { if (hd > 0) { pl.x = x + (pl.x - x) / hd * rr; pl.z = z + (pl.z - z) / hd * rr; } if (S.t > NT.btouch) { NT.btouch = S.t + 1; hurt(dmg, x, z); } } };
+      if (Bo.kind === 'hive') (Bo.bodies || []).forEach(b => touchB(b.x, b.y, b.z, b.r + 0.4, b.r + 1.4, b.gen === 2 ? 10 : 16));
+      else touchB(Bo.x, Bo.y, Bo.z, Bo.kind === 'eye' ? 2.2 : 2.3, Bo.kind === 'eye' ? 3.2 : 2.4, Bo.kind === 'eye' ? 14 : 18);
+      if (Bo.beams && pl.dashT <= 0) for (const q of Bo.beams) {
+        if (!q.on) continue;
+        const bx = q.b[0] - Bo.x, bz = q.b[2] - Bo.z, L = Math.hypot(bx, bz) || 1, dx = bx / L, dz = bz / L, px = pl.x - Bo.x, pz = pl.z - Bo.z, along = px * dx + pz * dz, side = Math.abs(-px * dz + pz * dx);
+        if (along > 0 && along < L && side < 0.6 && q.a[1] + (q.b[1] - q.a[1]) * along / L < 2.6) {
+          S.hp = Math.max(0, S.hp - (32 + S.level) * dt); pl.hurtT = Math.max(pl.hurtT, 0.3); pl.lastHurt = S.t; pl.shake = Math.min(1, pl.shake + dt * 2);
+          if ((NT.burnT = (NT.burnT || 0) - dt) <= 0) { NT.burnT = 0.16; play('burn'); rumble(0.4, 0.6, 150); }
+          if (S.hp <= 0) die();
+        }
+      }
+    }
+    // the others: they glide to where they said they were (a little ahead, with their speed)
+    function peersTick(dt) {
+      PEERS.forEach(P => {
+        if (!P.seen) return;
+        const ah = Math.min(0.12, S.t - P.rt), k = Math.min(1, dt * 14), ox = P.x, oz = P.z;
+        P.x += (P.tx + P.vx * ah - P.x) * k; P.z += (P.tz + P.vz * ah - P.z) * k;
+        const mv = Math.hypot(P.x - ox, P.z - oz); P.run += mv * 1.3; P.spd += (mv / Math.max(dt, 1e-3) - P.spd) * Math.min(1, dt * 10);
+      });
+    }
+    function onState(id, m) {
+      const P = PEERS.get(id); if (!P || !fin(m.x) || !fin(m.z)) return;
+      const now = S.t;
+      if (!P.seen || Math.hypot(m.x - P.tx, m.z - P.tz) > 6) { P.x = m.x; P.z = m.z; P.vx = P.vz = 0; }   // the first time, or a jump (a new level, coming back)
+      else { const dtr = Math.max(0.03, now - P.rt); P.vx = Math.max(-25, Math.min(25, (m.x - P.tx) / dtr)); P.vz = Math.max(-25, Math.min(25, (m.z - P.tz) / dtr)); }
+      P.tx = m.x; P.tz = m.z; P.rt = now; P.seen = true;
+      if (fin(m.y)) P.yaw = m.y; if (fin(m.p)) P.pitch = Math.max(-1.5, Math.min(1.5, m.p)); if (fin(m.h)) P.hp = m.h; if (fin(m.mh) && m.mh > 0) P.mh = m.mh;
+      P.w = Math.max(0, Math.min(3, m.w | 0)); P.lv = m.l | 0;
+      const was = P.alive; P.alive = !!m.a;
+      if (was && !P.alive && !VS && P.lv === S.level) toast(tr(`${P.name} cayó`, `${P.name} is down`), 2);
+      P.beam = Array.isArray(m.b) && m.b.length === 6 && m.b.every(fin) ? { a: m.b.slice(0, 3), b: m.b.slice(3), t: now } : null;
+    }
+    // someone else's shots: light that flies and bounces, but only theirs can hurt (they say what they hit)
+    function ghostShot(id, m) {
+      const P = PEERS.get(id), Wp = WEAPONS[m.w | 0]; if (!P || !Wp || Wp.beam || !Array.isArray(m.b) || P.lv !== S.level) return;
+      m.b.slice(0, 16).forEach(a => { if (Array.isArray(a) && a.length === 6 && a.every(fin)) S.bolts.push({ x: a[0], y: a[1], z: a[2], vx: a[3], vy: a[4], vz: a[5], life: Wp.life, w: m.w | 0, bounce: Wp.bounce || 0, pierce: 0, g: true }); });
+      if (Math.hypot(P.x - pl.x, P.z - pl.z) < 16) play(m.w ? 'fan' : 'shot');
+    }
+    // versus: my shot hit someone (they lose the energy on their screen)
+    function hitPeer(P, d) {
+      play('hit');
+      if (NHOST) NET.to(P.id, { t: 'hurt', d, fx: r2(pl.x), fz: r2(pl.z), by: 'h' });
+      else NET.send({ t: 'hit', p: P.id, d, fx: r2(pl.x), fz: r2(pl.z) });
+    }
+    function hurtBy(m) { if (!fin(m.d)) return; S.lastBy = String(m.by || ''); hurt(Math.max(0, Math.min(60, m.d)), fin(m.fx) ? m.fx : undefined, fin(m.fz) ? m.fz : undefined); }
+    function netHit(from, m) {   // the host: what a guest's shot hit
+      const d = fin(m.d) ? Math.max(0, Math.min(80, m.d)) : 0; if (!d) return;
+      if (m.e !== undefined) { const e = S.enemies.find(x => x.id === m.e && !x.dead); if (e) dmgEnemy(e, d, fin(m.px) ? m.px : 0, fin(m.pz) ? m.pz : 0, from); }
+      else if (m.c !== undefined) { const c = S.cores[m.c]; if (c && c.alive && !c.fold) hitCore(c, 1, d); }
+      else if (m.b !== undefined && S.boss && S.boss.alive) { const Bo = S.boss, body = m.b >= 0 && Bo.bodies ? Bo.bodies[m.b] : null; if (Bo.kind === 'hive' && !body) return; hitBoss([fin(m.x) ? m.x : Bo.x, fin(m.y) ? m.y : Bo.y, fin(m.z) ? m.z : Bo.z], body, 1, d); }
+      else if (VS && typeof m.p === 'string') { if (m.p === 'h') hurtBy({ d, fx: m.fx, fz: m.fz, by: from }); else if (PEERS.has(m.p)) NET.to(m.p, { t: 'hurt', d, fx: m.fx, fz: m.fz, by: from }); }
+    }
+    function take(from, id) {   // the host: a guest picked something up from the floor
+      const i = S.pickups.findIndex(q => q.id === id && q.kind !== 'weapon'); if (i < 0) return;
+      const q = S.pickups.splice(i, 1)[0]; NET.to(from, { t: 'got', k: q.kind === 'relic' ? 'relic' : 'e' });
+      if (VS) NT.pads.push({ x: q.x, z: q.z, back: 20 });
+    }
+    function got(k) {   // a guest: it was yours
+      if (k === 'relic') { offerUps(() => {}, tr('Una reliquia', 'A relic')); return; }
+      const hv = 25 + 10 * upN('iman'); S.hp = Math.min(maxHp(), S.hp + hv); play('pickup'); toast(tr(`+${hv} de energía`, `+${hv} energy`), 1.2); burst(pl.x, 1, pl.z, [0.6, 2.4, 0.5], 24, 3, 0.6);
+    }
+    function leftP(id) { const P = PEERS.get(id); if (!P) return; toast(tr(`${P.name} salió de la partida`, `${P.name} left the game`), 3); P.tag.remove(); PEERS.delete(id); }
+    // versus: someone went down; the host counts and says it
+    function onDied(who, by) {
+      if (!VS || NT.ended) return;
+      NT.deaths[who] = (NT.deaths[who] || 0) + 1;
+      if (by && by !== who && NT.kills[by] !== undefined) NT.kills[by]++;
+      const m = { t: 'kf', who, by, k: NT.kills, dd: NT.deaths }; NET.send(m); killFeed(m);
+      if (Object.values(NT.kills).some(k => k >= VS_GOAL)) endVs();
+    }
+    function endVs() { if (!NHOST || NT.ended) return; NT.ended = true; NET.send({ t: 'end', k: NT.kills, dd: NT.deaths }); endNet('vs'); }
+    const nameOf = id => (id === NET.me ? tr('vos', 'you') : (PEERS.get(id) || {}).name || (NET.players.find(q => q.id === id) || {}).name || '?');
+    function killFeed(m) {
+      if (m.k && typeof m.k === 'object') Object.keys(NT.kills).forEach(id => { if (fin(m.k[id])) NT.kills[id] = m.k[id]; });
+      if (m.dd && typeof m.dd === 'object') Object.keys(NT.deaths).forEach(id => { if (fin(m.dd[id])) NT.deaths[id] = m.dd[id]; });
+      toast(m.by && m.by !== m.who ? `${nameOf(m.by)} ⟶ ${nameOf(m.who)}` : `${nameOf(m.who)} ✕`, 2.4); paintScore(); paintHud();
+    }
+    function paintScore() {
+      if (!VS) return;
+      scoreEl.textContent = '';
+      scoreEl.append(el('small', null, J.mmss(Math.max(0, Math.ceil(NT.vsT))) + ' · ' + tr(`gana quien llegue a ${VS_GOAL}`, `first to ${VS_GOAL}`)));
+      NET.players.filter(q => q.id === NET.me || PEERS.has(q.id)).sort((a, b) => (NT.kills[b.id] || 0) - (NT.kills[a.id] || 0)).forEach(q => {
+        const row = el('span', q.id === NET.me ? 'me' : ''), dot = el('i'); dot.style.background = rgb(NET.COLS[q.col] || [1, 1, 1]);
+        row.append(dot, el('b', null, q.name), el('em', null, String(NT.kills[q.id] || 0))); scoreEl.append(row);
+      });
+    }
+    // down: versus, back in 3 s somewhere else; co-op, back in 12 s next to a teammate (if anyone is standing)
+    function down() {
+      S.state = 'down'; S.downT = VS ? 3 : 12; firing = false; S.beam = null; pickEl.hidden = true; pickOpts = null;
+      play('boom', true); burst(pl.x, 1.2, pl.z, myColor.map(v => v * 2), 60, 6, 1.2);
+      big(VS ? tr('Te bajaron', 'You’re down') : tr('Caíste', 'You’re down'), VS ? tr('Volvés en 3 s', 'Back in 3 s') : tr('Volvés en 12 s junto a tu equipo, si alguien sigue en pie', 'Back in 12 s next to your team, if anyone is still standing'));
+      if (VS) { if (NHOST) onDied('h', S.lastBy); else NET.send({ t: 'died', by: S.lastBy || '' }); }
+    }
+    function respawn() {
+      bigEl.classList.remove('on'); S.state = 'play'; pl.vx = pl.vz = 0; pl.hurtT = 0; S.lastBy = ''; last = performance.now();
+      if (VS) { S.hp = 100; pl.owned = [true, true, false, false]; if (pl.weapon > 1) pl.weapon = 0; paintWeapon(); const sp = vsSpawn(false); pl.x = sp.x; pl.z = sp.z; }
+      else {
+        S.hp = Math.max(S.hp, maxHp() * 0.5);
+        const mates = peersOn(), P = mates[Math.floor(Math.random() * mates.length)];
+        if (P) { pl.x = P.x; pl.z = P.z; } else { const st = S.M.start; pl.x = (st.cx + 0.5) * CS; pl.z = (st.cy + 0.5) * CS; }
+      }
+      collide(pl, 0.38); S.fx = 1; play('fold'); burst(pl.x, 1.2, pl.z, myColor.map(v => v * 2.2), 40, 4, 0.8);
+    }
+    // the end of an online game: a few seconds to see it, then the result
+    function endNet(why) {
+      if (!NET || S.state === 'end' || S.state === 'over') return;
+      NT.why = why; S.state = 'end'; S.endT = 2.6; firing = false; S.beam = null; pickEl.hidden = true; pickOpts = null; pauseEl.hidden = true; optsEl.hidden = true;
+      if (why === 'vs') { const w = vsRank()[0]; big(w && w.id === NET.me ? tr('¡Ganaste!', 'You won!') : tr(`Ganó ${w ? w.name : '?'}`, `${w ? w.name : '?'} won`), tr(`${NT.kills[NET.me] || 0} bajas`, `${NT.kills[NET.me] || 0} takedowns`)); }
+      else if (why === 'lost') big(tr('Se cortó la conexión', 'The connection dropped'), tr('Quien creó la sala salió o se quedó sin internet', 'Whoever created the room left or lost the connection'));
+      else big(tr('Cayeron todos', 'Everyone is down'), tr(`Nivel ${S.level} · ${S.score.toLocaleString(J.LOCALE)} puntos`, `Level ${S.level} · ${S.score.toLocaleString(J.LOCALE)} points`));
+      play(why === 'vs' ? 'open' : 'boom', true);
+      if (locked()) document.exitPointerLock();
+    }
+    const vsRank = () => NET.players.map(q => ({ id: q.id, name: q.name, col: q.col, k: NT.kills[q.id] || 0, d: NT.deaths[q.id] || 0 })).sort((a, b) => b.k - a.k || a.d - b.d);
+    function finishNet() {
+      const box = el('div', 'nc-runs'), tb = el('table'), rows = vsRank(), me = NET.me;
+      box.append(el('b', null, VS ? tr('Bajas', 'Takedowns') : tr('El equipo · enemigos de cada uno', 'The team · enemies each')));
+      rows.forEach((q, i) => {
+        const tr_ = el('tr', q.id === me ? 'me' : ''), nm = el('td', null, q.name + (q.id === me ? tr(' (vos)', ' (you)') : '')); nm.style.color = rgb(NET.COLS[q.col] || [1, 1, 1]);
+        tr_.append(el('td', null, String(i + 1)), nm, el('td', null, String(q.k)), el('td', null, VS ? tr(`${q.d} caídas`, `${q.d} downs`) : ''));
+        tb.append(tr_);
+      });
+      box.append(tb);
+      const lost = NT.why === 'lost', myK = NT.kills[me] || 0;
+      if (VS) { const w = rows[0]; ctx.done({ score: myK, text: lost ? tr('Se cortó la conexión', 'The connection dropped') : w && w.id === me ? tr('¡Ganaste el versus!', 'You won the versus!') : tr(`Ganó ${w ? w.name : '?'}`, `${w ? w.name : '?'} won`), detail: tr(`${myK} bajas · ${NT.deaths[me] || 0} caídas · sala ${NET.code}`, `${myK} takedowns · ${NT.deaths[me] || 0} downs · room ${NET.code}`), better: 'high', extra: [box] }); }
+      else ctx.done({ score: S.score, text: lost ? tr('Se cortó la conexión con quien creó la sala', 'The connection to the room’s creator dropped') : tr(`Llegaron al nivel ${S.level}`, `You reached level ${S.level}`), detail: tr(`${S.kills} enemigos entre todos · ${J.mmss(Math.round(S.time))} · sala ${NET.code}`, `${S.kills} enemies together · ${J.mmss(Math.round(S.time))} · room ${NET.code}`), better: 'high', extra: [box] });
+    }
+    // the messages
+    function onNet(from, m) {
+      if (!m || typeof m.t !== 'string') return;
+      const t = m.t;
+      if (t === 'st' || t === 'shot') {
+        const id = NHOST ? from : String(m.i || '');
+        if (t === 'st') onState(id, m); else ghostShot(id, m);
+        if (NHOST) NET.send({ ...m, i: from }, true, from);   // and the host passes it on to the others
+        return;
+      }
+      if (NHOST) {
+        if (t === 'hit') netHit(from, m);
+        else if (t === 'wall' && fin(m.x) && fin(m.z)) wallHit(m.x, m.z);
+        else if (t === 'orb') S.orbs.forEach(o => { if (o.id === m.id) o.life = 0; });
+        else if (t === 'take') take(from, m.id);
+        else if (t === 'exit') { if (!VS && S.exit && S.exit.open) nextLevel(); }
+        else if (t === 'died') onDied(from, String(m.by || ''));
+        return;
+      }
+      if (t === 'sn') applySnap(m);
+      else if (t === 'kill') { S.enemies = S.enemies.filter(e => e.id !== m.id); if ([m.x, m.y, m.z].every(fin)) killFx(m, m.by === NET.me); if (typeof m.by === 'string' && NT.kills[m.by] !== undefined) NT.kills[m.by]++; if (m.by === NET.me && upN('vamp')) S.hp = Math.min(maxHp(), S.hp + 3 * upN('vamp')); }
+      else if (t === 'core') { const c = S.cores[m.i]; if (c && c.alive && m.l === S.level) coreFall(c); }
+      else if (t === 'bdown') { if (S.boss && m.l === S.level && [m.x, m.y, m.z].every(fin)) bossFall({ x: m.x, y: m.y, z: m.z }); }
+      else if (t === 'secret') { if (m.l === S.level) openSecret(); }
+      else if (t === 'next') { if (m.l === S.level + 1) nextLevel(); }
+      else if (t === 'got') got(m.k);
+      else if (t === 'hurt') hurtBy(m);
+      else if (t === 'kf') killFeed(m);
+      else if (t === 'left') leftP(String(m.i || ''));
+      else if (t === 'over') endNet('all');
+      else if (t === 'end') { killFeed({ k: m.k, dd: m.dd }); endNet('vs'); }
+    }
+    // every frame: tell, and (the host) send the world, take the others to the next level, end the game
+    function netTick(dt) {
+      if (S.state === 'over' || S.state === 'end') return;
+      if ((NT.st -= dt) <= 0) { NT.st = 0.05; NET.send(myState(), true); }
+      if (VS) { NT.vsT -= dt; if ((NT.sc -= dt) <= 0) { NT.sc = 0.5; paintScore(); } }
+      if (!NHOST) return;
+      if ((NT.sn -= dt) <= 0) { NT.sn = 1 / 15; NET.send(snapshot(), true); }
+      if (VS) {
+        NT.pads = NT.pads.filter(q => { q.back -= dt; if (q.back > 0) return true; S.pickups.push({ id: ++S.pid, x: q.x, z: q.z, t: 0 }); return false; });
+        if (NT.vsT <= 0) endVs();
+        return;
+      }
+      if (S.state === 'trans') return;
+      if (S.exit && S.exit.open) for (const P of peersOn()) if (Math.hypot(S.exit.x - P.x, S.exit.z - P.z) < 1.4) { nextLevel(); return; }
+      const anyone = S.state !== 'down' || [...PEERS.values()].some(P => P.alive);
+      NT.allDownT = anyone ? 0 : NT.allDownT + dt;
+      if (NT.allDownT > 1) { NET.send({ t: 'over' }); endNet('all'); }
+    }
+
     /* ── one step of the world ── */
     function update(dt) {
       S.t += dt; if (S.state === 'play') S.time += dt;
@@ -1775,9 +2131,15 @@ void main() {
       if (S.npc && !S.npc.gone) S.npc.t += dt; else if (S.npc) S.npc.fade = Math.max(0, S.npc.fade - dt * 1.5);
       if (S.state === 'dead' || S.state === 'trans') {
         S.endT -= dt;
-        if (S.state === 'trans' && S.endT <= 0) { bigEl.classList.remove('on'); offerUps(() => { S.level++; S.hp = Math.min(maxHp(), S.hp + 30); loadLevel(); S.fx = 1; toast(S.boss ? tr(`Nivel ${S.level}: ${bossName(S.boss)} te espera`, `Level ${S.level}: ${bossName(S.boss)} awaits`) : tr(`Nivel ${S.level}: ${S.cores.length} núcleos`, `Level ${S.level}: ${S.cores.length} cores`), 3); }, tr(`Nivel ${S.level} superado`, `Level ${S.level} cleared`)); }
+        if (S.state === 'trans' && S.endT <= 0 && NET) {   // online: everyone is in the next level at once; the upgrade is chosen while the world goes on
+          bigEl.classList.remove('on'); S.level++; S.hp = Math.min(maxHp(), Math.max(S.hp, maxHp() * 0.5) + 30); S.state = 'play'; loadLevel(); S.fx = 1; last = performance.now();
+          toast(S.boss ? tr(`Nivel ${S.level}: ${bossName(S.boss)} los espera`, `Level ${S.level}: ${bossName(S.boss)} awaits`) : tr(`Nivel ${S.level}: ${S.cores.length} núcleos`, `Level ${S.level}: ${S.cores.length} cores`), 3);
+          offerUps(() => {}, tr(`Nivel ${S.level - 1} superado`, `Level ${S.level - 1} cleared`));
+        } else if (S.state === 'trans' && S.endT <= 0) { bigEl.classList.remove('on'); offerUps(() => { S.level++; S.hp = Math.min(maxHp(), S.hp + 30); loadLevel(); S.fx = 1; toast(S.boss ? tr(`Nivel ${S.level}: ${bossName(S.boss)} te espera`, `Level ${S.level}: ${bossName(S.boss)} awaits`) : tr(`Nivel ${S.level}: ${S.cores.length} núcleos`, `Level ${S.level}: ${S.cores.length} cores`), 3); }, tr(`Nivel ${S.level} superado`, `Level ${S.level} cleared`)); }
         if (S.state === 'dead' && S.endT <= 0) { S.state = 'over'; finishRun(); }
       }
+      if (S.state === 'down') { S.downT -= dt; if (S.downT <= 0 && (VS || peersOn().length)) respawn(); }
+      if (S.state === 'end') { S.endT -= dt; if (S.endT <= 0) { S.state = 'over'; finishNet(); return; } }
       S.fx = Math.max(0, S.fx - dt * 2.2);
       if (S.portal) S.portal.t += dt;
       if (S.state === 'play' && S.mode === 'fold') updateFold(dt);
@@ -1804,7 +2166,7 @@ void main() {
           const n = Math.max(1, Math.ceil(Math.hypot(pl.vx, pl.vz) * dt / 0.2));
           for (let k = 0; k < n; k++) { pl.x += pl.vx * dt / n; pl.z += pl.vz * dt / n; collide(pl, 0.38); }
         }
-        if (pl.dashT > 0 && upN('dash')) for (const e of S.enemies) if (!e.dead && e.dashId !== pl.dashId && Math.hypot(e.x - pl.x, e.z - pl.z) < e.r + 0.8) { e.dashId = pl.dashId; e.hp -= 2 * upN('dash') * DMG(); e.flash = 1; e.awake = true; burst(e.x, e.y, e.z, [1.2, 2.4, 3], 16, 4, 0.4, 0.08); play('zap'); if (e.hp <= 0) killEnemy(e); }
+        if (pl.dashT > 0 && upN('dash')) for (const e of S.enemies) if (!e.dead && e.dashId !== pl.dashId && Math.hypot(e.x - pl.x, e.z - pl.z) < e.r + 0.8) { e.dashId = pl.dashId; burst(e.x, e.y, e.z, [1.2, 2.4, 3], 16, 4, 0.4, 0.08); play('zap'); dmgEnemy(e, 2 * upN('dash') * DMG()); }
         S.cores.forEach(c => { if (!c.alive || c.fold) return; const dx = pl.x - c.x, dz = pl.z - c.z, d = Math.hypot(dx, dz); if (d < 1.3 && d > 0) { pl.x = c.x + dx / d * 1.3; pl.z = c.z + dz / d * 1.3; } });
         const sp = Math.hypot(pl.vx, pl.vz);
         pl.bob += dt * sp * 1.6;
@@ -1821,12 +2183,13 @@ void main() {
         updateFlow();
         // pickups and the exit
         S.pickups = S.pickups.filter(p => { p.t += dt;
-          if (p.kind === 'weapon') { if (Math.hypot(p.x - pl.x, p.z - pl.z) > 1.3) return true; const Wp = WEAPONS[p.w]; pl.owned[p.w] = true; setWeapon(p.w); paintWeapon(); play('open'); toast(`${tr('Encontraste', 'You found')}: ${Wp.name} — ${Wp.find}`, 4); burst(p.x, 1.1, p.z, Wp.hot, 50, 4, 0.9); return false; }
+          if (p.kind === 'weapon') { if (Math.hypot(p.x - pl.x, p.z - pl.z) > 1.3 || pl.owned[p.w]) return true; const Wp = WEAPONS[p.w]; pl.owned[p.w] = true; setWeapon(p.w); paintWeapon(); play('open'); toast(`${tr('Encontraste', 'You found')}: ${Wp.name} — ${Wp.find}`, 4); burst(p.x, 1.1, p.z, Wp.hot, 50, 4, 0.9); return VS; }
+          if (GUEST) { if (Math.hypot(p.x - pl.x, p.z - pl.z) < 1.1 && (p.kind === 'relic' || S.hp < maxHp()) && (!p.asked || S.t - p.asked > 1)) { p.asked = S.t; NET.send({ t: 'take', id: p.id }); } return true; }
           if (p.kind === 'relic') { if (Math.hypot(p.x - pl.x, p.z - pl.z) > 1.3) return true; burst(p.x, 1.2, p.z, [2.6, 0.9, 2.4], 60, 4, 1); offerUps(() => {}, tr('Una reliquia', 'A relic')); return false; }
           const mg = upN('iman'), dm = Math.hypot(p.x - pl.x, p.z - pl.z);
           if (mg && dm < 4 + 3 * mg && dm > 0.3 && S.hp < maxHp()) { p.x += (pl.x - p.x) / dm * 9 * dt; p.z += (pl.z - p.z) / dm * 9 * dt; }
-          if (dm < 1.1 && S.hp < maxHp()) { const hv = 25 + 10 * mg; S.hp = Math.min(maxHp(), S.hp + hv); play('pickup'); toast(tr(`+${hv} de energía`, `+${hv} energy`), 1.2); burst(p.x, 1, p.z, [0.6, 2.4, 0.5], 24, 3, 0.6); return false; } return true; });
-        if (S.exit.open && Math.hypot(S.exit.x - pl.x, S.exit.z - pl.z) < 1.4) nextLevel();
+          if (dm < 1.1 && S.hp < maxHp()) { const hv = 25 + 10 * mg; S.hp = Math.min(maxHp(), S.hp + hv); play('pickup'); toast(tr(`+${hv} de energía`, `+${hv} energy`), 1.2); burst(p.x, 1, p.z, [0.6, 2.4, 0.5], 24, 3, 0.6); if (VS) NT.pads.push({ x: p.x, z: p.z, back: 20 }); return false; } return true; });
+        if (S.exit.open && Math.hypot(S.exit.x - pl.x, S.exit.z - pl.z) < 1.4) { if (GUEST) { if (S.t > NT.exitT) { NT.exitT = S.t + 0.5; NET.send({ t: 'exit' }); } } else nextLevel(); }
         if (S.portal && !S.portal.done && Math.hypot(S.portal.fx - pl.x, S.portal.fz - pl.z) < 1.0) { enterFold(); return; }
         // a strange one near you, in front of you: you can talk
         const n = S.npc; let can = false;
@@ -1838,16 +2201,18 @@ void main() {
       if (S.secret) S.secret.flash = Math.max(0, S.secret.flash - dt * 3);
       // enemies
       let near = 0;
-      if (S.state === 'play' && S.mode === '3d') for (const e of S.enemies) {
+      if (GUEST) { if (S.mode === '3d' && S.state !== 'trans' && S.state !== 'end') { guestEnemies(dt); guestBoss(dt); } }
+      else if ((S.state === 'play' || (NET && worldOn())) && S.mode === '3d') for (const e of S.enemies) {
         if (e.dead) continue;
         e.t += dt; e.flash = Math.max(0, e.flash - dt * 6); e.cd -= dt;
-        const dx = pl.x - e.x, dz = pl.z - e.z, d = Math.hypot(dx, dz), ph = e.type === 'phase';
+        const T = NET ? nearestP(e.x, e.z) : pl; if (!T) continue;   // (online: the nearest one on their feet)
+        const dx = T.x - e.x, dz = T.z - e.z, d = Math.hypot(dx, dz), ph = e.type === 'phase';
         if (e.calmT > 0) { e.calmT -= dt; continue; }   // asleep (a strange one sang to it)
-        if (!e.awake) { if (d < (ph ? 12 : 15) && (ph || los(e.x, e.z, pl.x, pl.z))) e.awake = true; else continue; }
+        if (!e.awake) { if (d < (ph ? 12 : 15) && (ph || los(e.x, e.z, T.x, T.z))) e.awake = true; else continue; }
         if (d < 18) near++;
-        const see = d < 22 && los(e.x, e.z, pl.x, pl.z), er = S.errat;
+        const see = d < 22 && los(e.x, e.z, T.x, T.z), er = S.errat;
         let dir;
-        if (ph || (see && d < 30)) dir = [dx / (d || 1), dz / (d || 1)]; else dir = steer(e);   // the violet ones go straight at you, walls or not
+        if (ph || (see && d < 30)) dir = [dx / (d || 1), dz / (d || 1)]; else dir = steer(e, NET ? flowOf(T) : S.flow);   // the violet ones go straight at you, walls or not
         let speed = e.type === 'mini' ? 6.2 : e.type === 'drone' ? 4.4 + S.level * 0.15 : e.type === 'split' ? 3.4 : ph ? 3.2 : 3.6;
         // deeper = more erratic: they swerve, surge and jump around
         if (er > 0 || ph) {
@@ -1860,7 +2225,7 @@ void main() {
           if (d < 7) dir = [-dir[0], -dir[1]]; else if (d < 11) dir = [-dir[1] * Math.sin(e.t * 0.7), dir[0] * Math.sin(e.t * 0.7)];
           if (e.cd <= 0) {
             e.cd = Math.max(0.8, 1.7 - S.level * 0.08);
-            const ty = EYE - 0.2, lead = d / 10, tx = pl.x + pl.vx * lead * 0.5, tz = pl.z + pl.vz * lead * 0.5, v = norm([tx - e.x, ty - e.y, tz - e.z]);
+            const ty = EYE - 0.2, lead = d / 10, tx = T.x + T.vx * lead * 0.5, tz = T.z + T.vz * lead * 0.5, v = norm([tx - e.x, ty - e.y, tz - e.z]);
             const fan = S.errat > 0.35 ? [-0.28, 0, 0.28] : [0];   // deep levels: a fan of orbs that weave
             fan.forEach(a => { const c = Math.cos(a), s = Math.sin(a); S.orbs.push({ x: e.x, y: e.y, z: e.z, vx: (v[0] * c - v[2] * s) * 10, vy: v[1] * 10, vz: (v[0] * s + v[2] * c) * 10, life: 4, wob: S.errat, ph: Math.random() * 6 }); });
             play('orb');
@@ -1876,11 +2241,11 @@ void main() {
         // and they leave the floor: up and down through the whole room
         const swoop = S.errat * Math.sin(e.t * 1.1 + e.seed) * Math.max(0, top - 2.2) * 0.45;
         e.y = Math.max(0.6, Math.min(top - 0.6, (e.type === 'shoot' ? 2.2 : e.type === 'mini' ? 1.1 : 1.35) + Math.sin(e.t * 2.3) * 0.22 + swoop));
-        if (e.type !== 'shoot' && d < e.r + 0.55 && e.cd <= 0) { e.cd = 0.75; hurt(e.type === 'mini' ? 6 : e.type === 'split' ? 15 : 11, e.x, e.z); }
+        if (e.type !== 'shoot' && d < e.r + 0.55 && e.cd <= 0) { e.cd = 0.75; if (T === pl) hurt(e.type === 'mini' ? 6 : e.type === 'split' ? 15 : 11, e.x, e.z); }   // (another player gets hurt on their own screen)
       }
-      if (S.mode === '3d') { S.enemies = S.enemies.filter(e => !e.dead); MU.int += (Math.min(1, near / 4) - MU.int) * Math.min(1, dt * 0.8); if (S.state === 'play') updateBoss(dt); }
+      if (S.mode === '3d' && !GUEST) { S.enemies = S.enemies.filter(e => !e.dead); MU.int += (Math.min(1, near / 4) - MU.int) * Math.min(1, dt * 0.8); if (S.state === 'play' || (NET && worldOn())) updateBoss(dt); }
       // the shots
-      if (S.state !== 'pause') {
+      if (S.state !== 'pause' || NET) {
         if (S.mode === '3d') {
         for (const b of S.bolts) {
           const n = 3;
@@ -1888,15 +2253,18 @@ void main() {
             const px = b.x, py = b.y, pz = b.z;
             b.x += b.vx * dt / n; b.y += b.vy * dt / n; b.z += b.vz * dt / n;
             if ((solidAt(b.x, b.z) || b.y < 0.02 || b.y > ceilAt(b.x, b.z)) && b.bounce > 0) {   // «Rebote»: it bounces
-              b.bounce--; if (solidAt(b.x, b.z)) wallHit(b.x, b.z);
-              if (upN('split') && !b.child) { b.child = true; const c = Math.cos(0.45), sn = Math.sin(0.45); S.bolts.push({ ...b, vx: b.vx * c - b.vz * sn, vz: b.vx * sn + b.vz * c, child: true }); }
+              b.bounce--; if (solidAt(b.x, b.z) && !b.g) wallHit(b.x, b.z);
+              if (upN('split') && !b.child && !b.g) { b.child = true; const c = Math.cos(0.45), sn = Math.sin(0.45); S.bolts.push({ ...b, vx: b.vx * c - b.vz * sn, vz: b.vx * sn + b.vz * c, child: true }); }
               if (solidAt(b.x, b.z)) { let f = false; if (solidAt(b.x, pz)) { b.vx = -b.vx; f = true; } if (solidAt(px, b.z)) { b.vz = -b.vz; f = true; } if (!f) { b.vx = -b.vx; b.vz = -b.vz; } }
               else b.vy = -b.vy;
               b.x = px; b.y = py; b.z = pz; burst(b.x, b.y, b.z, WEAPONS[b.w].hot.map(v => v * 0.7), 6, 2.5, 0.25, 0.06); play('ping');
               continue;
             }
-            if (solidAt(b.x, b.z) || b.y < 0.02 || b.y > ceilAt(b.x, b.z)) { b.life = 0; if (solidAt(b.x, b.z)) wallHit(b.x, b.z); burst(b.x - b.vx * 0.004, b.y - b.vy * 0.004, b.z - b.vz * 0.004, [0.5, 1.6, 2.6], 8, 3, 0.35, 0.07); flash(b.x, b.y, b.z, [0.4, 1.2, 2], 4, 0.12); break; }
-            for (const e of S.enemies) { if (e.dead || e === b.last) continue; const dx = b.x - e.x, dy = b.y - e.y, dz = b.z - e.z; if (dx * dx + dy * dy + dz * dz < (e.r + 0.18) ** 2) { b.last = e; if (b.pierce > 0) b.pierce--; else b.life = 0; e.awake = true; e.flash = 1; e.hp -= DMG() * (WEAPONS[b.w].dmg || 1); if (b.w) { const l = Math.hypot(b.vx, b.vz) || 1; e.vx += b.vx / l * WEAPONS[b.w].push; e.vz += b.vz / l * WEAPONS[b.w].push; } play('hit'); burst(b.x, b.y, b.z, [2, 2, 2], 6, 3, 0.25, 0.06); if (e.hp <= 0) killEnemy(e); hitMark(); break; } }
+            if (solidAt(b.x, b.z) || b.y < 0.02 || b.y > ceilAt(b.x, b.z)) { b.life = 0; if (solidAt(b.x, b.z) && !b.g) wallHit(b.x, b.z); burst(b.x - b.vx * 0.004, b.y - b.vy * 0.004, b.z - b.vz * 0.004, [0.5, 1.6, 2.6], 8, 3, 0.35, 0.07); flash(b.x, b.y, b.z, [0.4, 1.2, 2], 4, 0.12); break; }
+            if (b.g) continue;   // someone else's shot: they say what it hit
+            for (const e of S.enemies) { if (e.dead || e === b.last) continue; const dx = b.x - e.x, dy = b.y - e.y, dz = b.z - e.z; if (dx * dx + dy * dy + dz * dz < (e.r + 0.18) ** 2) { b.last = e; if (b.pierce > 0) b.pierce--; else b.life = 0; const Wb = WEAPONS[b.w], l = Math.hypot(b.vx, b.vz) || 1, pk = b.w ? Wb.push : 0; play('hit'); burst(b.x, b.y, b.z, [2, 2, 2], 6, 3, 0.25, 0.06); dmgEnemy(e, DMG() * (Wb.dmg || 1), b.vx / l * pk, b.vz / l * pk); hitMark(); break; } }
+            if (b.life <= 0) break;
+            if (VS) for (const P of peersOn()) { if (Math.hypot(b.x - P.x, b.z - P.z) < 0.45 && b.y > 0.1 && b.y < 1.85) { b.life = 0; hitPeer(P, WEAPONS[b.w].pvp); burst(b.x, b.y, b.z, P.col.map(v => v * 2.4), 8, 3, 0.3, 0.07); hitMark(); break; } }
             if (b.life <= 0) break;
             for (const c of S.cores) { if (!c.alive || c.fold) continue; const dx = b.x - c.x, dy = b.y - c.y, dz = b.z - c.z; if (dx * dx + dy * dy + dz * dz < 1.05 ** 2) { b.life = 0; hitCore(c, WEAPONS[b.w].coreDmg || 1); burst(b.x, b.y, b.z, [2.4, 2.2, 1.4], 8, 3, 0.3, 0.07); hitMark(); break; } }
             if (b.life > 0 && S.boss && S.boss.alive) { const h = bossHit(b.x, b.y, b.z); if (h) { b.life = 0; hitTarget(h, [b.x, b.y, b.z], WEAPONS[b.w].coreDmg || 1); } }
@@ -1909,7 +2277,7 @@ void main() {
           if (o.wob) { const l = Math.hypot(o.vx, o.vz) || 1, w = Math.sin(o.life * 7 + o.ph) * o.wob * 5 * dt; o.x += -o.vz / l * w; o.z += o.vx / l * w; o.y += Math.cos(o.life * 5 + o.ph) * o.wob * 1.5 * dt; }
           if (solidAt(o.x, o.z) || o.y < 0 || o.y > ceilAt(o.x, o.z)) { o.life = 0; burst(o.x, o.y, o.z, [2.4, 0.9, 0.2], 10, 2.5, 0.4, 0.08); continue; }
           const dx = o.x - pl.x, dy = o.y - (EYE - 0.3), dz = o.z - pl.z;
-          if (S.state === 'play' && dx * dx + dy * dy + dz * dz < 0.55 ** 2) { o.life = 0; hurt(9 + S.level, o.x, o.z); burst(o.x, o.y, o.z, [2.4, 0.9, 0.2], 14, 3, 0.4, 0.08); }
+          if ((S.state === 'play' || (NET && S.state === 'pause')) && dx * dx + dy * dy + dz * dz < 0.55 ** 2) { o.life = 0; hurt(9 + S.level, o.x, o.z); burst(o.x, o.y, o.z, [2.4, 0.9, 0.2], 14, 3, 0.4, 0.08); if (GUEST && o.id) { NT.orbGone.add(o.id); NET.send({ t: 'orb', id: o.id }); } }
         }
         S.orbs = S.orbs.filter(o => o.life > 0);
         }
@@ -1924,6 +2292,22 @@ void main() {
     let hitT = 0; function hitMark() { hitT = 0.12; cross.classList.add('hit'); }
 
     /* ── drawing ── */
+    // another player: the jointed figure of the folds, in the world, turned to where they look; the arms follow the aim
+    function drawPeer(P, draw) {
+      const col = P.col, mv = P.spd > 0.8, ph = P.run * 2.4, hot = col.map(v => Math.min(1, v + 0.3));
+      const root = chain(T4(P.x, 0, P.z), RY(Math.PI / 2 - P.yaw)), hip = chain(root, T4(0, 0.84 + (mv ? Math.abs(Math.sin(ph)) * 0.05 : 0), 0));
+      let legs;
+      if (mv) { const sn = Math.sin(ph); legs = [[0.65 * sn, Math.max(0, Math.cos(ph)) * 1.1 + 0.08], [-0.65 * sn, Math.max(0, -Math.cos(ph)) * 1.1 + 0.08]]; } else legs = [[0.12, 0.12], [-0.08, 0.06]];
+      legs.forEach(([th, kn], i) => { const thigh = chain(hip, T4(0, 0, i ? -0.09 : 0.09), RZ(th)); draw(MESH.thigh, thigh, col, 1.0, 0.12, 0); draw(MESH.shin, chain(thigh, T4(0, -0.42, 0), RZ(-kn)), col, 1.0, 0.12, 0); });
+      draw(MESH.torso, hip, col, 1.1, 0.12, 0);
+      draw(MESH.head, chain(hip, T4(0, 0.62, 0)), col, 1.2, 0.15, 0);
+      const Wp = WEAPONS[P.w] || WEAPONS[0];
+      [[0.13, 0.25], [-0.13, 0.5]].forEach(([z, bend], i) => {
+        const ua = chain(hip, T4(0, 0.56, z), RZ(P.pitch + Math.PI / 2 - bend)); draw(MESH.uarm, ua, col, 1.0, 0.12, 0);
+        const fa = chain(ua, T4(0, -0.3, 0), RZ(bend)); draw(MESH.farm, fa, col, 1.0, 0.12, 0);
+        if (!i) { const hand = chain(fa, T4(0, -0.28, 0)); draw(MESH.hand, hand, hot, 1.1, 0.2, 0); draw(MESH[Wp.mesh], chain(hand, RZ(-Math.PI / 2), RY(-Math.PI / 2), T4(0, 0.12, -0.15), SC(1.5, 1.5, 1.5)), Wp.col, 1.0, 0.08, 0); }
+      });
+    }
     let scale = 1, slowT = 0, fastT = 0, lastLayout = '';
     function frame(dt) {
       const cw = HOST ? HOST.w : wrap.clientWidth, ch = HOST ? HOST.h : wrap.clientHeight; if (!cw || !ch) return;
@@ -1944,6 +2328,8 @@ void main() {
         B = basis(Math.PI / 2 * (1 - k) + jit, Math.atan2(-1.4, D) * k + jit, (1 - k) * 0.5 * Math.sin(k * Math.PI));
         eye = ey; fov = FOV() * (1 - k) + 0.95 * k;
       }
+      const SP = !FO && NET && !VS && S.state === 'down' ? peersOn()[0] : null;   // down in co-op: through a teammate's eyes
+      if (SP) { B = basis(SP.yaw, SP.pitch, 0); eye = [SP.x, EYE, SP.z]; }
       const proj = persp(fov, W / H, 0.05, 160), vp = mul(proj, viewM(eye, B));
       // the lights: the 16 nearest of everything that glows
       const lights = [];
@@ -1963,8 +2349,9 @@ void main() {
         if (Bo.beams) Bo.beams.forEach(q => { if (q.on) lights.push([q.b[0], q.b[1] + 0.5, q.b[2], 5, 1.5, 0.2, 0.4], [(q.a[0] + q.b[0]) / 2, (q.a[1] + q.b[1]) / 2, (q.a[2] + q.b[2]) / 2, 6, 0.9, 0.1, 0.25]); });
       }
       if (!FO) S.pickups.forEach(q => { if (q.kind === 'weapon') { const c = WEAPONS[q.w].col; lights.push([q.x, 1.2, q.z, 5, c[0] * 1.4, c[1] * 1.4, c[2] * 1.4]); } else if (q.kind === 'relic') lights.push([q.x, 1.3, q.z, 5, 1.6, 0.5, 1.5]); });
-      if (!FO && S.exit.open) { const p = 1 + 0.4 * Math.sin(S.exit.t * 4); lights.push([S.exit.x, 1.6, S.exit.z, 12, 0.6 * p, 2.4 * p, 2.6 * p]); }
+      if (!FO && S.exit.open && !VS) { const p = 1 + 0.4 * Math.sin(S.exit.t * 4); lights.push([S.exit.x, 1.6, S.exit.z, 12, 0.6 * p, 2.4 * p, 2.6 * p]); }
       S.enemies.forEach(e => { if (e.awake) { const c = COL[e.type]; lights.push([e.x, e.y, e.z, 3.5, c[0] * 0.8, c[1] * 0.8, c[2] * 0.8]); } });
+      if (NET && !FO) peersOn().forEach(P => { lights.push([P.x, 1.5, P.z, 3, P.col[0] * 0.5, P.col[1] * 0.5, P.col[2] * 0.5]); if (P.beam && S.t - P.beam.t < 0.15) { const c = WEAPONS[2].col; lights.push([P.beam.b[0], P.beam.b[1], P.beam.b[2], 5, c[0] * 2, c[1] * 2, c[2] * 2]); } });
       if (!FO && S.npc && !S.npc.gone) { const c = hsv((S.npc.hue + S.npc.t * 0.08) % 1, 0.5, 1); lights.push([S.npc.x, 1.7, S.npc.z, 5, c[0] * 0.55, c[1] * 0.55, c[2] * 0.55]); }
       lights.forEach(l => { l.d = (l[0] - eye[0]) ** 2 + (l[2] - eye[2]) ** 2; });
       lights.sort((a, b) => a.d - b.d);
@@ -2005,6 +2392,7 @@ void main() {
         const sz = e.type === 'shoot' ? e.r * 0.85 : e.type === 'drone' || e.type === 'mini' ? e.r * 1.1 : e.r;
         draw(mesh, modelM(e.x, e.y, e.z, sz * sc, e.t * 2.0 * spin, e.t * 0.6 * spin + 0.3), c, k, 0.05, e.flash);
       }
+      if (NET && !FO) { wob(0, 0); for (const P of peersOn()) if (P !== SP) drawPeer(P, draw); }
       wob(PS * 0.12, PS > 0 ? S.t * 0.1 * PS : 0);
       for (const c of S.cores) {
         if (!here(c)) continue;
@@ -2100,7 +2488,7 @@ void main() {
         }
         wob(PS * 0.12, PS > 0 ? S.t * 0.1 * PS : 0);
       }
-      if (!FO && !Bo) { const X = S.exit, op = X.open, pu = op ? 1 + 0.05 * Math.sin(X.t * 4) : 1;
+      if (!FO && !Bo && !VS) { const X = S.exit, op = X.open, pu = op ? 1 + 0.05 * Math.sin(X.t * 4) : 1;
         draw(MESH.ring, modelM(X.x, 1.6, X.z, 1.35 * pu, X.t * (op ? 0.8 : 0.15), 0), op ? [0.4, 1, 1] : [0.25, 0.3, 0.4], op ? 1.6 : 0.35, 0.05, 0);
         draw(MESH.ring, modelM(X.x, 1.6, X.z, 1.0 * pu, -X.t * (op ? 1.3 : 0.2), 0), op ? [0.4, 1, 1] : [0.25, 0.3, 0.4], op ? 1.2 : 0.25, 0.05, 0); }
       // light: shots, orbs, sparks, the exit's glow
@@ -2111,6 +2499,10 @@ void main() {
       S.parts.forEach(q => { const a = q.life / q.max; pt(q.x, q.y, q.z, q.size, q.col[0], q.col[1], q.col[2], a); });
       S.cores.forEach(c => { if (here(c)) pt(c.x, c.y, c.z, 1.7, 1.2, 1, 0.6, 0.28 + 0.1 * Math.sin(c.t * 3)); });
       if (!FO && S.portal && !S.portal.done) { const q = S.portal; for (let k = 0; k < 14; k++) { const a = q.t * 1.2 + k * 0.449, r = 0.3 + 0.8 * ((k * 0.37 + q.t * 0.25) % 1), px = Math.cos(a) * r, py = Math.sin(a) * r; pt(q.x + q.nx * 0.15 - q.nz * px, 1.8 + py, q.z + q.nz * 0.15 + q.nx * px, 0.1, 2.6, 0.7, 2.6, 0.9); } }
+      if (NET && !FO) for (const P of peersOn()) if (P.beam && S.t - P.beam.t < 0.15) {   // the others' beams
+        const q = P.beam, c = WEAPONS[2].hot, L = Math.hypot(q.b[0] - q.a[0], q.b[1] - q.a[1], q.b[2] - q.a[2]), nseg = Math.min(160, Math.ceil(L / 0.18));
+        for (let k = 0; k <= nseg; k++) { const f = k / nseg; pt(q.a[0] + (q.b[0] - q.a[0]) * f, q.a[1] + (q.b[1] - q.a[1]) * f, q.a[2] + (q.b[2] - q.a[2]) * f, 0.07, c[0], c[1], c[2], 0.85); }
+      }
       if (S.beam && S.t - S.beam.t < 0.06) {   // the beam: a line of light, thicker where it hits
         const q = S.beam, c = WEAPONS[2].hot, L = Math.hypot(q.b[0] - q.a[0], q.b[1] - q.a[1], q.b[2] - q.a[2]), nseg = Math.min(160, Math.ceil(L / 0.18));
         for (let k = 0; k <= nseg; k++) { const f = k / nseg, w = 0.07 + 0.03 * Math.sin(S.t * 60 + k); pt(q.a[0] + (q.b[0] - q.a[0]) * f, q.a[1] + (q.b[1] - q.a[1]) * f, q.a[2] + (q.b[2] - q.a[2]) * f, w, c[0], c[1], c[2], 0.9); }
@@ -2131,7 +2523,7 @@ void main() {
         for (let q = 0; q < 14; q++) { const a = q / 14 * 6.283 + S.t * 0.4, r = 0.5 + 0.1 * Math.sin(S.t * 3 + q * 2) - (q % 2) * 0.22; pt(fx + tx * Math.cos(a) * r, 1.6 + Math.sin(a) * r, fz + tz * Math.cos(a) * r, 0.05, 2.4 * k0, 0.7 * k0, 2.2 * k0, 0.8); }
       }
       if (!FO) S.pickups.forEach(q => { if (q.kind === 'weapon') { const c = WEAPONS[q.w].hot; for (let k = 0; k < 6; k++) { const a = q.t * 2 + k * 1.047; pt(q.x + Math.cos(a) * 0.9, 0.4 + ((q.t * 0.6 + k * 0.17) % 1) * 1.6, q.z + Math.sin(a) * 0.9, 0.07, c[0], c[1], c[2], 0.9); } } });
-      if (!FO && S.exit.open) pt(S.exit.x, 1.6, S.exit.z, 3.2, 0.3, 1.4, 1.6, 0.8 + 0.3 * Math.sin(S.exit.t * 4));
+      if (!FO && S.exit.open && !VS) pt(S.exit.x, 1.6, S.exit.z, 3.2, 0.3, 1.4, 1.6, 0.8 + 0.3 * Math.sin(S.exit.t * 4));
       if (!FO && S.npc && S.npc.fade > 0.01) { const n = S.npc; for (let k = 0; k < 10; k++) { const a = n.t * 0.9 + k * 0.628, c = hsv((n.hue + k * 0.1 + n.t * 0.1) % 1, 0.6, 1); pt(n.x + Math.cos(a) * 1.3, 1.7 + Math.sin(a * 2.3) * 0.6, n.z + Math.sin(a) * 1.3, 0.09, c[0] * 2.5, c[1] * 2.5, c[2] * 2.5, n.fade); } }
       if (n) {
         p = P.pts; gl.useProgram(p.p); gl.uniformMatrix4fv(p.L.u_vp, false, vp); gl.uniform1f(p.L.u_ph, H / (2 * Math.tan(fov / 2)));
@@ -2141,7 +2533,7 @@ void main() {
         gl.depthMask(true); gl.disable(gl.BLEND);
       }
       // the weapon, in front of the camera
-      if (!FO && !S.noGun && (S.state === 'play' || S.state === 'pause' || S.state === 'talk')) {
+      if (!FO && !S.noGun && !SP && (S.state === 'play' || S.state === 'pause' || S.state === 'talk' || (NET && S.state === 'pick'))) {
         gl.clear(gl.DEPTH_BUFFER_BIT);
         p = P.ent; gl.useProgram(p.p);
         gl.uniformMatrix4fv(p.L.u_vp, false, persp(1.1, W / H, 0.01, 10)); gl.uniform3fv(p.L.u_eye, [0, 0, 0]); gl.uniform1f(p.L.u_fog, 0);
@@ -2169,9 +2561,9 @@ void main() {
         pass(P.blur, RT.fb, RT.qw, RT.qh, [RT.a], L => { gl.uniform1i(L.u_img, 0); gl.uniform2f(L.u_dir, (1 + k) / RT.qw, 0); });
         pass(P.blur, RT.fa, RT.qw, RT.qh, [RT.b], L => { gl.uniform1i(L.u_img, 0); gl.uniform2f(L.u_dir, 0, (1 + k) / RT.qh); });
       }
-      const fade = S.state === 'trans' ? Math.max(0, Math.min(1, Math.abs(S.endT - 0.8) / 0.8)) : S.state === 'dead' || S.state === 'over' ? Math.max(0.25, S.endT / 1.6) : 1;
+      const fade = S.state === 'trans' ? Math.max(0, Math.min(1, Math.abs(S.endT - 0.8) / 0.8)) : S.state === 'dead' || S.state === 'over' ? Math.max(0.25, S.endT / 1.6) : S.state === 'end' ? Math.max(0.3, S.endT / 2.6) : 1;
       pass(P.comp, null, W, H, [scene, RT.a], L => {
-        gl.uniform1i(L.u_img, 0); gl.uniform1i(L.u_bloom, 1); gl.uniform1f(L.u_hurt, Math.min(1, pl.hurtT * 2) + (S.state === 'dead' ? 0.6 : 0) + (S.hp < 30 && S.state === 'play' ? 0.18 + 0.12 * Math.sin(S.t * 6) : 0));
+        gl.uniform1i(L.u_img, 0); gl.uniform1i(L.u_bloom, 1); gl.uniform1f(L.u_hurt, Math.min(1, pl.hurtT * 2) + (S.state === 'dead' || (S.state === 'down' && !SP) ? 0.6 : 0) + (S.hp < 30 && S.state === 'play' ? 0.18 + 0.12 * Math.sin(S.t * 6) : 0));
         gl.uniform1f(L.u_time, S.t % 100); gl.uniform1f(L.u_ab, S.fx * 0.12 + 0.012 + S.psy * O.psyFx * 0.03 * (1 + Math.sin(S.t * 0.7)) + pl.hurtT * 0.05 + (pl.dashT > 0 ? 0.04 : 0)); gl.uniform1f(L.u_bk, 1.1); gl.uniform1f(L.u_fade, fade * (1 + S.fx * 1.4)); gl.uniform2f(L.u_res, W, H);
       });
       gl.activeTexture(gl.TEXTURE0);
@@ -2185,6 +2577,14 @@ void main() {
         const c4 = [vp[0] * wx + vp[4] * wy + vp[12], vp[1] * wx + vp[5] * wy + vp[13], vp[3] * wx + vp[7] * wy + vp[15]];
         if (c4[2] > 0) { cross.style.left = ((c4[0] / c4[2]) * 0.5 + 0.5) * 100 + '%'; cross.style.top = (0.5 - (c4[1] / c4[2]) * 0.5) * 100 + '%'; }
       }
+      if (NET) PEERS.forEach(P => {
+        let show = false;
+        if (!FO && P !== SP && P.seen && P.alive && P.lv === S.level && (!VS || los(eye[0], eye[2], P.x, P.z))) {
+          const wx = P.x, wy = 2.2, wz = P.z, cx = vp[0] * wx + vp[4] * wy + vp[8] * wz + vp[12], cy = vp[1] * wx + vp[5] * wy + vp[9] * wz + vp[13], cw = vp[3] * wx + vp[7] * wy + vp[11] * wz + vp[15];
+          if (cw > 0.1 && Math.abs(cx / cw) < 1.05 && Math.abs(cy / cw) < 1.05) { show = true; P.tag.style.left = ((cx / cw) * 0.5 + 0.5) * 100 + '%'; P.tag.style.top = (0.5 - (cy / cw) * 0.5) * 100 + '%'; P.tag.style.opacity = String(Math.max(0.45, Math.min(1, 1.4 - cw / 40))); P.bar.style.width = Math.max(0, Math.min(100, P.hp / P.mh * 100)) + '%'; }
+        }
+        if (P.tag.hidden === show) P.tag.hidden = !show;
+      });
       const layout = touch ? 't' : 'd'; if (layout !== lastLayout) { wrap.classList.toggle('touch', touch); lastLayout = layout; }
       if (!FO && !DEMO && (S.mapT = (S.mapT || 0) - dt) <= 0) { S.mapT = 0.12; drawMap(); }
       // a heavier picture than the device can carry: draw it smaller (and back up when there is room)
@@ -2210,7 +2610,8 @@ void main() {
       if (S.boss && S.boss.alive && !S.boss.fold) (S.boss.bodies ? S.boss.bodies.filter(b => b.alive) : [S.boss]).forEach(b => { if (S.seen[Math.floor(b.z / CS) * M.W + Math.floor(b.x / CS)]) dot(b.x, b.z, '#ff4a4a', S.boss.bodies ? 2 + b.r * 1.5 : 6); });
       S.pickups.forEach(q => { if (q.kind === 'relic') dot(q.x, q.z, '#ff7af0', 3.5); if (q.kind === 'weapon' && S.seen[Math.floor(q.z / CS) * M.W + Math.floor(q.x / CS)]) dot(q.x, q.z, '#9dffb0', 3.5); });
       if (S.npc && !S.npc.gone && S.seen[Math.floor(S.npc.z / CS) * M.W + Math.floor(S.npc.x / CS)]) dot(S.npc.x, S.npc.z, '#e9b8ff', 3);
-      if (S.exit.open) {   // the exit always shows (on the rim when it is far)
+      if (NET && !VS) PEERS.forEach(P => { if (P.seen && P.lv === S.level) dot(P.x, P.z, P.alive ? rgb(P.col) : '#666', 3.5); });
+      if (S.exit.open && !VS) {   // the exit always shows (on the rim when it is far)
         let ex = (S.exit.x / CS - cx) * s, ez = (S.exit.z / CS - cz) * s; const l = Math.hypot(ex, ez), m = Wm / 2 - 8; if (l > m) { ex *= m / l; ez *= m / l; }
         g.fillStyle = '#6ff'; g.beginPath(); g.arc(Wm / 2 + ex, Wm / 2 + ez, 4.5, 0, Math.PI * 2); g.fill();
       }
@@ -2225,7 +2626,8 @@ void main() {
       raf = requestAnimationFrame(loop);
       const dt = Math.min(0.05, Math.max(0, (now - last) / 1000)); last = now;
       padPoll(dt);
-      if (S.state !== 'pause') update(dt);
+      if (S.state !== 'pause' || NET) update(dt);
+      if (NET && S.state !== 'over') { peersTick(dt); netTick(dt); }
       if (S.state === 'over') return;   // the result screen is up (and this game already cleaned up)
       frame(dt);
       if ((musT -= dt) <= 0) { musT = 0.025; musicTick(); }
@@ -2233,7 +2635,8 @@ void main() {
     if (!HOST) { audio(); if (A && A.state === 'suspended') A.resume(); }
     loadLevel(); paintWeapon();
     if (DEMO) { pl.owned = pl.owned.map(() => true); paintWeapon(); }
-    toast(tr(`Nivel 1: encontrá y destruí ${S.cores.length} núcleos`, `Level 1: find and destroy ${S.cores.length} cores`), 3.5);
+    if (VS) { toast(tr(`Versus: gana quien llegue a ${VS_GOAL} bajas · las armas están tiradas por ahí`, `Versus: first to ${VS_GOAL} takedowns wins · the weapons lie around`), 4); paintScore(); }
+    else toast(NET ? tr(`Nivel 1, en equipo: encuentren y destruyan ${S.cores.length} núcleos`, `Level 1, as a team: find and destroy ${S.cores.length} cores`) : tr(`Nivel 1: encontrá y destruí ${S.cores.length} núcleos`, `Level 1: find and destroy ${S.cores.length} cores`), 3.5);
     lock();
     // on a phone: the whole screen, sideways (the Start tap allows it)
     if (touch && !DEMO && wrap.requestFullscreen && !/nctouch/.test(location.search)) wrap.requestFullscreen({ navigationUI: 'hide' }).then(() => { try { screen.orientation.lock('landscape').catch(() => {}); } catch (e) { /* ignore */ } }, () => {});
@@ -2252,7 +2655,7 @@ void main() {
       hurt, nextLevel, talk, advance, endTalk,
       setLevel(n) { S.level = n; loadLevel(); },
       get f2() { return f2; }, setWeapon, giveAll() { pl.owned = pl.owned.map(() => true); paintWeapon(); }, enterFold, exitFold, jump() { f2.buf = 0.13; f2.held = true; },
-      offerUps, choose, wallHit, openSecret, up: pl.up, seedCode, mode, PAD, AI,
+      offerUps, choose, wallHit, openSecret, up: pl.up, seedCode, mode, PAD, AI, NET, NT, PEERS, snapshot,
       setPat(f, w) { S.M.rooms.forEach(r => { r.pf = f; r.pw = w; }); S.M.corrPat = [f, w]; },
     });
     Object.defineProperty(ctx.test, 'boss', { get: () => S.boss, configurable: true });

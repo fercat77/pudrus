@@ -595,3 +595,26 @@ body.cb .sd-cell.bad { text-decoration: line-through 3px; text-decoration-color:
   .nc-opts .row.chk .lbl { grid-column: auto; }
   .nc-opts .row:has(.seg) { grid-template-columns: 1fr; }
 }
+
+/* ── Núcleo en red: the room, the names over the others' heads, the versus scoreboard ── */
+.nc-lobby { width: 100%; max-width: 720px; display: flex; flex-direction: column; gap: 12px; text-align: left; }
+.nc-lh { margin: 0; font-size: 13px; letter-spacing: .16em; text-transform: uppercase; color: var(--c1); font-weight: 600; }
+.nc-lopts .jg-dopt { min-width: 0; }
+.nc-lmodes { justify-content: flex-start; flex-wrap: wrap; gap: 8px; }
+.nc-lplayers { display: flex; flex-direction: column; gap: 6px; }
+.nc-lp { display: flex; align-items: center; gap: 10px; color: var(--head); font-size: 14px; }
+.nc-lp i { width: 12px; height: 12px; transform: rotate(45deg); flex: none; }
+.jg-dinput.nc-need { border-color: #ff5a6a; }
+.nc-tag { position: absolute; transform: translate(-50%, -100%); display: flex; flex-direction: column; align-items: center; gap: 3px; pointer-events: none; white-space: nowrap; }
+.nc-tag b { font-size: 11px; letter-spacing: .08em; text-shadow: 0 0 6px rgba(0,0,0,0.9), 0 0 2px #000; font-weight: 600; }
+.nc-tag i { display: block; width: 44px; height: 3px; background: rgba(255,255,255,0.18); border-radius: 2px; overflow: hidden; }
+.nc-tag u { display: block; height: 100%; text-decoration: none; }
+.nc-score { position: absolute; left: 12px; top: 58px; display: flex; flex-direction: column; gap: 4px; padding: 8px 10px; background: rgba(0,10,20,0.5); border: 1px solid rgba(0,212,255,0.3); border-radius: 6px; font-size: 12px; color: #dff6ff; min-width: 150px; }
+.nc-score small { font-size: 10px; letter-spacing: .12em; text-transform: uppercase; color: rgba(190,230,255,0.6); }
+.nc-score span { display: flex; align-items: center; gap: 8px; }
+.nc-score span.me b { color: #fff; }
+.nc-score span i { width: 9px; height: 9px; transform: rotate(45deg); flex: none; }
+.nc-score span b { flex: 1; font-weight: 400; color: rgba(223,246,255,0.8); overflow: hidden; text-overflow: ellipsis; max-width: 110px; }
+.nc-score span em { font-style: normal; font-variant-numeric: tabular-nums; font-weight: 700; }
+.nc-wrap.touch .nc-score { top: 96px; left: 12px; min-width: 0; padding: 6px 8px; font-size: 11px; }
+.nc-lobby .jg-btn:disabled { opacity: .4; cursor: default; filter: saturate(.4); }
