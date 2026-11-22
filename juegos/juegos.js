@@ -815,7 +815,7 @@
     window.scrollTo(0, 0);
     // a start screen first: read the rules, then play
     const st = el('div', 'jg-start');
-    st.append(el('div', 'big', '◈'), el('p', 'jg-rules', gm.how));
+    st.append(el('div', 'big', '◈'), el('p', 'jg-rules', gm.brief || gm.how));   // a game with a long manual shows a short version here; the whole one stays behind «?»
     option = isDaily ? gm.dailyOption : (store.opt && store.opt[gm.id]) || (gm.options ? gm.options[0][0] : null);
     const note = gm.startNote ? gm.startNote(openFlag) : null;   // e.g. Núcleo opened with a friend's seed (#nucleo/s…): that seed, no choosing
     if (note && note.option) option = note.option;
