@@ -489,8 +489,8 @@ void main() {
   const GAME = {
     id: 'nucleo', solo: true, title: tr('Núcleo', 'Core'), tag: tr('Acción', 'Action'),
     desc: tr('Una estructura de neón que se arma distinta cada vez. Apagá sus núcleos y escapá.', 'A neon structure built anew every time. Shut down its cores and get out.'),
-    how: tr('Cada nivel tiene núcleos escondidos: destruilos todos (cada uno que cae deja su sala a oscuras) y llegá a la salida, que se abre al final. Cada nivel es más grande y con más enemigos. Compu: W A S D para moverte, mouse para mirar, clic para disparar, Shift o Espacio para el impulso, Q (o 1–4, o la ruedita) para cambiar de arma, Esc para pausar, M para el sonido. Joystick: palanca izquierda para moverte, derecha para mirar, gatillo derecho para disparar, gatillo izquierdo o B para el impulso, A para saltar (en los pliegues) y hablar, LB / RB o Y para cambiar de arma, Start para pausar. Al pasar de nivel elegís una de tres mejoras; algunas paredes esconden salas secretas (dispará donde brilla un dibujo tenue). Celular: palanca a la izquierda para moverte, arrastrá a la derecha para mirar, botones para disparar, para el impulso y ⇄ para cambiar de arma. Dos armas: el Pulso (rápido y preciso) y el Abanico (ocho disparos en abanico: lento pero demoledor de cerca, y empuja); en los niveles podés encontrar el Rayo y el Rebote. Cada 5 niveles te espera el Gran Núcleo en su arena. Los rojos te persiguen, los naranjas disparan de lejos (esquivá sus esferas), los amarillos se parten en dos y los violetas atraviesan las paredes. Cuanto más hondo, más rara se pone la estructura. A veces aparece alguien que no ataca: acercate y apretá E para hablar. Desde el nivel 3, algún núcleo está dentro de un pliegue (un portal magenta en una pared): adentro el mundo se ve de costado, con plataformas; A D para moverte, W o Espacio para saltar (más alto si lo mantenés), S para agacharte, Shift para el impulso (también en el aire) y el mouse para apuntar; en el celular, arrastrá a la derecha para mover la mira (si no la tocás, apunta sola) y bajá la palanca para agacharte. En red (de 2 a 4, cada uno en su compu o celular): en Cooperativo recorren juntos la misma estructura, con los mismos núcleos y jefes, y si caés volvés al rato junto a tu equipo; en Versus es una arena sin enemigos, todos contra todos, y gana quien llegue primero a 10 bajas.',
-      'Every level hides cores: destroy them all (each one that falls blacks out its room) and reach the exit, which opens at the end. Every level is bigger and has more enemies. Computer: W A S D to move, mouse to look, click to shoot, Shift or Space to dash, Q (or 1–4, or the wheel) to switch weapons, Esc to pause, M for sound. Gamepad: left stick to move, right stick to look, right trigger to shoot, left trigger or B to dash, A to jump (in folds) and talk, LB / RB or Y to switch weapons, Start to pause. Clearing a level you choose one of three upgrades; some walls hide secret rooms (shoot where a faint drawing glows). Phone: stick on the left to move, drag on the right to look, buttons to shoot, to dash and ⇄ to switch weapons. Two weapons: the Pulse (fast and precise) and the Fan (eight shots in a fan: slow but crushing up close, and it pushes); in the levels you can find the Beam and the Bounce. Every 5 levels the Great Core waits in its arena. Red ones chase you, orange ones shoot from afar (dodge their orbs), yellow ones split in two and violet ones go through walls. The deeper you go, the stranger the structure gets. Now and then someone appears who doesn’t attack: go up to them and press E to talk. From level 3, a core may sit inside a fold (a magenta portal on a wall): inside, the world is seen from the side, with platforms; A D to move, W or Space to jump (higher if you hold it), S to crouch, Shift to dash (in the air too) and the mouse to aim; on a phone, drag on the right to move the sight (leave it and it aims by itself) and push the stick down to crouch. Online (2 to 4, each on their own computer or phone): in Co-op you go through the same structure together, with the same cores and bosses, and if you fall you come back a little later next to your team; in Versus it’s an arena with no enemies, everyone against everyone, and the first to 10 takedowns wins.'),
+    how: tr('Cada nivel tiene núcleos escondidos: destruilos todos (cada uno que cae deja su sala a oscuras) y llegá a la salida, que se abre al final. Cada nivel es más grande y con más enemigos. Compu: W A S D para moverte, mouse para mirar, clic para disparar, Shift o Espacio para el impulso, Q (o 1–4, o la ruedita) para cambiar de arma, Esc para pausar, M para el sonido. Joystick: palanca izquierda para moverte, derecha para mirar, gatillo derecho para disparar, gatillo izquierdo o B para el impulso, A para saltar (en los pliegues) y hablar, LB / RB o Y para cambiar de arma, Start para pausar. Al pasar de nivel elegís una de tres mejoras; algunas paredes esconden salas secretas (dispará donde brilla un dibujo tenue). Celular: palanca a la izquierda para moverte, arrastrá a la derecha para mirar, botones para disparar, para el impulso y ⇄ para cambiar de arma. Dos armas: el Pulso (rápido y preciso) y el Abanico (ocho disparos en abanico: lento pero demoledor de cerca, y empuja); en los niveles podés encontrar el Rayo y el Rebote. Cada 5 niveles te espera un jefe en su arena: a veces primero el jefe y después aparecen los núcleos, a veces al revés; la salida, siempre al final. Los rojos te persiguen, los naranjas disparan de lejos (esquivá sus esferas), los amarillos se parten en dos y los violetas atraviesan las paredes. Cuanto más hondo, más rara se pone la estructura. A veces aparece alguien que no ataca: acercate y apretá E para hablar. Desde el nivel 3, algún núcleo está dentro de un pliegue (un portal magenta en una pared): adentro el mundo se ve de costado, con plataformas; A D para moverte, W o Espacio para saltar (más alto si lo mantenés), S para agacharte, Shift para el impulso (también en el aire) y el mouse para apuntar; en el celular, arrastrá a la derecha para mover la mira (si no la tocás, apunta sola) y bajá la palanca para agacharte. En red (de 2 a 4, cada uno en su compu o celular): en Cooperativo recorren juntos la misma estructura, con los mismos núcleos y jefes, y si caés volvés al rato junto a tu equipo; en Versus es una arena sin enemigos, todos contra todos, y gana quien llegue primero a 10 bajas.',
+      'Every level hides cores: destroy them all (each one that falls blacks out its room) and reach the exit, which opens at the end. Every level is bigger and has more enemies. Computer: W A S D to move, mouse to look, click to shoot, Shift or Space to dash, Q (or 1–4, or the wheel) to switch weapons, Esc to pause, M for sound. Gamepad: left stick to move, right stick to look, right trigger to shoot, left trigger or B to dash, A to jump (in folds) and talk, LB / RB or Y to switch weapons, Start to pause. Clearing a level you choose one of three upgrades; some walls hide secret rooms (shoot where a faint drawing glows). Phone: stick on the left to move, drag on the right to look, buttons to shoot, to dash and ⇄ to switch weapons. Two weapons: the Pulse (fast and precise) and the Fan (eight shots in a fan: slow but crushing up close, and it pushes); in the levels you can find the Beam and the Bounce. Every 5 levels a boss waits in its arena: sometimes the boss first and then the cores appear, sometimes the other way round; the exit, always at the end. Red ones chase you, orange ones shoot from afar (dodge their orbs), yellow ones split in two and violet ones go through walls. The deeper you go, the stranger the structure gets. Now and then someone appears who doesn’t attack: go up to them and press E to talk. From level 3, a core may sit inside a fold (a magenta portal on a wall): inside, the world is seen from the side, with platforms; A D to move, W or Space to jump (higher if you hold it), S to crouch, Shift to dash (in the air too) and the mouse to aim; on a phone, drag on the right to move the sight (leave it and it aims by itself) and push the stick down to crouch. Online (2 to 4, each on their own computer or phone): in Co-op you go through the same structure together, with the same cores and bosses, and if you fall you come back a little later next to your team; in Versus it’s an arena with no enemies, everyone against everyone, and the first to 10 takedowns wins.'),
     get brief() {   // the start screen: just enough to begin, for the device in hand; the rest is behind «?»
       const t = matchMedia('(pointer: coarse)').matches && !matchMedia('(pointer: fine)').matches;
       return tr('Destruí todos los núcleos del nivel y llegá a la salida. ' + (t ? 'Palanca para moverte, arrastrá a la derecha para mirar; botones para disparar, el impulso y ⇄ cambiar de arma.' : 'W A S D y mouse para moverte y mirar, clic para disparar, Shift para el impulso, Q para cambiar de arma.') + ' El resto lo vas descubriendo (o tocá ? arriba).',
@@ -830,6 +830,15 @@ void main() {
         if (c) { Object.assign(c, { fold: true, x: Fd.core.x, y: Fd.core.y, z: 0, hp: 12 + S.level * 3, max: 12 + S.level * 3 });   // a shorter fight: getting there is the challenge
          S.portal = { ...M.portal, F: Fd, done: false, t: 0 }; }
       }
+      // a boss level goes in order: sometimes the boss first and then the cores show up, sometimes the cores first and then the boss
+      // appears; the exit, always at the very end (the same order for everyone in a room: it comes from the seed)
+      S.later = null;
+      if (S.boss && S.cores.length && !VS) {
+        const P = S.portal;
+        if (J.mulberry((seed + S.level * 577) >>> 0)() < 0.5) { S.later = { cores: S.cores, portal: P && !P.boss ? P : null }; S.cores = []; }
+        else { S.later = { boss: S.boss, portal: P && P.boss ? P : null }; S.boss = null; }
+        if (S.later.portal) S.portal = null;
+      }
       pl.x = (M.start.cx + 0.5) * CS; pl.z = (M.start.cy + 0.5) * CS; pl.vx = pl.vz = 0; pl.pitch = 0;
       // look along the first corridor out of the start room
       let best = 0, bl = -1; for (let k = 0; k < 4; k++) { const a = k * Math.PI / 2, dx = Math.sin(a), dz = -Math.cos(a); let l = 0; while (l < 30 && !solidAt(pl.x + dx * l, pl.z + dz * l)) l += 0.5; if (l > bl) { bl = l; best = a; } } pl.yaw = best;
@@ -1126,10 +1135,33 @@ void main() {
       burst(c.x, c.y, c.z, [2.6, 2.4, 1.6], 160, 10, 1.6, 0.16); flash(c.x, c.y, c.z, [8, 7, 5], 22, 1.2);
       S.roomTarget[c.room] = 0.1;   // «apagón»: its room goes dark
       if (c.fold && S.fold) { S.fold.outT = 1.8; }   // and the fold comes undone
+      if (!coresLeft() && S.later) { release(S.cores.length === 1 ? tr('Núcleo apagado. ', 'Core down. ') : tr('Núcleos apagados. ', 'Cores down. ')); return; }
       const left = coresLeft(); paintCores();
       if (allDown()) openExit();
       else if (!left) toast(tr('Queda ', 'Left: ') + bossName(S.boss), 3);
       else toast(tr(`Núcleo apagado · quedan ${left}`, `Core down · ${left} left`));
+    }
+    function release(pre) {   // what was waiting shows up: the cores after the boss, or the boss after the cores
+      const L = S.later; if (!L) return; S.later = null; pre = pre || '';
+      if (L.portal) S.portal = L.portal;
+      if (L.cores) {
+        S.cores = L.cores; play('open'); pl.shake = Math.max(pl.shake, 0.5);
+        S.cores.forEach(c => { S.roomTarget[c.room] = 1; if (!c.fold) { flash(c.x, c.y, c.z, [3, 6, 8], 18, 1.4); burst(c.x, c.y, c.z, [1.2, 2.2, 2.6], 60, 6, 1.2, 0.12); } });
+        const n = S.cores.length;
+        toast(pre + (n === 1 ? tr('Apareció un núcleo: apagalo', 'A core appeared: shut it down') : tr(`Aparecieron ${n} núcleos: apagalos`, `${n} cores appeared: shut them down`)), 4);
+      }
+      if (L.boss) {
+        const Bo = S.boss = L.boss; play('warn'); pl.shake = Math.max(pl.shake, 0.8); rumble(0.6, 0.8, 400);
+        S.roomTarget[Bo.room] = 1; if (!Bo.fold) flash(Bo.x, Bo.y, Bo.z, [8, 3, 2], 28, 1.8);
+        toast(pre + tr(`¡Apareció ${bossName(Bo)}${Bo.fold ? ': su pliegue se abrió en la arena' : ' en su arena'}!`, `${cap(bossName(Bo))} appeared${Bo.fold ? ': its fold opened in the arena' : ' in its arena'}!`), 4);
+      }
+      paintCores();
+    }
+    function levelMsg(you) {   // the first words of a level
+      const L = S.later, lv = tr(`Nivel ${S.level}: `, `Level ${S.level}: `);
+      if (L && L.boss) { const n = S.cores.length; return lv + tr(`${n === 1 ? 'apagá el núcleo' : `apagá los ${n} núcleos`} y aparecerá ${bossName(L.boss)}`, `shut down ${n === 1 ? 'the core' : `the ${n} cores`} and ${bossName(L.boss)} will appear`); }
+      if (L && L.cores) return lv + tr(`primero, ${bossName(S.boss)}; después aparecen los núcleos`, `first ${bossName(S.boss)}, then the cores appear`);
+      return S.boss ? lv + tr(`${bossName(S.boss)} ${you ? 'te' : 'los'} espera`, `${bossName(S.boss)} awaits`) : lv + tr(`${S.cores.length} núcleos`, `${S.cores.length} cores`);
     }
     function openExit(msg) { if (!S.exit || S.exit.open) return; S.exit.open = true; play('open'); toast(msg || tr('Todos los núcleos apagados: ¡la salida se abrió!', 'All cores down: the exit is open!'), 3.5); }
     function nextLevel() {
@@ -1260,8 +1292,9 @@ void main() {
       flash(at.x, at.y, at.z, [12, 9, 6], 30, 1.8);
       S.roomTarget[Bo.room] = 0.1;
       if (Bo.fold && S.fold) S.fold.outT = 2.4;   // and its fold comes undone
-      paintCores();
       const nm = cap(bossName(Bo));
+      if (S.later) { release(tr(`¡${nm} cayó! `, `${nm} fell! `)); return; }
+      paintCores();
       if (allDown()) openExit(tr(`¡${nm} cayó! La salida se abrió`, `${nm} fell! The exit is open`));
       else toast(tr(`¡${nm} cayó! Quedan ${coresLeft()} núcleos`, `${nm} fell! ${coresLeft()} cores left`), 4);
     }
@@ -2138,9 +2171,9 @@ void main() {
         S.endT -= dt;
         if (S.state === 'trans' && S.endT <= 0 && NET) {   // online: everyone is in the next level at once; the upgrade is chosen while the world goes on
           bigEl.classList.remove('on'); S.level++; S.hp = Math.min(maxHp(), Math.max(S.hp, maxHp() * 0.5) + 30); S.state = 'play'; loadLevel(); S.fx = 1; last = performance.now();
-          toast(S.boss ? tr(`Nivel ${S.level}: ${bossName(S.boss)} los espera`, `Level ${S.level}: ${bossName(S.boss)} awaits`) : tr(`Nivel ${S.level}: ${S.cores.length} núcleos`, `Level ${S.level}: ${S.cores.length} cores`), 3);
+          toast(levelMsg(false), 3.5);
           offerUps(() => {}, tr(`Nivel ${S.level - 1} superado`, `Level ${S.level - 1} cleared`));
-        } else if (S.state === 'trans' && S.endT <= 0) { bigEl.classList.remove('on'); offerUps(() => { S.level++; S.hp = Math.min(maxHp(), S.hp + 30); loadLevel(); S.fx = 1; toast(S.boss ? tr(`Nivel ${S.level}: ${bossName(S.boss)} te espera`, `Level ${S.level}: ${bossName(S.boss)} awaits`) : tr(`Nivel ${S.level}: ${S.cores.length} núcleos`, `Level ${S.level}: ${S.cores.length} cores`), 3); }, tr(`Nivel ${S.level} superado`, `Level ${S.level} cleared`)); }
+        } else if (S.state === 'trans' && S.endT <= 0) { bigEl.classList.remove('on'); offerUps(() => { S.level++; S.hp = Math.min(maxHp(), S.hp + 30); loadLevel(); S.fx = 1; toast(levelMsg(true), 3.5); }, tr(`Nivel ${S.level} superado`, `Level ${S.level} cleared`)); }
         if (S.state === 'dead' && S.endT <= 0) { S.state = 'over'; finishRun(); }
       }
       if (S.state === 'down') { S.downT -= dt; if (S.downT <= 0 && (VS || peersOn().length)) respawn(); }
