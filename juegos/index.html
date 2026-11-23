@@ -29,7 +29,7 @@
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600;700&display=swap">
   <script src="/js/theme.js"></script>
   <link rel="stylesheet" href="../css/style.css">
-  <link rel="stylesheet" href="juegos.css?v=27">
+  <link rel="stylesheet" href="juegos.css?v=28">
 </head>
 <body class="home juegos hubmode">
 <script src="/js/splash.js?v=5" data-splash="juegos"></script>
@@ -54,17 +54,38 @@
   <!-- hub -->
   <section class="screen jg-hub" id="hub">
     <div class="jg-head">
-      <div>
+      <div class="jg-htext">
         <div class="section-tag">◈ Juegos de ingenio</div>
         <h1 class="section-title"><span>DRUS</span> · entrená la cabeza</h1>
         <p class="section-desc">Partidas de uno a tres minutos: lógica, memoria, atención y creatividad. Sin registro: tus récords quedan en este navegador.</p>
+        <div class="jg-streak" id="streak" title="Días seguidos jugando"></div>
       </div>
-      <div class="jg-streak" id="streak" title="Días seguidos jugando"></div>
+      <!-- Núcleo: the featured game, a banner of its own -->
+      <button class="jg-nchero" id="nucleoBtn" title="Núcleo: acción en primera persona en una estructura de neón que cambia cada vez">
+        <span class="nh-art" aria-hidden="true"><svg viewBox="0 0 160 100" preserveAspectRatio="xMidYMid slice">
+          <g fill="none" stroke-width="1.2">
+            <path d="M0 0 L62 38 M160 0 L98 38 M0 100 L62 62 M160 100 L98 62" stroke="#3ff0ff" opacity=".55"/>
+            <rect x="14" y="9" width="132" height="82" stroke="#ff3fa4" opacity=".35"/>
+            <rect x="32" y="20" width="96" height="60" stroke="#3ff0ff" opacity=".45"/>
+            <rect x="46" y="28.5" width="68" height="43" stroke="#ff3fa4" opacity=".55"/>
+            <rect x="56" y="34.5" width="48" height="31" stroke="#3ff0ff" opacity=".7"/>
+            <rect x="62" y="38" width="36" height="24" stroke="#ff3fa4" opacity=".85"/>
+          </g>
+          <rect class="nh-run" x="62" y="38" width="36" height="24" fill="none" stroke="#7dff4a" stroke-width="1"/>
+          <rect class="nh-run b" x="62" y="38" width="36" height="24" fill="none" stroke="#7dff4a" stroke-width="1"/>
+          <g class="nh-core"><path d="M80 41 L88 50 L80 59 L72 50 Z" fill="#7dff4a"/><path d="M80 45 L84 50 L80 55 L76 50 Z" fill="#eaffde"/></g>
+        </svg></span>
+        <span class="nh-tx">
+          <small class="nh-tag">Acción · 3D · nuevo: en red</small>
+          <b class="nh-title">Núcleo</b>
+          <span class="nh-desc">Neón, núcleos y jefes en una estructura que cambia cada vez. Solo o en red.</span>
+          <span class="nh-foot"><span class="nh-rec" id="nucleoRec"></span><span class="nh-go">Jugar →</span></span>
+        </span>
+      </button>
     </div>
     <div class="jg-top">
       <button class="jg-daily" id="daily"></button>
       <button class="jg-duelbtn" id="duelBtn" title="Jugá contra tus amigos: cada uno en su celular, o pasándose uno"><span class="ic">⚔</span><span class="tx"><b>Duelo</b><small>con amigos</small></span></button>
-      <button class="jg-duelbtn jg-ncbtn" id="nucleoBtn" title="Núcleo: acción en primera persona en una estructura de neón que cambia cada vez"><span class="ic">◆</span><span class="tx"><b>Núcleo</b><small>acción · 3D</small></span></button>
     </div>
     <div class="jg-grid" id="grid"></div>
   </section>
@@ -117,7 +138,7 @@
 <script src="../js/i18n.js"></script>
 <script src="../js/nav.js"></script>
 <script src="/js/pwa.js"></script>
-<script src="juegos.js?v=13"></script>
+<script src="juegos.js?v=14"></script>
 <script src="duelo.js?v=3"></script>
 <script src="trazos.js?v=2"></script>
 <script src="nucleo-net.js?v=1"></script>

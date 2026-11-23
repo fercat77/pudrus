@@ -773,8 +773,8 @@
   function paintHub() {
     const n = streak();
     $('#streak').innerHTML = n ? tr(`<b>${n}</b> día${n > 1 ? 's' : ''} seguido${n > 1 ? 's' : ''}`, `<b>${n}</b> day${n > 1 ? 's' : ''} in a row`) : tr('Jugá hoy para empezar una racha', 'Play today to start a streak');
-    const nb = $('#nucleoBtn small'), runs = store.nucleo && store.nucleo.runs;   // Núcleo's button: your best run
-    if (nb && runs && runs.length) nb.textContent = tr('récord ', 'record ') + runs[0].score.toLocaleString(LOCALE);
+    const nb = $('#nucleoRec'), runs = store.nucleo && store.nucleo.runs;   // Núcleo's banner: your best run
+    if (nb) nb.textContent = runs && runs.length ? tr('Tu récord: ', 'Your record: ') + runs[0].score.toLocaleString(LOCALE) : '';
     const dg = dailyGame(), dd = store.daily[dayKey()];
     const d = $('#daily'); d.classList.toggle('done', !!dd);
     d.innerHTML = `<span class="ic">◈</span><span class="tx"><small>${tr('Desafío del día', 'Daily challenge')} · ${new Date().toLocaleDateString(LOCALE, { day: 'numeric', month: 'long' })}</small><b>${dg.title}</b> — ${tr('el mismo para todos hoy', 'the same for everyone today')}${dd ? ` · ${tr('tu resultado', 'your result')}: ${dg.fmt(dd)}` : ''}</span><span class="go">${dd ? tr('Otra vez →', 'Again →') : tr('Jugar →', 'Play →')}</span>`;
@@ -917,7 +917,7 @@
     set('#streak', 'Days in a row playing', 'title');
     set('#duelBtn', 'Play against your friends: each on their own phone, or passing one around', 'title');
     set('#duelBtn b', 'Duel'); set('#duelBtn small', 'with friends');
-    set('#nucleoBtn', 'Core: a first-person action game in a neon structure that changes every time', 'title'); set('#nucleoBtn b', 'Core'); set('#nucleoBtn small', 'action · 3D');
+    set('#nucleoBtn', 'Core: a first-person action game in a neon structure that changes every time', 'title'); set('#nucleoBtn .nh-title', 'Core'); set('#nucleoBtn .nh-tag', 'Action · 3D · new: online'); set('#nucleoBtn .nh-desc', 'Neon, cores and bosses in a structure that changes every time. Alone or online.'); set('#nucleoBtn .nh-go', 'Play →');
     set('#back', 'Back to the games (Esc)', 'title'); set('#helpBtn', 'How to play', 'title');
     set('#rTag', '◈ Result'); set('#rAgain', 'Again'); set('#rShare', 'Copy result'); set('#rHub', 'Back');
     set('#dBack', 'Leave the duel', 'title'); set('#duel .jg-title b', '⚔ Duel'); set('#dSub', '2 to 6 players');
