@@ -7,12 +7,12 @@
   <meta property="og:type" content="website">
   <meta property="og:site_name" content="PUDRUS.XYZ">
   <meta property="og:title" content="NoticIAs — PUDRUS.XYZ">
-  <meta property="og:description" content="Las noticias de los principales diarios, con títulos claros, sin publicidad, y cómo tituló cada medio.">
+  <meta property="og:description" content="Tecnología, videojuegos, ciencia y arte, y lo que pasa en el mundo y cómo pega acá. Títulos claros, resúmenes propios, sin publicidad.">
   <meta property="og:url" content="https://pudrus.xyz/noticias/">
   <meta property="og:image" content="https://pudrus.xyz/assets/og/cover.jpg">
   <meta property="og:locale" content="es_AR">
   <meta name="twitter:card" content="summary_large_image">
-  <meta name="description" content="Las noticias de los principales diarios, con títulos claros, sin publicidad, y cómo tituló cada medio.">
+  <meta name="description" content="Tecnología, videojuegos, ciencia y arte, y lo que pasa en el mundo y cómo pega acá. Títulos claros, resúmenes propios, sin publicidad.">
   <title>NoticIAs — PUDRUS.XYZ</title>
   <link rel="icon" type="image/svg+xml" href="../favicon.svg">
   <link rel="manifest" href="/manifest.webmanifest">
@@ -26,7 +26,7 @@
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600;700&display=swap">
   <script src="../js/theme.js"></script>
   <link rel="stylesheet" href="../css/style.css">
-  <link rel="stylesheet" href="../css/noticias.css?v=4">
+  <link rel="stylesheet" href="../css/noticias.css?v=5">
 </head>
 <body class="home">
 
@@ -51,9 +51,15 @@
   <header class="nx-head">
     <div class="section-tag" data-i18n="news.tag">◈ Noticias</div>
     <h1 class="section-title nx-title">Notic<span>IA</span>s</h1>
-    <p class="section-desc" data-i18n="news.desc">Las noticias de los principales diarios, con un título claro, un resumen propio y sin publicidad. Y al lado, cómo lo tituló cada medio.</p>
+    <p class="section-desc" data-i18n="news.desc">Tecnología, videojuegos, ciencia y arte; y lo que pasa en el mundo y cómo pega acá. Con un título claro, un resumen propio y sin publicidad.</p>
     <p class="nx-meta" data-nx-meta aria-live="polite"></p>
   </header>
+
+  <!-- the two sides of the page -->
+  <div class="nx-tabs" role="tablist" aria-label="Partes" data-nx-tabs>
+    <button class="nx-tab" type="button" role="tab" data-tab="cultura" aria-selected="true"><b data-i18n="news.tabCult">Cultura digital</b><small data-i18n="news.tabCultSub">Tecnología · videojuegos · ciencia · arte</small><em data-nx-count="cultura"></em></button>
+    <button class="nx-tab" type="button" role="tab" data-tab="mundo" aria-selected="false"><b data-i18n="news.tabWorld">El mundo y nosotros</b><small data-i18n="news.tabWorldSub">Geopolítica · conflictos · y cómo pega acá</small><em data-nx-count="mundo"></em></button>
+  </div>
 
   <!-- search + sections: it stays on top while you scroll -->
   <div class="nx-tools" data-nx-tools>
@@ -68,42 +74,30 @@
   <section class="nx-lead" data-nx-lead aria-label="Noticia principal"></section>
   <section class="nx-grid" data-nx-grid aria-label="Más noticias"></section>
 
-  <section class="nx-box nx-sci" aria-labelledby="nxSci" data-nx-sci-box>
-    <h2 class="nx-h2" id="nxSci" data-i18n="news.sci">Ciencia</h2>
-    <p class="nx-sub" data-i18n="news.sciDesc">Lo último de las secciones y sitios de ciencia de acá y del mundo. Las notas en inglés llevan el título traducido.</p>
-    <ol class="nx-briefs nx-sci-list" data-nx-sci></ol>
+  <section class="nx-box nx-sci" aria-labelledby="nxList" data-nx-list-box>
+    <h2 class="nx-h2" id="nxList" data-i18n="news.latest">Lo último</h2>
+    <p class="nx-sub" data-i18n="news.latestDesc">Lo que por ahora publicó un solo medio, con un título claro y un resumen corto. Las notas en inglés llevan el título traducido.</p>
+    <ol class="nx-briefs nx-sci-list" data-nx-list></ol>
   </section>
 
-  <section class="nx-box nx-sci" aria-labelledby="nxInt" data-nx-int-box>
-    <h2 class="nx-h2" id="nxInt" data-i18n="news.int">Del interior</h2>
-    <p class="nx-sub" data-i18n="news.intDesc">Lo que publican los diarios de las provincias.</p>
-    <ol class="nx-briefs" data-nx-int></ol>
+  <section class="nx-box" aria-labelledby="nxMeter" data-nx-meter-box>
+    <h2 class="nx-h2" id="nxMeter" data-i18n="news.meter">Termómetro de medios</h2>
+    <p class="nx-sub" data-i18n="news.meterDesc">Promedio de sensacionalismo de sus títulos en esta portada, de 0 a 10.</p>
+    <ol class="nx-meter" data-nx-meter></ol>
   </section>
-
-  <div class="nx-cols" data-nx-cols>
-    <section class="nx-box" aria-labelledby="nxBriefs" data-nx-brf-box>
-      <h2 class="nx-h2" id="nxBriefs" data-i18n="news.briefs">Breves</h2>
-      <p class="nx-sub" data-i18n="news.briefsDesc">Lo que por ahora publicó un solo medio.</p>
-      <ol class="nx-briefs" data-nx-briefs></ol>
-    </section>
-    <section class="nx-box" aria-labelledby="nxMeter" data-nx-meter-box>
-      <h2 class="nx-h2" id="nxMeter" data-i18n="news.meter">Termómetro de medios</h2>
-      <p class="nx-sub" data-i18n="news.meterDesc">Promedio de sensacionalismo de sus títulos en esta portada, de 0 a 10.</p>
-      <ol class="nx-meter" data-nx-meter></ol>
-    </section>
-  </div>
 
   <section class="nx-box nx-about" aria-labelledby="nxHow" data-nx-about>
     <h2 class="nx-h2" id="nxHow" data-i18n="news.how">Cómo se arma esta portada</h2>
     <ol class="nx-steps">
-      <li><b data-i18n="news.s1t">Juntar</b><span data-i18n="news.s1">Tres veces por día leemos los RSS de nueve diarios nacionales, seis del interior y once sitios de ciencia: solo títulos, bajadas y links.</span></li>
-      <li><b data-i18n="news.s2t">Agrupar</b><span data-i18n="news.s2">Una IA junta las notas que cuentan el mismo hecho. Si lo publicaron dos medios o más, es una historia; si no, una breve.</span></li>
+      <li><b data-i18n="news.s1t">Juntar</b><span data-i18n="news.s1">Tres veces por día leemos los RSS de unos 35 medios de tecnología, videojuegos, ciencia, arte e internacionales, de acá y del mundo: solo títulos, bajadas y links.</span></li>
+      <li><b data-i18n="news.s2t">Elegir y agrupar</b><span data-i18n="news.s2">Una IA deja afuera lo que no es de estos temas (la política del día a día, policiales, deportes, farándula, ofertas, guías) y junta las notas que cuentan el mismo hecho, en castellano o en inglés. Si lo publicaron dos medios o más, es una historia; si no, va a «Lo último».</span></li>
       <li><b data-i18n="news.s3t">Escribir y verificar</b><span data-i18n="news.s3">La IA escribe un título que dice qué pasó y un resumen propio, solo con lo que dicen las fuentes. Una segunda pasada lo compara frase por frase con las fuentes: si encuentra un error, se reescribe; si sigue mal, no se publica.</span></li>
+      <li><b data-i18n="news.s5t">Cómo pega acá</b><span data-i18n="news.s5">En las historias del mundo, la IA explica en una o dos oraciones cómo puede afectar a la Argentina, solo cuando la relación es clara. Es un análisis: no lleva cifras ni datos que no estén en las fuentes, y la verificación también lo revisa.</span></li>
       <li><b data-i18n="news.s4t">Medir</b><span data-i18n="news.s4">Cada título original suma puntos por las señales de sensacionalismo que tiene, hasta 10.</span></li>
     </ol>
     <h3 class="nx-h3" data-i18n="news.signals">Señales que suman puntos</h3>
     <ul class="nx-signals" data-nx-signals></ul>
-    <p class="nx-fine" data-i18n="news.fine">Los puntajes son una estimación automática y pueden equivocarse. Los títulos y resúmenes los escribe una IA y los verifica otra pasada de IA contra las fuentes, sin revisión humana: ante la duda, abrí las notas originales. No copiamos el texto de las notas: cada fuente tiene su link. Sin publicidad.</p>
+    <p class="nx-fine" data-i18n="news.fine">Los puntajes son una estimación automática y pueden equivocarse. Los títulos y resúmenes los escribe una IA y los verifica otra pasada de IA contra las fuentes, sin revisión humana: ante la duda, abrí las notas originales. «Cómo pega acá» es un análisis de la IA, no un dato de las fuentes. No copiamos el texto de las notas: cada fuente tiene su link. Sin publicidad.</p>
   </section>
 </main>
 
@@ -116,7 +110,7 @@
 </footer>
 
 <script src="../js/i18n.js"></script>
-<script src="../js/noticias.js?v=6"></script>
+<script src="../js/noticias.js?v=7"></script>
 <script src="../js/nav.js"></script>
 <script src="/js/pwa.js"></script>
 </body>

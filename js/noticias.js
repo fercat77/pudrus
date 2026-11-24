@@ -19,6 +19,13 @@
     ['Pregunta con respuesta conocida', 1, 'una pregunta que la nota ya contesta'],
   ];
 
+  // the two sides of the page (same sections as scripts/noticias.gs)
+  const SEC_CULTURA = ['Tecnología', 'Videojuegos', 'Ciencia', 'Arte y cultura'];
+  const ejeOf = h => h.eje || (SEC_CULTURA.indexOf(h.seccion) >= 0 ? 'cultura' : 'mundo');
+  const TABS = ['cultura', 'mundo'];
+  const store = { get(k) { try { return localStorage.getItem(k); } catch (e) { return null; } }, set(k, v) { try { localStorage.setItem(k, v); } catch (e) { /* private mode */ } } };
+  let tab = TABS.indexOf(location.hash.slice(1)) >= 0 ? location.hash.slice(1) : (TABS.indexOf(store.get('nx_tab')) >= 0 ? store.get('nx_tab') : 'cultura');
+
   let data = null, filter = '';
 
   function el(tag, cls, text) {
@@ -97,6 +104,7 @@
       m.append(dl);
     }
     if (h.contexto) m.append(el('p', 'nx-ctx', h.contexto));
+    if (h.aca) m.append(aca(h.aca));
     const side = el('aside', 'nx-lead-side');
     if (phone()) {   // on a phone it folds up, like the cards
       const d = el('details'), sm = el('summary'), avg = Math.round(avgScore(h.fuentes || []));
@@ -109,6 +117,7 @@
     const c = el('article', 'nx-card');
     c.append(kicker(h, noSec), el('h2', '', head(h.titulo)), el('p', 'nx-sum', h.resumen));
     if (h.contexto) c.append(el('p', 'nx-ctx', h.contexto));
+    if (h.aca) c.append(aca(h.aca));
     const d = el('details');
     const s = el('summary');
     const avg = Math.round(avgScore(h.fuentes || []));
@@ -119,15 +128,24 @@
     return c;
   }
 
+  function aca(txt) {   // how a world story may hit Argentina: an AI analysis, and it says so
+    const box = el('div', 'nx-aca'), hd = el('div', 'nx-aca-h');
+    hd.append(el('b', '', t('aca', 'Cómo pega acá')), el('span', '', t('acaNote', 'análisis de la IA')));
+    box.append(hd, el('p', '', txt));
+    return box;
+  }
+
   const avgScore = fs => (fs.length ? fs.reduce((s, f) => s + (f.puntaje || 0), 0) / fs.length : 0);
 
-  function briefs(list, key = 'briefs') {
-    const ol = $(key); ol.textContent = '';
-    if (!list.length) { ol.append(el('li', '', t('noBriefs', 'No hay breves por ahora.'))); return; }
+  function briefs(list, withSec) {
+    const ol = $('list'); ol.textContent = '';
+    if (!list.length) { ol.append(el('li', '', t('noItems', 'No hay notas por ahora.'))); return; }
     list.forEach(b => {
       const li = el('li');
-      const who = el('small', '', b.medio);
-      if (key !== 'briefs' && b.publicado) who.append(el('span', 'nx-when', ago(b.publicado)));
+      const who = el('small');
+      if (withSec && b.seccion) who.append(el('b', 'nx-isec', b.seccion));
+      who.append(document.createTextNode(b.medio));
+      if (b.publicado) who.append(el('span', 'nx-when', ago(b.publicado)));
       li.append(who);
       const a = el('a', '', head(b.titulo)); a.href = safeUrl(b.url); a.target = '_blank'; a.rel = 'noopener noreferrer';
       if (b.original) a.title = b.original;   // the outlet's own headline
@@ -153,22 +171,19 @@
     });
   }
 
-  // views: '' = everything; a section name = its stories; 'sci' / 'int' / 'brf' = one of the lists
+  // views: one side (cultura / mundo) at a time; inside it, '' = everything or a section name
   let query = '';
   const fold = x => String(x || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
   const phone = () => matchMedia('(max-width: 720px)').matches;
-  const storyText = h => fold([h.titulo, h.resumen, h.contexto, h.seccion, ...(h.datos || []).map(d => d.etiqueta + ' ' + d.texto), ...(h.fuentes || []).map(f => f.medio + ' ' + f.titulo)].join(' '));
-  const itemText = b => fold([b.titulo, b.original, b.resumen, b.medio].join(' '));
+  const storyText = h => fold([h.titulo, h.resumen, h.contexto, h.aca, h.seccion, ...(h.datos || []).map(d => d.etiqueta + ' ' + d.texto), ...(h.fuentes || []).map(f => f.medio + ' ' + f.titulo)].join(' '));
+  const itemText = b => fold([b.titulo, b.original, b.resumen, b.medio, b.seccion].join(' '));
   const matches = (txt, q) => fold(q).split(/\s+/).filter(Boolean).every(w => txt.includes(w));
 
-  function filters(all) {
+  function filters(all, items) {
     const box = $('filters'); box.textContent = '';
-    const count = {}; all.forEach(h => { if (h.seccion) count[h.seccion] = (count[h.seccion] || 0) + 1; });
+    const count = {}; all.concat(items).forEach(h => { if (h.seccion) count[h.seccion] = (count[h.seccion] || 0) + 1; });
     const secs = Object.keys(count).sort((a, b) => count[b] - count[a]);
-    const chips = [['', t('all', 'Todas'), all.length], ...secs.map(x => [x, x, count[x]])];
-    if ((data.ciencia || []).length) chips.push(['sci', t('sciShort', 'Ciencia'), data.ciencia.length]);
-    if ((data.interior || []).length) chips.push(['int', t('intShort', 'Interior'), data.interior.length]);
-    if ((data.breves || []).length) chips.push(['brf', t('brfShort', 'Breves'), data.breves.length]);
+    const chips = [['', t('all', 'Todas'), all.length + items.length], ...secs.map(x => [x, x, count[x]])];
     chips.forEach(([v, label, n]) => {
       const b = el('button', 'nx-chip', label); b.append(el('b', '', String(n)));
       b.type = 'button'; b.setAttribute('aria-pressed', String(v === filter && !query));
@@ -196,40 +211,56 @@
     });
   }
 
-  function render() {
-    const all = (data.historias || []).filter(h => h.titulo && (!h.estado || h.estado === 'aprobada'))
-      .sort((a, b) => (b.principal ? 1 : 0) - (a.principal ? 1 : 0) || (b.relevancia || 0) - (a.relevancia || 0));
-    const medios = new Set(); all.forEach(h => (h.fuentes || []).forEach(f => medios.add(f.medio)));
-    $('meta').textContent = [data.generado ? t('updated', 'Actualizado {t}', { t: ago(data.generado) }) : '', t('stories', '{n} historias', { n: all.length }), t('sources', '{n} medios', { n: medios.size })].filter(Boolean).join(' · ');
-    $('demo').hidden = !data.ejemplo;
-    const empty = $('empty'); empty.hidden = all.length > 0; empty.textContent = t('empty', 'Todavía no hay noticias publicadas. Volvé en un rato.');
-    filters(all);
+  function tabs(stories) {
+    main.querySelectorAll('.nx-tab').forEach(b => {
+      const k = b.dataset.tab, on = k === tab;
+      b.setAttribute('aria-selected', String(on)); b.classList.toggle('on', on);
+      const n = stories.filter(h => ejeOf(h) === k).length + (data[k] || []).length;
+      b.querySelector('em').textContent = n ? String(n) : '';
+    });
+  }
+  function setTab(k) {
+    if (k === tab || TABS.indexOf(k) < 0) return;
+    tab = k; filter = ''; query = ''; $('q').value = ''; store.set('nx_tab', k);
+    try { history.replaceState(null, '', '#' + k); } catch (e) { /* file:// */ }
+    if (data) render();
+    const y = main.querySelector('.nx-tabs').getBoundingClientRect().top + scrollY - 70;
+    if (scrollY > y) scrollTo({ top: y, behavior: 'smooth' });
+  }
 
-    const q = query.trim(), lists = { sci: data.ciencia || [], int: data.interior || [], brf: data.breves || [] };
-    let stories, show;   // which stories, and which blocks are visible
+  function render() {
+    const stories = (data.historias || []).filter(h => h.titulo && (!h.estado || h.estado === 'aprobada'));
+    const all = stories.filter(h => ejeOf(h) === tab)
+      .sort((a, b) => (b.relevancia || 0) - (a.relevancia || 0));
+    const items = (data[tab] || []).filter(b => b.titulo);
+    const medios = new Set(); stories.forEach(h => (h.fuentes || []).forEach(f => medios.add(f.medio))); TABS.forEach(k => (data[k] || []).forEach(b => medios.add(b.medio)));
+    $('meta').textContent = [data.generado ? t('updated', 'Actualizado {t}', { t: ago(data.generado) }) : '', t('stories', '{n} historias', { n: stories.length }), t('sources', '{n} medios', { n: medios.size })].filter(Boolean).join(' · ');
+    $('demo').hidden = !data.ejemplo;
+    tabs(stories);
+    const empty = $('empty'); empty.hidden = all.length + items.length > 0; empty.textContent = t('emptyTab', 'Todavía no hay noticias en esta parte. Volvé en un rato.');
+    filters(all, items);
+
+    const q = query.trim();
+    let list = items, stories2;
     if (q) {
-      stories = all.filter(h => matches(storyText(h), q));
-      Object.keys(lists).forEach(k => { lists[k] = lists[k].filter(b => matches(itemText(b), q)); });
-      const n = stories.length + lists.sci.length + lists.int.length + lists.brf.length;
+      stories2 = all.filter(h => matches(storyText(h), q));
+      list = items.filter(b => matches(itemText(b), q));
+      const n = stories2.length + list.length;
       const r = $('results'); r.hidden = false;
       r.textContent = n ? (n === 1 ? t('result1', '1 resultado para «{q}»', { q }) : t('results', '{n} resultados para «{q}»', { n, q })) : t('noResults', 'No hay nada sobre «{q}» en esta portada.', { q });
-      show = { sci: lists.sci.length > 0, int: lists.int.length > 0, brf: lists.brf.length > 0, meter: false, about: false };
     } else {
       $('results').hidden = true;
-      const only = filter === 'sci' || filter === 'int' || filter === 'brf';
-      stories = only ? [] : all.filter(h => !filter || h.seccion === filter);
-      show = only ? { sci: filter === 'sci', int: filter === 'int', brf: filter === 'brf', meter: false, about: false }
-        : filter ? { sci: false, int: false, brf: false, meter: false, about: false }
-        : { sci: lists.sci.length > 0, int: lists.int.length > 0, brf: true, meter: true, about: true };
+      stories2 = all.filter(h => !filter || h.seccion === filter);
+      list = items.filter(b => !filter || b.seccion === filter);
     }
 
     // the lead (not while searching), then the rest grouped by section when everything is shown
-    const leadStory = !q && stories.length ? stories[0] : null;
+    const leadStory = !q && stories2.length ? stories2[0] : null;
     lead(leadStory);
     const grid = $('grid'); grid.textContent = '';
-    const rest = leadStory ? stories.slice(1) : stories;
+    const rest = leadStory ? stories2.slice(1) : stories2;
     if (!q && !filter && rest.length > 4) {
-      const groups = new Map(); rest.forEach(h => { const k = h.seccion || 'Argentina'; if (!groups.has(k)) groups.set(k, []); groups.get(k).push(h); });
+      const groups = new Map(); rest.forEach(h => { const k = h.seccion || ''; if (!groups.has(k)) groups.set(k, []); groups.get(k).push(h); });
       const few = phone() ? 3 : Infinity;
       groups.forEach((hs, k) => {
         const hd = el('h2', 'nx-sec', k); hd.append(el('small', '', String(hs.length))); grid.append(hd);
@@ -243,14 +274,10 @@
     } else rest.forEach(h => grid.append(card(h)));
     if (q) highlight(grid, q);
 
-    $('sci-box').hidden = !show.sci; if (show.sci) briefs(lists.sci, 'sci');
-    $('int-box').hidden = !show.int; if (show.int) briefs(lists.int, 'int');
-    $('brf-box').hidden = !show.brf; if (show.brf) briefs(lists.brf);
-    $('meter-box').hidden = !show.meter; if (show.meter) meter(all);
-    $('cols').hidden = !show.brf && !show.meter;
-    $('cols').classList.toggle('one', show.brf !== show.meter);
-    $('about').hidden = !show.about;
-    if (q) ['sci', 'int', 'briefs'].forEach(k => highlight($(k), q));
+    $('list-box').hidden = !list.length && (q || !items.length); if (!$('list-box').hidden) briefs(list, !filter);
+    $('meter-box').hidden = !!q || !!filter || !all.length; if (!$('meter-box').hidden) meter(all);
+    $('about').hidden = !!q || !!filter;
+    if (q) highlight($('list'), q);
     cutLong(main.querySelector('.nx-lead')); cutLong(grid);
   }
 
@@ -279,7 +306,7 @@
     try {
       data = src ? await tryUrl(src) : await tryUrl(example);
     } catch (e) {
-      data = { historias: [], breves: [] };
+      data = { historias: [], cultura: [], mundo: [] };
       $('empty').hidden = false;
       $('empty').textContent = t('error', 'No se pudieron cargar las noticias. Probá de nuevo en un rato.');
       $('meta').textContent = '';
@@ -289,6 +316,8 @@
   }
 
   signals();
+  main.querySelectorAll('.nx-tab').forEach(b => b.addEventListener('click', () => setTab(b.dataset.tab)));
+  addEventListener('hashchange', () => { const k = location.hash.slice(1); if (TABS.indexOf(k) >= 0) setTab(k); });
   load();
   // search as you type
   let qT = 0;

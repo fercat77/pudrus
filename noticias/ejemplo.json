@@ -1,280 +1,217 @@
 {
-  "generado": "2026-11-21T12:30:00-03:00",
+  "generado": "2026-11-24T12:30:00-03:00",
   "ejemplo": true,
   "historias": [
     {
-      "id": "ejemplo-temporal",
-      "seccion": "Sociedad",
+      "id": "ej-chips",
+      "eje": "mundo",
+      "seccion": "Economía global",
       "principal": true,
       "estado": "aprobada",
-      "titulo": "Un temporal dejó 40 mm de lluvia en Villa Ejemplo y cortes de luz en tres barrios",
-      "resumen": "Una tormenta descargó unos 40 milímetros de agua en dos horas durante la madrugada. La distribuidora informó cortes de luz en tres barrios, que según dos de los medios ya se resolvieron en parte. No hubo heridos. Las fuentes no coinciden en cuántos árboles cayeron: una habla de 12 y otra de «decenas».",
-      "contexto": "Es la tercera tormenta fuerte del mes en la región.",
+      "titulo": "Tres países acordaron limitar la exportación de un mineral clave para fabricar baterías",
+      "resumen": "Los gobiernos de Ejemplia, Norlandia y Sudaria firmaron un acuerdo para fijar cupos a la exportación de un mineral usado en baterías. Según dos medios, el objetivo es sostener el precio; otro dice que busca atraer fábricas. El acuerdo empieza a regir en marzo.",
+      "contexto": "Los tres países concentran buena parte de la producción mundial de ese mineral.",
       "datos": [
         {
-          "etiqueta": "Lluvia",
-          "texto": "40 mm en dos horas"
-        },
-        {
-          "etiqueta": "Qué sigue",
-          "texto": "Alerta amarilla hasta el mediodía"
+          "etiqueta": "Desde",
+          "texto": "marzo"
         }
       ],
-      "relevancia": 0.92,
+      "aca": "La Argentina también produce minerales para baterías: un precio internacional más alto puede mejorar sus exportaciones, y a la vez encarecer los productos que los usan.",
+      "relevancia": 0.82,
       "fuentes": [
         {
-          "medio": "Diario Uno",
-          "titulo": "Temporal en Villa Ejemplo: cayeron 40 mm y hay cortes de luz en tres barrios",
-          "url": "#",
-          "publicado": "2026-11-21T08:10:00-03:00",
+          "medio": "Global Hoy",
+          "titulo": "Acuerdo entre tres países para limitar exportaciones de mineral",
+          "url": "https://example.com/37066",
+          "publicado": "2026-11-24T10:00:00-03:00",
           "puntaje": 0,
           "senales": []
         },
         {
-          "medio": "Portal Ya",
-          "titulo": "CAOS TOTAL: el diluvio que hundió a Villa Ejemplo y lo que nadie te cuenta",
-          "url": "#",
-          "publicado": "2026-11-21T08:40:00-03:00",
-          "puntaje": 5,
+          "medio": "Mundo Claro",
+          "titulo": "Histórico: el pacto que cambia el mercado de las baterías",
+          "url": "https://example.com/16350",
+          "publicado": "2026-11-24T09:10:00-03:00",
+          "puntaje": 2,
           "senales": [
-            "Verbo de catástrofe",
-            "Hueco de curiosidad"
+            "Novedad exagerada"
           ]
         },
         {
-          "medio": "El Matutino",
-          "titulo": "¿Vuelve la lluvia? Lo que se sabe del temporal que golpeó la ciudad",
-          "url": "#",
-          "publicado": "2026-11-21T09:05:00-03:00",
-          "puntaje": 4,
+          "medio": "Crónica Austral",
+          "titulo": "Lo que nadie te contó del nuevo pacto minero",
+          "url": "https://example.com/97227",
+          "publicado": "2026-11-24T08:40:00-03:00",
+          "puntaje": 3,
           "senales": [
-            "Pregunta con respuesta conocida",
             "Hueco de curiosidad"
           ]
-        },
-        {
-          "medio": "La Tarde",
-          "titulo": "Tormenta de madrugada: cortes de luz y árboles caídos en Villa Ejemplo",
-          "url": "#",
-          "publicado": "2026-11-21T09:30:00-03:00",
-          "puntaje": 0,
-          "senales": []
         }
       ]
     },
     {
-      "id": "ejemplo-mayoristas",
-      "seccion": "Economía",
+      "id": "ej-refugio",
+      "eje": "mundo",
+      "seccion": "Migraciones y pueblos",
       "estado": "aprobada",
-      "titulo": "Los precios mayoristas subieron 1,8% en octubre en la provincia de Ejemplo",
-      "resumen": "El instituto de estadística provincial informó una suba de 1,8% en los precios mayoristas de octubre, dos décimas menos que en septiembre. Los rubros que más aumentaron fueron alimentos y energía.",
-      "contexto": "",
-      "datos": [
-        {
-          "etiqueta": "Mes anterior",
-          "texto": "2%"
-        }
-      ],
-      "relevancia": 0.71,
-      "fuentes": [
-        {
-          "medio": "Agencia Sur",
-          "titulo": "Precios mayoristas: 1,8% en octubre, dos décimas menos que en septiembre",
-          "url": "#",
-          "publicado": "2026-11-21T07:00:00-03:00",
-          "puntaje": 0,
-          "senales": []
-        },
-        {
-          "medio": "Portal Ya",
-          "titulo": "Se disparan los precios: el dato que preocupa a todos los comerciantes",
-          "url": "#",
-          "publicado": "2026-11-21T07:20:00-03:00",
-          "puntaje": 7,
-          "senales": [
-            "Verbo de catástrofe",
-            "Hueco de curiosidad",
-            "Omite el dato central"
-          ]
-        },
-        {
-          "medio": "Diario Uno",
-          "titulo": "La inflación mayorista se desaceleró a 1,8%",
-          "url": "#",
-          "publicado": "2026-11-21T07:45:00-03:00",
-          "puntaje": 0,
-          "senales": []
-        }
-      ]
-    },
-    {
-      "id": "ejemplo-futbol",
-      "seccion": "Deportes",
-      "estado": "aprobada",
-      "titulo": "Atlético Ejemplo empató 1 a 1 con Sportivo Muestra y sigue primero",
-      "resumen": "Atlético Ejemplo y Sportivo Muestra empataron 1 a 1. El local se puso en ventaja en el primer tiempo y la visita lo igualó a falta de diez minutos. Con el punto, Atlético sigue primero, dos puntos arriba del segundo.",
+      "titulo": "Más de 20.000 personas cruzaron la frontera de Ejemplia en una semana por las inundaciones",
+      "resumen": "Las lluvias en el norte de Ejemplia obligaron a miles de familias a dejar sus casas. Organismos humanitarios piden ayuda para los campamentos del lado de Norlandia.",
       "contexto": "",
       "datos": [],
+      "aca": "",
+      "relevancia": 0.6,
+      "fuentes": [
+        {
+          "medio": "Global Hoy",
+          "titulo": "Miles de desplazados cruzan la frontera por las lluvias",
+          "url": "https://example.com/99272",
+          "publicado": "2026-11-24T07:00:00-03:00",
+          "puntaje": 0,
+          "senales": []
+        },
+        {
+          "medio": "Mundo Claro",
+          "titulo": "Crisis humanitaria: la frontera colapsa",
+          "url": "https://example.com/44851",
+          "publicado": "2026-11-24T06:30:00-03:00",
+          "puntaje": 2,
+          "senales": [
+            "Verbo de catástrofe"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "ej-motor",
+      "eje": "cultura",
+      "seccion": "Videojuegos",
+      "estado": "aprobada",
+      "titulo": "Un estudio independiente liberó el código de su motor de juegos con licencia abierta",
+      "resumen": "El estudio Faro Lento publicó el código de su motor 2D bajo una licencia libre. Dice que quiere que otros estudios chicos lo usen y lo mejoren.",
+      "contexto": "",
+      "datos": [],
+      "aca": "",
       "relevancia": 0.55,
       "fuentes": [
         {
-          "medio": "La Tarde",
-          "titulo": "Atlético Ejemplo empató con Sportivo Muestra y sigue en la cima",
-          "url": "#",
-          "publicado": "2026-11-20T23:10:00-03:00",
+          "medio": "Pixel Semanal",
+          "titulo": "Faro Lento abre el código de su motor",
+          "url": "https://example.com/17038",
+          "publicado": "2026-11-24T11:00:00-03:00",
           "puntaje": 0,
           "senales": []
         },
         {
-          "medio": "El Matutino",
-          "titulo": "«Nos robaron»: la frase del DT de Atlético después del empate",
-          "url": "#",
-          "publicado": "2026-11-20T23:40:00-03:00",
-          "puntaje": 4,
-          "senales": [
-            "Cita cargada como título",
-            "Omite el dato central"
-          ]
+          "medio": "La Pantalla",
+          "titulo": "El motor de Faro Lento ahora es libre",
+          "url": "https://example.com/18329",
+          "publicado": "2026-11-24T10:20:00-03:00",
+          "puntaje": 0,
+          "senales": []
         }
       ]
     },
     {
-      "id": "ejemplo-sensor",
-      "seccion": "Ciencia y tecnología",
+      "id": "ej-ia",
+      "eje": "cultura",
+      "seccion": "Tecnología",
       "estado": "aprobada",
-      "titulo": "Un equipo universitario presentó un sensor barato para medir la calidad del aire",
-      "resumen": "Investigadores de la universidad de Villa Ejemplo presentaron un sensor que mide partículas en el aire y cuesta una fracción de los equipos comerciales. Lo van a probar en diez escuelas durante el próximo año.",
+      "titulo": "Una empresa presentó un modelo de IA que genera música a partir de bocetos dibujados",
+      "resumen": "La herramienta convierte un dibujo de líneas en una pieza musical. La empresa dice que estará disponible el año próximo; por ahora solo mostró ejemplos.",
       "contexto": "",
       "datos": [],
-      "relevancia": 0.42,
+      "aca": "",
+      "relevancia": 0.5,
       "fuentes": [
         {
-          "medio": "Diario Uno",
-          "titulo": "Crean un sensor de bajo costo para medir la calidad del aire",
-          "url": "#",
-          "publicado": "2026-11-21T06:00:00-03:00",
+          "medio": "Revista Órbita",
+          "titulo": "Dibujá una línea y escuchala: la nueva IA musical",
+          "url": "https://example.com/79348",
+          "publicado": "2026-11-24T09:00:00-03:00",
           "puntaje": 0,
           "senales": []
         },
         {
-          "medio": "Portal Ya",
-          "titulo": "El invento que acaba de cambiar todo lo que sabíamos sobre el aire que respiramos",
-          "url": "#",
-          "publicado": "2026-11-21T06:30:00-03:00",
-          "puntaje": 5,
-          "senales": [
-            "Novedad exagerada",
-            "Hueco de curiosidad"
-          ]
-        }
-      ]
-    },
-    {
-      "id": "ejemplo-festival",
-      "seccion": "Cultura",
-      "estado": "aprobada",
-      "titulo": "Abre la convocatoria para tocar en el festival de música electrónica de Villa Ejemplo",
-      "resumen": "El festival abrió la inscripción para artistas locales hasta fin de mes. Van a elegir doce proyectos, que tocarán en el escenario principal.",
-      "contexto": "",
-      "datos": [
-        {
-          "etiqueta": "Inscripción",
-          "texto": "Hasta el 30 de noviembre"
-        }
-      ],
-      "relevancia": 0.31,
-      "fuentes": [
-        {
-          "medio": "La Tarde",
-          "titulo": "El festival electrónico de Villa Ejemplo busca artistas locales",
-          "url": "#",
-          "publicado": "2026-11-21T05:00:00-03:00",
-          "puntaje": 0,
-          "senales": []
-        },
-        {
-          "medio": "Agencia Sur",
-          "titulo": "Convocatoria abierta: el festival elegirá doce proyectos locales",
-          "url": "#",
-          "publicado": "2026-11-21T05:20:00-03:00",
+          "medio": "La Pantalla",
+          "titulo": "La IA que convierte dibujos en música",
+          "url": "https://example.com/25586",
+          "publicado": "2026-11-24T08:00:00-03:00",
           "puntaje": 0,
           "senales": []
         }
       ]
     }
   ],
-  "breves": [
+  "cultura": [
     {
-      "titulo": "Cortan una avenida por obras durante el fin de semana",
-      "medio": "Diario Uno",
-      "url": "#",
-      "publicado": "2026-11-21T11:50:00-03:00"
+      "titulo": "Un telescopio detectó agua en la atmósfera de un planeta a 120 años luz",
+      "medio": "Revista Órbita",
+      "url": "https://example.com/i92212",
+      "publicado": "2026-11-24T08:30:00-03:00",
+      "seccion": "Ciencia",
+      "resumen": "El hallazgo se hizo con espectroscopía y todavía debe confirmarse."
     },
     {
-      "titulo": "La biblioteca municipal amplía su horario en diciembre",
-      "medio": "La Tarde",
-      "url": "#",
-      "publicado": "2026-11-21T11:20:00-03:00"
+      "titulo": "Una muestra reúne 40 años de arte generativo hecho con computadoras",
+      "medio": "Galería Abierta",
+      "url": "https://example.com/i92424",
+      "publicado": "2026-11-24T07:30:00-03:00",
+      "seccion": "Arte y cultura",
+      "resumen": "Incluye obras de los años ochenta hechas con plotters.",
+      "idioma": "en",
+      "original": "A show gathers 40 years of computer-made generative art"
     },
     {
-      "titulo": "Nueva línea de colectivos conectará la terminal con el puerto",
-      "medio": "El Matutino",
-      "url": "#",
-      "publicado": "2026-11-21T10:40:00-03:00"
+      "titulo": "Un sintetizador modular de código abierto ya se puede armar en casa",
+      "medio": "Ruido Blanco",
+      "url": "https://example.com/i6996",
+      "publicado": "2026-11-23T20:00:00-03:00",
+      "seccion": "Arte y cultura",
+      "idioma": "en",
+      "original": "Open-source modular synth ready to build at home"
     },
     {
-      "titulo": "El torneo regional de ajedrez tendrá récord de inscriptos",
-      "medio": "Agencia Sur",
-      "url": "#",
-      "publicado": "2026-11-21T10:05:00-03:00"
+      "titulo": "La consola portátil de Ejemplo Games se atrasa hasta 2027",
+      "medio": "Pixel Semanal",
+      "url": "https://example.com/i83001",
+      "publicado": "2026-11-23T18:00:00-03:00",
+      "seccion": "Videojuegos",
+      "resumen": "El fabricante lo atribuyó a la falta de componentes."
     },
     {
-      "titulo": "Vacunación antigripal: suman puestos en las plazas",
-      "medio": "Portal Ya",
-      "url": "#",
-      "publicado": "2026-11-21T09:15:00-03:00"
+      "titulo": "Investigadores muestran cómo una falla en routers permitía espiar redes hogareñas",
+      "medio": "La Pantalla",
+      "url": "https://example.com/i84110",
+      "publicado": "2026-11-23T16:00:00-03:00",
+      "seccion": "Tecnología",
+      "resumen": "El fabricante ya publicó una actualización."
     }
   ],
-  "ciencia": [
+  "mundo": [
     {
-      "titulo": "Un grupo de investigación midió cuánto crece un glaciar de ejemplo en invierno",
-      "medio": "Revista Ciencia Ejemplo",
-      "url": "#",
-      "publicado": "2026-11-20T18:00:00-03:00",
-      "resumen": "Midieron el avance del hielo durante tres inviernos con sensores en la superficie."
+      "titulo": "La cumbre regional terminó sin acuerdo sobre aranceles",
+      "medio": "Global Hoy",
+      "url": "https://example.com/i49121",
+      "publicado": "2026-11-24T09:40:00-03:00",
+      "seccion": "Geopolítica",
+      "resumen": "Los países no lograron una declaración conjunta."
     },
     {
-      "titulo": "Describen una especie nueva de rana en una reserva de Villa Ejemplo",
-      "medio": "Agencia Sur",
-      "url": "#",
-      "publicado": "2026-11-19T10:00:00-03:00"
+      "titulo": "Un alto el fuego de 72 horas empezó a regir en la región del Este",
+      "medio": "Mundo Claro",
+      "url": "https://example.com/i8707",
+      "publicado": "2026-11-24T05:00:00-03:00",
+      "seccion": "Conflictos",
+      "resumen": "Lo anunciaron las dos partes por separado."
     },
     {
-      "titulo": "Cómo funciona el sensor de aire que se va a probar en diez escuelas",
-      "medio": "Diario Uno",
-      "url": "#",
-      "publicado": "2026-11-18T09:30:00-03:00"
-    },
-    {
-      "titulo": "Un telescopio escolar fotografió el paso de un cometa de ejemplo",
-      "medio": "Revista Ciencia Ejemplo",
-      "url": "#",
-      "publicado": "2026-11-16T21:00:00-03:00",
-      "idioma": "en"
-    }
-  ],
-  "interior": [
-    {
-      "titulo": "Inauguran un puente peatonal sobre el arroyo de Villa Ejemplo",
-      "medio": "El Diario del Sur",
-      "url": "#",
-      "publicado": "2026-11-21T10:00:00-03:00"
-    },
-    {
-      "titulo": "La cosecha de ejemplo superó lo previsto en la región",
-      "medio": "La Voz del Valle",
-      "url": "#",
-      "publicado": "2026-11-21T09:00:00-03:00"
+      "titulo": "La Argentina y Norlandia firmaron un acuerdo de cooperación científica",
+      "medio": "Crónica Austral",
+      "url": "https://example.com/i71796",
+      "publicado": "2026-11-23T19:00:00-03:00",
+      "seccion": "Argentina en el mundo",
+      "resumen": "Incluye becas e intercambio de investigadores."
     }
   ]
 }
