@@ -768,8 +768,8 @@
   const hub = $('#hub'), play = $('#play'), stage = $('#stage'), hud = $('#hud'), how = $('#how'), result = $('#result');
   const byId = id => GAMES.find(g => g.id === id);
   // «solo» games (Núcleo) have their own button: not a card, not in the daily rotation (which stays the same 10)
-  const cardGames = () => GAMES.filter(g => !g.solo);
-  const dailyGame = () => { const pool = cardGames(); return pool[hashStr(dayKey()) % pool.length]; };
+  const cardGames = () => GAMES.filter(g => !g.solo).sort((a, b) => (b.wide ? 1 : 0) - (a.wide ? 1 : 0));   // a wide card (Surco) goes first
+  const dailyGame = () => { const pool = cardGames().filter(g => !g.noDaily); return pool[hashStr(dayKey()) % pool.length]; };   // (the same 10 as always: a new game doesn't change today's challenge)
   function paintHub() {
     const n = streak();
     $('#streak').innerHTML = n ? tr(`<b>${n}</b> día${n > 1 ? 's' : ''} seguido${n > 1 ? 's' : ''}`, `<b>${n}</b> day${n > 1 ? 's' : ''} in a row`) : tr('Jugá hoy para empezar una racha', 'Play today to start a streak');
@@ -780,7 +780,7 @@
     d.innerHTML = `<span class="ic">◈</span><span class="tx"><small>${tr('Desafío del día', 'Daily challenge')} · ${new Date().toLocaleDateString(LOCALE, { day: 'numeric', month: 'long' })}</small><b>${dg.title}</b> — ${tr('el mismo para todos hoy', 'the same for everyone today')}${dd ? ` · ${tr('tu resultado', 'your result')}: ${dg.fmt(dd)}` : ''}</span><span class="go">${dd ? tr('Otra vez →', 'Again →') : tr('Jugar →', 'Play →')}</span>`;
     const grid = $('#grid'); grid.innerHTML = '';
     cardGames().forEach(gm => {
-      const c = el('button', 'jg-card'); c.dataset.id = gm.id;
+      const c = el('button', 'jg-card' + (gm.wide ? ' wide' : '')); c.dataset.id = gm.id;
       let line;
       if (gm.options) {   // a record per level
         const got = gm.options.filter(([k]) => store.best[gm.id + ':' + k] !== undefined).map(([k, label]) => `${label} ${gm.fmt(store.best[gm.id + ':' + k])}`);
@@ -790,7 +790,7 @@
         line = `<div class="best${best === undefined ? ' none' : ''}">${best === undefined ? tr('Sin jugar todavía', 'Not played yet') : (gm.better ? tr('Récord: ', 'Record: ') : '') + gm.fmt(best)}</div>`;
       }
       // .ci: the card's content, laid out by the card's OWN size (container queries) so nothing gets cut
-      c.innerHTML = `<div class="ci"><div class="art">${ART[gm.id] || ''}</div><div class="tx"><div class="tag">${gm.tag}</div><h3>${gm.title}</h3><p>${gm.desc}</p>${line}</div></div>`;
+      c.innerHTML = `<div class="ci"><div class="art">${ART[gm.id] || gm.art || ''}</div><div class="tx"><div class="tag">${gm.tag}</div><h3>${gm.title}</h3><p>${gm.desc}</p>${line}</div></div>`;
       c.addEventListener('click', () => { location.hash = gm.id; });
       grid.append(c);
     });
@@ -939,5 +939,5 @@
   }
   addEventListener('hashchange', route);
   route();
-  window.__juegos = { EN, tr, LOCALE, CB, GAMES, store, save, open, route, mulberry, hashStr, dayKey, mmss, runDuel, abortDuel, el, okSound, badSound, tone, get inDuelRound() { return !!duelRun; }, get test() { return testHook; } };
+  window.__juegos = { EN, tr, LOCALE, CB, GAMES, store, save, open, route, repaintHub: () => { if (!hub.hidden) paintHub(); }, mulberry, hashStr, dayKey, mmss, runDuel, abortDuel, el, okSound, badSound, tone, get inDuelRound() { return !!duelRun; }, get test() { return testHook; } };
 })();

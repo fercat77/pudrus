@@ -544,7 +544,9 @@
     "play": "Jugar",
     "inkWord": "ROJO",
     "ncName": "Núcleo",
-    "nc": "Acción en primera persona en una estructura de neón que cambia cada vez. Solo o en red, de 2 a 4."
+    "nc": "Acción en primera persona en una estructura de neón que cambia cada vez. Solo o en red, de 2 a 4.",
+    "scName": "Surco",
+    "sc": "SYNDRUS compone un tema y vos lo surfeás: agarrá sus notas y suena más lleno."
   },
   "news": {
     "tag": "◈ Noticias",

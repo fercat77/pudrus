@@ -544,7 +544,9 @@
     "play": "Play",
     "inkWord": "RED",
     "ncName": "Núcleo",
-    "nc": "First-person action in a neon structure that changes every time. Alone or online, 2 to 4 players."
+    "nc": "First-person action in a neon structure that changes every time. Alone or online, 2 to 4 players.",
+    "scName": "Groove",
+    "sc": "SYNDRUS composes a song and you surf it: catch its notes and it sounds fuller."
   },
   "news": {
     "tag": "◈ News",
