@@ -250,16 +250,17 @@
     /* ── the loop ── */
     let W = 0, Hh = 0, dpr = 1;
     function size() {
-      const r = wrap.getBoundingClientRect(); dpr = Math.min(window.devicePixelRatio || 1, touch ? 1.5 : 2);
+      const r = wrap.getBoundingClientRect(); dpr = Math.min(window.devicePixelRatio || 1, touch ? 1.5 : 2) * Q;
       const w = Math.max(1, Math.round(r.width * dpr)), h = Math.max(1, Math.round(r.height * dpr));
       if (w !== cv.width || h !== cv.height) { cv.width = w; cv.height = h; }
       W = w; Hh = h;
     }
     const tick = setInterval(schedule, 25);
-    let lastT = performance.now();
+    let lastT = performance.now(), Q = 1, qSum = 0, qN = 0;   // Q: the resolution scale, lowered when the frames come slow
     function frame() {
       raf = requestAnimationFrame(frame);
-      const tn = performance.now(), dt = Math.min(0.05, (tn - lastT) / 1000); lastT = tn;
+      const tn = performance.now(), raw = (tn - lastT) / 1000, dt = Math.min(0.05, raw); lastT = tn;
+      if (!paused && raw < 0.25) { qSum += raw; qN++; if (qN >= 90) { if (qSum / qN > 0.024 && Q > 0.6) Q = Math.round((Q - 0.2) * 10) / 10; qSum = 0; qN = 0; } }
       pollPad(); schedule();
       if (paused) return;
       size();
@@ -339,6 +340,7 @@
     const STARS = Array.from({ length: 170 }, () => [Math.random(), Math.random() * 0.62, 0.3 + Math.random() * 1.2, Math.random() * 6.28]);
     const spec = new Uint8Array(E.analyser ? E.analyser.frequencyBinCount : 1024), BARS = 40;
     const trail = [];   // the wingtips' last positions
+    let camY0 = null;
     function draw(now) {
       const shipS = distAt(now), e = at(Em, shipS), hue = at(Hm, shipS);
       const kick = kicks.length ? Math.exp(-Math.max(0, now - (kicks.filter(k => k <= now).pop() ?? -9)) * 7) : 0;
@@ -347,7 +349,9 @@
       while (hats.length > 8 && hats[1] < now) hats.shift();
       const shipX = at(Xc, shipS) + (P.x - 1) * LW;
       const slope = Math.atan2(at(Yb, shipS + 3) - at(Yb, shipS - 3), 6), pitch = Math.atan2(at(Y, shipS + 1.5) - at(Y, shipS - 1.5), 3), bank = Math.max(-0.6, Math.min(0.6, -P.tilt * 0.55));
-      cam.s = shipS - 7.6; cam.x = at(Xc, shipS) * 0.85 + shipX * 0.15; cam.y = at(Yb, shipS) + 3.1 + slope * 1.5; cam.F = Math.min(Hh * 0.95, W * 1.0); cam.hz = Hh * (0.36 + slope * 0.5);   // (F: a phone held upright still fits the whole track across)
+      cam.s = shipS - 7.6; cam.x = at(Xc, shipS) * 0.85 + shipX * 0.15; cam.y = at(Yb, shipS) + 3.1 + slope * 1.5; const wideV = W > Hh * 2; cam.F = Math.min(Hh * (wideV ? 1.25 : 0.95), W * 1.0); cam.hz = Hh * ((wideV ? 0.3 : 0.36) + slope * 0.5);   // (a phone on its side: closer, so the ship isn't tiny)
+      for (const d of [1.4, 2.6, 4]) cam.y = Math.max(cam.y, at(Y, cam.s + d) + (Hh - cam.hz) * d / cam.F + 0.1);   // the nearest track always reaches below the screen (no cut edge in the descents)
+      cam.y += ((camY0 ?? cam.y) - cam.y) * 0.5; camY0 = cam.y;   // (F: a phone held upright still fits the whole track across)
       // sky
       const sk = g.createLinearGradient(0, 0, 0, Hh);
       sk.addColorStop(0, `hsl(${hue + 20},60%,${3 + 3 * kick * e}%)`); sk.addColorStop(0.42, `hsl(${hue},70%,${8 + 8 * kick * e}%)`); sk.addColorStop(1, '#020206');
@@ -510,7 +514,7 @@
 
     raf = requestAnimationFrame(frame);
     ctx.hud(`<span class="jg-hud-i">${STYLES[style]} · ${bpm} BPM</span>`);
-    Object.assign(ctx.test, { cam, P, H, notes, blocks, secs, st, N, stepDur, songTime, finish, setPause, move, setAuto(v) { auto = !!v; } });   // (Object.assign would drop a setter)
+    Object.assign(ctx.test, { quality: () => Q, cam, P, H, notes, blocks, secs, st, N, stepDur, songTime, finish, setPause, move, setAuto(v) { auto = !!v; } });   // (Object.assign would drop a setter)
 
     return () => {
       clearInterval(tick); cancelAnimationFrame(raf);
