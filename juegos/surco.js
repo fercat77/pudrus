@@ -83,12 +83,20 @@
     const speed = e => 22 + 30 * e;
     const S = new Float64Array(N + 1);
     for (let n = 0; n < N; n++) S[n + 1] = S[n] + speed(stepE[n]) * stepDur;
-    const L = Math.ceil(S[N]) + SHOW + 80, Y = new Float32Array(L), Xc = new Float32Array(L), Em = new Float32Array(L), Hm = new Float32Array(L);
-    { let n = 0; for (let m = 0; m < L; m++) { while (n < N - 1 && S[n + 1] <= m) n++; Em[m] = m < S[N] ? stepE[n] : 0.3; Hm[m] = secs[stepSec[Math.min(n, N - 1)]].hue; } }
-    { // the slope follows the energy (smoothed so the hills are hills): low = climbing, high = diving
-      let y = 0, x = 0, head = 0, sm = 0.3;
+    const L = Math.ceil(S[N]) + SHOW + 80, Y = new Float32Array(L), Yb = new Float32Array(L), Xc = new Float32Array(L), Em = new Float32Array(L), Hm = new Float32Array(L), Pm = new Float32Array(L);
+    { let n = 0; for (let m = 0; m < L; m++) { while (n < N - 1 && S[n + 1] <= m) n++; Em[m] = m < S[N] ? stepE[n] : 0.3; Hm[m] = secs[stepSec[Math.min(n, N - 1)]].hue;
+      Pm[m] = m < S[N] ? n + Math.max(0, Math.min(1, (m - S[n]) / (S[n + 1] - S[n]))) : N + (m - S[N]) / (speed(0.3) * stepDur); } }   // where in the song each metre is (in steps)
+    const kickBeat = new Uint8Array(N / 4 + 1);
+    for (let b = 0; b < N / 4; b++) { const v = varAt(b * 4); kickBeat[b] = !v.drums[0].mute && v.drums[0].steps[(b * 4) % 16] ? 1 : 0; }
+    { // the slope follows the energy (smoothed so the hills are hills): low = climbing, high = diving;
+      // on top, rolling hills every two bars, and while the kick plays a bounce per beat whose dip lands right on the kick
+      let y = 0, x = 0, head = 0, sm = 0.3, amp = 0;
       for (let m = 0; m < L; m++) {
-        sm += (Em[m] - sm) * 0.012; Y[m] = y; y += (0.5 - sm) * 0.2;
+        sm += (Em[m] - sm) * 0.012; const p = Pm[m], beat = Math.floor(p / 4);
+        amp += ((beat < N / 4 && kickBeat[beat] ? 0.25 + 0.5 * Em[m] : 0) - amp) * 0.08;
+        Yb[m] = y + Math.sin(p / 32 * 6.2832) * (0.6 + 1.6 * sm);
+        Y[m] = Yb[m] + amp * Math.sin(Math.PI * (p % 4) / 4);
+        y += (0.5 - sm) * 0.2;
         const bend = (Math.sin(m / 83) * 0.6 + Math.sin(m / 29 + 1.3) * 0.4) * (0.0012 + 0.0045 * sm);
         head = Math.max(-0.4, Math.min(0.4, head + bend - head * 0.004)); Xc[m] = x; x += head;
       }
@@ -102,6 +110,7 @@
       let last = -1, lastLane = 1; const count = [0, 0, 0];
       for (let n = 32; n < N - 16; n++) {   // (two quiet bars first, and the last bar empty)
         const v = varAt(n), e = stepE[n], t = n * stepDur, cand = [];
+        if (n % (e >= 0.9 ? 1 : 2)) continue;   // on the 8ths (16ths only in the drops): they fall with the groove
         const sy = v.synth.steps[n % 16];
         if (!v.synth.mute && sy && sy.on) cand.push([0, ((sy.deg % 3) + 3) % 3]);
         const a = v.arp;
@@ -263,12 +272,14 @@
       const px = P.x; P.x += (P.lane - P.x) * Math.min(1, dt * 16); P.tilt += ((P.x - px) / Math.max(dt, 1e-3) * 0.06 - P.tilt) * Math.min(1, dt * 10);
       const lane = Math.round(P.x);
       // every note that reached the ship since the last frame is judged (a slow phone that skips frames doesn't lose notes)
+      // a note is caught on its own time (when it sounds); being in its lane a moment before counts too
       for (const q of notes) {
-        if (q.st || q.t > now + 0.06) continue;
-        if (lane === q.lane && Math.abs(P.x - q.lane) < 0.45) catchNote(q);
+        if (q.st || q.t > now + 0.07) continue;
+        if (lane === q.lane && Math.abs(P.x - q.lane) < 0.45) q.ok = true;
+        if (q.ok && now >= q.t) catchNote(q);
         else if (now > q.t + 0.09) missNote(q);
       }
-      for (const b of blocks) { if (b.st || b.t > now + 0.05) continue; if (now > b.t + 0.06 && b.t < prevNow - 0.06) { b.st = 2; continue; } if (Math.abs(P.x - b.lane) < 0.5) hitBlock(b); else if (now > b.t + 0.06) b.st = 2; }
+      for (const b of blocks) { if (b.st || b.t > now) continue; if (now > b.t + 0.06 && b.t < prevNow - 0.06) { b.st = 2; continue; } if (Math.abs(P.x - b.lane) < 0.5) hitBlock(b); else if (now > b.t + 0.06) b.st = 2; }
       prevNow = now; P.frames++;
       P.fx = P.fx.filter(f => { f.life -= dt; f.x += f.vx * dt; f.y += f.vy * dt; f.vy -= 14 * dt; f.s += f.vs * dt; return f.life > 0; });
       P.glitch = Math.max(0, P.glitch - dt * 2.5);
@@ -335,8 +346,8 @@
       while (kicks.length > 8 && kicks[1] < now) kicks.shift();
       while (hats.length > 8 && hats[1] < now) hats.shift();
       const shipX = at(Xc, shipS) + (P.x - 1) * LW;
-      const slope = Math.atan2(at(Y, shipS + 3) - at(Y, shipS - 3), 6), bank = Math.max(-0.6, Math.min(0.6, -P.tilt * 0.55));
-      cam.s = shipS - 7.6; cam.x = at(Xc, shipS) * 0.85 + shipX * 0.15; cam.y = at(Y, shipS) + 3.1 + slope * 1.5; cam.F = Math.min(Hh * 0.95, W * 1.0); cam.hz = Hh * (0.36 + slope * 0.5);   // (F: a phone held upright still fits the whole track across)
+      const slope = Math.atan2(at(Yb, shipS + 3) - at(Yb, shipS - 3), 6), pitch = Math.atan2(at(Y, shipS + 1.5) - at(Y, shipS - 1.5), 3), bank = Math.max(-0.6, Math.min(0.6, -P.tilt * 0.55));
+      cam.s = shipS - 7.6; cam.x = at(Xc, shipS) * 0.85 + shipX * 0.15; cam.y = at(Yb, shipS) + 3.1 + slope * 1.5; cam.F = Math.min(Hh * 0.95, W * 1.0); cam.hz = Hh * (0.36 + slope * 0.5);   // (F: a phone held upright still fits the whole track across)
       // sky
       const sk = g.createLinearGradient(0, 0, 0, Hh);
       sk.addColorStop(0, `hsl(${hue + 20},60%,${3 + 3 * kick * e}%)`); sk.addColorStop(0.42, `hsl(${hue},70%,${8 + 8 * kick * e}%)`); sk.addColorStop(1, '#020206');
@@ -368,7 +379,7 @@
       g.save(); g.translate(W / 2, cam.hz); g.rotate(bank * 0.12); g.translate(-W / 2, -cam.hz);
       // the track, far to near: pillars under it, its thickness, the surface (coloured by the intensity), lanes and glowing rails
       const STEP = 2.6, half = LW * 1.5 + 0.35, TH = 0.55, RAIL = 0.4;
-      const segs = []; for (let s = Math.ceil((cam.s + SHOW) / STEP) * STEP; s > cam.s + 0.8; s -= STEP) segs.push(s);
+      const segs = []; for (let s = Math.ceil((cam.s + SHOW) / STEP) * STEP; s > cam.s + 1.4; s -= STEP) segs.push(s);
       const pts = segs.map(s => { const c = at(Xc, s), y = at(Y, s); return { s, c, y, e: at(Em, s),
         l: proj(c - half, y, s), r: proj(c + half, y, s), lb: proj(c - half, y - TH, s), rb: proj(c + half, y - TH, s), lr: proj(c - half, y + RAIL, s), rr: proj(c + half, y + RAIL, s),
         lanes: [0, 1, 2, 3].map(k => proj(c - half + 0.35 + k * LW, y, s)) }; });
@@ -449,22 +460,25 @@
       for (const f of P.fx) { const p = proj(f.x, f.y, f.s); if (!p || f.s - cam.s < 4) continue; g.fillStyle = rgba(f.c, Math.min(1, f.life * 2)); const r = Math.max(1, Math.min(5 * dpr, 0.07 * p[2])); g.fillRect(p[0] - r, p[1] - r, r * 2, r * 2); }
 
       // the ship: a little low-poly craft hovering over the track, banking into each lane change and pitching with the slope
-      const hov = 0.55 + Math.sin(now * 3.1) * 0.05 + kick * 0.04, sy = at(Y, shipS) + hov, ss = shipS;
+      const hov = 0.55 + Math.sin(now * 3.1) * 0.04 - kick * 0.08, sy = at(Y, shipS) + hov, ss = shipS;
       const sh = proj(shipX, at(Y, shipS) + 0.02, ss);   // its shadow on the track
-      if (sh) { g.fillStyle = 'rgba(0,0,0,0.45)'; g.beginPath(); g.ellipse(sh[0], sh[1], 1.1 * sh[2], 0.28 * sh[2], 0, 0, 6.283); g.fill(); }
+      if (sh) {
+        g.fillStyle = 'rgba(0,0,0,0.45)'; g.beginPath(); g.ellipse(sh[0], sh[1], 1.1 * sh[2], 0.28 * sh[2], 0, 0, 6.283); g.fill();
+        if (kick > 0.05) { g.fillStyle = `hsla(${hue - 40},100%,65%,${0.45 * kick * e})`; g.beginPath(); g.ellipse(sh[0], sh[1], (1.2 + 1.4 * (1 - kick)) * sh[2], (0.3 + 0.3 * (1 - kick)) * sh[2], 0, 0, 6.283); g.fill(); }   // it lands on the kick
+      }
       // the wingtips leave two ribbons of light
-      const tipL = rot([-1.2, 0.2, -0.95], bank, slope, 0), tipR = rot([1.2, 0.2, -0.95], bank, slope, 0);
+      const tipL = rot([-1.2, 0.2, -0.95], bank, pitch, 0), tipR = rot([1.2, 0.2, -0.95], bank, pitch, 0);
       trail.push([shipX + tipL[0] * 0.9, sy + tipL[1] * 0.9, ss + tipL[2] * 0.9, shipX + tipR[0] * 0.9, sy + tipR[1] * 0.9, ss + tipR[2] * 0.9]); if (trail.length > 22) trail.shift();
       for (let i = 1; i < trail.length; i++) {
         const a = trail[i - 1], b = trail[i], al = i / trail.length;
         for (const o of [0, 3]) { const p0 = proj(a[o], a[o + 1], a[o + 2]), p1 = proj(b[o], b[o + 1], b[o + 2]); if (!p0 || !p1) continue; g.strokeStyle = `hsla(${hue - 40},95%,70%,${0.5 * al})`; g.lineWidth = Math.max(1, 2.5 * dpr * al); g.beginPath(); g.moveTo(p0[0], p0[1]); g.lineTo(p1[0], p1[1]); g.stroke(); }
       }
       // the engines' flame behind it
-      const eng = rot([0, 0.17, -0.9], bank, slope, 0), ep = proj(shipX + eng[0] * 0.9, sy + eng[1] * 0.9, ss + eng[2] * 0.9);
+      const eng = rot([0, 0.17, -0.9], bank, pitch, 0), ep = proj(shipX + eng[0] * 0.9, sy + eng[1] * 0.9, ss + eng[2] * 0.9);
       if (ep) { const r = (0.4 + 0.2 * kick + Math.random() * 0.08) * ep[2], gr = g.createRadialGradient(ep[0], ep[1], 0, ep[0], ep[1], r); gr.addColorStop(0, 'rgba(255,255,255,0.95)'); gr.addColorStop(0.3, `hsla(${hue - 40},100%,65%,0.8)`); gr.addColorStop(1, `hsla(${hue - 40},100%,50%,0)`); g.fillStyle = gr; g.beginPath(); g.arc(ep[0], ep[1], r, 0, 6.283); g.fill(); }
       const tone = (h, s, l) => `hsl(${h},${s}%,${l}%)`;
       g.lineWidth = Math.max(1, 1.2 * dpr);
-      mesh(SHIP_V, SHIP_F, shipX, sy, ss, bank, slope, 0, 1.0, (k, l) => {
+      mesh(SHIP_V, SHIP_F, shipX, sy, ss, bank, pitch, 0, 1.0, (k, l) => {
         if (k === 'g') return [`hsla(190,90%,${30 + 45 * l}%,0.95)`, 'rgba(200,255,255,0.8)'];
         if (k === 'w') return [tone(hue - 40, 85, 25 + 40 * l), tone(hue - 40, 95, 72)];
         if (k === 'f') return [tone(hue - 10, 80, 30 + 40 * l), tone(hue - 10, 95, 75)];
