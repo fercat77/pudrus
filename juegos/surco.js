@@ -213,7 +213,7 @@
 
     /* ── play state ── */
     const P = { lane: 1, x: 1, score: 0, combo: 0, maxCombo: 0, caught: 0, missed: 0, hitBlocks: 0, fx: [], rings: [], glitch: 0, tilt: 0, done: false, frames: 0 };
-    let paused = false, raf = 0, ended = false, lastSec = -1, bigT = 0, auto = false, prevNow = -1;
+    let hudKey = '', paused = false, raf = 0, ended = false, lastSec = -1, bigT = 0, auto = false, prevNow = -1;
     const mult = () => Math.min(8, 1 + Math.floor(P.combo / 8));
     const songTime = () => ac.currentTime - T0 - (ac.outputLatency || ac.baseLatency || 0);
     function move(d) { if (paused || ended) return; P.lane = Math.max(0, Math.min(LANES - 1, P.lane + d)); hint.classList.add('off'); }
@@ -301,11 +301,14 @@
       P.rings = P.rings.filter(x => (x.life -= dt) > 0);
       mix(now);
       // the HUD
-      scoreEl.textContent = P.score.toLocaleString(J.LOCALE);
-      comboEl.textContent = P.combo > 1 ? `×${mult()} · ${P.combo}` : '';
-      H.forEach((h, i) => { mEls[i].style.width = Math.round(h * 100) + '%'; });
+      const hk = P.score + '|' + P.combo + '|' + H.map(h => Math.round(h * 100)).join();
+      if (hk !== hudKey) {   // the HUD: the DOM only when something changed
+        hudKey = hk; scoreEl.textContent = P.score.toLocaleString(J.LOCALE);
+        comboEl.textContent = P.combo > 1 ? `×${mult()} · ${P.combo}` : '';
+        H.forEach((h, i) => { mEls[i].style.width = Math.round(h * 100) + '%'; });
+      }
       const n = Math.max(0, Math.min(N - 1, Math.floor(now / stepDur))), si = stepSec[n];
-      progFill.style.width = Math.max(0, Math.min(100, now / (N * stepDur) * 100)) + '%';
+      const pw = Math.round(Math.max(0, Math.min(100, now / (N * stepDur) * 100)) * 4) / 4 + '%'; if (pw !== progFill.style.width) progFill.style.width = pw;
       if (si !== lastSec && now >= 0) { lastSec = si; progLbl.textContent = secs[si].name; if (si > 0) { bigEl.textContent = secs[si].name; bigEl.classList.remove('on'); void bigEl.offsetWidth; bigEl.classList.add('on'); bigT = 1.6; } }
       if (bigT > 0) { bigT -= dt; if (bigT <= 0) bigEl.classList.remove('on'); }
     }
@@ -341,7 +344,7 @@
         const ids = Array.isArray(f[0]) ? f[0] : f, a = w[ids[0]], b = w[ids[1]], c = w[ids[2]];
         const ux = b[0] - a[0], uy = b[1] - a[1], uz = b[2] - a[2], vx = c[0] - a[0], vy = c[1] - a[1], vz = c[2] - a[2];
         const nx = uy * vz - uz * vy, ny = uz * vx - ux * vz, nz = ux * vy - uy * vx, nl = Math.hypot(nx, ny, nz) || 1;
-        return { ids, kind: f[1], light: Math.abs(nx * LX + ny * LY + nz * LZ) / nl / LN, depth: ids.reduce((t, k) => t + w[k][2], 0) / ids.length };
+        return { ids, kind: f[1], light: Math.round(Math.abs(nx * LX + ny * LY + nz * LZ) / nl / LN * 12) / 12, depth: ids.reduce((t, k) => t + w[k][2], 0) / ids.length };
       }).sort((a, b) => b.depth - a.depth);
       for (const f of fs) {
         const [fill, edge] = paint(f.kind, f.light);
@@ -354,6 +357,14 @@
     const STARS = Array.from({ length: 170 }, () => [Math.random(), Math.random() * 0.62, 0.3 + Math.random() * 1.2, Math.random() * 6.28]);
     const spec = new Uint8Array(E.analyser ? E.analyser.frequencyBinCount : 1024), BARS = 40;
     const trail = [];   // the wingtips' last positions
+    const HSC = new Map();
+    const HS = (h, sa, l, a) => {   // hsla(), rounded (hue 2°, lightness 1 %, alpha 0.04) and cached
+      h = ((Math.round(h / 2) * 2) % 360 + 360) % 360; l = Math.round(l); a = Math.round(Math.max(0, Math.min(1, a)) * 25);
+      const k = ((h * 101 + sa) * 101 + l) * 26 + a; let v = HSC.get(k);
+      if (!v) { v = `hsla(${h},${sa}%,${l}%,${a / 25})`; if (HSC.size > 4000) HSC.clear(); HSC.set(k, v); }
+      return v;
+    };
+    let specGrad = null, specKey = '';
     let camY0 = null;
     function draw(now) {
       const shipS = distAt(now), e = at(Em, shipS), hue = at(Hm, shipS);
@@ -371,33 +382,44 @@
       sk.addColorStop(0, `hsl(${hue + 20},60%,${3 + 3 * kick * e}%)`); sk.addColorStop(0.42, `hsl(${hue},70%,${8 + 8 * kick * e}%)`); sk.addColorStop(1, '#020206');
       g.fillStyle = sk; g.fillRect(0, 0, W, Hh);
       const px = (cam.x * 0.004) % 1;
-      for (const s of STARS) { const x = ((s[0] - px + 1) % 1) * W, y = s[1] * cam.hz, a = 0.35 + 0.35 * Math.sin(now * s[2] + s[3]); g.fillStyle = `rgba(230,240,255,${a})`; g.fillRect(x, y, s[2] * dpr, s[2] * dpr); }
+      for (const tw of [0, 1]) {   // stars: the twinkling ones and the dim ones, each batch one fill
+        g.beginPath();
+        for (const s of STARS) { if ((Math.sin(now * s[2] + s[3]) > 0) !== !!tw) continue; const x = ((s[0] - px + 1) % 1) * W, y = s[1] * cam.hz; g.rect(x, y, s[2] * dpr, s[2] * dpr); }
+        g.fillStyle = tw ? 'rgba(230,240,255,0.68)' : 'rgba(230,240,255,0.3)'; g.fill();
+      }
       // the ring on the horizon, breathing with the kick
       const rr = Hh * (0.17 + 0.03 * kick);
       g.lineWidth = 3 * dpr;
-      g.strokeStyle = `hsla(${hue - 40},90%,65%,${0.25 + 0.35 * kick})`; g.beginPath(); g.arc(W / 2, cam.hz, rr, Math.PI, 0); g.stroke();
-      g.strokeStyle = `hsla(${hue + 30},90%,65%,${0.12 + 0.2 * kick})`; g.beginPath(); g.arc(W / 2, cam.hz, rr * 1.5, Math.PI, 0); g.stroke();
+      g.strokeStyle = HS(hue - 40, 90, 65, 0.25 + 0.35 * kick); g.beginPath(); g.arc(W / 2, cam.hz, rr, Math.PI, 0); g.stroke();
+      g.strokeStyle = HS(hue + 30, 90, 65, 0.12 + 0.2 * kick); g.beginPath(); g.arc(W / 2, cam.hz, rr * 1.5, Math.PI, 0); g.stroke();
       // the spectrum skyline (mirrored from the middle)
       if (E.analyser) {
         E.analyser.getByteFrequencyData(spec);
-        const bw = W / 2 / BARS;
+        const bw = W / 2 / BARS, sk2 = Math.round(hue / 4) + ':' + W;
+        if (sk2 !== specKey) { specKey = sk2; specGrad = g.createLinearGradient(0, 0, W, 0); for (let i = 0; i <= 4; i++) specGrad.addColorStop(i / 4, HS(hue - 30 + Math.abs(i - 2) * 60, 90, 55, 0.34)); }
+        g.beginPath();
         for (let i = 0; i < BARS; i++) {
           const b0 = Math.floor(2 * Math.pow(spec.length / 6 / 2, i / BARS)), v = spec[Math.min(spec.length - 1, b0)] / 255, h = v * v * Hh * 0.22 + 2 * dpr;
-          g.fillStyle = `hsla(${hue - 30 + i * 3},90%,${45 + 20 * v}%,${0.12 + 0.3 * v})`;
-          g.fillRect(W / 2 + i * bw + 1, cam.hz - h, bw - 2, h); g.fillRect(W / 2 - (i + 1) * bw + 1, cam.hz - h, bw - 2, h);
+          g.rect(W / 2 + i * bw + 1, cam.hz - h, bw - 2, h); g.rect(W / 2 - (i + 1) * bw + 1, cam.hz - h, bw - 2, h);
         }
+        g.fillStyle = specGrad; g.fill();
       }
       // in the drops: streaks rushing past from the vanishing point
       if (e > 0.85) {
-        g.strokeStyle = `hsla(${hue + 40},90%,80%,${0.12 + 0.12 * kick})`; g.lineWidth = dpr;
-        for (let i = 0; i < 26; i++) { const a = (i * 2.4 + Math.floor(now * 8) * 0.37) % 6.283, r0 = ((now * 2.6 + i * 0.137) % 1) * W * 0.7, r1 = r0 + W * 0.06; g.beginPath(); g.moveTo(W / 2 + Math.cos(a) * r0, cam.hz + Math.sin(a) * r0 * 0.6); g.lineTo(W / 2 + Math.cos(a) * r1, cam.hz + Math.sin(a) * r1 * 0.6); g.stroke(); }
+        g.strokeStyle = HS(hue + 40, 90, 80, 0.12 + 0.12 * kick); g.lineWidth = dpr; g.beginPath();
+        for (let i = 0; i < 26; i++) { const a = (i * 2.4 + Math.floor(now * 8) * 0.37) % 6.283, r0 = ((now * 2.6 + i * 0.137) % 1) * W * 0.7, r1 = r0 + W * 0.06; g.moveTo(W / 2 + Math.cos(a) * r0, cam.hz + Math.sin(a) * r0 * 0.6); g.lineTo(W / 2 + Math.cos(a) * r1, cam.hz + Math.sin(a) * r1 * 0.6); }
+        g.stroke();
       }
 
       // the world leans a little with the ship
       g.save(); g.translate(W / 2, cam.hz); g.rotate(bank * 0.12); g.translate(-W / 2, -cam.hz);
       // the track, far to near: pillars under it, its thickness, the surface (coloured by the intensity), lanes and glowing rails
       const STEP = 2.6, half = LW * 1.5 + 0.35, TH = 0.55, RAIL = 0.4;
-      const segs = []; for (let s = Math.ceil((cam.s + SHOW) / STEP) * STEP; s > cam.s + 1.4; s -= STEP) segs.push(s);
+      // segments: 2.6 m near, 5.2 / 10.4 / 20.8 m further on (each on its own grid, so they don't swim) — ~40 instead of ~100
+      const segs = [], BANDS = [[40, STEP], [100, STEP * 2], [180, STEP * 4], [SHOW + 21, STEP * 8]];
+      { let s = cam.s + 1.4; segs.push(s); let bi = 0;
+        while (s < cam.s + SHOW) { while (bi < BANDS.length - 1 && s - cam.s >= BANDS[bi][0]) bi++; const st2 = BANDS[bi][1]; s = (Math.floor(s / st2 + 1e-6) + 1) * st2; segs.push(s); }
+        segs.reverse(); }
       const pts = segs.map(s => { const c = at(Xc, s), y = at(Y, s); return { s, c, y, e: at(Em, s),
         l: proj(c - half, y, s), r: proj(c + half, y, s), lb: proj(c - half, y - TH, s), rb: proj(c + half, y - TH, s), lr: proj(c - half, y + RAIL, s), rr: proj(c + half, y + RAIL, s),
         lanes: [0, 1, 2, 3].map(k => proj(c - half + 0.35 + k * LW, y, s)) }; });
@@ -411,19 +433,19 @@
             const top = proj(p.c, p.y - TH, p.s), bot = proj(p.c, p.y - 45, p.s);
             if (top && bot) { const gr = g.createLinearGradient(0, top[1], 0, bot[1]); gr.addColorStop(0, `hsla(${th},70%,45%,${0.5 * near})`); gr.addColorStop(1, `hsla(${th},70%,45%,0)`); g.strokeStyle = gr; g.lineWidth = Math.max(1, top[2] * 0.35); g.beginPath(); g.moveTo(top[0], top[1]); g.lineTo(bot[0], bot[1]); g.stroke(); }
           }
-          g.fillStyle = `hsla(${th},60%,${6 + 5 * near}%,0.95)`;   // the sides of the slab
+          g.fillStyle = HS(th, 60, 6 + 5 * near, 0.95);   // the sides of the slab
           quad(prev.l, p.l, p.lb, prev.lb); g.fill(); quad(prev.r, p.r, p.rb, prev.rb); g.fill();
           for (let k = 0; k < 3; k++) {   // the lanes, each its own shade, a darker band every few metres
-            const band = Math.floor(p.s / 7.8) % 2, L0 = k === 0 ? prev.l : prev.lanes[k], L1 = k === 0 ? p.l : p.lanes[k], R0 = k === 2 ? prev.r : prev.lanes[k + 1], R1 = k === 2 ? p.r : p.lanes[k + 1];
+            const band = Math.floor(p.s / 10.4 + 1e-6) % 2, L0 = k === 0 ? prev.l : prev.lanes[k], L1 = k === 0 ? p.l : p.lanes[k], R0 = k === 2 ? prev.r : prev.lanes[k + 1], R1 = k === 2 ? p.r : p.lanes[k + 1];
             if (!L0 || !L1 || !R0 || !R1) continue;
-            g.fillStyle = `hsla(${th + (k - 1) * 12},65%,${(band ? 11 : 8.5) + 10 * p.e * near + (k === 1 ? 1.5 : 0)}%,0.96)`;
+            g.fillStyle = HS(th + (k - 1) * 12, 65, (band ? 11 : 8.5) + 10 * p.e * near + (k === 1 ? 1.5 : 0), 0.96);
             quad(L0, R0, R1, L1); g.fill();
           }
-          g.strokeStyle = `hsla(${th + 40},90%,72%,${0.6 * near})`; g.lineWidth = Math.max(1, 1.6 * dpr * near);
+          g.strokeStyle = HS(th + 40, 90, 72, 0.6 * near); g.lineWidth = Math.max(1, 1.6 * dpr * near);
           g.beginPath(); for (let k = 1; k < 3; k++) if (prev.lanes[k] && p.lanes[k]) { g.moveTo(prev.lanes[k][0], prev.lanes[k][1]); g.lineTo(p.lanes[k][0], p.lanes[k][1]); } g.stroke();
-          g.fillStyle = `hsla(${th - 30},95%,60%,${0.12 + 0.12 * kick})`;   // the rails: glass walls with a bright top
+          g.fillStyle = HS(th - 30, 95, 60, 0.12 + 0.12 * kick);   // the rails: glass walls with a bright top
           quad(prev.l, p.l, p.lr, prev.lr); g.fill(); quad(prev.r, p.r, p.rr, prev.rr); g.fill();
-          g.strokeStyle = `hsla(${th - 30},95%,${60 + 20 * kick}%,${0.3 + 0.7 * near})`; g.lineWidth = Math.max(1, (2 + 3 * kick) * dpr * near);
+          g.strokeStyle = HS(th - 30, 95, 60 + 20 * kick, 0.3 + 0.7 * near); g.lineWidth = Math.max(1, (2 + 3 * kick) * dpr * near);
           g.beginPath(); g.moveTo(prev.lr[0], prev.lr[1]); g.lineTo(p.lr[0], p.lr[1]); g.moveTo(prev.rr[0], prev.rr[1]); g.lineTo(p.rr[0], p.rr[1]); g.stroke();
         }
         prev = p;
@@ -433,7 +455,7 @@
         const s = S[n]; if (s < cam.s + 1) continue; if (s > cam.s + SHOW * 0.8) break;
         const c = at(Xc, s), y = at(Y, s), a = proj(c - half, y + 0.01, s), b = proj(c + half, y + 0.01, s); if (!a || !b) continue;
         const far = (s - cam.s) / SHOW, bar1 = n % 16 === 0;
-        g.strokeStyle = `hsla(${hue + 20},90%,78%,${(bar1 ? 0.6 : 0.3) * (1 - far)})`; g.lineWidth = Math.max(1, (bar1 ? 3 : 1.5) * dpr * (1 - far));
+        g.strokeStyle = HS(hue + 20, 90, 78, (bar1 ? 0.6 : 0.3) * (1 - far)); g.lineWidth = Math.max(1, (bar1 ? 3 : 1.5) * dpr * (1 - far));
         g.beginPath(); g.moveTo(a[0], a[1]); g.lineTo(b[0], b[1]); g.stroke();
       }
       // posts along the rails that flash with the hats
@@ -441,9 +463,9 @@
         const c = at(Xc, s), y = at(Y, s);
         for (const side of [-1, 1]) {
           const a = proj(c + side * (half + 0.15), y + RAIL, s), b = proj(c + side * (half + 0.15), y + RAIL + 1.3 + 1.2 * e, s); if (!a || !b) continue;
-          g.strokeStyle = `hsla(${hue + 60},90%,72%,${0.15 + 0.6 * hat})`; g.lineWidth = Math.max(1, Math.min(3 * dpr, a[2] * 0.06));
+          g.strokeStyle = HS(hue + 60, 90, 72, 0.15 + 0.6 * hat); g.lineWidth = Math.max(1, Math.min(3 * dpr, a[2] * 0.06));
           g.beginPath(); g.moveTo(a[0], a[1]); g.lineTo(b[0], b[1]); g.stroke();
-          g.fillStyle = `hsla(${hue + 60},90%,80%,${0.3 + 0.7 * hat})`; const r = Math.max(1, Math.min(4 * dpr, a[2] * 0.08)); g.fillRect(b[0] - r, b[1] - r, r * 2, r * 2);
+          g.fillStyle = HS(hue + 60, 90, 80, 0.3 + 0.7 * hat); const r = Math.max(1, Math.min(4 * dpr, a[2] * 0.08)); g.fillRect(b[0] - r, b[1] - r, r * 2, r * 2);
         }
       }
       // notes (little 3D pieces that spin) and static blocks, far to near
@@ -458,12 +480,13 @@
           mesh(CUBE_V, CUBE_F, c, y + 0.7, o.s, 0, 0, 0, 0.72, (k, l) => [`rgba(${40 + 50 * l},${40 + 50 * l},${52 + 50 * l},0.96)`, 'rgba(255,255,255,0.55)']);
           const p0 = proj(c - 0.66, y + 0.06, o.s - 0.72), p1 = proj(c + 0.66, y + 1.34, o.s - 0.72); if (!p0 || !p1) continue;
           const w2 = p1[0] - p0[0], h2 = p0[1] - p1[1], cells = 7;
-          for (let i = 0; i < cells; i++) for (let j = 0; j < cells; j++) { const v = Math.random(); if (v < 0.4) continue; g.fillStyle = `rgba(${200 + v * 55},${200 + v * 55},${215 + v * 40},${0.3 + 0.55 * v})`; g.fillRect(p0[0] + w2 * i / cells, p1[1] + h2 * j / cells, w2 / cells + 0.5, h2 / cells + 0.5); }
+          for (const lv of [0, 1]) { g.beginPath(); for (let i = 0; i < cells; i++) for (let j = 0; j < cells; j++) { const v = Math.random(); if (v < 0.4 || (v > 0.72) !== !!lv) continue; g.rect(p0[0] + w2 * i / cells, p1[1] + h2 * j / cells, w2 / cells + 0.5, h2 / cells + 0.5); } g.fillStyle = lv ? 'rgba(250,250,255,0.82)' : 'rgba(215,215,230,0.5)'; g.fill(); }
           continue;
         }
         const col = COL[o.ly], dim = o.st === 2 ? 0.3 : 1, yy = y + 0.75 + Math.sin(now * 5 + o.n) * 0.07, spin = now * 2.2 + o.n * 0.7;
         const halo = proj(c, yy, o.s); if (!halo) continue;
         g.fillStyle = rgba(col, 0.16 * dim); g.beginPath(); g.arc(halo[0], halo[1], Math.max(2, 0.95 * halo[2]), 0, 6.283); g.fill();
+        if (o.s - cam.s > 95) { g.fillStyle = rgba(col, 0.9 * dim); g.beginPath(); g.arc(halo[0], halo[1], Math.max(1.2, 0.4 * halo[2]), 0, 6.283); g.fill(); continue; }   // far: a dot
         const paint = (k, l) => [`rgba(${Math.round(col[0] * (0.45 + 0.6 * l))},${Math.round(col[1] * (0.45 + 0.6 * l))},${Math.round(col[2] * (0.45 + 0.6 * l))},${dim})`, `rgba(255,255,255,${0.55 * dim})`];
         if (o.ly === 0) mesh(CUBE_V, CUBE_F, c, yy, o.s, 0.5, spin * 0.5, spin, 0.36, paint);
         else if (o.ly === 1) mesh(OCTA_V, OCTA_F, c, yy, o.s, 0, 0, spin, 0.42, paint);
@@ -482,7 +505,7 @@
       const sh = proj(shipX, at(Y, shipS) + 0.02, ss);   // its shadow on the track
       if (sh) {
         g.fillStyle = 'rgba(0,0,0,0.45)'; g.beginPath(); g.ellipse(sh[0], sh[1], 1.1 * sh[2], 0.28 * sh[2], 0, 0, 6.283); g.fill();
-        if (kick > 0.05) { g.fillStyle = `hsla(${hue - 40},100%,65%,${0.45 * kick * e})`; g.beginPath(); g.ellipse(sh[0], sh[1], (1.2 + 1.4 * (1 - kick)) * sh[2], (0.3 + 0.3 * (1 - kick)) * sh[2], 0, 0, 6.283); g.fill(); }   // it lands on the kick
+        if (kick > 0.05) { g.fillStyle = HS(hue - 40, 100, 65, 0.45 * kick * e); g.beginPath(); g.ellipse(sh[0], sh[1], (1.2 + 1.4 * (1 - kick)) * sh[2], (0.3 + 0.3 * (1 - kick)) * sh[2], 0, 0, 6.283); g.fill(); }   // it lands on the kick
       }
       // the wingtips leave two ribbons of light
       const tipL = rot([-1.2, 0.2, -0.95], bank, pitch, 0), tipR = rot([1.2, 0.2, -0.95], bank, pitch, 0);
