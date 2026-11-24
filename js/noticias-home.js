@@ -17,24 +17,27 @@
   }
 
   let data = null;
+  // the home shows the «Cultura digital» side (technology, games, science, art): its stories, then its latest loose notes
+  const CULT = ['Tecnología', 'Videojuegos', 'Ciencia', 'Arte y cultura'];
+  const isCult = h => (h.eje ? h.eje === 'cultura' : CULT.indexOf(h.seccion) >= 0);
   function paint() {
     if (!data) return;
-    const hist = (data.historias || []).filter(h => h.titulo).slice(0, 4);
-    if (!hist.length) return;
+    const hist = (data.historias || []).filter(h => h.titulo && isCult(h)).sort((a, b) => (b.relevancia || 0) - (a.relevancia || 0));
+    const rows = hist.slice(0, 4).map(h => ({ sec: (h.seccion || '') + ' · ' + t('sources', '{n} medios', { n: new Set((h.fuentes || []).map(f => f.medio)).size }), title: h.titulo }));
+    (data.cultura || []).forEach(b => { if (rows.length < 4 && b.titulo) rows.push({ sec: (b.seccion ? b.seccion + ' · ' : '') + b.medio, title: b.titulo }); });
+    if (!rows.length) return;
     list.textContent = '';
-    hist.forEach(h => {
+    rows.forEach(r => {
       const li = document.createElement('li');
-      const sec = document.createElement('small');
-      const medios = new Set((h.fuentes || []).map(f => f.medio)).size;
-      sec.textContent = (h.seccion || '') + ' · ' + t('sources', '{n} medios', { n: medios });
+      const sec = document.createElement('small'); sec.textContent = r.sec;
       const p = document.createElement('span');
-      p.textContent = String(h.titulo).replace(/\.$/, '').replace(/(\d)-(\d)/g, '$1‑$2');   // a score like 1-0 never breaks at the hyphen
+      p.textContent = String(r.title).replace(/\.$/, '').replace(/(\d)-(\d)/g, '$1‑$2');   // a score like 1-0 never breaks at the hyphen
       li.append(sec, p);
       list.append(li);
     });
     list.hidden = false;
-    const medios = new Set(); (data.historias || []).forEach(h => (h.fuentes || []).forEach(f => medios.add(f.medio)));
-    meta.textContent = [t('stories', '{n} historias', { n: (data.historias || []).length }), t('sources', '{n} medios', { n: medios.size }), data.generado ? t('updated', 'Actualizado {t}', { t: ago(data.generado) }) : ''].filter(Boolean).join(' · ');
+    const n = hist.length + (data.cultura || []).length;
+    meta.textContent = [t('tabCult', 'Cultura digital') + ' · ' + t('homeCount', '{n} notas', { n }), data.generado ? t('updated', 'Actualizado {t}', { t: ago(data.generado) }) : ''].filter(Boolean).join(' · ');
   }
 
   function load() {

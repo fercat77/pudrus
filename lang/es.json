@@ -603,7 +603,8 @@
     "acaNote": "análisis de la IA",
     "noItems": "No hay notas por ahora.",
     "emptyTab": "Todavía no hay noticias en esta parte. Volvé en un rato.",
-    "allHeads": "Ver los {n} títulos"
+    "allHeads": "Ver los {n} títulos",
+    "homeCount": "{n} notas"
   },
   "labs": {
     "sectionTag": "◈ 04 — Labs",

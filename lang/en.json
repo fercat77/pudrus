@@ -603,7 +603,8 @@
     "acaNote": "AI analysis",
     "noItems": "Nothing here for now.",
     "emptyTab": "No stories in this part yet. Come back in a while.",
-    "allHeads": "See all {n} headlines"
+    "allHeads": "See all {n} headlines",
+    "homeCount": "{n} stories"
   },
   "labs": {
     "sectionTag": "◈ 04 — Labs",
