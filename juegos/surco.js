@@ -189,7 +189,7 @@
     }
 
     /* ── play state ── */
-    const P = { lane: 1, x: 1, score: 0, combo: 0, maxCombo: 0, caught: 0, missed: 0, hitBlocks: 0, fx: [], glitch: 0, tilt: 0, done: false, frames: 0 };
+    const P = { lane: 1, x: 1, score: 0, combo: 0, maxCombo: 0, caught: 0, missed: 0, hitBlocks: 0, fx: [], rings: [], glitch: 0, tilt: 0, done: false, frames: 0 };
     let paused = false, raf = 0, ended = false, lastSec = -1, bigT = 0, auto = false, prevNow = -1;
     const mult = () => Math.min(8, 1 + Math.floor(P.combo / 8));
     const songTime = () => ac.currentTime - T0 - (ac.outputLatency || ac.baseLatency || 0);
@@ -198,7 +198,7 @@
     function catchNote(q) {
       q.st = 1; P.combo++; P.maxCombo = Math.max(P.maxCombo, P.combo); P.caught++;
       P.score += 100 * mult(); H[q.ly] = Math.min(1, H[q.ly] + 0.09);
-      burst(at(Xc, q.s) + (q.lane - 1) * LW, at(Y, q.s) + 0.6, q.s, COL[q.ly], 14);
+      burst(at(Xc, q.s) + (q.lane - 1) * LW, at(Y, q.s) + 0.75, q.s, COL[q.ly], 16); P.rings.push({ life: 0.45, c: COL[q.ly] });
     }
     function missNote(q) { q.st = 2; P.combo = 0; P.missed++; H[q.ly] = Math.max(0, H[q.ly] - 0.15); }
     function hitBlock(b) {
@@ -272,6 +272,7 @@
       prevNow = now; P.frames++;
       P.fx = P.fx.filter(f => { f.life -= dt; f.x += f.vx * dt; f.y += f.vy * dt; f.vy -= 14 * dt; f.s += f.vs * dt; return f.life > 0; });
       P.glitch = Math.max(0, P.glitch - dt * 2.5);
+      P.rings = P.rings.filter(x => (x.life -= dt) > 0);
       mix(now);
       // the HUD
       scoreEl.textContent = P.score.toLocaleString(J.LOCALE);
@@ -286,106 +287,198 @@
     // project a point of the world (x sideways, y up, s along the track) with the camera behind the ship
     let cam = { s: 0, x: 0, y: 0, F: 1, hz: 0 };
     const proj = (x, y, s) => { const dz = s - cam.s; if (dz < 0.6) return null; const k = cam.F / dz; return [W / 2 + (x - cam.x) * k, cam.hz - (y - cam.y) * k, k]; };
+
+    /* ── little 3D models, drawn as flat-shaded polygons (painter's order) ── */
+    const SHIP_V = [[0, 0.12, 1.9], [0, 0.42, 0.3], [-0.3, 0.15, 0.2], [0.3, 0.15, 0.2], [0, 0.3, -0.75], [-0.28, 0.08, -0.8], [0.28, 0.08, -0.8],
+      [-1.25, 0.02, -0.85], [1.25, 0.02, -0.85], [0, -0.06, -0.1], [-1.12, 0.36, -0.98], [1.12, 0.36, -0.98], [-0.42, 0.1, -0.05], [0.42, 0.1, -0.05], [0, 0.28, 0.95]];
+    // faces: [vertices, kind] — g glass (the cockpit), b body, w wing, f fin, e engine, u under
+    const SHIP_F = [[[0, 2, 14], 'b'], [[0, 14, 3], 'b'], [[14, 2, 1], 'g'], [[14, 1, 3], 'g'], [[1, 2, 4], 'b'], [[1, 4, 3], 'b'], [[2, 5, 4], 'b'], [[3, 4, 6], 'b'],
+      [[2, 12, 7, 5], 'w'], [[3, 6, 8, 13], 'w'], [[0, 9, 2], 'u'], [[0, 3, 9], 'u'], [[2, 9, 5], 'u'], [[3, 6, 9], 'u'], [[9, 5, 6], 'u'],
+      [[7, 10, 5], 'f'], [[8, 6, 11], 'f'], [[5, 6, 4], 'e']];
+    const CUBE_V = [[-1, -1, -1], [1, -1, -1], [1, 1, -1], [-1, 1, -1], [-1, -1, 1], [1, -1, 1], [1, 1, 1], [-1, 1, 1]];
+    const CUBE_F = [[0, 1, 2, 3], [4, 5, 6, 7], [0, 1, 5, 4], [2, 3, 7, 6], [1, 2, 6, 5], [0, 3, 7, 4]];
+    const OCTA_V = [[0, 1.3, 0], [0, -1.3, 0], [1, 0, 0], [-1, 0, 0], [0, 0, 1], [0, 0, -1]];
+    const OCTA_F = [[0, 2, 4], [0, 4, 3], [0, 3, 5], [0, 5, 2], [1, 4, 2], [1, 3, 4], [1, 5, 3], [1, 2, 5]];
+    const LX = 0.35, LY = 0.85, LZ = -0.4, LN = Math.hypot(LX, LY, LZ);
+    function rot(v, roll, pitch, yaw) {
+      let [x, y, z] = v, c = Math.cos(roll), s = Math.sin(roll);
+      [x, y] = [x * c - y * s, x * s + y * c];
+      c = Math.cos(pitch); s = Math.sin(pitch); [y, z] = [y * c + z * s, -y * s + z * c];
+      c = Math.cos(yaw); s = Math.sin(yaw); [x, z] = [x * c + z * s, -x * s + z * c];
+      return [x, y, z];
+    }
+    // V, F, where (x, y, s), rotation, size, colour of a face (kind, light 0…1) → [fill, edge|null]
+    function mesh(V, F, ox, oy, os, roll, pitch, yaw, sc, paint) {
+      const w = V.map(v => { const r = rot(v, roll, pitch, yaw); return [ox + r[0] * sc, oy + r[1] * sc, os + r[2] * sc]; });
+      const p = w.map(q => proj(q[0], q[1], q[2])); if (p.some(x => !x)) return;
+      const fs = F.map(f => {
+        const ids = Array.isArray(f[0]) ? f[0] : f, a = w[ids[0]], b = w[ids[1]], c = w[ids[2]];
+        const ux = b[0] - a[0], uy = b[1] - a[1], uz = b[2] - a[2], vx = c[0] - a[0], vy = c[1] - a[1], vz = c[2] - a[2];
+        const nx = uy * vz - uz * vy, ny = uz * vx - ux * vz, nz = ux * vy - uy * vx, nl = Math.hypot(nx, ny, nz) || 1;
+        return { ids, kind: f[1], light: Math.abs(nx * LX + ny * LY + nz * LZ) / nl / LN, depth: ids.reduce((t, k) => t + w[k][2], 0) / ids.length };
+      }).sort((a, b) => b.depth - a.depth);
+      for (const f of fs) {
+        const [fill, edge] = paint(f.kind, f.light);
+        g.beginPath(); f.ids.forEach((k, i) => (i ? g.lineTo(p[k][0], p[k][1]) : g.moveTo(p[k][0], p[k][1]))); g.closePath();
+        g.fillStyle = fill; g.fill(); if (edge) { g.strokeStyle = edge; g.stroke(); }
+      }
+    }
+
+    /* ── the sky: stars, and a skyline that is the music's spectrum ── */
+    const STARS = Array.from({ length: 170 }, () => [Math.random(), Math.random() * 0.62, 0.3 + Math.random() * 1.2, Math.random() * 6.28]);
+    const spec = new Uint8Array(E.analyser ? E.analyser.frequencyBinCount : 1024), BARS = 40;
+    const trail = [];   // the wingtips' last positions
     function draw(now) {
       const shipS = distAt(now), e = at(Em, shipS), hue = at(Hm, shipS);
       const kick = kicks.length ? Math.exp(-Math.max(0, now - (kicks.filter(k => k <= now).pop() ?? -9)) * 7) : 0;
+      const hat = hats.length ? Math.exp(-Math.max(0, now - (hats.filter(k => k <= now).pop() ?? -9)) * 14) : 0;
       while (kicks.length > 8 && kicks[1] < now) kicks.shift();
       while (hats.length > 8 && hats[1] < now) hats.shift();
       const shipX = at(Xc, shipS) + (P.x - 1) * LW;
-      cam.s = shipS - 6.8; cam.x = at(Xc, shipS) * 0.9 + shipX * 0.1; cam.y = at(Y, shipS) + 2.7; cam.F = Hh * 0.95; cam.hz = Hh * 0.36;
+      const slope = Math.atan2(at(Y, shipS + 3) - at(Y, shipS - 3), 6), bank = Math.max(-0.6, Math.min(0.6, -P.tilt * 0.55));
+      cam.s = shipS - 7.6; cam.x = at(Xc, shipS) * 0.85 + shipX * 0.15; cam.y = at(Y, shipS) + 3.1 + slope * 1.5; cam.F = Math.min(Hh * 0.95, W * 1.0); cam.hz = Hh * (0.36 + slope * 0.5);   // (F: a phone held upright still fits the whole track across)
       // sky
       const sk = g.createLinearGradient(0, 0, 0, Hh);
-      sk.addColorStop(0, `hsl(${hue + 20},60%,${4 + 4 * kick * e}%)`); sk.addColorStop(0.45, `hsl(${hue},70%,${9 + 8 * kick * e}%)`); sk.addColorStop(1, '#020206');
+      sk.addColorStop(0, `hsl(${hue + 20},60%,${3 + 3 * kick * e}%)`); sk.addColorStop(0.42, `hsl(${hue},70%,${8 + 8 * kick * e}%)`); sk.addColorStop(1, '#020206');
       g.fillStyle = sk; g.fillRect(0, 0, W, Hh);
-      // a big soft ring on the horizon that breathes with the kick
-      const rr = Hh * (0.16 + 0.03 * kick);
-      g.strokeStyle = `hsla(${hue - 40},90%,65%,${0.25 + 0.35 * kick})`; g.lineWidth = 3 * dpr;
-      g.beginPath(); g.arc(W / 2, cam.hz, rr, Math.PI, 0); g.stroke();
+      const px = (cam.x * 0.004) % 1;
+      for (const s of STARS) { const x = ((s[0] - px + 1) % 1) * W, y = s[1] * cam.hz, a = 0.35 + 0.35 * Math.sin(now * s[2] + s[3]); g.fillStyle = `rgba(230,240,255,${a})`; g.fillRect(x, y, s[2] * dpr, s[2] * dpr); }
+      // the ring on the horizon, breathing with the kick
+      const rr = Hh * (0.17 + 0.03 * kick);
+      g.lineWidth = 3 * dpr;
+      g.strokeStyle = `hsla(${hue - 40},90%,65%,${0.25 + 0.35 * kick})`; g.beginPath(); g.arc(W / 2, cam.hz, rr, Math.PI, 0); g.stroke();
       g.strokeStyle = `hsla(${hue + 30},90%,65%,${0.12 + 0.2 * kick})`; g.beginPath(); g.arc(W / 2, cam.hz, rr * 1.5, Math.PI, 0); g.stroke();
-      // the track, far to near
-      const segs = []; const STEP = 2.6;
-      for (let s = Math.ceil((cam.s + SHOW) / STEP) * STEP; s > cam.s + 0.8; s -= STEP) segs.push(s);
+      // the spectrum skyline (mirrored from the middle)
+      if (E.analyser) {
+        E.analyser.getByteFrequencyData(spec);
+        const bw = W / 2 / BARS;
+        for (let i = 0; i < BARS; i++) {
+          const b0 = Math.floor(2 * Math.pow(spec.length / 6 / 2, i / BARS)), v = spec[Math.min(spec.length - 1, b0)] / 255, h = v * v * Hh * 0.22 + 2 * dpr;
+          g.fillStyle = `hsla(${hue - 30 + i * 3},90%,${45 + 20 * v}%,${0.12 + 0.3 * v})`;
+          g.fillRect(W / 2 + i * bw + 1, cam.hz - h, bw - 2, h); g.fillRect(W / 2 - (i + 1) * bw + 1, cam.hz - h, bw - 2, h);
+        }
+      }
+      // in the drops: streaks rushing past from the vanishing point
+      if (e > 0.85) {
+        g.strokeStyle = `hsla(${hue + 40},90%,80%,${0.12 + 0.12 * kick})`; g.lineWidth = dpr;
+        for (let i = 0; i < 26; i++) { const a = (i * 2.4 + Math.floor(now * 8) * 0.37) % 6.283, r0 = ((now * 2.6 + i * 0.137) % 1) * W * 0.7, r1 = r0 + W * 0.06; g.beginPath(); g.moveTo(W / 2 + Math.cos(a) * r0, cam.hz + Math.sin(a) * r0 * 0.6); g.lineTo(W / 2 + Math.cos(a) * r1, cam.hz + Math.sin(a) * r1 * 0.6); g.stroke(); }
+      }
+
+      // the world leans a little with the ship
+      g.save(); g.translate(W / 2, cam.hz); g.rotate(bank * 0.12); g.translate(-W / 2, -cam.hz);
+      // the track, far to near: pillars under it, its thickness, the surface (coloured by the intensity), lanes and glowing rails
+      const STEP = 2.6, half = LW * 1.5 + 0.35, TH = 0.55, RAIL = 0.4;
+      const segs = []; for (let s = Math.ceil((cam.s + SHOW) / STEP) * STEP; s > cam.s + 0.8; s -= STEP) segs.push(s);
+      const pts = segs.map(s => { const c = at(Xc, s), y = at(Y, s); return { s, c, y, e: at(Em, s),
+        l: proj(c - half, y, s), r: proj(c + half, y, s), lb: proj(c - half, y - TH, s), rb: proj(c + half, y - TH, s), lr: proj(c - half, y + RAIL, s), rr: proj(c + half, y + RAIL, s),
+        lanes: [0, 1, 2, 3].map(k => proj(c - half + 0.35 + k * LW, y, s)) }; });
+      const quad = (a, b, c, d) => { g.beginPath(); g.moveTo(a[0], a[1]); g.lineTo(b[0], b[1]); g.lineTo(c[0], c[1]); g.lineTo(d[0], d[1]); g.closePath(); };
       let prev = null;
-      const pts = segs.map(s => { const c = at(Xc, s), y = at(Y, s), half = LW * 1.5 + 0.35; return { s, l: proj(c - half, y, s), r: proj(c + half, y, s), lanes: [1, 2].map(k => proj(c - half + 0.35 + k * LW, y, s)), y, c }; });
-      for (let i = 0; i < pts.length; i++) {
-        const p = pts[i]; if (!p.l || !p.r) { prev = null; continue; }
-        if (prev && prev.l && prev.r) {
-          const far = (p.s - cam.s) / SHOW, beatRow = Math.floor(p.s / 9) % 2;
-          g.fillStyle = `hsla(${hue},55%,${(beatRow ? 10 : 7.5) + 9 * e * (1 - far)}%,0.94)`;
-          g.beginPath(); g.moveTo(prev.l[0], prev.l[1]); g.lineTo(prev.r[0], prev.r[1]); g.lineTo(p.r[0], p.r[1]); g.lineTo(p.l[0], p.l[1]); g.closePath(); g.fill();
-          const a = 0.25 + 0.75 * (1 - far);
-          g.strokeStyle = `hsla(${hue - 30},95%,${55 + 20 * kick}%,${a})`; g.lineWidth = Math.max(1, (2 + 3 * kick) * dpr * (1 - far));
-          g.beginPath(); g.moveTo(prev.l[0], prev.l[1]); g.lineTo(p.l[0], p.l[1]); g.moveTo(prev.r[0], prev.r[1]); g.lineTo(p.r[0], p.r[1]); g.stroke();
-          g.strokeStyle = `hsla(${hue + 40},85%,72%,${a * 0.65})`; g.lineWidth = Math.max(1, 1.6 * dpr * (1 - far));
-          g.beginPath(); for (let k = 0; k < 2; k++) if (prev.lanes[k] && p.lanes[k]) { g.moveTo(prev.lanes[k][0], prev.lanes[k][1]); g.lineTo(p.lanes[k][0], p.lanes[k][1]); } g.stroke();
+      for (const p of pts) {
+        if (!p.l || !p.r || !p.lb || !p.lr) { prev = null; continue; }
+        if (prev) {
+          const far = (p.s - cam.s) / SHOW, near = 1 - far, th = 260 - 230 * p.e;   // intensity → colour: violet (calm) … red-orange (drop)
+          if (Math.floor(prev.s / 40) !== Math.floor(p.s / 40)) {   // a pillar down into the void
+            const top = proj(p.c, p.y - TH, p.s), bot = proj(p.c, p.y - 45, p.s);
+            if (top && bot) { const gr = g.createLinearGradient(0, top[1], 0, bot[1]); gr.addColorStop(0, `hsla(${th},70%,45%,${0.5 * near})`); gr.addColorStop(1, `hsla(${th},70%,45%,0)`); g.strokeStyle = gr; g.lineWidth = Math.max(1, top[2] * 0.35); g.beginPath(); g.moveTo(top[0], top[1]); g.lineTo(bot[0], bot[1]); g.stroke(); }
+          }
+          g.fillStyle = `hsla(${th},60%,${6 + 5 * near}%,0.95)`;   // the sides of the slab
+          quad(prev.l, p.l, p.lb, prev.lb); g.fill(); quad(prev.r, p.r, p.rb, prev.rb); g.fill();
+          for (let k = 0; k < 3; k++) {   // the lanes, each its own shade, a darker band every few metres
+            const band = Math.floor(p.s / 7.8) % 2, L0 = k === 0 ? prev.l : prev.lanes[k], L1 = k === 0 ? p.l : p.lanes[k], R0 = k === 2 ? prev.r : prev.lanes[k + 1], R1 = k === 2 ? p.r : p.lanes[k + 1];
+            if (!L0 || !L1 || !R0 || !R1) continue;
+            g.fillStyle = `hsla(${th + (k - 1) * 12},65%,${(band ? 11 : 8.5) + 10 * p.e * near + (k === 1 ? 1.5 : 0)}%,0.96)`;
+            quad(L0, R0, R1, L1); g.fill();
+          }
+          g.strokeStyle = `hsla(${th + 40},90%,72%,${0.6 * near})`; g.lineWidth = Math.max(1, 1.6 * dpr * near);
+          g.beginPath(); for (let k = 1; k < 3; k++) if (prev.lanes[k] && p.lanes[k]) { g.moveTo(prev.lanes[k][0], prev.lanes[k][1]); g.lineTo(p.lanes[k][0], p.lanes[k][1]); } g.stroke();
+          g.fillStyle = `hsla(${th - 30},95%,60%,${0.12 + 0.12 * kick})`;   // the rails: glass walls with a bright top
+          quad(prev.l, p.l, p.lr, prev.lr); g.fill(); quad(prev.r, p.r, p.rr, prev.rr); g.fill();
+          g.strokeStyle = `hsla(${th - 30},95%,${60 + 20 * kick}%,${0.3 + 0.7 * near})`; g.lineWidth = Math.max(1, (2 + 3 * kick) * dpr * near);
+          g.beginPath(); g.moveTo(prev.lr[0], prev.lr[1]); g.lineTo(p.lr[0], p.lr[1]); g.moveTo(prev.rr[0], prev.rr[1]); g.lineTo(p.rr[0], p.rr[1]); g.stroke();
         }
         prev = p;
       }
       // the beats laid on the track: a line on every beat (thicker on each bar) that you ride over in time
       for (let n = Math.max(0, Math.floor(now / stepDur / 4) * 4); n < N; n += 4) {
         const s = S[n]; if (s < cam.s + 1) continue; if (s > cam.s + SHOW * 0.8) break;
-        const c = at(Xc, s), y = at(Y, s), half = LW * 1.5 + 0.35, a = proj(c - half, y, s), b = proj(c + half, y, s); if (!a || !b) continue;
+        const c = at(Xc, s), y = at(Y, s), a = proj(c - half, y + 0.01, s), b = proj(c + half, y + 0.01, s); if (!a || !b) continue;
         const far = (s - cam.s) / SHOW, bar1 = n % 16 === 0;
-        g.strokeStyle = `hsla(${hue + 20},90%,75%,${(bar1 ? 0.55 : 0.28) * (1 - far)})`; g.lineWidth = Math.max(1, (bar1 ? 3 : 1.5) * dpr * (1 - far));
+        g.strokeStyle = `hsla(${hue + 20},90%,78%,${(bar1 ? 0.6 : 0.3) * (1 - far)})`; g.lineWidth = Math.max(1, (bar1 ? 3 : 1.5) * dpr * (1 - far));
         g.beginPath(); g.moveTo(a[0], a[1]); g.lineTo(b[0], b[1]); g.stroke();
       }
-      // side posts that flash with the hats
-      const hat = hats.length ? Math.exp(-Math.max(0, now - (hats.filter(k => k <= now).pop() ?? -9)) * 14) : 0;
+      // posts along the rails that flash with the hats
       for (let s = Math.ceil((cam.s + 10) / 12) * 12; s < cam.s + SHOW * 0.7; s += 12) {
         const c = at(Xc, s), y = at(Y, s);
         for (const side of [-1, 1]) {
-          const a = proj(c + side * (LW * 1.5 + 0.9), y, s), b = proj(c + side * (LW * 1.5 + 0.9), y + 1.6 + 1.2 * e, s); if (!a || !b) continue;
-          g.strokeStyle = `hsla(${hue + 60},90%,70%,${0.15 + 0.6 * hat})`; g.lineWidth = Math.max(1, Math.min(3 * dpr, a[2] * 0.06));
+          const a = proj(c + side * (half + 0.15), y + RAIL, s), b = proj(c + side * (half + 0.15), y + RAIL + 1.3 + 1.2 * e, s); if (!a || !b) continue;
+          g.strokeStyle = `hsla(${hue + 60},90%,72%,${0.15 + 0.6 * hat})`; g.lineWidth = Math.max(1, Math.min(3 * dpr, a[2] * 0.06));
           g.beginPath(); g.moveTo(a[0], a[1]); g.lineTo(b[0], b[1]); g.stroke();
+          g.fillStyle = `hsla(${hue + 60},90%,80%,${0.3 + 0.7 * hat})`; const r = Math.max(1, Math.min(4 * dpr, a[2] * 0.08)); g.fillRect(b[0] - r, b[1] - r, r * 2, r * 2);
         }
       }
-      // notes and blocks, far to near
+      // notes (little 3D pieces that spin) and static blocks, far to near
       const objs = [];
       for (const q of notes) { if (q.st === 1 || q.s < cam.s + 0.8 || q.s > cam.s + SHOW) continue; objs.push(q); }
-      for (const b of blocks) { if (b.st === 1 || b.s < cam.s + 0.8 || b.s > cam.s + SHOW) continue; objs.push(b); }
+      for (const b of blocks) { if (b.st === 1 || b.s < cam.s + 0.8 || b.s > cam.s + SHOW) continue; if (b.st === 2 && b.s < cam.s + 7) continue; objs.push(b); }
       objs.sort((a, b) => b.s - a.s);
+      g.lineWidth = Math.max(1, dpr);
       for (const o of objs) {
         const c = at(Xc, o.s) + (o.lane - 1) * LW, y = at(Y, o.s);
-        if (o.ly === undefined) {
-        if (o.st === 2 && o.s < cam.s + 7) continue;   // static: a box of noise
-          const p0 = proj(c - 0.8, y, o.s), p1 = proj(c + 0.8, y + 1.4, o.s); if (!p0 || !p1) continue;
-          const w = p1[0] - p0[0], h = p0[1] - p1[1];
-          g.fillStyle = 'rgba(30,30,40,0.92)'; g.fillRect(p0[0], p1[1], w, h);
-          const cells = 6; for (let i = 0; i < cells; i++) for (let j = 0; j < cells; j++) { const v = Math.random(); if (v < 0.45) continue; g.fillStyle = `rgba(${200 + v * 55},${200 + v * 55},${210 + v * 45},${0.35 + 0.5 * v})`; g.fillRect(p0[0] + w * i / cells, p1[1] + h * j / cells, w / cells + 0.5, h / cells + 0.5); }
-          g.strokeStyle = 'rgba(255,255,255,0.7)'; g.lineWidth = Math.max(1, dpr); g.strokeRect(p0[0], p1[1], w, h);
+        if (o.ly === undefined) {   // static: a dark box, its face a screen of noise
+          mesh(CUBE_V, CUBE_F, c, y + 0.7, o.s, 0, 0, 0, 0.72, (k, l) => [`rgba(${40 + 50 * l},${40 + 50 * l},${52 + 50 * l},0.96)`, 'rgba(255,255,255,0.55)']);
+          const p0 = proj(c - 0.66, y + 0.06, o.s - 0.72), p1 = proj(c + 0.66, y + 1.34, o.s - 0.72); if (!p0 || !p1) continue;
+          const w2 = p1[0] - p0[0], h2 = p0[1] - p1[1], cells = 7;
+          for (let i = 0; i < cells; i++) for (let j = 0; j < cells; j++) { const v = Math.random(); if (v < 0.4) continue; g.fillStyle = `rgba(${200 + v * 55},${200 + v * 55},${215 + v * 40},${0.3 + 0.55 * v})`; g.fillRect(p0[0] + w2 * i / cells, p1[1] + h2 * j / cells, w2 / cells + 0.5, h2 / cells + 0.5); }
           continue;
         }
-        const p = proj(c, y + 0.65 + Math.sin(now * 6 + o.n) * 0.06, o.s); if (!p) continue;
-        const r = Math.max(1.5, 0.5 * p[2]), col = COL[o.ly], dim = o.st === 2 ? 0.25 : 1;
-        g.fillStyle = rgba(col, 0.18 * dim); shape(LAYERS[o.ly].shape, p[0], p[1], r * 1.9);
-        g.fillStyle = rgba(col, 0.95 * dim); shape(LAYERS[o.ly].shape, p[0], p[1], r);
-        g.fillStyle = `rgba(255,255,255,${0.75 * dim})`; shape(LAYERS[o.ly].shape, p[0], p[1], r * 0.4);
+        const col = COL[o.ly], dim = o.st === 2 ? 0.3 : 1, yy = y + 0.75 + Math.sin(now * 5 + o.n) * 0.07, spin = now * 2.2 + o.n * 0.7;
+        const halo = proj(c, yy, o.s); if (!halo) continue;
+        g.fillStyle = rgba(col, 0.16 * dim); g.beginPath(); g.arc(halo[0], halo[1], Math.max(2, 0.95 * halo[2]), 0, 6.283); g.fill();
+        const paint = (k, l) => [`rgba(${Math.round(col[0] * (0.45 + 0.6 * l))},${Math.round(col[1] * (0.45 + 0.6 * l))},${Math.round(col[2] * (0.45 + 0.6 * l))},${dim})`, `rgba(255,255,255,${0.55 * dim})`];
+        if (o.ly === 0) mesh(CUBE_V, CUBE_F, c, yy, o.s, 0.5, spin * 0.5, spin, 0.36, paint);
+        else if (o.ly === 1) mesh(OCTA_V, OCTA_F, c, yy, o.s, 0, 0, spin, 0.42, paint);
+        else {   // percussion: a glowing orb with a ring around it
+          const r = Math.max(1.5, 0.4 * halo[2]), gr = g.createRadialGradient(halo[0] - r * 0.3, halo[1] - r * 0.3, r * 0.1, halo[0], halo[1], r);
+          gr.addColorStop(0, `rgba(255,255,255,${dim})`); gr.addColorStop(0.35, rgba(col, dim)); gr.addColorStop(1, rgba(col.map(v => v * 0.4), dim));
+          g.fillStyle = gr; g.beginPath(); g.arc(halo[0], halo[1], r, 0, 6.283); g.fill();
+          g.strokeStyle = rgba(col, 0.8 * dim); g.beginPath(); g.ellipse(halo[0], halo[1], r * 1.6, r * 0.45, Math.sin(spin) * 0.4, 0, 6.283); g.stroke();
+        }
       }
-      // the sparks of what you caught
-      for (const f of P.fx) { const p = proj(f.x, f.y, f.s + 0.0); if (!p) continue; g.fillStyle = rgba(f.c, Math.min(1, f.life * 2)); const r = Math.max(1, 0.09 * p[2]); g.fillRect(p[0] - r, p[1] - r, r * 2, r * 2); }
-      // the ship: a neon arrowhead, leaning into the turns, with a trail
-      const sy = at(Y, shipS) + 0.42, base = proj(shipX, sy, shipS), tip = proj(shipX, sy + 0.08, shipS + 1.6);
-      if (base && tip) {
-        const k = base[2], wv = 0.95 * k, lean = P.tilt;
-        for (let i = 1; i <= 5; i++) { const tp = proj(shipX - 0, sy, shipS - i * 0.5 + 0.2); if (!tp) continue; g.fillStyle = `hsla(${hue - 40},95%,65%,${0.12 * (6 - i) / 5})`; g.fillRect(tp[0] - wv * 0.5, tp[1] - 2, wv, 4); }
-        g.save(); g.translate(base[0], base[1]); g.rotate(lean * 0.25);
-        g.fillStyle = `hsla(${hue - 40},95%,60%,0.25)`; g.beginPath(); g.moveTo(0, -(base[1] - tip[1]) - 0.5 * k); g.lineTo(wv * 0.75, 0.25 * k); g.lineTo(-wv * 0.75, 0.25 * k); g.closePath(); g.fill();
-        g.fillStyle = '#e8fbff'; g.strokeStyle = `hsl(${hue - 40},95%,62%)`; g.lineWidth = 2 * dpr;
-        g.beginPath(); g.moveTo(0, -(base[1] - tip[1])); g.lineTo(wv * 0.5, 0.12 * k); g.lineTo(0, -0.05 * k); g.lineTo(-wv * 0.5, 0.12 * k); g.closePath(); g.fill(); g.stroke();
-        g.restore();
+      // the sparks of what you caught, and a ring that opens around the ship
+      for (const f of P.fx) { const p = proj(f.x, f.y, f.s); if (!p || f.s - cam.s < 4) continue; g.fillStyle = rgba(f.c, Math.min(1, f.life * 2)); const r = Math.max(1, Math.min(5 * dpr, 0.07 * p[2])); g.fillRect(p[0] - r, p[1] - r, r * 2, r * 2); }
+
+      // the ship: a little low-poly craft hovering over the track, banking into each lane change and pitching with the slope
+      const hov = 0.55 + Math.sin(now * 3.1) * 0.05 + kick * 0.04, sy = at(Y, shipS) + hov, ss = shipS;
+      const sh = proj(shipX, at(Y, shipS) + 0.02, ss);   // its shadow on the track
+      if (sh) { g.fillStyle = 'rgba(0,0,0,0.45)'; g.beginPath(); g.ellipse(sh[0], sh[1], 1.1 * sh[2], 0.28 * sh[2], 0, 0, 6.283); g.fill(); }
+      // the wingtips leave two ribbons of light
+      const tipL = rot([-1.2, 0.2, -0.95], bank, slope, 0), tipR = rot([1.2, 0.2, -0.95], bank, slope, 0);
+      trail.push([shipX + tipL[0] * 0.9, sy + tipL[1] * 0.9, ss + tipL[2] * 0.9, shipX + tipR[0] * 0.9, sy + tipR[1] * 0.9, ss + tipR[2] * 0.9]); if (trail.length > 22) trail.shift();
+      for (let i = 1; i < trail.length; i++) {
+        const a = trail[i - 1], b = trail[i], al = i / trail.length;
+        for (const o of [0, 3]) { const p0 = proj(a[o], a[o + 1], a[o + 2]), p1 = proj(b[o], b[o + 1], b[o + 2]); if (!p0 || !p1) continue; g.strokeStyle = `hsla(${hue - 40},95%,70%,${0.5 * al})`; g.lineWidth = Math.max(1, 2.5 * dpr * al); g.beginPath(); g.moveTo(p0[0], p0[1]); g.lineTo(p1[0], p1[1]); g.stroke(); }
       }
+      // the engines' flame behind it
+      const eng = rot([0, 0.17, -0.9], bank, slope, 0), ep = proj(shipX + eng[0] * 0.9, sy + eng[1] * 0.9, ss + eng[2] * 0.9);
+      if (ep) { const r = (0.4 + 0.2 * kick + Math.random() * 0.08) * ep[2], gr = g.createRadialGradient(ep[0], ep[1], 0, ep[0], ep[1], r); gr.addColorStop(0, 'rgba(255,255,255,0.95)'); gr.addColorStop(0.3, `hsla(${hue - 40},100%,65%,0.8)`); gr.addColorStop(1, `hsla(${hue - 40},100%,50%,0)`); g.fillStyle = gr; g.beginPath(); g.arc(ep[0], ep[1], r, 0, 6.283); g.fill(); }
+      const tone = (h, s, l) => `hsl(${h},${s}%,${l}%)`;
+      g.lineWidth = Math.max(1, 1.2 * dpr);
+      mesh(SHIP_V, SHIP_F, shipX, sy, ss, bank, slope, 0, 1.0, (k, l) => {
+        if (k === 'g') return [`hsla(190,90%,${30 + 45 * l}%,0.95)`, 'rgba(200,255,255,0.8)'];
+        if (k === 'w') return [tone(hue - 40, 85, 25 + 40 * l), tone(hue - 40, 95, 72)];
+        if (k === 'f') return [tone(hue - 10, 80, 30 + 40 * l), tone(hue - 10, 95, 75)];
+        if (k === 'e') return ['rgba(255,255,255,0.95)', tone(hue - 40, 100, 70)];
+        if (k === 'u') return [tone(hue, 30, 8 + 14 * l), null];
+        return [tone(hue + 200, 12, 55 + 38 * l), 'rgba(255,255,255,0.35)'];
+      });
+      for (const r of P.rings) { const p = proj(shipX, sy, ss); if (!p) continue; const f = 1 - r.life / 0.45; g.strokeStyle = rgba(r.c, r.life * 2); g.lineWidth = Math.max(1, 3 * dpr * (1 - f)); g.beginPath(); g.ellipse(p[0], p[1], (0.8 + 1.6 * f) * p[2], (0.3 + 0.5 * f) * p[2], 0, 0, 6.283); g.stroke(); }
+      g.restore();
       // a glitch when you crash into static
       if (P.glitch > 0) {
         for (let i = 0; i < 10; i++) { const y = Math.random() * Hh, h = (4 + Math.random() * 30) * dpr, dx = (Math.random() - 0.5) * 60 * dpr * P.glitch; try { g.drawImage(cv, 0, y, W, h, dx, y, W, h); } catch (e) { /* ignore */ } }
         g.fillStyle = `rgba(255,255,255,${0.12 * P.glitch})`; g.fillRect(0, 0, W, Hh);
       }
-    }
-    function shape(k, x, y, r) {
-      g.beginPath();
-      if (k === 'sq') g.rect(x - r * 0.8, y - r * 0.8, r * 1.6, r * 1.6);
-      else if (k === 'dia') { g.moveTo(x, y - r * 1.15); g.lineTo(x + r, y); g.lineTo(x, y + r * 1.15); g.lineTo(x - r, y); g.closePath(); }
-      else g.arc(x, y, r, 0, 6.283);
-      g.fill();
     }
 
     /* ── the end ── */
@@ -403,7 +496,7 @@
 
     raf = requestAnimationFrame(frame);
     ctx.hud(`<span class="jg-hud-i">${STYLES[style]} · ${bpm} BPM</span>`);
-    Object.assign(ctx.test, { P, H, notes, blocks, secs, st, N, stepDur, songTime, finish, setPause, move, setAuto(v) { auto = !!v; } });   // (Object.assign would drop a setter)
+    Object.assign(ctx.test, { cam, P, H, notes, blocks, secs, st, N, stepDur, songTime, finish, setPause, move, setAuto(v) { auto = !!v; } });   // (Object.assign would drop a setter)
 
     return () => {
       clearInterval(tick); cancelAnimationFrame(raf);
