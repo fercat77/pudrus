@@ -6,8 +6,8 @@
   <meta name="theme-color" content="#050508">
   <meta property="og:type" content="website">
   <meta property="og:site_name" content="PUDRUS.XYZ">
-  <meta property="og:title" content="PUDRUS.XYZ — Suite visual creativa">
-  <meta property="og:description" content="Glitch, dithering, halftone, pixel sort, ASCII, flyers y una cámara con efectos en vivo: 11 herramientas visuales que corren en tu navegador. Gratis, sin cuentas y sin subir tus imágenes.">
+  <meta property="og:title" content="PUDRUS.XYZ — Laboratorio creativo">
+  <meta property="og:description" content="Herramientas visuales que corren en tu navegador, juegos de ingenio y Núcleo en red, noticias de cultura digital y del mundo real, y labs de visuales y música. Gratis y sin cuentas.">
   <meta property="og:url" content="https://pudrus.xyz/">
   <meta property="og:image" content="https://pudrus.xyz/assets/og/cover.jpg">
   <meta property="og:image:width" content="1200">
@@ -15,8 +15,8 @@
   <meta property="og:image:alt" content="Mosaico de efectos de PUDRUS.XYZ aplicados a una medusa">
   <meta property="og:locale" content="es_AR">
   <meta name="twitter:card" content="summary_large_image">
-  <meta name="description" content="Glitch, dithering, halftone, pixel sort, ASCII, flyers y una cámara con efectos en vivo: 11 herramientas visuales que corren en tu navegador. Gratis, sin cuentas y sin subir tus imágenes.">
-  <title>PUDRUS.XYZ — Creative Visual Suite</title>
+  <meta name="description" content="Herramientas visuales que corren en tu navegador, juegos de ingenio y Núcleo en red, noticias de cultura digital y del mundo real, y labs de visuales y música. Gratis y sin cuentas.">
+  <title>PUDRUS.XYZ — Laboratorio creativo</title>
   <link rel="icon" type="image/svg+xml" href="favicon.svg">
   <link rel="manifest" href="/manifest.webmanifest">
   <link rel="apple-touch-icon" href="/assets/icons/apple-touch-icon.png">
@@ -39,10 +39,10 @@
   <ul class="nav-links" id="navLinks">
     <li><a href="#tools" data-i18n="nav.tools">Tools</a></li>
     <li><a href="#games" data-i18n="nav.games">Games</a></li>
-    <li><a href="#news" data-i18n="nav.news">News</a></li>
-    <li data-gallery-section hidden><a href="#gallery" data-i18n="nav.gallery">Gallery</a></li>
-    <li><a href="#about" data-i18n="nav.about">About</a></li>
-    <li><a href="#work" data-i18n="nav.work">Work</a></li>
+    <li><a href="#news" data-i18n="nav.news">Noticias</a></li>
+    <li><a href="#labs" data-i18n="nav.labs">Labs</a></li>
+    <li data-gallery-section hidden><a href="#gallery" data-i18n="nav.gallery">Galería</a></li>
+    <li><a href="#work" data-i18n="nav.work">Trabajo</a></li>
   </ul>
   <div class="nav-lang">
     <select id="langSelect" aria-label="Language selector">
@@ -61,29 +61,16 @@
       <div class="corner tl"></div><div class="corner tr"></div>
       <div class="corner bl"></div><div class="corner br"></div>
     </div>
-    <div class="hero-tag" data-i18n="hero.tag">◈ Creative Visual Suite</div>
+    <div class="hero-tag" data-i18n="hero.tag">◈ Laboratorio creativo</div>
     <h1>PUDRUS<span>.</span>XYZ</h1>
-    <p class="hero-sub" data-i18n="hero.sub">Browser-based image processing tools</p>
-    <div class="hero-cta">
-      <a href="#tools" class="btn btn-primary" data-i18n="hero.explore">◈ Explore Tools</a>
-      <a href="#about" class="btn btn-outline" data-i18n="hero.learn">Learn More</a>
+    <p class="hero-sub" data-i18n="hero.sub">Herramientas visuales, juegos, noticias y experimentos de un VJ y músico. Todo corre en tu navegador.</p>
+    <div class="hero-doors">
+      <a href="#tools" class="door"><span class="door-ico" aria-hidden="true">◈</span><b data-i18n="hero.d1">Herramientas</b><small data-i18n="hero.d1s">11 efectos para tus imágenes</small></a>
+      <a href="#games" class="door"><span class="door-ico" aria-hidden="true">◆</span><b data-i18n="hero.d2">Juegos</b><small data-i18n="hero.d2s">DRUS y Núcleo, en red</small></a>
+      <a href="#news" class="door"><span class="door-ico" aria-hidden="true">▤</span><b data-i18n="hero.d3">NoticIAs</b><small data-i18n="hero.d3s">Cultura digital y el mundo real</small></a>
+      <a href="#labs" class="door"><span class="door-ico" aria-hidden="true">⌬</span><b data-i18n="hero.d4">Labs</b><small data-i18n="hero.d4s">Visuales, música y partículas</small></a>
     </div>
     <button type="button" class="hero-install" data-install hidden data-i18n="pwa.install">⤓ Install as an app</button>
-    <div class="hero-line"></div>
-    <div class="hero-stats">
-      <div class="stat">
-        <div class="stat-num">11</div>
-        <div class="stat-label" data-i18n="stats.tools">Tools</div>
-      </div>
-      <div class="stat">
-        <div class="stat-num">∞</div>
-        <div class="stat-label" data-i18n="stats.combinations">Combinations</div>
-      </div>
-      <div class="stat">
-        <div class="stat-num">0</div>
-        <div class="stat-label" data-i18n="stats.install">No install</div>
-      </div>
-    </div>
   </section>
 
   <!-- ── TOOLS ─────────────────────────────────────────── -->
@@ -182,7 +169,8 @@
     <a href="juegos/index.html" class="games-card">
       <div class="games-art" aria-hidden="true"><span><svg viewBox="0 0 120 64"><g stroke="#66ff33" stroke-width="7" fill="none" stroke-linecap="round"><path d="M8 32h32v-20h32M72 12v40h40"/></g><circle cx="8" cy="32" r="7" fill="#66ff33"/><rect x="104" y="44" width="14" height="14" fill="#66ff33"/></svg></span><span><svg viewBox="0 0 64 64"><rect x="4" y="4" width="26" height="26" rx="6" fill="#66ff33"/><rect x="34" y="4" width="26" height="26" rx="6" fill="none" stroke="#00d4ff" stroke-width="3"/><rect x="4" y="34" width="26" height="26" rx="6" fill="none" stroke="#ff3fa4" stroke-width="3"/><rect x="34" y="34" width="26" height="26" rx="6" fill="none" stroke="#ffd23f" stroke-width="3"/></svg></span><span><svg viewBox="0 0 150 64"><text x="4" y="44" font-family="monospace" font-weight="700" font-size="34" fill="#00d4ff" data-i18n="games.inkWord">ROJO</text><rect x="100" y="16" width="44" height="30" rx="5" fill="#00d4ff"/></svg></span><span><svg viewBox="0 0 64 64"><rect x="2" y="2" width="60" height="60" fill="none" stroke="#66ff33" stroke-width="2.5"/><path d="M22 2v60M42 2v60M2 22h60M2 42h60" stroke="#66ff33" stroke-width="1.5" opacity="0.6"/><g font-family="monospace" font-weight="700" font-size="14" text-anchor="middle"><text x="12" y="17" fill="#fff">5</text><text x="52" y="17" fill="#66ff33">3</text><text x="32" y="37" fill="#fff">9</text><text x="12" y="57" fill="#00d4ff">7</text><text x="52" y="57" fill="#fff">1</text></g></svg></span><span><svg viewBox="0 0 120 64"><path d="M8 50 C 20 0, 40 70, 56 26 S 90 6, 112 40" fill="none" stroke="#66ff33" stroke-width="4" stroke-linecap="round"/><path d="M60 30 q 8 -14 18 0 q -9 12 -18 0" fill="none" stroke="#fff" stroke-width="2.5"/><circle cx="70" cy="28" r="2.5" fill="#fff"/></svg></span><span><svg viewBox="0 0 150 64"><g fill="none" stroke-width="3"><polygon points="20,12 34,48 6,48" stroke="#66ff33"/><rect x="46" y="16" width="30" height="30" stroke="#00d4ff" transform="rotate(20 61 31)"/><polygon points="102,10 120,24 113,46 91,46 84,24" stroke="#ff3fa4"/></g><text x="132" y="44" fill="#66ff33" font-size="34" font-family="monospace">?</text></svg></span></div>
       <div class="games-tx">
-        <div class="games-count" data-i18n="games.count">10 games · a daily challenge, the same for everyone</div>
+        <div class="games-count" data-i18n="games.count">10 juegos rápidos · un desafío del día, el mismo para todos</div>
+        <div class="games-mode"><b>◆ <span data-i18n="games.ncName">Núcleo</span></b><span data-i18n="games.nc">Acción en primera persona en una estructura de neón que cambia cada vez. Solo o en red, de 2 a 4.</span></div>
         <div class="games-mode"><b>⚔ <span data-i18n="games.duelName">Duel</span></b><span data-i18n="games.duel">Play against your friends, each one on their own phone, or taking turns on one.</span></div>
         <div class="games-mode"><b>✏️ <span data-i18n="games.drawName">Trazos</span></b><span data-i18n="games.draw">One draws, the others guess the word.</span></div>
         <span class="btn btn-primary games-go" data-i18n="games.play">Play</span>
@@ -205,11 +193,45 @@
     </a>
   </section>
 
+  <!-- ── LABS ─────────────────────────────────────────── -->
+  <section id="labs" class="screen section-labs">
+    <div class="section-tag" data-i18n="labs.sectionTag">◈ 04 — Labs</div>
+    <h2 class="section-title" data-i18n="labs.title" data-i18n-html>Labs · <span>experimentos</span></h2>
+    <p class="section-desc" data-i18n="labs.desc">Lo que uso en mis shows de visuales y música, abierto para que lo pruebes. Son experimentos: cambian seguido y están pensados para una compu.</p>
+    <div class="labs-grid">
+      <a href="lab/nodes/index.html" class="lab-card">
+        <img class="lab-thumb" src="assets/previews/lab-nodes.webp" alt="" width="720" height="480" loading="lazy" decoding="async">
+        <div class="lab-tx">
+          <div class="lab-kind" data-i18n="labs.nodesKind">Visuales en vivo</div>
+          <div class="lab-name">NODRUS</div>
+          <p data-i18n="labs.nodes">Visuales por nodos, al estilo Blender: conectás cajas, armás efectos y los tocás en vivo, con el celular como control. En mis shows lo uso como app de escritorio, con salida a Resolume y luces.</p>
+        </div>
+      </a>
+      <a href="lab/syndrus/index.html" class="lab-card">
+        <img class="lab-thumb" src="assets/previews/lab-syndrus.webp" alt="" width="720" height="480" loading="lazy" decoding="async">
+        <div class="lab-tx">
+          <div class="lab-kind" data-i18n="labs.syndrusKind">Música</div>
+          <div class="lab-name">SYNDRUS</div>
+          <p data-i18n="labs.syndrus">Caja de ritmos, sintetizador, arpegios y anillos euclidianos para techno y psytrance, con dos decks, efectos de pista y grabación del set.</p>
+        </div>
+      </a>
+      <a href="lab/partrus/index.html" class="lab-card">
+        <img class="lab-thumb" src="assets/previews/lab-partrus.webp" alt="" width="720" height="480" loading="lazy" decoding="async">
+        <div class="lab-tx">
+          <div class="lab-kind" data-i18n="labs.partrusKind">Partículas</div>
+          <div class="lab-name">PARTRUS</div>
+          <p data-i18n="labs.partrus">Cientos de miles de partículas en la placa de video, armadas con nodos: emisores, remolinos, turbulencia. Lo que armás se usa en NODRUS.</p>
+        </div>
+      </a>
+    </div>
+    <p class="labs-note" data-i18n="labs.note">⚠ Experimental · para compu con teclado y mouse. En el celular se abren, pero no se usan bien.</p>
+  </section>
+
   <!-- ── GALLERY (hidden until there are images or a submission form) ── -->
   <section id="gallery" class="screen section-gallery" data-gallery-section hidden>
     <div class="gallery-head">
       <div>
-        <div class="section-tag" data-i18n="gallery.sectionTag">◈ 02 — Gallery</div>
+        <div class="section-tag" data-i18n="gallery.sectionTag">◈ Galería</div>
         <h2 class="section-title" data-i18n="gallery.title" data-i18n-html>Made with PUDRUS</h2>
         <p class="section-desc" data-i18n="gallery.desc">Images the community created with these tools.</p>
       </div>
@@ -217,46 +239,6 @@
     </div>
     <div class="gallery-grid" data-gallery data-limit="4"></div>
     <a href="gallery/index.html" class="btn btn-outline gallery-more" data-gallery-more="4" hidden data-i18n="gallery.viewAll">See the whole gallery</a>
-  </section>
-
-  <!-- ── ABOUT ─────────────────────────────────────────── -->
-  <section id="about" class="screen section-about">
-    <div class="about-grid">
-      <div class="about-text">
-        <div class="section-tag" data-i18n="about.sectionTag">◈ 04 — About</div>
-        <h2 class="section-title" data-i18n="about.title">How it works</h2>
-        <p data-i18n="about.p1">PUDRUS.XYZ is a creative suite that runs locally in your browser.</p>
-        <p data-i18n="about.p2">Built with vanilla JavaScript. No frameworks, no accounts.</p>
-        <p>
-          <span data-i18n="about.p3">This project was created by Fercat, a musician, visual artist and digital creator.</span>
-          <a href="https://www.instagram.com/pudrus/" target="_blank" rel="noopener noreferrer" data-i18n="about.portfolio" class="about-link">Check out my work</a>.
-        </p>
-        <a href="#tools" class="btn btn-outline" data-i18n="about.start">Start Creating</a>
-      </div>
-      <div class="about-features">
-        <div class="feature">
-          <div class="feature-icon" aria-hidden="true">◈</div>
-          <div class="feature-text">
-            <h3 data-i18n="about.f1Title">100% private</h3>
-            <p data-i18n="about.f1Text">Your images are processed on your device and never leave it.</p>
-          </div>
-        </div>
-        <div class="feature">
-          <div class="feature-icon" aria-hidden="true">⚡</div>
-          <div class="feature-text">
-            <h3 data-i18n="about.f2Title">Instant</h3>
-            <p data-i18n="about.f2Text">Nothing to install. Works in any modern browser, on desktop or phone.</p>
-          </div>
-        </div>
-        <div class="feature">
-          <div class="feature-icon" aria-hidden="true">✦</div>
-          <div class="feature-text">
-            <h3 data-i18n="about.f3Title">Full control</h3>
-            <p data-i18n="about.f3Text">Presets to start fast, every parameter to fine-tune, and full-resolution export.</p>
-          </div>
-        </div>
-      </div>
-    </div>
   </section>
 
   <!-- ── WORK ─────────────────────────────────────────── -->
@@ -298,6 +280,24 @@
           <a href="mailto:fercatalfamo@gmail.com">fercatalfamo@gmail.com</a>
         </div>
       </div>
+    </div>
+  </section>
+
+  <!-- ── ABOUT (short) ─────────────────────────────────── -->
+  <section id="about" class="screen is-short section-about">
+    <div class="about-row">
+      <div class="about-text">
+        <div class="section-tag" data-i18n="about.sectionTag">◈ Acerca de</div>
+        <p>
+          <span data-i18n="about.p1">PUDRUS.XYZ lo hace Fercat, músico, artista visual y VJ. Está hecho con JavaScript puro y todo corre en tu navegador: sin cuentas, sin publicidad y sin subir tus imágenes a ningún lado.</span>
+          <a href="https://www.instagram.com/pudrus/" target="_blank" rel="noopener noreferrer" data-i18n="about.portfolio" class="about-link">Mirá mi trabajo</a>.
+        </p>
+      </div>
+      <ul class="about-chips">
+        <li data-i18n="about.c1">◈ Privado: lo tuyo queda en tu dispositivo</li>
+        <li data-i18n="about.c2">⚡ Nada que instalar</li>
+        <li data-i18n="about.c3">✦ Gratis y sin cuentas</li>
+      </ul>
     </div>
   </section>
 </main>

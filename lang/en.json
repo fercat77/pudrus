@@ -8,19 +8,20 @@
     "themeLight": "Switch to the light theme",
     "themeDark": "Switch to the dark theme",
     "games": "Games",
-    "news": "News"
+    "news": "News",
+    "labs": "Labs"
   },
   "hero": {
-    "tag": "◈ Creative Visual Suite",
-    "title": "PUDRUS.XYZ",
-    "sub": "Browser-based image processing tools",
-    "explore": "◈ Explore tools",
-    "learn": "Learn More"
-  },
-  "stats": {
-    "tools": "Tools",
-    "combinations": "Combinations",
-    "install": "No install"
+    "tag": "◈ Creative lab",
+    "sub": "Visual tools, games, news and experiments by a VJ and musician. Everything runs in your browser.",
+    "d1": "Tools",
+    "d1s": "11 effects for your images",
+    "d2": "Games",
+    "d2s": "DRUS and Núcleo, online",
+    "d3": "NoticIAs",
+    "d3s": "Digital culture and the real world",
+    "d4": "Labs",
+    "d4s": "Visuals, music and particles"
   },
   "work": {
     "sectionTag": "◈ 05 — Work",
@@ -378,19 +379,12 @@
     "shapeSquare": "Square"
   },
   "about": {
-    "sectionTag": "◈ 04 — About",
-    "title": "How it Works",
-    "p1": "PUDRUS.XYZ is a creative suite that runs locally in your browser: your images never leave your device.",
-    "p2": "Built with vanilla JavaScript. No frameworks, no accounts.",
-    "start": "Start Creating",
-    "p3": "This project was created by Fercat, musician, visual artist and digital creator.",
-    "portfolio": "Check out my work",
-    "f1Title": "100% private",
-    "f1Text": "Your images are processed on your device and never leave it.",
-    "f2Title": "Instant",
-    "f2Text": "Nothing to install. Works in any modern browser, on desktop or phone.",
-    "f3Title": "Full control",
-    "f3Text": "Presets to start fast, every parameter to fine-tune, and full-resolution export."
+    "sectionTag": "◈ About",
+    "p1": "PUDRUS.XYZ is made by Fercat, musician, visual artist and VJ. It is built with plain JavaScript and everything runs in your browser: no accounts, no ads and your images are never uploaded.",
+    "portfolio": "See my work",
+    "c1": "◈ Private: your stuff stays on your device",
+    "c2": "⚡ Nothing to install",
+    "c3": "✦ Free, no accounts"
   },
   "footer": {
     "copyright": "© 2026 PUDRUS.XYZ",
@@ -542,13 +536,15 @@
     "sectionTag": "◈ 02 — Games",
     "title": "<span class=\"games-drus\">DRUS</span> · train your brain",
     "desc": "Quick games of logic, memory, attention and creativity. No sign-up: your records stay in your browser.",
-    "count": "10 games · a daily challenge, the same for everyone",
+    "count": "10 quick games · a daily challenge, the same for everyone",
     "duelName": "Duel",
     "duel": "Play against your friends, each one on their own phone, or taking turns on one.",
     "drawName": "Trazos",
     "draw": "One draws, the others guess the word.",
     "play": "Play",
-    "inkWord": "RED"
+    "inkWord": "RED",
+    "ncName": "Núcleo",
+    "nc": "First-person action in a neon structure that changes every time. Alone or online, 2 to 4 players."
   },
   "news": {
     "tag": "◈ News",
@@ -608,5 +604,17 @@
     "noItems": "Nothing here for now.",
     "emptyTab": "No stories in this part yet. Come back in a while.",
     "allHeads": "See all {n} headlines"
+  },
+  "labs": {
+    "sectionTag": "◈ 04 — Labs",
+    "title": "Labs · <span>experiments</span>",
+    "desc": "What I use in my visuals and music shows, open for you to try. They are experiments: they change often and are made for a computer.",
+    "nodesKind": "Live visuals",
+    "nodes": "Node-based visuals, Blender style: connect boxes, build effects and play them live, with your phone as a controller. In my shows I use it as a desktop app, feeding Resolume and lights.",
+    "syndrusKind": "Music",
+    "syndrus": "Drum machine, synth, arpeggios and euclidean rings for techno and psytrance, with two decks, performance effects and set recording.",
+    "partrusKind": "Particles",
+    "partrus": "Hundreds of thousands of particles on the graphics card, built with nodes: emitters, swirls, turbulence. What you build can be used in NODRUS.",
+    "note": "⚠ Experimental · for a computer with keyboard and mouse. They open on a phone, but are hard to use."
   }
 }

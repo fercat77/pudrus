@@ -8,19 +8,20 @@
     "themeLight": "Cambiar al tema claro",
     "themeDark": "Cambiar al tema oscuro",
     "games": "Juegos",
-    "news": "Noticias"
+    "news": "Noticias",
+    "labs": "Labs"
   },
   "hero": {
-    "tag": "◈ Suite Visual Creativa",
-    "title": "PUDRUS.XYZ",
-    "sub": "Herramientas de procesamiento de imagen en tu navegador",
-    "explore": "◈ Ver herramientas",
-    "learn": "Más info"
-  },
-  "stats": {
-    "tools": "Herramientas",
-    "combinations": "Combinaciones",
-    "install": "instalación"
+    "tag": "◈ Laboratorio creativo",
+    "sub": "Herramientas visuales, juegos, noticias y experimentos de un VJ y músico. Todo corre en tu navegador.",
+    "d1": "Herramientas",
+    "d1s": "11 efectos para tus imágenes",
+    "d2": "Juegos",
+    "d2s": "DRUS y Núcleo, en red",
+    "d3": "NoticIAs",
+    "d3s": "Cultura digital y el mundo real",
+    "d4": "Labs",
+    "d4s": "Visuales, música y partículas"
   },
   "work": {
     "sectionTag": "◈ 05 — Trabajo",
@@ -378,19 +379,12 @@
     "shapeSquare": "Cuadrado"
   },
   "about": {
-    "sectionTag": "◈ 04 — Acerca de",
-    "title": "Cómo funciona",
-    "p1": "PUDRUS.XYZ es una suite creativa que corre localmente en tu navegador: tus imágenes nunca salen de tu dispositivo.",
-    "p2": "Hecho con JavaScript puro. Sin frameworks ni cuentas.",
-    "start": "Empezar a Crear",
-    "p3": "Este proyecto fue creado por Fercat, músico, artista visual y creador digital.",
-    "portfolio": "Mira mi trabajo",
-    "f1Title": "100% privado",
-    "f1Text": "Tus imágenes se procesan en tu dispositivo y nunca salen de él.",
-    "f2Title": "Al instante",
-    "f2Text": "Nada que instalar. Funciona en cualquier navegador moderno, en la compu o el celular.",
-    "f3Title": "Control total",
-    "f3Text": "Presets para arrancar rápido, todos los parámetros para ajustar y exportación en resolución completa."
+    "sectionTag": "◈ Acerca de",
+    "p1": "PUDRUS.XYZ lo hace Fercat, músico, artista visual y VJ. Está hecho con JavaScript puro y todo corre en tu navegador: sin cuentas, sin publicidad y sin subir tus imágenes a ningún lado.",
+    "portfolio": "Mirá mi trabajo",
+    "c1": "◈ Privado: lo tuyo queda en tu dispositivo",
+    "c2": "⚡ Nada que instalar",
+    "c3": "✦ Gratis y sin cuentas"
   },
   "footer": {
     "copyright": "© 2026 PUDRUS.XYZ",
@@ -542,13 +536,15 @@
     "sectionTag": "◈ 02 — Juegos",
     "title": "<span class=\"games-drus\">DRUS</span> · entrená la cabeza",
     "desc": "Juegos rápidos de lógica, memoria, atención y creatividad. Sin registro: tus récords quedan en tu navegador.",
-    "count": "10 juegos · un desafío del día, el mismo para todos",
+    "count": "10 juegos rápidos · un desafío del día, el mismo para todos",
     "duelName": "Duelo",
     "duel": "Jugá contra tus amigos, cada uno en su celular o pasándose uno.",
     "drawName": "Trazos",
     "draw": "Uno dibuja y los demás adivinan la palabra.",
     "play": "Jugar",
-    "inkWord": "ROJO"
+    "inkWord": "ROJO",
+    "ncName": "Núcleo",
+    "nc": "Acción en primera persona en una estructura de neón que cambia cada vez. Solo o en red, de 2 a 4."
   },
   "news": {
     "tag": "◈ Noticias",
@@ -608,5 +604,17 @@
     "noItems": "No hay notas por ahora.",
     "emptyTab": "Todavía no hay noticias en esta parte. Volvé en un rato.",
     "allHeads": "Ver los {n} títulos"
+  },
+  "labs": {
+    "sectionTag": "◈ 04 — Labs",
+    "title": "Labs · <span>experimentos</span>",
+    "desc": "Lo que uso en mis shows de visuales y música, abierto para que lo pruebes. Son experimentos: cambian seguido y están pensados para una compu.",
+    "nodesKind": "Visuales en vivo",
+    "nodes": "Visuales por nodos, al estilo Blender: conectás cajas, armás efectos y los tocás en vivo, con el celular como control. En mis shows lo uso como app de escritorio, con salida a Resolume y luces.",
+    "syndrusKind": "Música",
+    "syndrus": "Caja de ritmos, sintetizador, arpegios y anillos euclidianos para techno y psytrance, con dos decks, efectos de pista y grabación del set.",
+    "partrusKind": "Partículas",
+    "partrus": "Cientos de miles de partículas en la placa de video, armadas con nodos: emisores, remolinos, turbulencia. Lo que armás se usa en NODRUS.",
+    "note": "⚠ Experimental · para compu con teclado y mouse. En el celular se abren, pero no se usan bien."
   }
 }
