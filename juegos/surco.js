@@ -149,18 +149,32 @@
     pauseBtn.title = tr('Pausa (P)', 'Pause (P)');
     const touch = matchMedia('(pointer: coarse)').matches && !matchMedia('(pointer: fine)').matches;
     const hint = el('div', 'sc-hint', touch ? tr('Tocá a la izquierda o a la derecha para cambiar de carril', 'Tap left or right to switch lanes') : tr('← → o A D para cambiar de carril · P pausa', '← → or A D to switch lanes · P pause'));
-    wrap.append(cv, hudL, meters, prog, bigEl, hint, pauseBtn, pauseEl);
+    const fsBtn = el('button', 'sc-pbtn sc-fs', '⛶'); fsBtn.title = tr('Pantalla completa', 'Full screen');
+    const fsOK = !!(wrap.requestFullscreen || wrap.webkitRequestFullscreen);
+    const fsEl = () => document.fullscreenElement || document.webkitFullscreenElement;
+    const fsOn = () => { try { const p = (wrap.requestFullscreen || wrap.webkitRequestFullscreen).call(wrap, { navigationUI: 'hide' }); if (p && p.catch) p.catch(() => {}); } catch (e) { /* not allowed */ } };
+    const fsOff = () => { try { if (fsEl()) { const p = (document.exitFullscreen || document.webkitExitFullscreen).call(document); if (p && p.catch) p.catch(() => {}); } } catch (e) { /* ignore */ } };
+    fsBtn.addEventListener('click', e => { e.stopPropagation(); if (fsEl()) fsOff(); else fsOn(); });
+    if (!fsOK) fsBtn.hidden = true;
+    wrap.append(cv, hudL, meters, prog, bigEl, hint, pauseBtn, fsBtn, pauseEl);
     stage.append(wrap);
+    if (touch && fsOK) fsOn();   // on a phone: the whole screen (the start tap is the gesture it needs)
     const COL = COLS(), rgba = (c, a) => `rgba(${c[0]},${c[1]},${c[2]},${a})`;
     meters.querySelectorAll('.sc-m').forEach((m, i) => { m.style.setProperty('--c', `rgb(${COL[i].join(',')})`); });
 
     /* ── sound ── */
     const AC = window.AudioContext || window.webkitAudioContext;
-    const ac = new AC(); try { ac.resume(); } catch (e) { /* the click already counts as a gesture */ }
-    const E = X.buildEngine(ac, ac.destination), D = E.decks[0];
+    let ac; try { ac = new AC(touch ? { latencyHint: 'playback' } : undefined); } catch (e) { ac = new AC(); }   // (a phone: bigger buffers, so the sound doesn't crackle while the screen works)
+    try { ac.resume(); } catch (e) { /* the click already counts as a gesture */ }
+    let outNode = ac.destination;
+    if (touch) {   // a phone speaker: no deep sub (it only distorts there) and some headroom
+      const hp = ac.createBiquadFilter(); hp.type = 'highpass'; hp.frequency.value = 70; hp.Q.value = 0.7;
+      const tr2 = ac.createGain(); tr2.gain.value = 0.8; hp.connect(tr2); tr2.connect(ac.destination); outNode = hp;
+    }
+    const E = X.buildEngine(ac, outNode), D = E.decks[0];
     const deckMix = { level: 0.9, dj: 0, eqLo: 0, eqMid: 0, eqHi: 0, kill: false, cue: false };
     X.applyPattern(D, st, bpm); D.setMix(deckMix, 1); E.decks[1].setMix({ ...deckMix, level: 0 }, 0);
-    E.setMaster({ drive: 0.12, comp: 0.5, volume: 0.8 });
+    E.setMaster(touch ? { drive: 0, comp: 0.35, volume: 0.6 } : { drive: 0.12, comp: 0.5, volume: 0.8 });
     const T0 = ac.currentTime + 0.35;
     let next = 0;   // next step to schedule
     const kicks = [], hats = [];
@@ -501,7 +515,7 @@
 
     /* ── the end ── */
     function finish() {
-      if (ended) return; ended = true;
+      if (ended) return; ended = true; fsOff();
       const total = notes.length, pct = total ? Math.round(P.caught / total * 100) : 0;
       const grade = pct >= 95 && !P.hitBlocks ? 'S' : pct >= 85 ? 'A' : pct >= 70 ? 'B' : pct >= 50 ? 'C' : 'D';
       const words = { S: tr('¡Perfecto!', 'Perfect!'), A: tr('¡Muy bien surfeado!', 'Nicely surfed!'), B: tr('Buen surco', 'A good groove'), C: tr('El tema sonó a medias', 'The song half played'), D: tr('El tema se apagó', 'The song faded out') };
@@ -519,7 +533,7 @@
     return () => {
       clearInterval(tick); cancelAnimationFrame(raf);
       removeEventListener('keydown', onKey); document.removeEventListener('visibilitychange', onVis);
-      stage.classList.remove('sc-stage');
+      stage.classList.remove('sc-stage'); fsOff();
       try { ac.close(); } catch (e) { /* already closed */ }
     };
   }

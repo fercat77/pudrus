@@ -241,7 +241,7 @@ body.juegos .jg-card .best { position: static !important; margin-top: auto; }
 }
 @media (max-height: 560px) and (orientation: landscape) { body.juegos.hubmode .jg-grid { grid-template-columns: repeat(5, minmax(0, 1fr)); } }
 /* ── v5: a game also fits the window: the stage takes the free height and every board sizes itself to it ── */
-body.juegos.playmode { height: 100vh; height: 100dvh; overflow: hidden; display: flex; flex-direction: column; }
+body.juegos.playmode { height: 100vh; height: 100dvh; height: var(--app-h, 100dvh); overflow: hidden; display: flex; flex-direction: column; }
 body.juegos.playmode main { flex: 1; min-height: 0; display: flex; }
 body.juegos.playmode .jg-play { flex: 1; min-height: 0; width: 100%; display: flex !important; flex-direction: column; padding-top: calc(var(--nav-height) + clamp(6px, 1.4vh, 14px)); padding-bottom: clamp(6px, 1.2vh, 12px); }
 body.juegos.playmode .jg-bar { flex: none; }
@@ -698,11 +698,14 @@ body.juegos .jg-card.wide .tag { color: #ff7ac4; }
 .sc-hint { position: absolute; left: 50%; bottom: 46px; transform: translateX(-50%); font-size: 12px; letter-spacing: .06em; color: rgba(234,252,255,0.8); background: rgba(0,0,0,0.45); padding: 6px 12px; border-radius: 999px; pointer-events: none; transition: opacity .6s; white-space: nowrap; }
 .sc-hint.off { opacity: 0; }
 .sc-pbtn { position: absolute; right: 12px; top: 12px; width: 38px; height: 38px; border-radius: 8px; border: 1px solid rgba(63,240,255,0.5); background: rgba(0,10,20,0.5); color: #bff6ff; font: inherit; font-weight: 700; cursor: pointer; z-index: 3; }
+.sc-fs { right: 56px; font-size: 18px; }
+.sc-wrap:fullscreen { border-radius: 0; }
+.sc-wrap:fullscreen .sc-meters, .sc-wrap:fullscreen .sc-prog { bottom: 22px; }
 .sc-pause { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; background: rgba(0,4,10,0.65); cursor: pointer; z-index: 4; }
 .sc-pause[hidden] { display: none; }
 .sc-pause b { font-size: 28px; letter-spacing: .2em; text-transform: uppercase; }
 .sc-pause span { font-size: 12px; color: rgba(234,252,255,0.7); }
 .sc-res { display: flex; flex-direction: column; gap: 6px; margin-top: 8px; min-width: 220px; }
 .sc-rrow { display: flex; justify-content: space-between; gap: 16px; font-size: 13px; color: var(--c); border-bottom: 1px solid rgba(255,255,255,0.08); padding-bottom: 4px; }
-@media (max-height: 560px) { .sc-hud { top: 6px; } .sc-score { font-size: 18px; } .sc-combo { font-size: 10px; } .sc-meters { left: 10px; bottom: 8px; gap: 3px; } .sc-m { grid-template-columns: 7em 56px; font-size: 8px; gap: 6px; } .sc-m i { height: 4px; max-width: 56px; } .sc-prog { bottom: 8px; width: min(160px, 28%); } .sc-prog span { font-size: 9px; } .sc-hint { bottom: 8px; font-size: 10px; padding: 4px 10px; } .sc-pbtn { top: 6px; right: 8px; width: 32px; height: 32px; } .sc-big { top: 34%; } }
+@media (max-height: 560px) { .sc-hud { top: 6px; } .sc-score { font-size: 18px; } .sc-combo { font-size: 10px; } .sc-meters { left: 10px; bottom: 8px; gap: 3px; } .sc-m { grid-template-columns: 7em 56px; font-size: 8px; gap: 6px; } .sc-m i { height: 4px; max-width: 56px; } .sc-prog { bottom: 8px; width: min(160px, 28%); } .sc-prog span { font-size: 9px; } .sc-hint { bottom: 8px; font-size: 10px; padding: 4px 10px; } .sc-pbtn { top: 6px; right: 8px; width: 32px; height: 32px; } .sc-fs { right: 46px; } .sc-big { top: 34%; } }
 @media (max-width: 600px) { .sc-m { grid-template-columns: 6.5em 60px; font-size: 9px; } .sc-m i { max-width: 60px; } .sc-hint { font-size: 11px; bottom: auto; top: 22%; white-space: normal; text-align: center; width: 80%; } }

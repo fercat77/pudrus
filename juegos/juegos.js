@@ -2,6 +2,9 @@
    One page: a hub of cards, and #<game> opens a game; #<game>/hoy plays the daily challenge (same seed for everyone). */
 (function () {
   'use strict';
+  // the real visible height (some phone browsers count their own bars in 100vh/100dvh, and the bottom ends up cut)
+  const setAppH = () => document.documentElement.style.setProperty('--app-h', (window.visualViewport ? visualViewport.height : innerHeight) + 'px');
+  setAppH(); addEventListener('resize', setAppH); if (window.visualViewport) visualViewport.addEventListener('resize', setAppH);
   const $ = s => document.querySelector(s);
   const el = (tag, cls, txt) => { const e = document.createElement(tag); if (cls) e.className = cls; if (txt !== undefined) e.textContent = txt; return e; };
   const pad2 = n => String(n).padStart(2, '0');
