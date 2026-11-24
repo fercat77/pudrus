@@ -216,3 +216,6 @@ mark.nx-hl { background: rgba(var(--c1-rgb),0.28); color: inherit; padding: 0 1p
   .nx-tab small { display: none; }
   .nx-tab em { top: 8px; right: 8px; }
 }
+.nx-briefs .nx-aca { margin-top: 6px; padding: 6px 8px; }
+.nx-briefs .nx-aca p { font-size: 11px; }
+.nx-heads .nx-moreheads { margin-top: 2px; }

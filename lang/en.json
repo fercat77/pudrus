@@ -606,6 +606,7 @@
     "aca": "How it hits here",
     "acaNote": "AI analysis",
     "noItems": "Nothing here for now.",
-    "emptyTab": "No stories in this part yet. Come back in a while."
+    "emptyTab": "No stories in this part yet. Come back in a while.",
+    "allHeads": "See all {n} headlines"
   }
 }

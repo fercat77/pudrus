@@ -80,6 +80,13 @@
       }
       ol.append(li);
     });
+    const many = ol.children.length, SHOW = 6;   // a story told by many outlets: the first six, the rest one tap away
+    if (many > SHOW + 1) {
+      [...ol.children].slice(SHOW).forEach(li => { li.hidden = true; });
+      const li = el('li'), b = el('button', 'nx-all nx-moreheads', t('allHeads', 'Ver los {n} títulos', { n: many }) + ' ▾'); b.type = 'button';
+      b.addEventListener('click', () => { [...ol.children].forEach(x => { x.hidden = false; }); li.remove(); });
+      li.append(b); ol.append(li);
+    }
     return ol;
   }
 
@@ -152,6 +159,7 @@
       const body = el('div'); body.append(a);
       if (b.idioma === 'en') body.append(el('span', 'nx-lang', t('inEnglish', 'en inglés')));
       if (b.resumen) body.append(el('p', 'nx-bsum', b.resumen));
+      if (b.aca) body.append(aca(b.aca));
       li.append(body); ol.append(li);
     });
   }
@@ -176,7 +184,7 @@
   const fold = x => String(x || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
   const phone = () => matchMedia('(max-width: 720px)').matches;
   const storyText = h => fold([h.titulo, h.resumen, h.contexto, h.aca, h.seccion, ...(h.datos || []).map(d => d.etiqueta + ' ' + d.texto), ...(h.fuentes || []).map(f => f.medio + ' ' + f.titulo)].join(' '));
-  const itemText = b => fold([b.titulo, b.original, b.resumen, b.medio, b.seccion].join(' '));
+  const itemText = b => fold([b.titulo, b.original, b.resumen, b.aca, b.medio, b.seccion].join(' '));
   const matches = (txt, q) => fold(q).split(/\s+/).filter(Boolean).every(w => txt.includes(w));
 
   function filters(all, items) {
@@ -259,8 +267,8 @@
     lead(leadStory);
     const grid = $('grid'); grid.textContent = '';
     const rest = leadStory ? stories2.slice(1) : stories2;
-    if (!q && !filter && rest.length > 4) {
-      const groups = new Map(); rest.forEach(h => { const k = h.seccion || ''; if (!groups.has(k)) groups.set(k, []); groups.get(k).push(h); });
+    const groups = new Map(); rest.forEach(h => { const k = h.seccion || ''; if (!groups.has(k)) groups.set(k, []); groups.get(k).push(h); });
+    if (!q && !filter && rest.length > 4 && groups.size * 2 <= rest.length) {   // headings only when the sections have two or more on average
       const few = phone() ? 3 : Infinity;
       groups.forEach((hs, k) => {
         const hd = el('h2', 'nx-sec', k); hd.append(el('small', '', String(hs.length))); grid.append(hd);
