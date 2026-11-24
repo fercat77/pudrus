@@ -71,6 +71,11 @@ function FUENTES_NUEVAS_() {
     ['LM Neuquén', 'https://www.lmneuquen.com/rss/home.xml', 'Argentina', true, '', 'interior', 'es'],
     ['Diario Uno (Mendoza)', 'https://www.diariouno.com.ar/rss/home.xml', 'Argentina', true, '', 'interior', 'es'],
     ['Misiones Online', 'https://misionesonline.net/feed/', 'Argentina', true, '', 'interior', 'es'],
+    ['Diario Panorama (Santiago del Estero)', 'https://www.diariopanorama.com/rss', 'Argentina', true, '', 'interior', 'es'],
+    ['Info del Estero', 'https://www.infodelestero.com/feed', 'Argentina', true, '', 'interior', 'es'],
+    // El Liberal and Nuevo Diario have no usable feed of their own: Google News, searching their site
+    ['El Liberal (Santiago del Estero)', 'https://news.google.com/rss/search?q=site:elliberal.com.ar+when:2d&hl=es-419&gl=AR&ceid=AR:es-419', 'Argentina', true, '', 'interior', 'es'],
+    ['Nuevo Diario (Santiago del Estero)', 'https://news.google.com/rss/search?q=site:nuevodiarioweb.com.ar+when:2d&hl=es-419&gl=AR&ceid=AR:es-419', 'Argentina', true, '', 'interior', 'es'],
     ['Infobae', 'https://www.infobae.com/arc/outboundfeeds/rss/category/america/ciencia-america/', 'Ciencia y tecnología', true, '', 'ciencia', 'es'],
     ['La Nación', 'https://www.lanacion.com.ar/arc/outboundfeeds/rss/category/ciencia/?outputType=xml', 'Ciencia y tecnología', true, '', 'ciencia', 'es'],
     ['elDiarioAR', 'https://www.eldiarioar.com/rss/ciencia/', 'Ciencia y tecnología', true, '', 'ciencia', 'es'],
@@ -646,10 +651,14 @@ function parsearFeed_(xml) {
     let url = campo('link');
     if (!url) { const m = it.match(/<link[^>]*href="([^"]+)"/); url = m ? m[1] : ''; }
     if (!/^https?:\/\//.test(url)) { const g = campo('guid'); if (/^https?:\/\//.test(g)) url = g; }
+    // Google News (for papers without a feed of their own): the title ends in « - Medio» and the description is only a link to itself
+    const gn = /^https?:\/\/news\.google\.com\//.test(url), src = gn ? campo('source') : '';
+    let titulo = campo('title');
+    if (gn && src && titulo.slice(-(src.length + 3)) === ' - ' + src) titulo = titulo.slice(0, -(src.length + 3)).trim();
     return {
-      titulo: campo('title'),
+      titulo: titulo,
       url: normUrl_(url),
-      bajada: (campo('description') || campo('summary')).slice(0, 300),
+      bajada: gn ? '' : (campo('description') || campo('summary')).slice(0, 300),
       publicado: campo('pubDate') || campo('published') || campo('updated') || campo('dc:date'),
     };
   });
