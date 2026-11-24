@@ -197,6 +197,19 @@ void main() {
     ['Hay un núcleo que late adentro tuyo. No lo apagues todavía.', 'There is a core beating inside you. Don’t shut it down yet.'],
     ['Lo que llamás arriba es un abajo que se dio vuelta para verte.', 'What you call up is a down that turned around to see you.'],
     ['Los violetas atraviesan las paredes porque nadie les dijo que eran paredes.', 'The violet ones go through walls because nobody told them they were walls.']];
+  // what they say: ONE phrase (any of these), then the gift's line; a shuffled bag kept in this browser so they don't repeat until all were said
+  const SAYS = [...OPEN, ...MID,
+    ['Sumergite en un desastre digital.', 'Dive into a digital disaster.'],
+    ['Todo se disputa tu atención.', 'Everything is fighting for your attention.'],
+    ['¿Ya te encontraste al búho pixelado?', 'Have you met the pixelated owl yet?']];
+  function nextSay() {
+    let bag = [];
+    try { bag = JSON.parse(localStorage.getItem('nucleo_npc_bag') || '[]').filter(i => Number.isInteger(i) && i >= 0 && i < SAYS.length); } catch (e) { /* private mode */ }
+    if (!bag.length) { bag = SAYS.map((x, i) => i); for (let i = bag.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [bag[i], bag[j]] = [bag[j], bag[i]]; } }
+    const i = bag.pop();
+    try { localStorage.setItem('nucleo_npc_bag', JSON.stringify(bag)); } catch (e) { /* private mode */ }
+    return SAYS[i];
+  }
   const GIFTS = [['heal', 'Tomá un poco de luz. No me la devuelvas: ya no sé dónde guardarla.', 'Take some light. Don’t give it back: I no longer know where to keep it.', '+30 de energía', '+30 energy'],
     ['map', 'Te dibujo los núcleos en la memoria. Cuando parpadees, van a estar ahí.', 'I’ll draw the cores into your memory. When you blink, they will be there.', 'Los núcleos aparecen en tu mapa', 'The cores show up on your map'],
     ['calm', 'Voy a cantarles a los de afuera para que se olviden de vos un rato.', 'I’ll sing to the ones outside so they forget you for a while.', 'Los enemigos se duermen un rato', 'The enemies fall asleep for a while'],
@@ -374,7 +387,7 @@ void main() {
       if (c.length) {
         const [x, y] = c[Math.floor(rnd() * c.length)], pick = a => a[Math.floor(rnd() * a.length)];
         const mids = [pick(MID)]; if (rnd() < 0.6) { let m2 = pick(MID); if (m2 !== mids[0]) mids.push(m2); }
-        npc = { x: (x + 0.5) * CS, z: (y + 0.5) * CS, name: pick(NAMES), lines: [pick(OPEN), ...mids], gift: pick(GIFTS), hue: rnd() };
+        npc = { x: (x + 0.5) * CS, z: (y + 0.5) * CS, name: pick(NAMES), lines: [pick(OPEN), ...mids], gift: pick(GIFTS), hue: rnd() };   // (the lines are picked only to keep the map's random sequence: what they say comes from nextSay())
       }
     }
     // a secret room (level 2 on, often): a small pocket behind one cell of a room's wall; three shots on that wall open it
@@ -902,6 +915,7 @@ void main() {
     document.addEventListener('visibilitychange', onVis);
     pauseEl.addEventListener('click', () => { pause(false); });
     promptEl.addEventListener('click', e => { e.stopPropagation(); if (S.state === 'play' && S.canTalk) talk(); });
+    promptEl.addEventListener('pointerdown', e => { e.stopPropagation(); if (e.pointerType !== 'mouse') { e.preventDefault(); if (S.state === 'play' && S.canTalk) talk(); } });   // a phone: right away (it sits over the touch layer)
     talkEl.addEventListener('click', e => { e.stopPropagation(); advance(); });
     pauseBtn.addEventListener('click', e => { e.stopPropagation(); pause(S.state === 'play'); });
     muteBtn.addEventListener('click', e => { e.stopPropagation(); setMute(!muted); });
@@ -1734,12 +1748,14 @@ void main() {
     function talk() {
       const n = S.npc; if (!n || n.gone) return;
       S.state = 'talk'; firing = false; Object.keys(K).forEach(k => { K[k] = false; });
-      S.talk = { i: 0, shown: 0, lines: [...n.lines.map(L2), L2([n.gift[1], n.gift[2]])] };
+      if (!n.say) n.say = nextSay();
+      S.talk = { i: 0, shown: 0, t0: performance.now(), lines: [L2(n.say), L2([n.gift[1], n.gift[2]])] };
       talkName.textContent = L2(n.name); talkHint.textContent = PAD.on ? tr('A para seguir', 'A to go on') : touch ? tr('Tocá para seguir', 'Tap to go on') : tr('E o clic para seguir', 'E or click to go on');
       talkEl.hidden = false; promptEl.hidden = true; play('npc');
     }
     function advance() {
       const T = S.talk; if (!T) return;
+      if (performance.now() - T.t0 < 300) return;   // the tap that opened the talk doesn't skip its first line
       const line = T.lines[T.i];
       if (T.shown < line.length) { T.shown = line.length; return; }
       T.i++; T.shown = 0;

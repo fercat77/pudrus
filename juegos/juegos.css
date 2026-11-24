@@ -511,6 +511,7 @@ body.cb .sd-cell.bad { text-decoration: line-through 3px; text-decoration-color:
 /* Núcleo: the strange ones (the prompt and the dialog) */
 .nc-prompt { position: absolute; left: 50%; top: 60%; transform: translateX(-50%); padding: 7px 16px; font: inherit; font-size: 13px; letter-spacing: .05em; color: #f3e6ff; background: rgba(20,6,34,0.7); border: 1px solid rgba(220,160,255,0.65); border-radius: 999px; box-shadow: 0 0 16px rgba(200,120,255,0.35); cursor: pointer; white-space: nowrap; animation: ncPulse 1.6s ease-in-out infinite; }
 .nc-prompt[hidden] { display: none; }
+.nc-prompt { z-index: 3; touch-action: manipulation; }   /* over the touch layer (z 2), or a phone can't tap it */
 @keyframes ncPulse { 50% { box-shadow: 0 0 26px rgba(200,120,255,0.6); } }
 .nc-talk { position: absolute; left: 50%; bottom: 18px; transform: translateX(-50%); width: min(680px, calc(100% - 24px)); padding: 14px 18px 12px; background: rgba(6,4,16,0.86); border: 1px solid transparent; border-radius: 10px; pointer-events: auto; cursor: pointer; z-index: 3;
   background-clip: padding-box; box-shadow: 0 0 0 1px rgba(210,150,255,0.55), 0 0 30px rgba(150,80,255,0.3); }
