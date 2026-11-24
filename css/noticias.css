@@ -219,3 +219,10 @@ mark.nx-hl { background: rgba(var(--c1-rgb),0.28); color: inherit; padding: 0 1p
 .nx-briefs .nx-aca { margin-top: 6px; padding: 6px 8px; }
 .nx-briefs .nx-aca p { font-size: 11px; }
 .nx-heads .nx-moreheads { margin-top: 2px; }
+/* the tab icons (pixel art): a little invader, a skull */
+.nx-tab { display: grid; grid-template-columns: auto minmax(0, 1fr); column-gap: 14px; row-gap: 4px; align-items: center; }
+.nx-tab .nx-ico { grid-row: 1 / span 2; width: 34px; height: auto; color: var(--text2); transition: color .2s, filter .2s; }
+.nx-tab b, .nx-tab small { grid-column: 2; }
+.nx-tab.on .nx-ico { color: var(--c1); filter: drop-shadow(0 0 6px rgba(var(--c1-rgb),0.55)); }
+.nx-tab:hover .nx-ico { color: var(--c1); }
+@media (max-width: 720px) { .nx-tab { column-gap: 8px; } .nx-tab .nx-ico { width: 22px; grid-row: 1; } }

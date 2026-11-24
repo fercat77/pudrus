@@ -91,6 +91,7 @@ const FUENTES_INICIALES = [
   ['Infobae (Mundo)', 'https://www.infobae.com/arc/outboundfeeds/rss/category/america/mundo/', 'Geopolítica', true, '', 'mundo', 'es'],
   ['Clarín (Mundo)', 'https://www.clarin.com/rss/mundo/', 'Geopolítica', true, '', 'mundo', 'es'],
   ['Ámbito (Mundo)', 'https://www.ambito.com/rss/pages/mundo.xml', 'Geopolítica', true, '', 'mundo', 'es'],
+  ['RT', 'https://actualidad.rt.com/feeds/all.rss', 'Geopolítica', true, '', 'mundo', 'es'],   // Russian state media (the user asked for it); its feed only carries the last 10
   ['Ámbito', 'https://www.ambito.com/rss/pages/home.xml', 'Economía global', true, '', 'mundo', 'es'],   // the economy: only what ties Argentina to the world gets through
 ];
 
@@ -395,7 +396,7 @@ function nuevaHistoria_(ns, ahora) {
 // ───────────────────────────── writing a story (Claude) ─────────────────────────────
 
 const SISTEMA_ANALIZAR = [
-  'Sos editor de NoticIAs, una portada sin publicidad para lectores de la Argentina, con dos partes: «Cultura digital» (tecnología, videojuegos, ciencia, arte) y «El mundo y nosotros» (lo que pasa en el mundo y cómo nos afecta).',
+  'Sos editor de NoticIAs, una portada sin publicidad para lectores de la Argentina, con dos partes: «Cultura digital» (tecnología, videojuegos, ciencia, arte) y «El mundo real» (lo que pasa en el mundo y cómo nos afecta).',
   'Junta lo que publican varios medios sobre un mismo hecho. Quien la lee quiere informarse bien: la exactitud importa más que el estilo.',
   'Recibís los títulos y bajadas que publicó cada medio, a veces en inglés. Es lo único que sabés: no tenés el texto completo de las notas.',
   '',
@@ -554,7 +555,7 @@ function liviana_(n) { return tipoNota_(n) === 'mundo' && LIVIANAS.test(n.url ||
 const LINEA_EDITORIAL = [
   'NoticIAs es una portada para lectores de la Argentina con dos partes:',
   '«Cultura digital»: novedades reales de tecnología, videojuegos, ciencia y arte (también diseño, música, cine y creatividad digital).',
-  '«El mundo y nosotros»: lo que pasa en el mundo y cambia la realidad global o nuestra experiencia de ella: geopolítica, guerras y conflictos, migraciones, pueblos y minorías, derechos humanos, economía global, clima y energía, el poder de las potencias y de las grandes tecnológicas.',
+  '«El mundo real»: lo que pasa en el mundo y cambia la realidad global o nuestra experiencia de ella: geopolítica, guerras y conflictos, migraciones, pueblos y minorías, derechos humanos, economía global, clima y energía, el poder de las potencias y de las grandes tecnológicas.',
   'La Argentina entra solo cuando el hecho la vincula con el mundo (relaciones exteriores, comercio exterior, FMI y deuda, acuerdos, efectos directos de algo global). La política y la economía argentina del día a día no entran.',
   '',
   'Entra: hechos concretos y novedades con alcance (un lanzamiento importante, un estudio, una decisión de un gobierno, un conflicto, un acuerdo, una obra o muestra con interés cultural, un juego independiente destacado, un cambio en la industria). También el análisis que explica un hecho con datos.',
