@@ -201,7 +201,11 @@ void main() {
   const SAYS = [...OPEN, ...MID,
     ['Sumergite en un desastre digital.', 'Dive into a digital disaster.'],
     ['Todo se disputa tu atención.', 'Everything is fighting for your attention.'],
-    ['¿Ya te encontraste al búho pixelado?', 'Have you met the pixelated owl yet?']];
+    ['¿Ya te encontraste al búho pixelado?', 'Have you met the pixelated owl yet?'],
+    ['Este juego es más real que el teatro en el que vivís.', 'This game is more real than the theatre you live in.']];
+  // the pixelated owl: now and then it perches in a secret room and stares at you (B body, E eye, K beak and feet, W chest; dots = nothing)
+  const OWL = ['B.....B', 'BBBBBBB', 'BEEBEEB', 'BE.BE.B', 'BBBKBBB', 'BWWWWWB', 'BWBWBWB', '.BBBBB.', '..K.K..'];
+  const OWL_COL = { B: [0.32, 0.08, 0.78], E: [1, 0.85, 0.1], K: [1, 0.42, 0.05], W: [0.62, 0.48, 0.92] };
   function nextSay() {
     let bag = [];
     try { bag = JSON.parse(localStorage.getItem('nucleo_npc_bag') || '[]').filter(i => Number.isInteger(i) && i >= 0 && i < SAYS.length); } catch (e) { /* private mode */ }
@@ -831,7 +835,7 @@ void main() {
       // deeper = stranger: the psychedelia (level 4 → 10) and how erratic the enemies get (level 3 → 9)
       S.psy = Math.max(0, Math.min(1, (S.level - 3) / 7)); S.errat = Math.max(0, Math.min(1, (S.level - 2) / 7));
       S.npc = M.npc && !NET ? { ...M.npc, t: 0, gone: false, fade: 1 } : null; S.canTalk = false; S.talk = null;
-      S.secret = M.secret ? { ...M.secret, hits: 0, open: false, flash: 0 } : null;
+      S.secret = M.secret ? { ...M.secret, hits: 0, open: false, flash: 0 } : null; S.owl = null;
       // the fold: its course is laid out now (its core is one of this level's cores), its mesh when you go in
       S.mode = '3d'; S.fold = null; S.portal = null;
       if (M.portal && M.bossKind === 'fold' && S.boss) {   // the Greater Fold waits inside, through the arena's portal
@@ -1537,6 +1541,15 @@ void main() {
       const fx = (Sc.x + 0.5) * CS, fz = (Sc.y + 0.5) * CS;
       burst(fx, 1.6, fz, [2.6, 0.8, 2.4], 90, 6, 1, 0.12); flash(fx, 1.6, fz, [6, 2, 6], 14, 0.8);
       if (!GUEST) { S.score += 1500; paintHud(); } play('open'); toast(tr('¡Una sala secreta!', 'A secret room!'), 3);
+      if (!NET && !S.demo && Math.random() < 0.4) S.owl = { x: (r.x + 2.5) * CS - 0.6, z: (r.y + 0.5) * CS + 0.6, t: 0, blink: 3, gone: false, fade: 1 };   // in a corner, high up
+    }
+    function owlFound() {
+      const o = S.owl; if (!o || o.gone) return;
+      o.gone = true; let n = 1;
+      try { n = (+localStorage.getItem('nucleo_owls') || 0) + 1; localStorage.setItem('nucleo_owls', String(n)); } catch (e) { /* private mode */ }
+      S.score += 2000; S.hp = maxHp(); paintHud(); play('npc');
+      burst(o.x, 2.4, o.z, [2.2, 1.6, 2.6], 120, 5, 1.6, 0.12); flash(o.x, 2.4, o.z, [5, 4, 6], 14, 1);
+      toast(tr(`¡Encontraste al búho pixelado! +2000 y energía llena · búhos: ${n}`, `You found the pixelated owl! +2000 and full energy · owls: ${n}`), 4.5);
     }
 
     /* ── folds: a side-scrolling zone (same world, one dimension less) ── */
@@ -2245,6 +2258,7 @@ void main() {
           if (dm < 1.1 && S.hp < maxHp()) { const hv = 25 + 10 * mg; S.hp = Math.min(maxHp(), S.hp + hv); play('pickup'); toast(tr(`+${hv} de energía`, `+${hv} energy`), 1.2); burst(p.x, 1, p.z, [0.6, 2.4, 0.5], 24, 3, 0.6); if (VS) NT.pads.push({ x: p.x, z: p.z, back: 20 }); return false; } return true; });
         if (S.exit.open && Math.hypot(S.exit.x - pl.x, S.exit.z - pl.z) < 1.4) { if (GUEST) { if (S.t > NT.exitT) { NT.exitT = S.t + 0.5; NET.send({ t: 'exit' }); } } else nextLevel(); }
         if (S.portal && !S.portal.done && Math.hypot(S.portal.fx - pl.x, S.portal.fz - pl.z) < 1.0) { enterFold(); return; }
+        if (S.owl && !S.owl.gone && Math.hypot(S.owl.x - pl.x, S.owl.z - pl.z) < 1.7) owlFound();
         // a strange one near you, in front of you: you can talk
         const n = S.npc; let can = false;
         if (n && !n.gone) { const dx = n.x - pl.x, dz = n.z - pl.z, d = Math.hypot(dx, dz); can = d < 2.9 && (dx * Math.sin(pl.yaw) - dz * Math.cos(pl.yaw)) / (d || 1) > 0.5; }
@@ -2253,6 +2267,7 @@ void main() {
       pl.shake = Math.max(0, pl.shake - dt * 1.8);
       if (S.state === 'play' && upN('regen') && S.t - pl.lastHurt > 4 && S.hp < maxHp()) S.hp = Math.min(maxHp(), S.hp + 2.5 * upN('regen') * dt);
       if (S.secret) S.secret.flash = Math.max(0, S.secret.flash - dt * 3);
+      if (S.owl) { const o = S.owl; o.t += dt; o.blink -= dt; if (o.blink < -0.14) o.blink = 2.5 + Math.random() * 3; if (o.gone) o.fade = Math.max(0, o.fade - dt * 1.2); }
       // enemies
       let near = 0;
       if (GUEST) { if (S.mode === '3d' && S.state !== 'trans' && S.state !== 'end') { guestEnemies(dt); guestBoss(dt); } }
@@ -2495,6 +2510,12 @@ void main() {
         if (q.boss) draw(MESH.ring, modelM(q.x + q.nx * 0.08, py, q.z + q.nz * 0.08, 0.55 * bs, a, -q.t * 2.2), [1, 0.4, 0.9], 1.2, 0.05, 0);
       }
       // a strange one: rings turning around a small light, iridescent
+      if (!FO && S.owl && S.owl.fade > 0.01) {   // the owl: little cubes, always turned to you; it blinks, and flies up when found
+        const o = S.owl, dx = pl.x - o.x, dz = pl.z - o.z, d = Math.hypot(dx, dz) || 1, rx = -dz / d, rz = dx / d, px = 0.12, a = Math.atan2(rx, rz);
+        const y0 = 3.05 + Math.sin(o.t * 1.6) * 0.05 + (o.gone ? (1 - o.fade) * 2.5 : 0), shut = o.blink < 0, sz = px * 0.96 * (o.gone ? o.fade : 1);
+        OWL.forEach((row, j) => { for (let i = 0; i < row.length; i++) { let ch = row[i]; if (ch === '.') continue; if (shut && ch === 'E') ch = 'B';
+          const u = (i - 3) * px; draw(MESH.cube, modelM(o.x + rx * u, y0 - j * px, o.z + rz * u, sz, a, 0), OWL_COL[ch], 0.12, ch === 'E' ? 1.9 : 1.05, 0); } });   // flat colour, barely any edge: it reads as pixels
+      }
       if (!FO && S.npc && S.npc.fade > 0.01) {
         const n = S.npc, f = n.fade, c1 = hsv((n.hue + n.t * 0.08) % 1, 0.55, 1), c2 = hsv((n.hue + 0.33 + n.t * 0.08) % 1, 0.55, 1), y = 1.7 + Math.sin(n.t * 1.3) * 0.15;
         wob(0.06, 0);
@@ -2709,7 +2730,7 @@ void main() {
       hurt, nextLevel, talk, advance, endTalk,
       setLevel(n) { S.level = n; loadLevel(); },
       get f2() { return f2; }, setWeapon, giveAll() { pl.owned = pl.owned.map(() => true); paintWeapon(); }, enterFold, exitFold, jump() { f2.buf = 0.13; f2.held = true; },
-      offerUps, choose, wallHit, openSecret, up: pl.up, seedCode, mode, PAD, AI, NET, NT, PEERS, snapshot,
+      offerUps, choose, wallHit, openSecret, owlFound, up: pl.up, seedCode, mode, PAD, AI, NET, NT, PEERS, snapshot,
       setPat(f, w) { S.M.rooms.forEach(r => { r.pf = f; r.pw = w; }); S.M.corrPat = [f, w]; },
     });
     Object.defineProperty(ctx.test, 'boss', { get: () => S.boss, configurable: true });
