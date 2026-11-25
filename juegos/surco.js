@@ -388,7 +388,7 @@
       psyA += (((secNow.k === 'break' || secNow.k === 'outro') && now > 0 ? 1 : 0) - psyA) * Math.min(1, fdt * 1.2);
       const skyH = hue + psyA * now * 45;
       const sk = g.createLinearGradient(0, 0, 0, Hh);
-      sk.addColorStop(0, `hsl(${skyH + 20},${60 + 30 * psyA}%,${3 + 3 * kick * e + 7 * psyA}%)`); sk.addColorStop(0.42, `hsl(${skyH + 90 * psyA},70%,${8 + 8 * kick * e + 6 * psyA}%)`); sk.addColorStop(1, '#020206');
+      sk.addColorStop(0, `hsl(${skyH + 20},${60 + 30 * psyA}%,${3 + 3 * kick * e + 2 * psyA}%)`); sk.addColorStop(0.42, `hsl(${skyH + 90 * psyA},70%,${8 + 8 * kick * e + 3 * psyA}%)`); sk.addColorStop(1, '#020206');
       g.fillStyle = sk; g.fillRect(0, 0, W, Hh);
       const px = (cam.x * 0.004) % 1;
       for (const tw of [0, 1]) {   // stars: the twinkling ones and the dim ones, each batch one fill
@@ -404,22 +404,32 @@
       // the spectrum skyline (mirrored from the middle)
       let lvl = 0;
       if (E.analyser) { E.analyser.getByteFrequencyData(spec); for (let i = 2; i < 40; i++) lvl += spec[i]; lvl /= 38 * 255; }
-      if (psyA > 0.02) {   // the laser mandala: star polygons turning both ways, petals, beams fanning from the horizon
-        const cx = W / 2, cy = cam.hz - Hh * 0.12, R = Math.min(W, Hh) * (0.34 + 0.1 * lvl), t = now;
-        g.save(); g.globalAlpha = psyA; g.globalCompositeOperation = 'lighter'; g.lineCap = 'round';
-        g.lineWidth = 1.5 * dpr; g.strokeStyle = HS(hue + t * 70, 100, 60, 0.3); g.beginPath();
-        for (let i = 0; i < 14; i++) { const a = Math.PI + (i + 0.5) / 14 * Math.PI + Math.sin(t * 0.8 + i) * 0.12; g.moveTo(cx, cam.hz); g.lineTo(cx + Math.cos(a) * W * 1.3, cam.hz + Math.sin(a) * W * 1.3); }
+      if (psyA > 0.02) {   // the laser mandala: huge, at the end of the road (centred on the vanishing point), barely turning — the whole sky
+        const cx = W / 2, cy = cam.hz, RM = Math.hypot(W / 2, Math.max(cam.hz, Hh - cam.hz)) * 1.08, t = now;
+        const br = 1 + 0.02 * Math.sin(t * 0.7) + 0.035 * lvl, rot = t * 0.035, baseH = hue + t * 12;
+        const RF = [0.07, 0.13, 0.21, 0.31, 0.43, 0.57, 0.74, 0.93, 1.15];
+        g.save(); g.globalAlpha = psyA; g.globalCompositeOperation = 'lighter'; g.lineCap = 'round'; g.lineJoin = 'round';
+        // spokes: from the first ring out past the edges
+        g.lineWidth = dpr; g.strokeStyle = HS(baseH + 200, 100, 65, 0.22); g.beginPath();
+        for (let i = 0; i < 36; i++) { const a = i / 36 * 6.2832 + rot * 0.5; g.moveTo(cx + Math.cos(a) * RM * RF[1] * br, cy + Math.sin(a) * RM * RF[1] * br); g.lineTo(cx + Math.cos(a) * RM * 1.2, cy + Math.sin(a) * RM * 1.2); }
         g.stroke();
-        [[9, 4, 1, 0.5], [12, 5, 0.72, -0.35], [7, 3, 0.45, 0.8]].forEach(([n, m, rf, sp], j) => {
-          const rad = R * rf * (1 + 0.07 * Math.sin(t * 2 + j) + 0.12 * lvl); g.lineWidth = (2.2 - j * 0.5) * dpr; g.strokeStyle = HS(hue + t * 90 + j * 120, 100, 62, 0.8); g.beginPath();
-          for (let i = 0; i <= n; i++) { const a = (i * m % n) / n * 6.2832 + t * sp, x = cx + Math.cos(a) * rad, y = cy + Math.sin(a) * rad * 0.8; if (i) g.lineTo(x, y); else g.moveTo(x, y); }
+        for (let j = 0; j < RF.length - 1; j++) {
+          const r0 = RM * RF[j] * br, r1 = RM * RF[j + 1] * br, dir = j % 2 ? -1 : 1, ph = rot * dir * (1 + j * 0.15);
+          g.lineWidth = (1.1 + j * 0.15) * dpr; g.strokeStyle = HS(baseH + j * 57, 100, 58 + (j % 3) * 6, 0.7 - j * 0.05); g.beginPath();
+          if (j % 3 === 0) {   // a star polygon between the two radii
+            const n = 8 + j * 2, m = j ? 3 : 3;   // (short chords: points on the ring, not lines across the screen)
+            for (let i = 0; i <= n; i++) { const a = (i * m % n) / n * 6.2832 + ph, x = cx + Math.cos(a) * r1, y = cy + Math.sin(a) * r1; if (i) g.lineTo(x, y); else g.moveTo(x, y); }
+          } else if (j % 3 === 1) {   // petals: out to the next ring and back
+            const K = 8 + j * 4;
+            for (let i = 0; i < K; i++) { const a = i / K * 6.2832 + ph, h2 = Math.PI / K; g.moveTo(cx + Math.cos(a - h2) * r0, cy + Math.sin(a - h2) * r0); g.quadraticCurveTo(cx + Math.cos(a) * r1 * 1.08, cy + Math.sin(a) * r1 * 1.08, cx + Math.cos(a + h2) * r0, cy + Math.sin(a + h2) * r0); }
+          } else {   // a ring of arches with a circle under them
+            const K = 12 + j * 3; g.moveTo(cx + r0, cy); g.arc(cx, cy, r0, 0, 6.2832);
+            for (let i = 0; i < K; i++) { const a = i / K * 6.2832 + ph, x = cx + Math.cos(a) * (r0 + r1) / 2, y = cy + Math.sin(a) * (r0 + r1) / 2, rr = (r1 - r0) * 0.45; g.moveTo(x + rr, y); g.arc(x, y, rr, 0, 6.2832); }
+          }
           g.stroke();
-        });
-        const K = 12, rp = R * (0.85 + 0.2 * lvl); g.strokeStyle = HS(hue + 180 + t * 60, 100, 70, 0.55); g.lineWidth = 1.2 * dpr; g.beginPath();
-        for (let i = 0; i < K; i++) { const a = i / K * 6.2832 - t * 0.25, b = a + Math.PI / K * 1.4; g.moveTo(cx, cy); g.quadraticCurveTo(cx + Math.cos(b) * rp * 0.9, cy + Math.sin(b) * rp * 0.72, cx + Math.cos(a) * rp, cy + Math.sin(a) * rp * 0.8); }
-        g.stroke();
-        g.fillStyle = HS(hue + t * 120, 100, 85, 0.9); g.beginPath();
-        for (let i = 0; i < 24; i++) { const a = i / 24 * 6.2832 + t * 0.5, rd = R * (1.12 + 0.1 * Math.sin(t * 3 + i)); g.rect(cx + Math.cos(a) * rd - 1.5 * dpr, cy + Math.sin(a) * rd * 0.8 - 1.5 * dpr, 3 * dpr, 3 * dpr); }
+        }
+        g.fillStyle = HS(baseH + 120, 100, 85, 0.85); g.beginPath();   // sparks on the rings
+        for (let j = 1; j < RF.length; j += 2) { const K = 12 + j * 4, r = RM * RF[j] * br; for (let i = 0; i < K; i++) { const a = i / K * 6.2832 - rot * (1 + j * 0.1); g.rect(cx + Math.cos(a) * r - dpr, cy + Math.sin(a) * r - dpr, 2 * dpr, 2 * dpr); } }
         g.fill();
         g.restore();
       }
