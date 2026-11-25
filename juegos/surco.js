@@ -364,7 +364,7 @@
       if (!v) { v = `hsla(${h},${sa}%,${l}%,${a / 25})`; if (HSC.size > 4000) HSC.clear(); HSC.set(k, v); }
       return v;
     };
-    let specGrad = null, specKey = '';
+    let specGrad = null, specKey = '', camE = 0.3, psyA = 0, lastDraw = 0;
     let camY0 = null;
     function draw(now) {
       const shipS = distAt(now), e = at(Em, shipS), hue = at(Hm, shipS);
@@ -374,12 +374,21 @@
       while (hats.length > 8 && hats[1] < now) hats.shift();
       const shipX = at(Xc, shipS) + (P.x - 1) * LW;
       const slope = Math.atan2(at(Yb, shipS + 3) - at(Yb, shipS - 3), 6), pitch = Math.atan2(at(Y, shipS + 1.5) - at(Y, shipS - 1.5), 3), bank = Math.max(-0.6, Math.min(0.6, -P.tilt * 0.55));
-      cam.s = shipS - 7.6; cam.x = at(Xc, shipS) * 0.85 + shipX * 0.15; cam.y = at(Yb, shipS) + 3.1 + slope * 1.5; const wideV = W > Hh * 2; cam.F = Math.min(Hh * (wideV ? 1.25 : 0.95), W * 1.0); cam.hz = Hh * ((wideV ? 0.3 : 0.36) + slope * 0.5);   // (a phone on its side: closer, so the ship isn't tiny)
+      const fdt = Math.max(0, Math.min(0.1, now - lastDraw)); lastDraw = now;
+      camE += (e - camE) * Math.min(1, fdt * 1.6);   // the camera's own intensity (eased, so a drop swoops in)
+      const barPh = now / (stepDur * 16) * 6.2832;
+      cam.s = shipS - (7.6 - 1.7 * camE); cam.x = at(Xc, shipS) * 0.85 + shipX * 0.15 + Math.sin(now * 0.6) * 0.6 * camE; cam.y = at(Yb, shipS) + 3.1 - 1.0 * camE + slope * 1.5;
+      const wideV = W > Hh * 2; cam.F = Math.min(Hh * (wideV ? 1.25 : 0.95), W * 1.0) * (1 - 0.24 * camE) * (1 - 0.07 * kick * camE);   // (a phone on its side: closer, so the ship isn't tiny)
+      cam.hz = Hh * ((wideV ? 0.3 : 0.36) + slope * 0.5 + 0.035 * camE * Math.sin(barPh * 0.5));
+      const roll = bank * 0.3 + 0.13 * camE * Math.sin(barPh);   // the world leans with the ship and sways with the bar
       for (const d of [1.4, 2.6, 4]) cam.y = Math.max(cam.y, at(Y, cam.s + d) + (Hh - cam.hz) * d / cam.F + 0.1);   // the nearest track always reaches below the screen (no cut edge in the descents)
       cam.y += ((camY0 ?? cam.y) - cam.y) * 0.5; camY0 = cam.y;   // (F: a phone held upright still fits the whole track across)
-      // sky
+      // sky — after each drop (the break, the outro) it turns psychedelic: laser mandalas instead of the bars
+      const secNow = secs[stepSec[Math.max(0, Math.min(N - 1, Math.floor(now / stepDur)))]];
+      psyA += (((secNow.k === 'break' || secNow.k === 'outro') && now > 0 ? 1 : 0) - psyA) * Math.min(1, fdt * 1.2);
+      const skyH = hue + psyA * now * 45;
       const sk = g.createLinearGradient(0, 0, 0, Hh);
-      sk.addColorStop(0, `hsl(${hue + 20},60%,${3 + 3 * kick * e}%)`); sk.addColorStop(0.42, `hsl(${hue},70%,${8 + 8 * kick * e}%)`); sk.addColorStop(1, '#020206');
+      sk.addColorStop(0, `hsl(${skyH + 20},${60 + 30 * psyA}%,${3 + 3 * kick * e + 7 * psyA}%)`); sk.addColorStop(0.42, `hsl(${skyH + 90 * psyA},70%,${8 + 8 * kick * e + 6 * psyA}%)`); sk.addColorStop(1, '#020206');
       g.fillStyle = sk; g.fillRect(0, 0, W, Hh);
       const px = (cam.x * 0.004) % 1;
       for (const tw of [0, 1]) {   // stars: the twinkling ones and the dim ones, each batch one fill
@@ -393,8 +402,29 @@
       g.strokeStyle = HS(hue - 40, 90, 65, 0.25 + 0.35 * kick); g.beginPath(); g.arc(W / 2, cam.hz, rr, Math.PI, 0); g.stroke();
       g.strokeStyle = HS(hue + 30, 90, 65, 0.12 + 0.2 * kick); g.beginPath(); g.arc(W / 2, cam.hz, rr * 1.5, Math.PI, 0); g.stroke();
       // the spectrum skyline (mirrored from the middle)
-      if (E.analyser) {
-        E.analyser.getByteFrequencyData(spec);
+      let lvl = 0;
+      if (E.analyser) { E.analyser.getByteFrequencyData(spec); for (let i = 2; i < 40; i++) lvl += spec[i]; lvl /= 38 * 255; }
+      if (psyA > 0.02) {   // the laser mandala: star polygons turning both ways, petals, beams fanning from the horizon
+        const cx = W / 2, cy = cam.hz - Hh * 0.12, R = Math.min(W, Hh) * (0.34 + 0.1 * lvl), t = now;
+        g.save(); g.globalAlpha = psyA; g.globalCompositeOperation = 'lighter'; g.lineCap = 'round';
+        g.lineWidth = 1.5 * dpr; g.strokeStyle = HS(hue + t * 70, 100, 60, 0.3); g.beginPath();
+        for (let i = 0; i < 14; i++) { const a = Math.PI + (i + 0.5) / 14 * Math.PI + Math.sin(t * 0.8 + i) * 0.12; g.moveTo(cx, cam.hz); g.lineTo(cx + Math.cos(a) * W * 1.3, cam.hz + Math.sin(a) * W * 1.3); }
+        g.stroke();
+        [[9, 4, 1, 0.5], [12, 5, 0.72, -0.35], [7, 3, 0.45, 0.8]].forEach(([n, m, rf, sp], j) => {
+          const rad = R * rf * (1 + 0.07 * Math.sin(t * 2 + j) + 0.12 * lvl); g.lineWidth = (2.2 - j * 0.5) * dpr; g.strokeStyle = HS(hue + t * 90 + j * 120, 100, 62, 0.8); g.beginPath();
+          for (let i = 0; i <= n; i++) { const a = (i * m % n) / n * 6.2832 + t * sp, x = cx + Math.cos(a) * rad, y = cy + Math.sin(a) * rad * 0.8; if (i) g.lineTo(x, y); else g.moveTo(x, y); }
+          g.stroke();
+        });
+        const K = 12, rp = R * (0.85 + 0.2 * lvl); g.strokeStyle = HS(hue + 180 + t * 60, 100, 70, 0.55); g.lineWidth = 1.2 * dpr; g.beginPath();
+        for (let i = 0; i < K; i++) { const a = i / K * 6.2832 - t * 0.25, b = a + Math.PI / K * 1.4; g.moveTo(cx, cy); g.quadraticCurveTo(cx + Math.cos(b) * rp * 0.9, cy + Math.sin(b) * rp * 0.72, cx + Math.cos(a) * rp, cy + Math.sin(a) * rp * 0.8); }
+        g.stroke();
+        g.fillStyle = HS(hue + t * 120, 100, 85, 0.9); g.beginPath();
+        for (let i = 0; i < 24; i++) { const a = i / 24 * 6.2832 + t * 0.5, rd = R * (1.12 + 0.1 * Math.sin(t * 3 + i)); g.rect(cx + Math.cos(a) * rd - 1.5 * dpr, cy + Math.sin(a) * rd * 0.8 - 1.5 * dpr, 3 * dpr, 3 * dpr); }
+        g.fill();
+        g.restore();
+      }
+      if (E.analyser && psyA < 0.98) {
+        g.globalAlpha = 1 - psyA;
         const bw = W / 2 / BARS, sk2 = Math.round(hue / 4) + ':' + W;
         if (sk2 !== specKey) { specKey = sk2; specGrad = g.createLinearGradient(0, 0, W, 0); for (let i = 0; i <= 4; i++) specGrad.addColorStop(i / 4, HS(hue - 30 + Math.abs(i - 2) * 60, 90, 55, 0.34)); }
         g.beginPath();
@@ -403,6 +433,7 @@
           g.rect(W / 2 + i * bw + 1, cam.hz - h, bw - 2, h); g.rect(W / 2 - (i + 1) * bw + 1, cam.hz - h, bw - 2, h);
         }
         g.fillStyle = specGrad; g.fill();
+        g.globalAlpha = 1;
       }
       // in the drops: streaks rushing past from the vanishing point
       if (e > 0.85) {
@@ -412,7 +443,7 @@
       }
 
       // the world leans a little with the ship
-      g.save(); g.translate(W / 2, cam.hz); g.rotate(bank * 0.12); g.translate(-W / 2, -cam.hz);
+      g.save(); g.translate(W / 2, cam.hz); g.rotate(roll); g.translate(-W / 2, -cam.hz);
       // the track, far to near: pillars under it, its thickness, the surface (coloured by the intensity), lanes and glowing rails
       const STEP = 2.6, half = LW * 1.5 + 0.35, TH = 0.55, RAIL = 0.4;
       // segments: 2.6 m near, 5.2 / 10.4 / 20.8 m further on (each on its own grid, so they don't swim) — ~40 instead of ~100
