@@ -448,7 +448,7 @@
       if (!v) { v = `hsla(${h},${sa}%,${l}%,${a / 25})`; if (HSC.size > 4000) HSC.clear(); HSC.set(k, v); }
       return v;
     };
-    let specGrad = null, specKey = '', camE = 0.3, psyA = 0, lastDraw = 0, camBank = 0;
+    let specGrad = null, specKey = '', camE = 0.3, psyA = 0, lastDraw = 0, camBank = 0, camLift = 0;
     let camY0 = null;
     function draw(now) {
       const shipS = distAt(now), e = at(Em, shipS), hue = at(Hm, shipS);
@@ -472,11 +472,22 @@
       const curv = ((at(Xc, shipS + 18) - at(Xc, shipS)) - (at(Xc, shipS) - at(Xc, shipS - 6)) / 6 * 18) / 18;   // how hard the road turns here
       camBank += (Math.max(-0.28, Math.min(0.28, -curv * 9)) - camBank) * Math.min(1, fdt * 3);
       const roll = bank * 0.3 + camBank + 0.07 * camE * Math.sin(barPh);   // the world leans with the ship, into the curves, and sways with the bar
-      for (const d of [1.4, 2.6, 4]) cam.y = Math.max(cam.y, at(Y, cam.s + d) + (Hh - cam.hz) * d / cam.F + 0.1);   // the nearest track always reaches below the screen (no cut edge in the descents)
-      cam.y += ((camY0 ?? cam.y) - cam.y) * 0.5; camY0 = cam.y;   // (F: a phone held upright still fits the whole track across)
-      // sky — after each drop (the break, the outro) it turns psychedelic: laser mandalas instead of the bars
-      const secNow = secs[stepSec[Math.max(0, Math.min(N - 1, Math.floor(now / stepDur)))]];
-      psyA += (((secNow.k === 'break' || secNow.k === 'outro') && now > 0 ? 1 : 0) - psyA) * Math.min(1, fdt * 1.2);
+      let roll2 = roll;
+      if (touch) {   // a phone: the camera is locked to the ship — the hit line and the near track stay put on the screen (no sway, bank, zoom or bounce)
+        cam.yaw = Math.atan2(at(SN, shipS), at(CS, shipS)); cam.cy = Math.cos(cam.yaw); cam.sy = Math.sin(cam.yaw);
+        const d0 = cz < 1 ? 8.6 : 7.6; cam.s = shipS - d0 * cam.cy; cam.x = at(Xc, shipS) - d0 * cam.sy;
+        cam.F = Math.min(Hh * (wideV ? 1.25 : 0.95), W * 1.0); cam.hz = Hh * (wideV ? 0.3 : 0.36); roll2 = 0;
+        let need = 0; for (const d of [1.4, 2.6, 4]) need = Math.max(need, at(Yb, cam.s + d) + (Hh - cam.hz) * d / cam.F + 0.1 - (at(Yb, shipS) + 3.1));   // (lifted only as much as a descent needs, slowly)
+        camLift += (Math.max(0, need) - camLift) * Math.min(1, fdt * 2.5);
+        cam.y = at(Y, shipS) + 3.1 + camLift;   // (it rides the kick's bounce with the ship)
+      } else {
+        for (const d of [1.4, 2.6, 4]) cam.y = Math.max(cam.y, at(Y, cam.s + d) + (Hh - cam.hz) * d / cam.F + 0.1);   // the nearest track always reaches below the screen (no cut edge in the descents)
+        cam.y += ((camY0 ?? cam.y) - cam.y) * 0.5; camY0 = cam.y;   // (F: a phone held upright still fits the whole track across)
+      }
+      // sky — after the first drop (the break and the build-up that follows) it turns psychedelic: laser mandalas instead of the bars
+      const siNow = stepSec[Math.max(0, Math.min(N - 1, Math.floor(now / stepDur)))], secNow = secs[siNow];
+      const psyOn = now > 0 && (secNow.k === 'break' || (siNow > 0 && secs[siNow - 1].k === 'break'));
+      psyA += ((psyOn ? 1 : 0) - psyA) * Math.min(1, fdt * 1.2);
       const skyH = hue + psyA * now * 45;
       const sk = g.createLinearGradient(0, 0, 0, Hh);
       sk.addColorStop(0, `hsl(${skyH + 20},${60 + 30 * psyA}%,${3 + 3 * kick * e + 2 * psyA}%)`); sk.addColorStop(0.42, `hsl(${skyH + 90 * psyA},70%,${8 + 8 * kick * e + 3 * psyA}%)`); sk.addColorStop(1, '#020206');
@@ -544,7 +555,7 @@
       }
 
       // the world leans a little with the ship
-      g.save(); g.translate(W / 2, cam.hz); g.rotate(roll); g.translate(-W / 2, -cam.hz);
+      g.save(); g.translate(W / 2, cam.hz); g.rotate(roll2); g.translate(-W / 2, -cam.hz);
       // the track, far to near: pillars under it, its thickness, the surface (coloured by the intensity), lanes and glowing rails
       const STEP = 2.6, half = LW * 1.5 + 0.35, TH = 0.55, RAIL = 0.4;
       // segments: 2.6 m near, 5.2 / 10.4 / 20.8 m further on (each on its own grid, so they don't swim) — ~40 instead of ~100
