@@ -1,8 +1,9 @@
 /* DRUS · SURCO — a rhythm game whose song is composed by SYNDRUS (lab/syndrus/engine.js + gen.js) every time.
    The song has a shape (intro, build-ups, drops, a break, an outro) and the track follows it: it climbs while the
    music builds and dives in the drops. The notes of the song fall on three lanes, each one from an instrument
-   (bass, arpeggio, percussion): catch them and that instrument plays loud and open; miss them and it fades and
-   dulls — the song sounds as good as you play. Static blocks are to be dodged.
+   (bass, arpeggio, percussion): strike each one as it crosses the hit line (its lane's key, or a tap on that third
+   of the screen) and that instrument plays on; miss one and it cuts out until you hit it again. Timing is judged
+   (perfect / good / early-late), the delay of each player's sound is calibrated once, and static blocks are dodged.
    An original game in the music-driven-track genre: own arrangement, own track, own drawing (canvas 2D). */
 (function () {
   'use strict';
@@ -31,6 +32,64 @@
   ];
   const STYLES = { techno: tr('Techno', 'Techno'), psy: 'Psytrance' };
   const keyName = root => tr(['Do', 'Do#', 'Re', 'Re#', 'Mi', 'Fa', 'Fa#', 'Sol', 'Sol#', 'La', 'La#', 'Si'][root % 12], X.NOTE_NAMES[root % 12]);
+
+  const DIFFS = [['facil', tr('Fácil', 'Easy')], ['normal', 'Normal'], ['dificil', tr('Difícil', 'Hard')]];
+  const LS = { get(k, d) { try { const v = localStorage.getItem(k); return v === null ? d : v; } catch (e) { return d; } }, set(k, v) { try { localStorage.setItem(k, v); } catch (e) { /* private mode */ } } };
+  const getDiff = () => { const d = LS.get('surco_diff', 'normal'); return DIFFS.some(x => x[0] === d) ? d : 'normal'; };
+  const getOff = () => { const v = +LS.get('surco_off', '0'); return isFinite(v) ? Math.max(-0.4, Math.min(0.4, v)) : 0; };   // s: how late this device's sound (and touch) arrives
+  const fmtMs = v => (v > 0 ? '+' : '') + Math.round(v * 1000) + ' ms';
+  const WIN = { perfect: 0.045, good: 0.09, ok: 0.14 };   // s either side of the note
+  const isTouch = () => matchMedia('(pointer: coarse)').matches && !matchMedia('(pointer: fine)').matches;
+
+  /* ── calibration: a click on the beat, the player taps along; the median gap is this device's delay ── */
+  function calibrate(onDone) {
+    const ov = el('div', 'sc-cal'), box = el('div', 'sc-cal-box');
+    const close = el('button', 'sc-cal-x', '✕'); close.title = tr('Cerrar', 'Close');
+    const txt = el('p', null, tr('Vas a escuchar un click a ritmo. Tocá el círculo (o cualquier tecla) justo cuando suena. Usá los mismos auriculares o parlante con los que vas a jugar.',
+      'You will hear a click on the beat. Tap the circle (or any key) right as it sounds. Use the same headphones or speaker you will play with.'));
+    const padB = el('button', 'sc-cal-pad', tr('Empezar', 'Start'));
+    const dots = el('div', 'sc-cal-dots'), res = el('p', 'sc-cal-res', tr('Ahora: ', 'Now: ') + fmtMs(getOff()));
+    const row = el('div', 'jg-btns'), minus = el('button', 'jg-btn', '−10 ms'), plus = el('button', 'jg-btn', '+10 ms'), zero = el('button', 'jg-btn', tr('A cero', 'Reset')), ok = el('button', 'jg-btn primary', tr('Listo', 'Done'));
+    row.append(minus, plus, zero, ok);
+    box.append(close, el('b', 'sc-cal-t', tr('Calibrar el sonido', 'Calibrate the audio')), txt, padB, dots, res, row); ov.append(box); document.body.append(ov);
+    const TAPS = 16, LEAD = 4, BEAT = 0.5;
+    for (let i = 0; i < TAPS; i++) dots.append(el('i'));
+    let val = getOff(), ac = null, t0 = 0, errs = [], running = false, timer = 0;
+    const show = () => { res.textContent = tr('Demora: ', 'Delay: ') + fmtMs(val); };
+    const setV = v => { val = Math.max(-0.4, Math.min(0.4, v)); show(); };
+    minus.onclick = () => setV(val - 0.01); plus.onclick = () => setV(val + 0.01); zero.onclick = () => setV(0);
+    const end = save => { clearTimeout(timer); removeEventListener('keydown', onKey, true); try { if (ac) ac.close(); } catch (e) { /* closed */ } if (save) LS.set('surco_off', String(val)); ov.remove(); if (onDone) onDone(); };
+    ok.onclick = () => end(true); close.onclick = () => end(false);
+    function begin() {
+      const AC = window.AudioContext || window.webkitAudioContext;
+      try { ac = new AC(isTouch() ? { latencyHint: 'playback' } : undefined); } catch (e) { ac = new AC(); }   // (the same buffers as the game)
+      try { ac.resume(); } catch (e) { /* the tap is the gesture */ }
+      errs = []; dots.querySelectorAll('i').forEach(d => { d.className = ''; }); running = true; padB.textContent = tr('Tocá al ritmo', 'Tap to the beat'); padB.classList.add('live');
+      t0 = ac.currentTime + 0.4;
+      for (let i = 0; i < LEAD + TAPS; i++) {
+        const t = t0 + i * BEAT, o = ac.createOscillator(), gn = ac.createGain();
+        o.type = 'square'; o.frequency.value = i % 4 === 0 ? 1760 : 1320; gn.gain.setValueAtTime(0.0001, t); gn.gain.linearRampToValueAtTime(0.25, t + 0.002); gn.gain.exponentialRampToValueAtTime(0.0001, t + 0.05);
+        o.connect(gn); gn.connect(ac.destination); o.start(t); o.stop(t + 0.07);
+      }
+      timer = setTimeout(finishCal, ((LEAD + TAPS) * BEAT + 0.9) * 1000);
+    }
+    function tap(e) {
+      if (!running || !ac) return;
+      const lag = e && e.timeStamp ? Math.max(0, Math.min(0.1, (performance.now() - e.timeStamp) / 1000)) : 0;
+      const t = ac.currentTime - (ac.outputLatency || ac.baseLatency || 0) - lag, i = Math.round((t - t0) / BEAT), d = t - (t0 + i * BEAT);
+      padB.classList.remove('hit'); void padB.offsetWidth; padB.classList.add('hit');
+      if (i < LEAD - 1 || i >= LEAD + TAPS || Math.abs(d) > 0.24) return;
+      errs.push(d); const dd = dots.children[Math.min(TAPS - 1, errs.length - 1)]; if (dd) dd.className = 'on';
+    }
+    function finishCal() {
+      running = false; padB.classList.remove('live'); padB.textContent = tr('Repetir', 'Again');
+      if (errs.length < 8) { res.textContent = tr('Faltaron toques: probá de nuevo.', 'Not enough taps: try again.'); return; }
+      const so = errs.slice().sort((a, b) => a - b); setV(so[Math.floor(so.length / 2)]);
+    }
+    padB.addEventListener('pointerdown', e => { e.preventDefault(); if (running) tap(e); else begin(); });
+    const onKey = e => { if (e.code === 'Escape') { end(false); return; } if (running && !e.repeat) { e.preventDefault(); tap(e); } };
+    addEventListener('keydown', onKey, true);
+  }
 
   const clone = o => JSON.parse(JSON.stringify(o));
   // the song: a SYNDRUS pattern, with every note the game shows sure to sound (no probabilities, no swing)
@@ -65,6 +124,7 @@
     const stage = ctx.stage, rnd = ctx.option === 'hoy' ? J.mulberry(J.hashStr(J.dayKey() + ':surco')) : (ctx.rnd || Math.random);   // the song of the day: the same for everyone today
     const style = ctx.option === 'psy' ? 'psy' : ctx.option === 'hoy' ? (J.hashStr(J.dayKey()) % 2 ? 'psy' : 'techno') : 'techno';
     const st = compose(style, rnd), bpm = st.bpm, stepDur = 60 / bpm / 4;
+    const diff = getDiff(), OFF = getOff();
 
     /* ── the song laid out: sections → steps; for each step its section, energy and the variant that plays ── */
     const secs = []; let bar = 0;
@@ -101,7 +161,10 @@
         head = Math.max(-0.6, Math.min(0.6, head + bend - head * 0.007)); Xc[m] = x; x += head;
       }
     }
+    const CS = new Float32Array(L), SN = new Float32Array(L);
+    for (let m = 0; m < L; m++) { const h = (Xc[Math.min(L - 1, m + 2)] - Xc[Math.max(0, m - 2)]) / (Math.min(L - 1, m + 2) - Math.max(0, m - 2)), a = Math.atan(h); CS[m] = Math.cos(a); SN[m] = Math.sin(a); }
     const at = (A, s) => { if (s <= 0) return A[0]; const i = Math.floor(s); if (i >= L - 1) return A[L - 1]; const f = s - i; return A[i] + (A[i + 1] - A[i]) * f; };
+    const side = (s, u) => [at(Xc, s) + u * at(CS, s), s - u * at(SN, s)];   // a point u metres to the side of the road at s (square to it): [x, s]
     const distAt = t => { if (t <= 0) return t * speed(0.25); const x = t / stepDur, i = Math.floor(x); if (i >= N) return S[N] + (t - N * stepDur) * speed(0.3); return S[i] + (S[i + 1] - S[i]) * (x - i); };
 
     /* ── the notes the player sees: taken from what will sound, thinned so they can be caught ── */
@@ -110,26 +173,26 @@
       let last = -1, lastLane = 1; const count = [0, 0, 0];
       for (let n = 32; n < N - 16; n++) {   // (two quiet bars first, and the last bar empty)
         const v = varAt(n), e = stepE[n], t = n * stepDur, cand = [];
-        if (n % (e >= 0.9 ? 1 : 2)) continue;   // on the 8ths (16ths only in the drops): they fall with the groove
+        if (n % (diff === 'facil' ? 4 : diff === 'dificil' && e >= 0.9 ? 1 : 2)) continue;   // easy: on the beats · normal: 8ths · hard: 16ths in the drops
         const sy = v.synth.steps[n % 16];
         if (!v.synth.mute && sy && sy.on) cand.push([0, ((sy.deg % 3) + 3) % 3]);
         const a = v.arp;
         if (!a.mute && a.on && n % (a.rate || 1) === 0) { const k = n / (a.rate || 1); cand.push([1, [0, 1, 2, 1][k % 4]]); }
         v.rings.forEach((r, i) => { if (!r.mute && r.pulses && X.euclid(r.steps, r.pulses, r.rot)[n % r.steps]) cand.push([2, i % 3]); });
         if (!v.drums[1].mute && v.drums[1].steps[n % 16]) cand.push([2, 1]);
-        const gap = e >= 0.9 ? 0.17 : e >= 0.5 ? 0.24 : 0.36;
+        const gap = diff === 'facil' ? 0.42 : diff === 'dificil' ? (e >= 0.9 ? 0.13 : e >= 0.5 ? 0.2 : 0.3) : (e >= 0.9 ? 0.2 : e >= 0.5 ? 0.25 : 0.36);
         if (cand.length && t - last >= gap) {
           cand.sort((p, q) => count[p[0]] - count[q[0]]);   // the layer with the fewest notes so far goes first
           let [ly, lane] = cand[0];
-          if (Math.abs(lane - lastLane) === 2 && t - last < 0.32) lane = 1;   // a full jump needs time
+          if (Math.abs(lane - lastLane) === 2 && t - last < 0.2) lane = 1;   // (two fingers far apart that fast: no)
           notes.push({ n, t, lane, ly, s: S[n], st: 0 }); count[ly]++; last = t; lastLane = lane;
         }
       }
-      // static blocks: in the build-ups and drops, on free 16ths, never on the lane a nearby note asks for
+      // static blocks: in the build-ups and drops, on free odd 16ths, never on the lane a nearby note asks for
       for (let n = 32; n < N - 16; n++) {
         const s = secs[stepSec[n]]; if (s.k !== 'drop' && s.k !== 'build') continue;
-        if (n % 4 !== 2 || rnd() > (s.k === 'drop' ? 0.4 : 0.2)) continue;
-        const t = n * stepDur, near = notes.filter(q => Math.abs(q.t - t) < 0.3), busy = new Set(near.map(q => q.lane));
+        if (n % 2 !== 1 || rnd() > (s.k === 'drop' ? 0.05 : 0.025) * (diff === 'facil' ? 0.5 : 1)) continue;   // (on the odd 16ths: between the notes)
+        const t = n * stepDur, nw = diff === 'dificil' ? 0.17 : 0.3, near = notes.filter(q => Math.abs(q.t - t) < nw), busy = new Set(near.map(q => q.lane));
         const free = [0, 1, 2].filter(l => !busy.has(l)); if (!free.length || near.some(q => Math.abs(q.t - t) < 0.09)) continue;
         if (free.length === 3) free.splice(1, 1);   // with nothing near: never the middle (there's always a way round)
         blocks.push({ n, t, lane: free[Math.floor(rnd() * free.length)], s: S[n], st: 0 });
@@ -148,7 +211,8 @@
     pauseEl.append(el('b', null, tr('Pausa', 'Paused')), el('span', null, tr('Tocá para seguir', 'Tap to go on'))); pauseEl.hidden = true;
     pauseBtn.title = tr('Pausa (P)', 'Pause (P)');
     const touch = matchMedia('(pointer: coarse)').matches && !matchMedia('(pointer: fine)').matches;
-    const hint = el('div', 'sc-hint', touch ? tr('Tocá a la izquierda o a la derecha para cambiar de carril', 'Tap left or right to switch lanes') : tr('← → o A D para cambiar de carril · P pausa', '← → or A D to switch lanes · P pause'));
+    const hint = el('div', 'sc-hint', touch ? tr('Tocá el carril (izquierda, centro, derecha) cuando la nota cruza la línea', 'Tap the lane (left, middle, right) as the note crosses the line') : tr('A S D (o J K L) tocan cada carril cuando la nota cruza la línea · P pausa', 'A S D (or J K L) strike each lane as the note crosses the line · P pause'));
+    const judgeEl = el('div', 'sc-judge');
     const fsBtn = el('button', 'sc-pbtn sc-fs', '⛶'); fsBtn.title = tr('Pantalla completa', 'Full screen');
     const fsOK = !!(wrap.requestFullscreen || wrap.webkitRequestFullscreen);
     const fsEl = () => document.fullscreenElement || document.webkitFullscreenElement;
@@ -156,7 +220,7 @@
     const fsOff = () => { try { if (fsEl()) { const p = (document.exitFullscreen || document.webkitExitFullscreen).call(document); if (p && p.catch) p.catch(() => {}); } } catch (e) { /* ignore */ } };
     fsBtn.addEventListener('click', e => { e.stopPropagation(); if (fsEl()) fsOff(); else fsOn(); });
     if (!fsOK) fsBtn.hidden = true;
-    wrap.append(cv, hudL, meters, prog, bigEl, hint, pauseBtn, fsBtn, pauseEl);
+    wrap.append(cv, hudL, meters, prog, bigEl, judgeEl, hint, pauseBtn, fsBtn, pauseEl);
     stage.append(wrap);
     if (touch && fsOK) fsOn();   // on a phone: the whole screen (the start tap is the gesture it needs)
     const COL = COLS(), rgba = (c, a) => `rgba(${c[0]},${c[1]},${c[2]},${a})`;
@@ -196,12 +260,12 @@
     }
 
     /* ── the layers' health → how they sound ── */
-    const H = [0.5, 0.5, 0.5]; let lastMix = '';
+    const H = [0.5, 0.5, 0.5], cut = [false, false, false]; let lastMix = '';
     function mix(now) {
       const s = secs[stepSec[Math.max(0, Math.min(N - 1, Math.floor(now / stepDur)))]];
       let dj = 0;   // a build-up opens a high-pass that lets go on the drop
       if (s.k === 'build') { const f = (now / stepDur - s.b0 * 16) / (s.bars * 16); dj = Math.max(0, Math.min(1, f)) * 0.42; }
-      const f = H.map(h => 0.1 + 0.9 * h), key = f.map(x => x.toFixed(2)).join() + dj.toFixed(2);
+      const f = H.map((h, i) => (cut[i] ? 0.05 : 0.35 + 0.65 * h)), key = f.map(x => x.toFixed(2)).join() + dj.toFixed(2);   // (a cut instrument: almost silent, at once)
       if (key === lastMix) return; lastMix = key;
       D.synthStrip.set({ ...st.synth, level: st.synth.level * f[0] });
       D.synth.set({ ...st.synth, cutoff: st.synth.cutoff * (0.35 + 0.65 * H[0]) });
@@ -212,18 +276,32 @@
     }
 
     /* ── play state ── */
-    const P = { lane: 1, x: 1, score: 0, combo: 0, maxCombo: 0, caught: 0, missed: 0, hitBlocks: 0, fx: [], rings: [], glitch: 0, tilt: 0, done: false, frames: 0 };
+    const P = { lane: 1, x: 1, score: 0, combo: 0, maxCombo: 0, caught: 0, missed: 0, hitBlocks: 0, fx: [], rings: [], glitch: 0, tilt: 0, done: false, frames: 0, pads: [0, 0, 0], jc: [0, 0, 0], errSum: 0, ghost: 0 };
+    let ni = 0;   // the first note not judged yet
     let hudKey = '', paused = false, raf = 0, ended = false, lastSec = -1, bigT = 0, auto = false, prevNow = -1;
     const mult = () => Math.min(8, 1 + Math.floor(P.combo / 8));
     const songTime = () => ac.currentTime - T0 - (ac.outputLatency || ac.baseLatency || 0);
+    const songNow = () => songTime() - OFF;   // what the player hears (and sees) now, with this device's calibrated delay
+    const evTime = e => songNow() - (e && e.timeStamp ? Math.max(0, Math.min(0.1, (performance.now() - e.timeStamp) / 1000)) : 0);   // when the key or tap really happened
+    function judge(txt, cls) { judgeEl.textContent = txt; judgeEl.className = 'sc-judge ' + cls; void judgeEl.offsetWidth; judgeEl.classList.add('on'); }
+    // a strike on a lane: the ship goes there, and the closest note of that lane inside the window is hit
+    function strike(lane, t) {
+      if (paused || ended) return;
+      P.lane = lane; P.pads[lane] = 1; hint.classList.add('off');
+      let best = null, bd = 9;
+      for (let i = ni; i < notes.length; i++) { const q = notes[i]; if (q.t - t > WIN.ok) break; if (q.st || q.lane !== lane) continue; const d = t - q.t; if (Math.abs(d) <= WIN.ok && Math.abs(d) < Math.abs(bd)) { best = q; bd = d; } }
+      if (best) hitNote(best, bd); else P.ghost++;
+    }
     function move(d) { if (paused || ended) return; P.lane = Math.max(0, Math.min(LANES - 1, P.lane + d)); hint.classList.add('off'); }
     function burst(x, y, s, c, nn) { for (let i = 0; i < nn; i++) { const a = Math.random() * 6.283, v = 2 + Math.random() * 7; P.fx.push({ x, y: y + 0.3, s, vx: Math.cos(a) * v, vy: Math.sin(a) * v * 0.6 + 3, vs: (Math.random() - 0.3) * 6, life: 0.5 + Math.random() * 0.4, c }); } }
-    function catchNote(q) {
-      q.st = 1; P.combo++; P.maxCombo = Math.max(P.maxCombo, P.combo); P.caught++;
-      P.score += 100 * mult(); H[q.ly] = Math.min(1, H[q.ly] + 0.09);
-      burst(at(Xc, q.s) + (q.lane - 1) * LW, at(Y, q.s) + 0.75, q.s, COL[q.ly], 16); P.rings.push({ life: 0.45, c: COL[q.ly] });
+    function hitNote(q, d) {
+      const a = Math.abs(d), j = a <= WIN.perfect ? 0 : a <= WIN.good ? 1 : 2;
+      q.st = 1; q.j = j; q.err = d; P.combo++; P.maxCombo = Math.max(P.maxCombo, P.combo); P.caught++; P.jc[j]++; P.errSum += d;
+      P.score += [300, 200, 100][j] * mult(); H[q.ly] = Math.min(1, H[q.ly] + 0.09); cut[q.ly] = false;
+      judge(j === 0 ? tr('¡Perfecto!', 'Perfect!') : j === 1 ? tr('Bien', 'Good') : d < 0 ? tr('Temprano', 'Early') : tr('Tarde', 'Late'), 'j' + j);
+      { const [bx, bs] = side(q.s, (q.lane - 1) * LW); burst(bx, at(Y, q.s) + 0.45, bs, COL[q.ly], j === 0 ? 22 : 12); } P.rings.push({ life: 0.45, c: COL[q.ly] });
     }
-    function missNote(q) { q.st = 2; P.combo = 0; P.missed++; H[q.ly] = Math.max(0, H[q.ly] - 0.15); }
+    function missNote(q) { q.st = 2; P.combo = 0; P.missed++; H[q.ly] = Math.max(0, H[q.ly] - 0.15); cut[q.ly] = true; judge(tr('Fallaste', 'Missed'), 'miss'); }
     function hitBlock(b) {
       b.st = 1; P.combo = 0; P.hitBlocks++; P.score = Math.max(0, P.score - 300); P.glitch = 1;
       for (let i = 0; i < 3; i++) H[i] = Math.max(0, H[i] - 0.08);
@@ -231,17 +309,20 @@
     }
 
     /* ── input ── */
+    const LANE_KEYS = { KeyA: 0, KeyS: 1, KeyD: 2, KeyJ: 0, KeyK: 1, KeyL: 2, Digit1: 0, Digit2: 1, Digit3: 2, Numpad1: 0, Numpad2: 1, Numpad3: 2 };
     const onKey = e => {
-      if (e.repeat) return;
+      if (e.repeat || document.querySelector('.sc-cal')) return;
       const k = e.code;
-      if (k === 'ArrowLeft' || k === 'KeyA') { move(-1); e.preventDefault(); }
-      else if (k === 'ArrowRight' || k === 'KeyD') { move(1); e.preventDefault(); }
-      else if (k === 'KeyP' || k === 'Space') { setPause(!paused); e.preventDefault(); }
+      if (k in LANE_KEYS) { strike(LANE_KEYS[k], evTime(e)); e.preventDefault(); }
+      else if (k === 'ArrowLeft') { move(-1); e.preventDefault(); }
+      else if (k === 'ArrowRight') { move(1); e.preventDefault(); }
+      else if (k === 'Space' || k === 'ArrowUp') { strike(P.lane, evTime(e)); e.preventDefault(); }
+      else if (k === 'KeyP' || k === 'Escape') { setPause(!paused); e.preventDefault(); }
     };
     addEventListener('keydown', onKey);
     const onDown = e => {
       if (paused) { setPause(false); return; }
-      const R = wrap.getBoundingClientRect(); move(e.clientX - R.left < R.width / 2 ? -1 : 1); e.preventDefault();
+      const R = wrap.getBoundingClientRect(); strike(Math.max(0, Math.min(2, Math.floor((e.clientX - R.left) / R.width * 3))), evTime(e)); e.preventDefault();   // each third of the screen is a lane
     };
     cv.addEventListener('pointerdown', onDown);
     pauseEl.addEventListener('click', () => setPause(false));
@@ -253,6 +334,7 @@
       const gp = navigator.getGamepads ? [...navigator.getGamepads()].find(x => x && x.connected) : null; if (!gp) return;
       const ax = gp.axes[0] || 0, l = ax < -0.5 || (gp.buttons[14] && gp.buttons[14].pressed), r = ax > 0.5 || (gp.buttons[15] && gp.buttons[15].pressed);
       if (l && !pad.l) move(-1); if (r && !pad.r) move(1); pad.l = l; pad.r = r;
+      [[2, 0], [3, 1], [1, 2], [0, -1]].forEach(([bi, ln]) => { const on = !!(gp.buttons[bi] && gp.buttons[bi].pressed); if (on && !pad['b' + bi]) strike(ln < 0 ? P.lane : ln, songNow()); pad['b' + bi] = on; });   // X Y B: the lanes · A: this lane
       const sb = gp.buttons[9] && gp.buttons[9].pressed; if (sb && !pad.s) setPause(!paused); pad.s = sb;
     }
     function setPause(v) {
@@ -278,22 +360,19 @@
       pollPad(); schedule();
       if (paused) return;
       size();
-      const now = songTime();
+      const now = songNow();
       update(now, dt); draw(now);
       if (!ended && now > N * stepDur + 1.5) finish();
     }
     function update(now, dt) {
-      if (auto) { const q = notes.find(q => !q.st && q.t > now - 0.02); if (q && q.t - now < 0.5) { P.lane = q.lane; P.x = q.lane; } }   // (tests)
-      const px = P.x; P.x += (P.lane - P.x) * Math.min(1, dt * 16); P.tilt += ((P.x - px) / Math.max(dt, 1e-3) * 0.06 - P.tilt) * Math.min(1, dt * 10);
+      if (auto) for (let i = ni; i < notes.length; i++) { const q = notes[i]; if (q.t > now) break; if (!q.st) strike(q.lane, q.t); }   // (tests: every note struck right on time)
+      const px = P.x; P.x += (P.lane - P.x) * Math.min(1, dt * 28); P.tilt += ((P.x - px) / Math.max(dt, 1e-3) * 0.06 - P.tilt) * Math.min(1, dt * 10);
       const lane = Math.round(P.x);
-      // every note that reached the ship since the last frame is judged (a slow phone that skips frames doesn't lose notes)
-      // a note is caught on its own time (when it sounds); being in its lane a moment before counts too
-      for (const q of notes) {
-        if (q.st || q.t > now + 0.07) continue;
-        if (lane === q.lane && Math.abs(P.x - q.lane) < 0.45) q.ok = true;
-        if (q.ok && now >= q.t) catchNote(q);
-        else if (now > q.t + 0.09) missNote(q);
-      }
+      // a note nobody struck inside its window is missed (whatever frames a slow phone skipped)
+      for (let i = ni; i < notes.length; i++) { const q = notes[i]; if (q.t > now) break; if (!q.st && now > q.t + WIN.ok) missNote(q); }
+      while (ni < notes.length && notes[ni].st) ni++;
+      P.pads = P.pads.map(v => Math.max(0, v - dt * 5));
+      void lane;
       for (const b of blocks) { if (b.st || b.t > now) continue; if (now > b.t + 0.06 && b.t < prevNow - 0.06) { b.st = 2; continue; } if (Math.abs(P.x - b.lane) < 0.5) hitBlock(b); else if (now > b.t + 0.06) b.st = 2; }
       prevNow = now; P.frames++;
       P.fx = P.fx.filter(f => { f.life -= dt; f.x += f.vx * dt; f.y += f.vy * dt; f.vy -= 14 * dt; f.s += f.vs * dt; return f.life > 0; });
@@ -301,11 +380,11 @@
       P.rings = P.rings.filter(x => (x.life -= dt) > 0);
       mix(now);
       // the HUD
-      const hk = P.score + '|' + P.combo + '|' + H.map(h => Math.round(h * 100)).join();
+      const hk = P.score + '|' + P.combo + '|' + H.map(h => Math.round(h * 100)).join() + cut.join();
       if (hk !== hudKey) {   // the HUD: the DOM only when something changed
         hudKey = hk; scoreEl.textContent = P.score.toLocaleString(J.LOCALE);
         comboEl.textContent = P.combo > 1 ? `×${mult()} · ${P.combo}` : '';
-        H.forEach((h, i) => { mEls[i].style.width = Math.round(h * 100) + '%'; });
+        H.forEach((h, i) => { mEls[i].style.width = Math.round(h * 100) + '%'; mEls[i].parentNode.classList.toggle('cut', cut[i]); });
       }
       const n = Math.max(0, Math.min(N - 1, Math.floor(now / stepDur))), si = stepSec[n];
       const pw = Math.round(Math.max(0, Math.min(100, now / (N * stepDur) * 100)) * 4) / 4 + '%'; if (pw !== progFill.style.width) progFill.style.width = pw;
@@ -372,21 +451,22 @@
       const hat = hats.length ? Math.exp(-Math.max(0, now - (hats.filter(k => k <= now).pop() ?? -9)) * 14) : 0;
       while (kicks.length > 8 && kicks[1] < now) kicks.shift();
       while (hats.length > 8 && hats[1] < now) hats.shift();
-      const shipX = at(Xc, shipS) + (P.x - 1) * LW;
+      const [shipX, shipSS] = side(shipS, (P.x - 1) * LW), roadYaw = Math.atan2(at(SN, shipS + 3), at(CS, shipS + 3));
       const slope = Math.atan2(at(Yb, shipS + 3) - at(Yb, shipS - 3), 6), pitch = Math.atan2(at(Y, shipS + 1.5) - at(Y, shipS - 1.5), 3), bank = Math.max(-0.6, Math.min(0.6, -P.tilt * 0.55));
       const fdt = Math.max(0, Math.min(0.1, now - lastDraw)); lastDraw = now;
       camE += (e - camE) * Math.min(1, fdt * 1.6);   // the camera's own intensity (eased, so a drop swoops in)
       const barPh = now / (stepDur * 16) * 6.2832;
       const cz = W < Hh ? 0.45 : 1;   // (a phone held upright: the swoop closer is milder, or the ship sinks under the HUD)
-      cam.s = shipS - (7.6 - 1.7 * camE * cz); cam.x = at(Xc, cam.s) * 0.85 + shipX * 0.15 + Math.sin(now * 0.6) * 0.6 * camE;
-      { const tx = at(Xc, shipS + 7) + (P.x - 1) * LW * 0.3, yw = Math.atan2(tx - cam.x, shipS + 7 - cam.s); cam.yaw += (yw - cam.yaw) * Math.min(1, fdt * 6); cam.cy = Math.cos(cam.yaw); cam.sy = Math.sin(cam.yaw); }   // it looks along the road
-      const shipYaw = Math.atan((at(Xc, shipS + 2) - at(Xc, shipS - 2)) / 4);   // (the ship points along the road too)
+      cam.yaw += (roadYaw - cam.yaw) * Math.min(1, fdt * 5); cam.cy = Math.cos(cam.yaw); cam.sy = Math.sin(cam.yaw);   // it looks along the road, from right behind the ship
+      const camD = cz < 1 ? 8.6 - 0.6 * camE : 7.6 - 1.7 * camE, follow = cz < 1 ? 0 : 1;   // (upright phone: further back and centred, so the three lanes sit under the three thirds you tap)
+      cam.s = shipS - camD * cam.cy; cam.x = at(Xc, shipS) - camD * cam.sy + ((P.x - 1) * LW * 0.15 * cam.cy + Math.sin(now * 0.6) * 0.6 * camE) * follow;
+      const shipYaw = Math.atan2(at(SN, shipS), at(CS, shipS));   // (the ship points along the road too)
       cam.y = at(Yb, shipS) + 3.1 - 1.0 * camE * cz + slope * 1.5;
-      const wideV = W > Hh * 2; cam.F = Math.min(Hh * (wideV ? 1.25 : 0.95), W * 1.0) * (1 - 0.24 * camE) * (1 - 0.07 * kick * camE);   // (a phone on its side: closer, so the ship isn't tiny)
-      cam.hz = Hh * ((wideV ? 0.3 : 0.36) + slope * 0.5 + 0.035 * camE * Math.sin(barPh * 0.5));
+      const wideV = W > Hh * 2; cam.F = Math.min(Hh * (wideV ? 1.25 : 0.95), W * 1.0) * (1 - 0.24 * camE) * (1 - 0.02 * kick * camE);   // (a phone on its side: closer, so the ship isn't tiny)
+      cam.hz = Hh * ((wideV ? 0.3 : 0.36) + slope * 0.5 + 0.02 * camE * Math.sin(barPh * 0.5));
       const curv = ((at(Xc, shipS + 18) - at(Xc, shipS)) - (at(Xc, shipS) - at(Xc, shipS - 6)) / 6 * 18) / 18;   // how hard the road turns here
       camBank += (Math.max(-0.28, Math.min(0.28, -curv * 9)) - camBank) * Math.min(1, fdt * 3);
-      const roll = bank * 0.3 + camBank + 0.13 * camE * Math.sin(barPh);   // the world leans with the ship, into the curves, and sways with the bar
+      const roll = bank * 0.3 + camBank + 0.07 * camE * Math.sin(barPh);   // the world leans with the ship, into the curves, and sways with the bar
       for (const d of [1.4, 2.6, 4]) cam.y = Math.max(cam.y, at(Y, cam.s + d) + (Hh - cam.hz) * d / cam.F + 0.1);   // the nearest track always reaches below the screen (no cut edge in the descents)
       cam.y += ((camY0 ?? cam.y) - cam.y) * 0.5; camY0 = cam.y;   // (F: a phone held upright still fits the whole track across)
       // sky — after each drop (the break, the outro) it turns psychedelic: laser mandalas instead of the bars
@@ -467,9 +547,9 @@
       { let s = cam.s + 1.4; segs.push(s); let bi = 0;
         while (s < cam.s + SHOW) { while (bi < BANDS.length - 1 && s - cam.s >= BANDS[bi][0]) bi++; const st2 = BANDS[bi][1]; s = (Math.floor(s / st2 + 1e-6) + 1) * st2; segs.push(s); }
         segs.reverse(); }
-      const pts = segs.map(s => { const c = at(Xc, s), y = at(Y, s); return { s, c, y, e: at(Em, s),
-        l: proj(c - half, y, s), r: proj(c + half, y, s), lb: proj(c - half, y - TH, s), rb: proj(c + half, y - TH, s), lr: proj(c - half, y + RAIL, s), rr: proj(c + half, y + RAIL, s),
-        lanes: [0, 1, 2, 3].map(k => proj(c - half + 0.35 + k * LW, y, s)) }; });
+      const pts = segs.map(s => { const c = at(Xc, s), y = at(Y, s), cs = at(CS, s), sn = at(SN, s), Lp = (u, h) => proj(c + u * cs, y + h, s - u * sn); return { s, c, y, e: at(Em, s),
+        l: Lp(-half, 0), r: Lp(half, 0), lb: Lp(-half, -TH), rb: Lp(half, -TH), lr: Lp(-half, RAIL), rr: Lp(half, RAIL),
+        lanes: [0, 1, 2, 3].map(k => Lp(-half + 0.35 + k * LW, 0)) }; });
       const quad = (a, b, c, d) => { g.beginPath(); g.moveTo(a[0], a[1]); g.lineTo(b[0], b[1]); g.lineTo(c[0], c[1]); g.lineTo(d[0], d[1]); g.closePath(); };
       let prev = null;
       for (const p of pts) {
@@ -500,7 +580,7 @@
       // the beats laid on the track: a line on every beat (thicker on each bar) that you ride over in time
       for (let n = Math.max(0, Math.floor(now / stepDur / 4) * 4); n < N; n += 4) {
         const s = S[n]; if (s < cam.s + 1) continue; if (s > cam.s + SHOW * 0.8) break;
-        const c = at(Xc, s), y = at(Y, s), a = proj(c - half, y + 0.01, s), b = proj(c + half, y + 0.01, s); if (!a || !b) continue;
+        const y = at(Y, s), [ax, as] = side(s, -half), [bx, bs] = side(s, half), a = proj(ax, y + 0.01, as), b = proj(bx, y + 0.01, bs); if (!a || !b) continue;
         const far = (s - cam.s) / SHOW, bar1 = n % 16 === 0;
         g.strokeStyle = HS(hue + 20, 90, 78, (bar1 ? 0.6 : 0.3) * (1 - far)); g.lineWidth = Math.max(1, (bar1 ? 3 : 1.5) * dpr * (1 - far));
         g.beginPath(); g.moveTo(a[0], a[1]); g.lineTo(b[0], b[1]); g.stroke();
@@ -520,12 +600,28 @@
       }
       // posts along the rails that flash with the hats
       for (let s = Math.ceil((cam.s + 10) / 12) * 12; s < cam.s + SHOW * 0.7; s += 12) {
-        const c = at(Xc, s), y = at(Y, s);
-        for (const side of [-1, 1]) {
-          const a = proj(c + side * (half + 0.15), y + RAIL, s), b = proj(c + side * (half + 0.15), y + RAIL + 1.3 + 1.2 * e, s); if (!a || !b) continue;
+        const y = at(Y, s);
+        for (const sd of [-1, 1]) {
+          const [px2, ps2] = side(s, sd * (half + 0.15)), a = proj(px2, y + RAIL, ps2), b = proj(px2, y + RAIL + 1.3 + 1.2 * e, ps2); if (!a || !b) continue;
           g.strokeStyle = HS(hue + 60, 90, 72, 0.15 + 0.6 * hat); g.lineWidth = Math.max(1, Math.min(3 * dpr, a[2] * 0.06));
           g.beginPath(); g.moveTo(a[0], a[1]); g.lineTo(b[0], b[1]); g.stroke();
           g.fillStyle = HS(hue + 60, 90, 80, 0.3 + 0.7 * hat); const r = Math.max(1, Math.min(4 * dpr, a[2] * 0.08)); g.fillRect(b[0] - r, b[1] - r, r * 2, r * 2);
+        }
+      }
+      // the hit line: a bar of light across the lanes at the ship, a pad on each lane (lit when you strike it),
+      // and on each lane a ring in the colour of its next note, closing in on the pad: it meets it right on the note's time
+      { const sL = shipS, yL = at(Y, sL) + 0.04, LP = u => { const [x2, s2] = side(sL, u); return proj(x2, yL, s2); }, a = LP(-half), b = LP(half);
+        if (a && b) {
+          g.strokeStyle = HS(hue - 40, 100, 78, 0.9); g.lineWidth = Math.max(2, 3 * dpr); g.beginPath(); g.moveTo(a[0], a[1]); g.lineTo(b[0], b[1]); g.stroke();
+          const nq = [null, null, null]; for (let i = ni; i < notes.length; i++) { const q = notes[i]; if (q.t > now + 0.8) break; if (!q.st && !nq[q.lane]) nq[q.lane] = q; }
+          for (let k = 0; k < 3; k++) {
+            const p = LP((k - 1) * LW); if (!p) continue;
+            const rx = 0.8 * p[2], ry = 0.26 * p[2], fl = P.pads[k];
+            g.lineWidth = Math.max(1.5, 2 * dpr); g.strokeStyle = HS(hue - 40, 100, 82, 0.45 + 0.55 * fl);
+            g.beginPath(); g.ellipse(p[0], p[1], rx, ry, 0, 0, 6.2832); g.stroke();
+            if (fl > 0.02) { g.fillStyle = HS(hue - 40, 100, 75, 0.5 * fl); g.fill(); }
+            const q = nq[k]; if (q) { const f = Math.max(0, (q.t - now) / 0.8); g.strokeStyle = rgba(COL[q.ly], (0.95 - f * 0.6).toFixed(2)); g.lineWidth = Math.max(1, 2.5 * dpr); g.beginPath(); g.ellipse(p[0], p[1], rx * (1 + f * 2.2), ry * (1 + f * 2.2), 0, 0, 6.2832); g.stroke(); }
+          }
         }
       }
       // notes (little 3D pieces that spin) and static blocks, far to near
@@ -535,21 +631,23 @@
       objs.sort((a, b) => b.s - a.s);
       g.lineWidth = Math.max(1, dpr);
       for (const o of objs) {
-        const c = at(Xc, o.s) + (o.lane - 1) * LW, y = at(Y, o.s);
+        const [c, os] = side(o.s, (o.lane - 1) * LW), y = at(Y, o.s);
         if (o.ly === undefined) {   // static: a dark box, its face a screen of noise
-          mesh(CUBE_V, CUBE_F, c, y + 0.7, o.s, 0, 0, 0, 0.72, (k, l) => [`rgba(${40 + 50 * l},${40 + 50 * l},${52 + 50 * l},0.96)`, 'rgba(255,255,255,0.55)']);
-          const p0 = proj(c - 0.66, y + 0.06, o.s - 0.72), p1 = proj(c + 0.66, y + 1.34, o.s - 0.72); if (!p0 || !p1) continue;
+          mesh(CUBE_V, CUBE_F, c, y + 0.7, os, 0, 0, Math.atan2(at(SN, o.s), at(CS, o.s)), 0.72, (k, l) => [`rgba(${40 + 50 * l},${40 + 50 * l},${52 + 50 * l},0.96)`, 'rgba(255,255,255,0.55)']);
+          const p0 = proj(c - 0.66, y + 0.06, os - 0.72), p1 = proj(c + 0.66, y + 1.34, os - 0.72); if (!p0 || !p1) continue;
           const w2 = p1[0] - p0[0], h2 = p0[1] - p1[1], cells = 7;
           for (const lv of [0, 1]) { g.beginPath(); for (let i = 0; i < cells; i++) for (let j = 0; j < cells; j++) { const v = Math.random(); if (v < 0.4 || (v > 0.72) !== !!lv) continue; g.rect(p0[0] + w2 * i / cells, p1[1] + h2 * j / cells, w2 / cells + 0.5, h2 / cells + 0.5); } g.fillStyle = lv ? 'rgba(250,250,255,0.82)' : 'rgba(215,215,230,0.5)'; g.fill(); }
           continue;
         }
-        const col = COL[o.ly], dim = o.st === 2 ? 0.3 : 1, yy = y + 0.75 + Math.sin(now * 5 + o.n) * 0.07, spin = now * 2.2 + o.n * 0.7;
-        const halo = proj(c, yy, o.s); if (!halo) continue;
+        const col = COL[o.ly], dim = o.st === 2 ? 0.3 : 1, yy = y + 0.45, spin = now * 2.2 + o.n * 0.7;
+        if (o.s - cam.s < 140) { const w2 = LW * 0.36, cs = at(CS, o.s), sn = at(SN, o.s), Q2 = (u, v) => proj(c + u * cs + v * sn, y + 0.03, os - u * sn + v * cs), a1 = Q2(-w2, -0.5), a2 = Q2(w2, -0.5), a3 = Q2(w2, 0.5), a4 = Q2(-w2, 0.5);
+          if (a1 && a2 && a3 && a4) { g.fillStyle = rgba(col, 0.35 * dim); g.beginPath(); g.moveTo(a1[0], a1[1]); g.lineTo(a2[0], a2[1]); g.lineTo(a3[0], a3[1]); g.lineTo(a4[0], a4[1]); g.closePath(); g.fill(); } }   // its plate on the track: it crosses the line on time
+        const halo = proj(c, yy, os); if (!halo) continue;
         g.fillStyle = rgba(col, 0.16 * dim); g.beginPath(); g.arc(halo[0], halo[1], Math.max(2, 0.95 * halo[2]), 0, 6.283); g.fill();
         if (o.s - cam.s > 95) { g.fillStyle = rgba(col, 0.9 * dim); g.beginPath(); g.arc(halo[0], halo[1], Math.max(1.2, 0.4 * halo[2]), 0, 6.283); g.fill(); continue; }   // far: a dot
         const paint = (k, l) => [`rgba(${Math.round(col[0] * (0.45 + 0.6 * l))},${Math.round(col[1] * (0.45 + 0.6 * l))},${Math.round(col[2] * (0.45 + 0.6 * l))},${dim})`, `rgba(255,255,255,${0.55 * dim})`];
-        if (o.ly === 0) mesh(CUBE_V, CUBE_F, c, yy, o.s, 0.5, spin * 0.5, spin, 0.36, paint);
-        else if (o.ly === 1) mesh(OCTA_V, OCTA_F, c, yy, o.s, 0, 0, spin, 0.42, paint);
+        if (o.ly === 0) mesh(CUBE_V, CUBE_F, c, yy, os, 0.5, spin * 0.5, spin, 0.36, paint);
+        else if (o.ly === 1) mesh(OCTA_V, OCTA_F, c, yy, os, 0, 0, spin, 0.42, paint);
         else {   // percussion: a glowing orb with a ring around it
           const r = Math.max(1.5, 0.4 * halo[2]), gr = g.createRadialGradient(halo[0] - r * 0.3, halo[1] - r * 0.3, r * 0.1, halo[0], halo[1], r);
           gr.addColorStop(0, `rgba(255,255,255,${dim})`); gr.addColorStop(0.35, rgba(col, dim)); gr.addColorStop(1, rgba(col.map(v => v * 0.4), dim));
@@ -561,7 +659,7 @@
       for (const f of P.fx) { const p = proj(f.x, f.y, f.s); if (!p || f.s - cam.s < 4) continue; g.fillStyle = rgba(f.c, Math.min(1, f.life * 2)); const r = Math.max(1, Math.min(5 * dpr, 0.07 * p[2])); g.fillRect(p[0] - r, p[1] - r, r * 2, r * 2); }
 
       // the ship: a little low-poly craft hovering over the track, banking into each lane change and pitching with the slope
-      const hov = 0.55 + Math.sin(now * 3.1) * 0.04 - kick * 0.08, sy = at(Y, shipS) + hov, ss = shipS;
+      const hov = 0.55 + Math.sin(now * 3.1) * 0.04 - kick * 0.08, sy = at(Y, shipS) + hov, ss = shipSS;
       const sh = proj(shipX, at(Y, shipS) + 0.02, ss);   // its shadow on the track
       if (sh) {
         g.fillStyle = 'rgba(0,0,0,0.45)'; g.beginPath(); g.ellipse(sh[0], sh[1], 1.1 * sh[2], 0.28 * sh[2], 0, 0, 6.283); g.fill();
@@ -600,18 +698,22 @@
     function finish() {
       if (ended) return; ended = true; fsOff();
       const total = notes.length, pct = total ? Math.round(P.caught / total * 100) : 0;
-      const grade = pct >= 95 && !P.hitBlocks ? 'S' : pct >= 85 ? 'A' : pct >= 70 ? 'B' : pct >= 50 ? 'C' : 'D';
+      const acc = total ? (3 * P.jc[0] + 2 * P.jc[1] + P.jc[2]) / (3 * total) : 0;   // precision: a perfect counts 3, a good 2, early/late 1
+      const grade = acc >= 0.9 && pct >= 95 && !P.hitBlocks ? 'S' : acc >= 0.78 ? 'A' : acc >= 0.62 ? 'B' : acc >= 0.42 ? 'C' : 'D';
+      const mean = P.caught ? P.errSum / P.caught : 0;
       const words = { S: tr('¡Perfecto!', 'Perfect!'), A: tr('¡Muy bien surfeado!', 'Nicely surfed!'), B: tr('Buen surco', 'A good groove'), C: tr('El tema sonó a medias', 'The song half played'), D: tr('El tema se apagó', 'The song faded out') };
       const box = el('div', 'sc-res');
       LAYERS.forEach((Lr, i) => { const t = notes.filter(q => q.ly === i), c = t.filter(q => q.st === 1).length; const r = el('div', 'sc-rrow'); r.style.setProperty('--c', `rgb(${COL[i].join(',')})`); r.append(el('span', null, Lr.name), el('b', null, t.length ? Math.round(c / t.length * 100) + '%' : '—')); box.append(r); });
+      const jr = el('div', 'sc-rrow sc-rj'); jr.append(el('span', null, tr(`Perfectos ${P.jc[0]} · Bien ${P.jc[1]} · Justos ${P.jc[2]} · Fallados ${P.missed}`, `Perfect ${P.jc[0]} · Good ${P.jc[1]} · Close ${P.jc[2]} · Missed ${P.missed}`))); box.append(jr);
+      if (P.caught >= 12 && Math.abs(mean) > 0.025) box.append(el('p', 'sc-rtip', tr(`En promedio tocaste ${Math.round(Math.abs(mean) * 1000)} ms ${mean > 0 ? 'tarde' : 'temprano'}: si te pasa siempre, probá «Calibrar sonido».`, `On average you struck ${Math.round(Math.abs(mean) * 1000)} ms ${mean > 0 ? 'late' : 'early'}: if it always happens, try «Calibrate audio».`)));
       ctx.done({ score: P.score, text: `${grade} · ${words[grade]}`,
-        detail: tr(`${P.caught} de ${total} notas (${pct} %) · combo máximo ${P.maxCombo} · ${STYLES[style]} en ${keyName(st.root)} a ${bpm} BPM`, `${P.caught} of ${total} notes (${pct}%) · best combo ${P.maxCombo} · ${STYLES[style]} in ${keyName(st.root)} at ${bpm} BPM`),
+        detail: tr(`${P.caught} de ${total} notas (${pct} %) · precisión ${Math.round(acc * 100)} % · combo máximo ${P.maxCombo} · ${DIFFS.find(x => x[0] === diff)[1]} · ${STYLES[style]} en ${keyName(st.root)} a ${bpm} BPM`, `${P.caught} of ${total} notes (${pct}%) · accuracy ${Math.round(acc * 100)}% · best combo ${P.maxCombo} · ${DIFFS.find(x => x[0] === diff)[1]} · ${STYLES[style]} in ${keyName(st.root)} at ${bpm} BPM`),
         better: 'high', extra: [box] });
     }
 
     raf = requestAnimationFrame(frame);
     ctx.hud(`<span class="jg-hud-i">${STYLES[style]} · ${bpm} BPM</span>`);
-    Object.assign(ctx.test, { quality: () => Q, cam, P, H, notes, blocks, secs, st, N, stepDur, songTime, finish, setPause, move, setAuto(v) { auto = !!v; } });   // (Object.assign would drop a setter)
+    Object.assign(ctx.test, { quality: () => Q, diff, OFF, strike, songNow, cam, P, H, notes, blocks, secs, st, N, stepDur, songTime, finish, setPause, move, setAuto(v) { auto = !!v; } });   // (Object.assign would drop a setter)
 
     return () => {
       clearInterval(tick); cancelAnimationFrame(raf);
@@ -628,13 +730,20 @@
 
   J.GAMES.push({
     id: 'surco', wide: true, noDaily: true, title: tr('Surco', 'Groove'), tag: tr('Ritmo · nuevo', 'Rhythm · new'), art: ART,
-    desc: tr('SYNDRUS compone un tema y vos lo surfeás: agarrá sus notas y el tema suena más lleno.', 'SYNDRUS composes a song and you surf it: catch its notes and the song sounds fuller.'),
-    how: tr('SYNDRUS compone un tema nuevo cada vez, con intro, subidas, drops, un corte y un cierre, y la pista lo sigue: trepa mientras la música crece y cae a toda velocidad en los drops. Por los tres carriles vienen las notas del tema, cada una de un instrumento: cuadrados rojos el bajo, rombos celestes el arpegio, círculos amarillos la percusión. Si las agarrás, ese instrumento suena fuerte y abierto; si las perdés, se apaga y se opaca: el tema suena tan bien como juegues. Cada nota suma, y la racha multiplica (hasta ×8). Esquivá los bloques de estática: te cortan la racha y bajan todo. Compu: ← → o A D para cambiar de carril, P o Espacio para pausar. Celular: tocá a la izquierda o a la derecha. Joystick: palanca o cruz. Con auriculares se disfruta más.',
-      'SYNDRUS composes a new song every time, with an intro, build-ups, drops, a break and an outro, and the track follows it: it climbs while the music builds and dives at full speed in the drops. The notes of the song come down the three lanes, each from an instrument: red squares the bass, cyan diamonds the arp, yellow circles the percussion. Catch them and that instrument plays loud and open; miss them and it fades and dulls: the song sounds as good as you play. Every note scores, and your streak multiplies it (up to ×8). Dodge the static blocks: they break your streak and pull everything down. Computer: ← → or A D to switch lanes, P or Space to pause. Phone: tap left or right. Gamepad: stick or d-pad. Best with headphones.'),
+    desc: tr('SYNDRUS compone un tema y vos lo tocás: pegale a cada nota en su momento y el tema suena completo.', 'SYNDRUS composes a song and you play it: strike each note on time and the song plays in full.'),
+    how: tr('SYNDRUS compone un tema nuevo cada vez, con intro, subidas, drops, un corte y un cierre, y la pista lo sigue. Por los tres carriles vienen las notas del tema, cada una de un instrumento: cubos rojos el bajo, rombos celestes el arpegio, esferas amarillas la percusión. Pegale a cada nota justo cuando cruza la línea de luz de la nave: un anillo de su color se cierra sobre el carril y la toca en el momento exacto. Según tu precisión: ¡Perfecto!, Bien, o Temprano/Tarde. Si fallás una, ese instrumento se corta hasta que vuelvas a acertarle. La racha multiplica (hasta ×8). Esquivá los bloques de estática. Compu: A S D (o J K L) tocan cada carril; ← → mueven sin tocar, Espacio toca el carril donde estás, P pausa. Celular: tocá el tercio de la pantalla de cada carril. Joystick: X Y B tocan cada carril, A el actual. Antes de jugar, «Calibrar sonido» mide la demora de tu parlante o auriculares (los Bluetooth tardan bastante): con eso la nota suena justo cuando le pegás. Con auriculares se disfruta más.',
+      'SYNDRUS composes a new song every time, with an intro, build-ups, drops, a break and an outro, and the track follows it. The notes of the song come down the three lanes, each from an instrument: red cubes the bass, cyan diamonds the arp, yellow orbs the percussion. Strike each note right as it crosses the ship\'s line of light: a ring in its colour closes in on the lane and meets it at the exact moment. By your timing: Perfect!, Good, or Early/Late. Miss one and that instrument cuts out until you hit it again. Your streak multiplies (up to ×8). Dodge the static blocks. Computer: A S D (or J K L) strike each lane; ← → move without striking, Space strikes your lane, P pauses. Phone: tap each lane\'s third of the screen. Gamepad: X Y B strike each lane, A the current one. Before playing, «Calibrate audio» measures your speaker\'s or headphones\' delay (Bluetooth lags a lot): then the note sounds right when you strike it. Best with headphones.'),
     get brief() {
-      const t = matchMedia('(pointer: coarse)').matches && !matchMedia('(pointer: fine)').matches;
-      return tr('SYNDRUS compone un tema y la pista lo sigue. Agarrá las notas de cada instrumento para que suene completo y esquivá la estática. ' + (t ? 'Tocá a la izquierda o a la derecha para cambiar de carril.' : '← → o A D para cambiar de carril.') + ' Mejor con auriculares.',
-        'SYNDRUS composes a song and the track follows it. Catch each instrument’s notes so it plays in full, and dodge the static. ' + (t ? 'Tap left or right to switch lanes.' : '← → or A D to switch lanes.') + ' Best with headphones.');
+      const t = isTouch();
+      return tr('SYNDRUS compone un tema y vos lo tocás. Pegale a cada nota cuando cruza la línea de la nave: ' + (t ? 'tocá el tercio de la pantalla de su carril.' : 'A S D (o J K L) para cada carril.') + ' Si fallás, ese instrumento se corta. Calibrá el sonido una vez, sobre todo con auriculares Bluetooth.',
+        'SYNDRUS composes a song and you play it. Strike each note as it crosses the ship\'s line: ' + (t ? 'tap its lane\'s third of the screen.' : 'A S D (or J K L) for each lane.') + ' Miss and that instrument cuts out. Calibrate the audio once, especially with Bluetooth headphones.');
+    },
+    startNote() {   // the difficulty, and the device's sound delay
+      const box = el('div', 'sc-setup'), row = el('div', 'jg-btns sc-diff');
+      DIFFS.forEach(([k, label]) => { const b = el('button', 'jg-btn' + (k === getDiff() ? ' on' : ''), label); b.addEventListener('click', () => { LS.set('surco_diff', k); row.querySelectorAll('.jg-btn').forEach(x => x.classList.toggle('on', x === b)); }); row.append(b); });
+      const cal = el('button', 'jg-cb sc-calb'), paint = () => { cal.textContent = '🎧 ' + tr('Calibrar sonido', 'Calibrate audio') + ' · ' + fmtMs(getOff()); };
+      paint(); cal.addEventListener('click', () => calibrate(paint));
+      box.append(row, cal); return { el: box };
     },
     better: 'high', fmt: n => Number(n).toLocaleString(J.LOCALE),
     options: [['techno', 'Techno'], ['psy', 'Psytrance'], ['hoy', tr('Tema del día', 'Song of the day')]], dayOption: 'hoy',

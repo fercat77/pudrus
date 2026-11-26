@@ -705,6 +705,27 @@ body.juegos .jg-card.wide .tag { color: #ff7ac4; }
 .sc-pause[hidden] { display: none; }
 .sc-pause b { font-size: 28px; letter-spacing: .2em; text-transform: uppercase; }
 .sc-pause span { font-size: 12px; color: rgba(234,252,255,0.7); }
+.sc-judge { position: absolute; left: 50%; top: 52%; transform: translate(-50%, -50%); font-size: clamp(16px, 3.2vh, 26px); font-weight: 700; letter-spacing: .1em; text-transform: uppercase; pointer-events: none; opacity: 0; white-space: nowrap; text-shadow: 0 0 14px currentColor; }
+.sc-judge.on { animation: scJudge .5s ease-out forwards; }
+.sc-judge.j0 { color: #fff7a8; } .sc-judge.j1 { color: #7dffcf; } .sc-judge.j2 { color: #9ec8ff; } .sc-judge.miss { color: #ff5a7a; }
+@keyframes scJudge { 0% { opacity: 1; transform: translate(-50%, -50%) scale(1.25); } 60% { opacity: 1; transform: translate(-50%, -60%) scale(1); } 100% { opacity: 0; transform: translate(-50%, -75%) scale(1); } }
+.sc-m.cut { opacity: .35; }
+.sc-setup { display: flex; flex-direction: column; align-items: center; gap: 8px; }
+.sc-cal { position: fixed; inset: 0; z-index: 80; display: flex; align-items: center; justify-content: center; background: rgba(0,4,10,0.86); padding: 16px; }
+.sc-cal-box { position: relative; width: min(420px, 100%); max-height: 100%; overflow: auto; background: var(--bg2, #0b0f14); border: 1px solid rgba(63,240,255,0.4); border-radius: 14px; padding: 22px 18px; display: flex; flex-direction: column; align-items: center; gap: 12px; text-align: center; color: var(--text, #eafcff); }
+.sc-cal-t { font-size: 18px; letter-spacing: .08em; }
+.sc-cal-box p { margin: 0; font-size: 13px; line-height: 1.5; opacity: .85; }
+.sc-cal-x { position: absolute; right: 10px; top: 10px; width: 32px; height: 32px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.2); background: none; color: inherit; cursor: pointer; }
+.sc-cal-pad { width: 150px; height: 150px; border-radius: 50%; border: 2px solid #3ff0ff; background: radial-gradient(circle, rgba(63,240,255,0.18), rgba(255,63,164,0.08)); color: #eafcff; font: inherit; font-weight: 700; cursor: pointer; touch-action: manipulation; -webkit-user-select: none; user-select: none; }
+.sc-cal-pad.live { border-color: #ff3fa4; }
+.sc-cal-pad.hit { animation: scPad .18s ease-out; }
+@keyframes scPad { 0% { transform: scale(.92); box-shadow: 0 0 30px #3ff0ff; } 100% { transform: scale(1); box-shadow: none; } }
+.sc-cal-dots { display: flex; gap: 5px; flex-wrap: wrap; justify-content: center; }
+.sc-cal-dots i { width: 9px; height: 9px; border-radius: 50%; background: rgba(255,255,255,0.15); }
+.sc-cal-dots i.on { background: #3ff0ff; box-shadow: 0 0 8px #3ff0ff; }
+.sc-cal-res { font-size: 15px !important; font-weight: 700; opacity: 1 !important; }
+.sc-rj { justify-content: center; color: inherit; font-size: 12px; }
+.sc-rtip { margin: 4px 0 0; font-size: 12px; opacity: .8; max-width: 320px; }
 .sc-res { display: flex; flex-direction: column; gap: 6px; margin-top: 8px; min-width: 220px; }
 .sc-rrow { display: flex; justify-content: space-between; gap: 16px; font-size: 13px; color: var(--c); border-bottom: 1px solid rgba(255,255,255,0.08); padding-bottom: 4px; }
 @media (max-height: 560px) { .sc-hud { top: 6px; } .sc-score { font-size: 18px; } .sc-combo { font-size: 10px; } .sc-meters { left: 10px; bottom: 8px; gap: 3px; } .sc-m { grid-template-columns: 7em 56px; font-size: 8px; gap: 6px; } .sc-m i { height: 4px; max-width: 56px; } .sc-prog { bottom: 8px; width: min(160px, 28%); } .sc-prog span { font-size: 9px; } .sc-hint { bottom: 8px; font-size: 10px; padding: 4px 10px; } .sc-pbtn { top: 6px; right: 8px; width: 32px; height: 32px; } .sc-fs { right: 46px; } .sc-big { top: 34%; } }
