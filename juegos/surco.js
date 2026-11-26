@@ -167,26 +167,31 @@
     const side = (s, u) => [at(Xc, s) + u * at(CS, s), s - u * at(SN, s)];   // a point u metres to the side of the road at s (square to it): [x, s]
     const distAt = t => { if (t <= 0) return t * speed(0.25); const x = t / stepDur, i = Math.floor(x); if (i >= N) return S[N] + (t - N * stepDur) * speed(0.3); return S[i] + (S[i + 1] - S[i]) * (x - i); };
 
-    /* ── the notes the player sees: taken from what will sound, thinned so they can be caught ── */
+    /* ── the notes the player sees: a chart that follows the groove, so it can be played with the fingers.
+       The middle lane is the beat (the kick; the arp where there's no kick), the side lanes what falls between
+       (the bass off-beat, left or right as its pitch goes down or up). Easy: the beats · normal: beat and off-beat
+       («tun-ts tun-ts») · hard: plus the pick-up 16th before each beat in the drops. The bars repeat, so does the chart. */
     const notes = [], blocks = [];
     {
-      let last = -1, lastLane = 1; const count = [0, 0, 0];
+      const has = (v, n) => { const p = n % 16, sy = v.synth.steps[p], a = v.arp;
+        return { kick: !v.drums[0].mute && !!v.drums[0].steps[p], bass: !v.synth.mute && sy && sy.on ? sy : null, arp: !a.mute && a.on && n % (a.rate || 1) === 0,
+          ring: v.rings.some(r => !r.mute && r.pulses && X.euclid(r.steps, r.pulses, r.rot)[n % r.steps]) || (!v.drums[1].mute && !!v.drums[1].steps[p]) }; };
+      let side = 0, lastDeg = null, alt = 0;
+      const sideFor = deg => { if (lastDeg !== null && deg !== lastDeg) side = deg > lastDeg ? 2 : 0; lastDeg = deg; return side; };
       for (let n = 32; n < N - 16; n++) {   // (two quiet bars first, and the last bar empty)
-        const v = varAt(n), e = stepE[n], t = n * stepDur, cand = [];
-        if (n % (diff === 'facil' ? 4 : diff === 'dificil' && e >= 0.9 ? 1 : 2)) continue;   // easy: on the beats · normal: 8ths · hard: 16ths in the drops
-        const sy = v.synth.steps[n % 16];
-        if (!v.synth.mute && sy && sy.on) cand.push([0, ((sy.deg % 3) + 3) % 3]);
-        const a = v.arp;
-        if (!a.mute && a.on && n % (a.rate || 1) === 0) { const k = n / (a.rate || 1); cand.push([1, [0, 1, 2, 1][k % 4]]); }
-        v.rings.forEach((r, i) => { if (!r.mute && r.pulses && X.euclid(r.steps, r.pulses, r.rot)[n % r.steps]) cand.push([2, i % 3]); });
-        if (!v.drums[1].mute && v.drums[1].steps[n % 16]) cand.push([2, 1]);
-        const gap = diff === 'facil' ? 0.42 : diff === 'dificil' ? (e >= 0.9 ? 0.13 : e >= 0.5 ? 0.2 : 0.3) : (e >= 0.9 ? 0.2 : e >= 0.5 ? 0.25 : 0.36);
-        if (cand.length && t - last >= gap) {
-          cand.sort((p, q) => count[p[0]] - count[q[0]]);   // the layer with the fewest notes so far goes first
-          let [ly, lane] = cand[0];
-          if (Math.abs(lane - lastLane) === 2 && t - last < 0.2) lane = 1;   // (two fingers far apart that fast: no)
-          notes.push({ n, t, lane, ly, s: S[n], st: 0 }); count[ly]++; last = t; lastLane = lane;
+        const v = varAt(n), e = stepE[n], p = n % 16, h = has(v, n), t = n * stepDur;
+        let ly = -1, lane = 1;
+        if (p % 4 === 0) {   // the beat: the middle lane
+          if (h.kick) ly = 2; else if (h.arp) ly = 1; else if (h.ring) ly = 2;
+        } else if (diff === 'facil') continue;
+        else if (p % 4 === 2) {   // the off-beat: a side lane
+          if (h.bass) { ly = 0; lane = sideFor(h.bass.deg); }
+          else if (h.arp) { ly = 1; lane = (alt++ % 2) * 2; side = lane; }
+          else if (h.ring) { ly = 2; lane = (alt++ % 2) * 2; side = lane; }
+        } else if (diff === 'dificil' && e >= 0.9 && p % 4 === 3) {   // hard, in the drops: the pick-up before the beat, on the other side
+          if (h.arp || h.ring || h.bass) { ly = h.arp ? 1 : h.ring ? 2 : 0; lane = side === 0 ? 2 : 0; }
         }
+        if (ly >= 0) notes.push({ n, t, lane, ly, s: S[n], st: 0 });
       }
       // static blocks: in the build-ups and drops, on free odd 16ths, never on the lane a nearby note asks for
       for (let n = 32; n < N - 16; n++) {
