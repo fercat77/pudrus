@@ -206,7 +206,7 @@
 
     /* ── stage ── */
     stage.classList.add('sc-stage');
-    const wrap = el('div', 'sc-wrap'), cv = el('canvas', 'sc-cv'), g = cv.getContext('2d');
+    const wrap = el('div', 'sc-wrap'), cv = el('canvas', 'sc-cv'), g = cv.getContext('2d', { alpha: false });
     const hudL = el('div', 'sc-hud'), scoreEl = el('b', 'sc-score', '0'), comboEl = el('span', 'sc-combo', '');
     hudL.append(scoreEl, comboEl);
     const meters = el('div', 'sc-meters'), mEls = LAYERS.map((Lr, i) => { const m = el('div', 'sc-m'), bar2 = el('i'); m.append(el('span', null, Lr.name), bar2); m.dataset.l = i; meters.append(m); return bar2; });
@@ -228,7 +228,10 @@
     wrap.append(cv, hudL, meters, prog, bigEl, judgeEl, hint, pauseBtn, fsBtn, pauseEl);
     stage.append(wrap);
     if (touch && fsOK) fsOn();   // on a phone: the whole screen (the start tap is the gesture it needs)
-    const COL = COLS(), rgba = (c, a) => `rgba(${c[0]},${c[1]},${c[2]},${a})`;
+    const COL = COLS(), RGC = new WeakMap(), rgba = (c, a) => {   // rgba(), cached per colour (alpha rounded to 0.02)
+      const k = Math.round(Math.max(0, Math.min(1, +a)) * 50); let m = RGC.get(c); if (!m) { m = []; RGC.set(c, m); }
+      return m[k] || (m[k] = `rgba(${Math.round(c[0])},${Math.round(c[1])},${Math.round(c[2])},${k / 50})`);
+    };
     meters.querySelectorAll('.sc-m').forEach((m, i) => { m.style.setProperty('--c', `rgb(${COL[i].join(',')})`); });
 
     /* ── sound ── */
@@ -249,7 +252,7 @@
     const kicks = [], hats = [];
     function schedule() {
       if (paused) return;
-      const until = ac.currentTime + 0.14;
+      const until = ac.currentTime + (touch ? 0.3 : 0.14);
       while (next < N && T0 + next * stepDur < until) {
         const n = next, t = T0 + n * stepDur, v = varAt(n);
         X.playStep(D, { ...v, bpm }, n, t, Math.random);
@@ -288,7 +291,7 @@
     const songTime = () => ac.currentTime - T0 - (ac.outputLatency || ac.baseLatency || 0);
     const songNow = () => songTime() - OFF;   // what the player hears (and sees) now, with this device's calibrated delay
     const evTime = e => songNow() - (e && e.timeStamp ? Math.max(0, Math.min(0.1, (performance.now() - e.timeStamp) / 1000)) : 0);   // when the key or tap really happened
-    function judge(txt, cls) { judgeEl.textContent = txt; judgeEl.className = 'sc-judge ' + cls; void judgeEl.offsetWidth; judgeEl.classList.add('on'); }
+    let jAlt = false; function judge(txt, cls) { judgeEl.textContent = txt; jAlt = !jAlt; judgeEl.className = 'sc-judge ' + cls + (jAlt ? ' on' : ' on2'); }   // (two twin animations, alternated: each restarts it without a forced layout)
     // a strike on a lane: the ship goes there, and the closest note of that lane inside the window is hit
     function strike(lane, t) {
       if (paused || ended) return;
@@ -350,18 +353,19 @@
 
     /* ── the loop ── */
     let W = 0, Hh = 0, dpr = 1;
+    let box = null; const ro = window.ResizeObserver ? new ResizeObserver(en => { const c = en[0].contentRect; box = { width: c.width, height: c.height }; }) : null; if (ro) ro.observe(wrap);
     function size() {
-      const r = wrap.getBoundingClientRect(); dpr = Math.min(window.devicePixelRatio || 1, touch ? 1.5 : 2) * Q;
+      const r = box || wrap.getBoundingClientRect(); dpr = Math.min(window.devicePixelRatio || 1, touch ? 1.25 : 2) * Q;
       const w = Math.max(1, Math.round(r.width * dpr)), h = Math.max(1, Math.round(r.height * dpr));
       if (w !== cv.width || h !== cv.height) { cv.width = w; cv.height = h; }
       W = w; Hh = h;
     }
     const tick = setInterval(schedule, 25);
-    let lastT = performance.now(), Q = 1, qSum = 0, qN = 0;   // Q: the resolution scale, lowered when the frames come slow
+    let lastT = performance.now(), Q = 1, qSum = 0, qN = 0, qLock = false;   // Q: the resolution scale, lowered when the frames come slow
     function frame() {
       raf = requestAnimationFrame(frame);
       const tn = performance.now(), raw = (tn - lastT) / 1000, dt = Math.min(0.05, raw); lastT = tn;
-      if (!paused && raw < 0.25) { qSum += raw; qN++; if (qN >= 90) { if (qSum / qN > 0.024 && Q > 0.6) Q = Math.round((Q - 0.2) * 10) / 10; qSum = 0; qN = 0; } }
+      if (!paused && raw < 0.25) { qSum += raw; qN++; if (qN >= (touch ? 45 : 90)) { if (qSum / qN > (touch ? 0.019 : 0.024) && Q > 0.6 && !qLock) Q = Math.round((Q - (touch ? 0.15 : 0.2)) * 100) / 100; qSum = 0; qN = 0; } }
       pollPad(); schedule();
       if (paused) return;
       size();
@@ -385,14 +389,14 @@
       P.rings = P.rings.filter(x => (x.life -= dt) > 0);
       mix(now);
       // the HUD
-      const hk = P.score + '|' + P.combo + '|' + H.map(h => Math.round(h * 100)).join() + cut.join();
+      const hk = P.score + '|' + P.combo + '|' + H.map(h => Math.round(h * 20)).join() + cut.join();
       if (hk !== hudKey) {   // the HUD: the DOM only when something changed
         hudKey = hk; scoreEl.textContent = P.score.toLocaleString(J.LOCALE);
         comboEl.textContent = P.combo > 1 ? `×${mult()} · ${P.combo}` : '';
-        H.forEach((h, i) => { mEls[i].style.width = Math.round(h * 100) + '%'; mEls[i].parentNode.classList.toggle('cut', cut[i]); });
+        H.forEach((h, i) => { mEls[i].style.transform = `scaleX(${Math.round(h * 20) / 20})`; mEls[i].parentNode.classList.toggle('cut', cut[i]); });
       }
       const n = Math.max(0, Math.min(N - 1, Math.floor(now / stepDur))), si = stepSec[n];
-      const pw = Math.round(Math.max(0, Math.min(100, now / (N * stepDur) * 100)) * 4) / 4 + '%'; if (pw !== progFill.style.width) progFill.style.width = pw;
+      const pw = `scaleX(${Math.round(Math.max(0, Math.min(1, now / (N * stepDur))) * 200) / 200})`; if (pw !== progFill.style.transform) progFill.style.transform = pw;
       if (si !== lastSec && now >= 0) { lastSec = si; progLbl.textContent = secs[si].name; if (si > 0) { bigEl.textContent = secs[si].name; bigEl.classList.remove('on'); void bigEl.offsetWidth; bigEl.classList.add('on'); bigT = 1.6; } }
       if (bigT > 0) { bigT -= dt; if (bigT <= 0) bigEl.classList.remove('on'); }
     }
@@ -421,15 +425,19 @@
       return [x, y, z];
     }
     // V, F, where (x, y, s), rotation, size, colour of a face (kind, light 0…1) → [fill, edge|null]
-    function mesh(V, F, ox, oy, os, roll, pitch, yaw, sc, paint) {
+    function mesh(V, F, ox, oy, os, roll, pitch, yaw, sc, paint, cull) {   // (cull: a convex piece — the faces turned away aren't drawn)
       const w = V.map(v => { const r = rot(v, roll, pitch, yaw); return [ox + r[0] * sc, oy + r[1] * sc, os + r[2] * sc]; });
       const p = w.map(q => proj(q[0], q[1], q[2])); if (p.some(x => !x)) return;
-      const fs = F.map(f => {
+      const fs = [];
+      for (const f of F) {
         const ids = Array.isArray(f[0]) ? f[0] : f, a = w[ids[0]], b = w[ids[1]], c = w[ids[2]];
         const ux = b[0] - a[0], uy = b[1] - a[1], uz = b[2] - a[2], vx = c[0] - a[0], vy = c[1] - a[1], vz = c[2] - a[2];
         const nx = uy * vz - uz * vy, ny = uz * vx - ux * vz, nz = ux * vy - uy * vx, nl = Math.hypot(nx, ny, nz) || 1;
-        return { ids, kind: f[1], light: Math.round(Math.abs(nx * LX + ny * LY + nz * LZ) / nl / LN * 12) / 12, depth: ids.reduce((t, k) => t + w[k][2], 0) / ids.length };
-      }).sort((a, b) => b.depth - a.depth);
+        let mx = 0, my = 0, mz = 0; for (const k of ids) { mx += w[k][0]; my += w[k][1]; mz += w[k][2]; } mx /= ids.length; my /= ids.length; mz /= ids.length;
+        if (cull) { const out = nx * (mx - ox) + ny * (my - oy) + nz * (mz - os), see = nx * (cam.x - mx) + ny * (cam.y - my) + nz * (cam.s - mz); if (out * see <= 0) continue; }
+        fs.push({ ids, kind: f[1], light: Math.round(Math.abs(nx * LX + ny * LY + nz * LZ) / nl / LN * 12) / 12, depth: mz });
+      }
+      fs.sort((a, b) => b.depth - a.depth);
       for (const f of fs) {
         const [fill, edge] = paint(f.kind, f.light);
         g.beginPath(); f.ids.forEach((k, i) => (i ? g.lineTo(p[k][0], p[k][1]) : g.moveTo(p[k][0], p[k][1]))); g.closePath();
@@ -448,6 +456,9 @@
       if (!v) { v = `hsla(${h},${sa}%,${l}%,${a / 25})`; if (HSC.size > 4000) HSC.clear(); HSC.set(k, v); }
       return v;
     };
+    const PNT = new Map(), BLK = [];
+    const notePaint = (ly, dim) => { const k = ly * 10 + (dim < 1 ? 1 : 0); let f = PNT.get(k); if (!f) { const col = COL[ly], m = []; f = (kd, l) => { const i = Math.round(l * 12); return m[i] || (m[i] = [`rgba(${Math.round(col[0] * (0.45 + 0.6 * l))},${Math.round(col[1] * (0.45 + 0.6 * l))},${Math.round(col[2] * (0.45 + 0.6 * l))},${dim})`, `rgba(255,255,255,${0.55 * dim})`]); }; PNT.set(k, f); } return f; };
+    const blockPaint = (k, l) => { const i = Math.round(l * 12); return BLK[i] || (BLK[i] = [`rgba(${Math.round(40 + 50 * l)},${Math.round(40 + 50 * l)},${Math.round(52 + 50 * l)},0.96)`, 'rgba(255,255,255,0.55)']); };
     let specGrad = null, specKey = '', camE = 0.3, psyA = 0, lastDraw = 0, camBank = 0, camLift = 0;
     let camY0 = null;
     function draw(now) {
@@ -493,10 +504,9 @@
       sk.addColorStop(0, `hsl(${skyH + 20},${60 + 30 * psyA}%,${3 + 3 * kick * e + 2 * psyA}%)`); sk.addColorStop(0.42, `hsl(${skyH + 90 * psyA},70%,${8 + 8 * kick * e + 3 * psyA}%)`); sk.addColorStop(1, '#020206');
       g.fillStyle = sk; g.fillRect(0, 0, W, Hh);
       const px = (cam.x * 0.004) % 1;
-      for (const tw of [0, 1]) {   // stars: the twinkling ones and the dim ones, each batch one fill
-        g.beginPath();
-        for (const s of STARS) { if ((Math.sin(now * s[2] + s[3]) > 0) !== !!tw) continue; const x = ((s[0] - px + 1) % 1) * W, y = s[1] * cam.hz; g.rect(x, y, s[2] * dpr, s[2] * dpr); }
-        g.fillStyle = tw ? 'rgba(230,240,255,0.68)' : 'rgba(230,240,255,0.3)'; g.fill();
+      { const st0 = new Path2D(), st1 = new Path2D();   // stars: the twinkling ones and the dim ones, each batch one fill
+        for (const s of STARS) { const x = ((s[0] - px + 1) % 1) * W, y = s[1] * cam.hz; (Math.sin(now * s[2] + s[3]) > 0 ? st1 : st0).rect(x, y, s[2] * dpr, s[2] * dpr); }
+        g.fillStyle = 'rgba(230,240,255,0.3)'; g.fill(st0); g.fillStyle = 'rgba(230,240,255,0.68)'; g.fill(st1);
       }
       // the ring on the horizon, breathing with the kick
       const rr = Hh * (0.17 + 0.03 * kick);
@@ -566,32 +576,34 @@
       const pts = segs.map(s => { const c = at(Xc, s), y = at(Y, s), cs = at(CS, s), sn = at(SN, s), Lp = (u, h) => proj(c + u * cs, y + h, s - u * sn); return { s, c, y, e: at(Em, s),
         l: Lp(-half, 0), r: Lp(half, 0), lb: Lp(-half, -TH), rb: Lp(half, -TH), lr: Lp(-half, RAIL), rr: Lp(half, RAIL),
         lanes: [0, 1, 2, 3].map(k => Lp(-half + 0.35 + k * LW, 0)) }; });
-      const quad = (a, b, c, d) => { g.beginPath(); g.moveTo(a[0], a[1]); g.lineTo(b[0], b[1]); g.lineTo(c[0], c[1]); g.lineTo(d[0], d[1]); g.closePath(); };
-      let prev = null;
-      for (const p of pts) {
-        if (!p.l || !p.r || !p.lb || !p.lr) { prev = null; continue; }
-        if (prev) {
-          const far = (p.s - cam.s) / SHOW, near = 1 - far, th = 260 - 230 * p.e;   // intensity → colour: violet (calm) … red-orange (drop)
-          if (Math.floor(prev.s / 40) !== Math.floor(p.s / 40)) {   // a pillar down into the void
-            const top = proj(p.c, p.y - TH, p.s), bot = proj(p.c, p.y - 45, p.s);
-            if (top && bot) { const gr = g.createLinearGradient(0, top[1], 0, bot[1]); gr.addColorStop(0, `hsla(${th},70%,45%,${0.5 * near})`); gr.addColorStop(1, `hsla(${th},70%,45%,0)`); g.strokeStyle = gr; g.lineWidth = Math.max(1, top[2] * 0.35); g.beginPath(); g.moveTo(top[0], top[1]); g.lineTo(bot[0], bot[1]); g.stroke(); }
-          }
-          g.fillStyle = HS(th, 60, 6 + 5 * near, 0.95);   // the sides of the slab
-          quad(prev.l, p.l, p.lb, prev.lb); g.fill(); quad(prev.r, p.r, p.rb, prev.rb); g.fill();
-          for (let k = 0; k < 3; k++) {   // the lanes, each its own shade, a darker band every few metres
-            const band = Math.floor(p.s / 10.4 + 1e-6) % 2, L0 = k === 0 ? prev.l : prev.lanes[k], L1 = k === 0 ? p.l : p.lanes[k], R0 = k === 2 ? prev.r : prev.lanes[k + 1], R1 = k === 2 ? p.r : p.lanes[k + 1];
-            if (!L0 || !L1 || !R0 || !R1) continue;
-            g.fillStyle = HS(th + (k - 1) * 12, 65, (band ? 11 : 8.5) + 10 * p.e * near + (k === 1 ? 1.5 : 0), 0.96);
-            quad(L0, R0, R1, L1); g.fill();
-          }
-          g.strokeStyle = HS(th + 40, 90, 72, 0.6 * near); g.lineWidth = Math.max(1, 1.6 * dpr * near);
-          g.beginPath(); for (let k = 1; k < 3; k++) if (prev.lanes[k] && p.lanes[k]) { g.moveTo(prev.lanes[k][0], prev.lanes[k][1]); g.lineTo(p.lanes[k][0], p.lanes[k][1]); } g.stroke();
-          g.fillStyle = HS(th - 30, 95, 60, 0.12 + 0.12 * kick);   // the rails: glass walls with a bright top
-          quad(prev.l, p.l, p.lr, prev.lr); g.fill(); quad(prev.r, p.r, p.rr, prev.rr); g.fill();
-          g.strokeStyle = HS(th - 30, 95, 60 + 20 * kick, 0.3 + 0.7 * near); g.lineWidth = Math.max(1, (2 + 3 * kick) * dpr * near);
-          g.beginPath(); g.moveTo(prev.lr[0], prev.lr[1]); g.lineTo(p.lr[0], p.lr[1]); g.moveTo(prev.rr[0], prev.rr[1]); g.lineTo(p.rr[0], p.rr[1]); g.stroke();
+      // drawn in runs: the segments of one 10.4 m stripe make a single strip per lane (one fill each, not one per segment)
+      const okP = p => p.l && p.r && p.lb && p.rb && p.lr && p.rr && p.lanes[0] && p.lanes[1] && p.lanes[2] && p.lanes[3];
+      const strip = (run, A, B) => { let v = A(run[0]); g.moveTo(v[0], v[1]); for (let i = 1; i < run.length; i++) { v = A(run[i]); g.lineTo(v[0], v[1]); } for (let i = run.length - 1; i >= 0; i--) { v = B(run[i]); g.lineTo(v[0], v[1]); } g.closePath(); };
+      const line = (run, A) => { let v = A(run[0]); g.moveTo(v[0], v[1]); for (let i = 1; i < run.length; i++) { v = A(run[i]); g.lineTo(v[0], v[1]); } };
+      const LANE_L = [p => p.l, p => p.lanes[1], p => p.lanes[2]], LANE_R = [p => p.lanes[1], p => p.lanes[2], p => p.r];
+      for (let i = 0; i < pts.length - 1;) {
+        if (!okP(pts[i]) || !okP(pts[i + 1])) { i++; continue; }
+        const sid = Math.floor(pts[i + 1].s / 10.4 + 1e-6), run = [pts[i], pts[i + 1]]; let j = i + 2;
+        while (j < pts.length && okP(pts[j]) && Math.floor(pts[j].s / 10.4 + 1e-6) === sid) run.push(pts[j++]);
+        i = j - 1;
+        for (let m = 1; m < run.length; m++) {   // a pillar down into the void every 40 m
+          const a = run[m - 1], p = run[m]; if (Math.floor(a.s / 40) === Math.floor(p.s / 40)) continue;
+          const nr = 1 - (p.s - cam.s) / SHOW, tp = 260 - 230 * p.e, top = proj(p.c, p.y - TH, p.s), bot = proj(p.c, p.y - 45, p.s);
+          if (top && bot) { const gr = g.createLinearGradient(0, top[1], 0, bot[1]); gr.addColorStop(0, HS(tp, 70, 45, 0.5 * nr)); gr.addColorStop(1, HS(tp, 70, 45, 0)); g.strokeStyle = gr; g.lineWidth = Math.max(1, top[2] * 0.35); g.beginPath(); g.moveTo(top[0], top[1]); g.lineTo(bot[0], bot[1]); g.stroke(); }
         }
-        prev = p;
+        const q = run[run.length >> 1], near = 1 - (q.s - cam.s) / SHOW, th = 260 - 230 * q.e, band = sid % 2;   // intensity → colour: violet (calm) … red-orange (drop)
+        g.fillStyle = HS(th, 60, 6 + 5 * near, 1);   // the sides of the slab
+        g.beginPath(); strip(run, p => p.l, p => p.lb); strip(run, p => p.r, p => p.rb); g.fill();
+        for (let k = 0; k < 3; k++) {   // the lanes, each its own shade, a darker band every few metres (opaque: no blending)
+          g.fillStyle = HS(th + (k - 1) * 12, 65, (band ? 11 : 8.5) + 10 * q.e * near + (k === 1 ? 1.5 : 0), 1);
+          g.beginPath(); strip(run, LANE_L[k], LANE_R[k]); g.fill();
+        }
+        g.strokeStyle = HS(th + 40, 90, 72, 0.6 * near); g.lineWidth = Math.max(1, 1.6 * dpr * near);
+        g.beginPath(); line(run, LANE_R[0]); line(run, LANE_R[1]); g.stroke();
+        g.fillStyle = HS(th - 30, 95, 60, 0.12 + 0.12 * kick);   // the rails: glass walls with a bright top
+        g.beginPath(); strip(run, p => p.l, p => p.lr); strip(run, p => p.r, p => p.rr); g.fill();
+        g.strokeStyle = HS(th - 30, 95, 60 + 20 * kick, 0.3 + 0.7 * near); g.lineWidth = Math.max(1, (2 + 3 * kick) * dpr * near);
+        g.beginPath(); line(run, p => p.lr); line(run, p => p.rr); g.stroke();
       }
       // the beats laid on the track: a line on every beat (thicker on each bar) that you ride over in time
       for (let n = Math.max(0, Math.floor(now / stepDur / 4) * 4); n < N; n += 4) {
@@ -649,7 +661,7 @@
       for (const o of objs) {
         const [c, os] = side(o.s, (o.lane - 1) * LW), y = at(Y, o.s);
         if (o.ly === undefined) {   // static: a dark box, its face a screen of noise
-          mesh(CUBE_V, CUBE_F, c, y + 0.7, os, 0, 0, Math.atan2(at(SN, o.s), at(CS, o.s)), 0.72, (k, l) => [`rgba(${40 + 50 * l},${40 + 50 * l},${52 + 50 * l},0.96)`, 'rgba(255,255,255,0.55)']);
+          mesh(CUBE_V, CUBE_F, c, y + 0.7, os, 0, 0, Math.atan2(at(SN, o.s), at(CS, o.s)), 0.72, blockPaint, true);
           const p0 = proj(c - 0.66, y + 0.06, os - 0.72), p1 = proj(c + 0.66, y + 1.34, os - 0.72); if (!p0 || !p1) continue;
           const w2 = p1[0] - p0[0], h2 = p0[1] - p1[1], cells = 7;
           for (const lv of [0, 1]) { g.beginPath(); for (let i = 0; i < cells; i++) for (let j = 0; j < cells; j++) { const v = Math.random(); if (v < 0.4 || (v > 0.72) !== !!lv) continue; g.rect(p0[0] + w2 * i / cells, p1[1] + h2 * j / cells, w2 / cells + 0.5, h2 / cells + 0.5); } g.fillStyle = lv ? 'rgba(250,250,255,0.82)' : 'rgba(215,215,230,0.5)'; g.fill(); }
@@ -661,9 +673,9 @@
         const halo = proj(c, yy, os); if (!halo) continue;
         g.fillStyle = rgba(col, 0.16 * dim); g.beginPath(); g.arc(halo[0], halo[1], Math.max(2, 0.95 * halo[2]), 0, 6.283); g.fill();
         if (o.s - cam.s > 95) { g.fillStyle = rgba(col, 0.9 * dim); g.beginPath(); g.arc(halo[0], halo[1], Math.max(1.2, 0.4 * halo[2]), 0, 6.283); g.fill(); continue; }   // far: a dot
-        const paint = (k, l) => [`rgba(${Math.round(col[0] * (0.45 + 0.6 * l))},${Math.round(col[1] * (0.45 + 0.6 * l))},${Math.round(col[2] * (0.45 + 0.6 * l))},${dim})`, `rgba(255,255,255,${0.55 * dim})`];
-        if (o.ly === 0) mesh(CUBE_V, CUBE_F, c, yy, os, 0.5, spin * 0.5, spin, 0.36, paint);
-        else if (o.ly === 1) mesh(OCTA_V, OCTA_F, c, yy, os, 0, 0, spin, 0.42, paint);
+        const paint = notePaint(o.ly, dim);
+        if (o.ly === 0) mesh(CUBE_V, CUBE_F, c, yy, os, 0.5, spin * 0.5, spin, 0.36, paint, true);
+        else if (o.ly === 1) mesh(OCTA_V, OCTA_F, c, yy, os, 0, 0, spin, 0.42, paint, true);
         else {   // percussion: a glowing orb with a ring around it
           const r = Math.max(1.5, 0.4 * halo[2]), gr = g.createRadialGradient(halo[0] - r * 0.3, halo[1] - r * 0.3, r * 0.1, halo[0], halo[1], r);
           gr.addColorStop(0, `rgba(255,255,255,${dim})`); gr.addColorStop(0.35, rgba(col, dim)); gr.addColorStop(1, rgba(col.map(v => v * 0.4), dim));
@@ -684,9 +696,12 @@
       // the wingtips leave two ribbons of light
       const tipL = rot([-1.2, 0.2, -0.95], bank, pitch, shipYaw), tipR = rot([1.2, 0.2, -0.95], bank, pitch, shipYaw);
       trail.push([shipX + tipL[0] * 0.9, sy + tipL[1] * 0.9, ss + tipL[2] * 0.9, shipX + tipR[0] * 0.9, sy + tipR[1] * 0.9, ss + tipR[2] * 0.9]); if (trail.length > 22) trail.shift();
-      for (let i = 1; i < trail.length; i++) {
-        const a = trail[i - 1], b = trail[i], al = i / trail.length;
-        for (const o of [0, 3]) { const p0 = proj(a[o], a[o + 1], a[o + 2]), p1 = proj(b[o], b[o + 1], b[o + 2]); if (!p0 || !p1) continue; g.strokeStyle = `hsla(${hue - 40},95%,70%,${0.5 * al})`; g.lineWidth = Math.max(1, 2.5 * dpr * al); g.beginPath(); g.moveTo(p0[0], p0[1]); g.lineTo(p1[0], p1[1]); g.stroke(); }
+      { const tp = trail.map(a => [proj(a[0], a[1], a[2]), proj(a[3], a[4], a[5])]), CH = 4;   // (in a few pieces, each one stroke, fading out behind)
+        for (let i0 = 0; i0 < tp.length - 1; i0 += CH) {
+          const al = Math.min(tp.length - 1, i0 + CH) / tp.length; g.strokeStyle = HS(hue - 40, 95, 70, 0.5 * al); g.lineWidth = Math.max(1, 2.5 * dpr * al); g.beginPath();
+          for (const o of [0, 1]) for (let i = i0 + 1; i <= Math.min(tp.length - 1, i0 + CH); i++) { const p0 = tp[i - 1][o], p1 = tp[i][o]; if (!p0 || !p1) continue; g.moveTo(p0[0], p0[1]); g.lineTo(p1[0], p1[1]); }
+          g.stroke();
+        }
       }
       // the engines' flame behind it
       const eng = rot([0, 0.17, -0.9], bank, pitch, shipYaw), ep = proj(shipX + eng[0] * 0.9, sy + eng[1] * 0.9, ss + eng[2] * 0.9);
@@ -729,10 +744,10 @@
 
     raf = requestAnimationFrame(frame);
     ctx.hud(`<span class="jg-hud-i">${STYLES[style]} · ${bpm} BPM</span>`);
-    Object.assign(ctx.test, { quality: () => Q, diff, OFF, strike, songNow, cam, P, H, notes, blocks, secs, st, N, stepDur, songTime, finish, setPause, move, setAuto(v) { auto = !!v; } });   // (Object.assign would drop a setter)
+    Object.assign(ctx.test, { quality: () => Q, lockQ(v) { Q = v; qLock = true; }, diff, OFF, strike, songNow, cam, P, H, notes, blocks, secs, st, N, stepDur, songTime, finish, setPause, move, setAuto(v) { auto = !!v; } });   // (Object.assign would drop a setter)
 
     return () => {
-      clearInterval(tick); cancelAnimationFrame(raf);
+      clearInterval(tick); cancelAnimationFrame(raf); if (ro) ro.disconnect();
       removeEventListener('keydown', onKey); document.removeEventListener('visibilitychange', onVis);
       stage.classList.remove('sc-stage'); fsOff();
       try { ac.close(); } catch (e) { /* already closed */ }
