@@ -20,9 +20,19 @@
   // the home shows the «Cultura digital» side (technology, games, science, art): its stories, then its latest loose notes
   const CULT = ['Tecnología', 'Videojuegos', 'Ciencia', 'Arte y cultura'];
   const isCult = h => (h.eje ? h.eje === 'cultura' : CULT.indexOf(h.seccion) >= 0);
+  // the front page rotates: when the top story has had nothing new for a few hours, a fresher one among the top few leads,
+  // or (if none is fresh) they take turns every 3 h — the same for everyone, so the lead doesn't sit there a whole day
+  const rotateLead = list => {
+    if (list.length < 2) return list;
+    const H = 3600e3, now = Date.now(), newest = h => Math.max(0, ...(h.fuentes || []).map(f => Date.parse(f.publicado) || 0)), fresh = h => now - newest(h) < 4 * H;
+    if (fresh(list[0])) return list;
+    const pool = list.slice(0, 4); let k = pool.findIndex(fresh);
+    if (k < 0) k = Math.floor(now / (3 * H)) % pool.length;
+    return k ? [list[k], ...list.slice(0, k), ...list.slice(k + 1)] : list;
+  };
   function paint() {
     if (!data) return;
-    const hist = (data.historias || []).filter(h => h.titulo && isCult(h)).sort((a, b) => (b.relevancia || 0) - (a.relevancia || 0));
+    const hist = rotateLead((data.historias || []).filter(h => h.titulo && isCult(h)).sort((a, b) => (b.relevancia || 0) - (a.relevancia || 0)));
     const rows = hist.slice(0, 4).map(h => ({ sec: (h.seccion || '') + ' · ' + t('sources', '{n} medios', { n: new Set((h.fuentes || []).map(f => f.medio)).size }), title: h.titulo }));
     (data.cultura || []).forEach(b => { if (rows.length < 4 && b.titulo) rows.push({ sec: (b.seccion ? b.seccion + ' · ' : '') + b.medio, title: b.titulo }); });
     if (!rows.length) return;

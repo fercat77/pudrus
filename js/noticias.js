@@ -236,10 +236,20 @@
     if (scrollY > y) scrollTo({ top: y, behavior: 'smooth' });
   }
 
+  // the front page rotates: when the top story has had nothing new for a few hours, a fresher one among the top few leads,
+  // or (if none is fresh) they take turns every 3 h — the same for everyone, so the lead doesn't sit there a whole day
+  const rotateLead = list => {
+    if (list.length < 2) return list;
+    const H = 3600e3, now = Date.now(), newest = h => Math.max(0, ...(h.fuentes || []).map(f => Date.parse(f.publicado) || 0)), fresh = h => now - newest(h) < 4 * H;
+    if (fresh(list[0])) return list;
+    const pool = list.slice(0, 4); let k = pool.findIndex(fresh);
+    if (k < 0) k = Math.floor(now / (3 * H)) % pool.length;
+    return k ? [list[k], ...list.slice(0, k), ...list.slice(k + 1)] : list;
+  };
   function render() {
     const stories = (data.historias || []).filter(h => h.titulo && (!h.estado || h.estado === 'aprobada'));
-    const all = stories.filter(h => ejeOf(h) === tab)
-      .sort((a, b) => (b.relevancia || 0) - (a.relevancia || 0));
+    const all = rotateLead(stories.filter(h => ejeOf(h) === tab)
+      .sort((a, b) => (b.relevancia || 0) - (a.relevancia || 0)));
     const items = (data[tab] || []).filter(b => b.titulo);
     const medios = new Set(); stories.forEach(h => (h.fuentes || []).forEach(f => medios.add(f.medio))); TABS.forEach(k => (data[k] || []).forEach(b => medios.add(b.medio)));
     $('meta').textContent = [data.generado ? t('updated', 'Actualizado {t}', { t: ago(data.generado) }) : '', t('stories', '{n} historias', { n: stories.length }), t('sources', '{n} medios', { n: medios.size })].filter(Boolean).join(' · ');
