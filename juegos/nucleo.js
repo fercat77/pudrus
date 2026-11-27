@@ -481,6 +481,9 @@ void main() {
     const push = (p, n, uv, inf) => v.push(p[0], p[1], p[2], n[0], n[1], n[2], uv[0], uv[1], inf[0], inf[1], inf[2], 0);
     const quad = (a, b, c, d, n, ua, ub, uc, ud, inf) => { push(a, n, ua, inf); push(b, n, ub, inf); push(c, n, uc, inf); push(a, n, ua, inf); push(c, n, uc, inf); push(d, n, ud, inf); };
     const solidAt = (x, y) => x < 0 || y < 0 || x >= W || y >= H || grid[y * W + x] === 1;
+    // a wall from y = lo up to hi, cut in bands 2 high (the heights are all even): every vertical edge then has its vertices at the
+    // same heights as the faces beside it, so when the deep levels warp the structure no T-junction opens a crack
+    const wall = (A, B, n, along, lo, hi, inf) => { for (let y0 = lo; y0 < hi - 0.01; y0 = Math.min(hi, Math.floor(y0 / 2 + 1e-6) * 2 + 2)) { const y1 = Math.min(hi, Math.floor(y0 / 2 + 1e-6) * 2 + 2); quad([A[0], y0, A[1]], [A[0], y1, A[1]], [B[0], y1, B[1]], [B[0], y0, B[1]], n, [along[0], y0 - lo], [along[0], y1 - lo], [along[1], y1 - lo], [along[1], y0 - lo], inf); } };
     for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
       const i = y * W + x; if (grid[i]) continue;
       const x0 = x * CS, x1 = x0 + CS, z0 = y * CS, z1 = z0 + CS, h = ceil[i], s = slot(i);
@@ -492,10 +495,10 @@ void main() {
         const along = dx === 0 ? [A[0], B[0]] : [A[1], B[1]];
         // counter-clockwise seen from inside this cell (the back faces are culled)
         if (solidAt(x + dx, y + dy)) {
-          quad([A[0], 0, A[1]], [A[0], h, A[1]], [B[0], h, B[1]], [B[0], 0, B[1]], n, [along[0], 0], [along[0], h], [along[1], h], [along[1], 0], [h, 2, s]);
+          wall(A, B, n, along, 0, h, [h, 2, s]);
         } else {
           const hn = ceil[(y + dy) * W + x + dx];
-          if (hn < h - 0.01) quad([A[0], hn, A[1]], [A[0], h, A[1]], [B[0], h, B[1]], [B[0], hn, B[1]], n, [along[0], 0], [along[0], h - hn], [along[1], h - hn], [along[1], 0], [h - hn, 3, s]);
+          if (hn < h - 0.01) wall(A, B, n, along, hn, h, [h - hn, 3, s]);
         }
       }
     }
