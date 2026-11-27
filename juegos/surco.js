@@ -284,18 +284,19 @@
     }
 
     /* ── the layers' health → how they sound ── */
-    const H = [0.5, 0.5, 0.5], cut = [false, false, false]; let lastMix = '';
+    const H = [0.5, 0.5, 0.5], cut = [0, 0, 0]; let lastMix = '';
     function mix(now) {
       const s = secs[stepSec[Math.max(0, Math.min(N - 1, Math.floor(now / stepDur)))]];
       let dj = 0;   // a build-up opens a high-pass that lets go on the drop
       if (s.k === 'build') { const f = (now / stepDur - s.b0 * 16) / (s.bars * 16); dj = Math.max(0, Math.min(1, f)) * 0.42; }
-      const f = H.map((h, i) => (cut[i] ? 0.05 : 0.35 + 0.65 * h)), key = f.map(x => x.toFixed(2)).join() + dj.toFixed(2);   // (a cut instrument: almost silent, at once)
+      cut.forEach((c, i) => { if (c && now > c) cut[i] = 0; });   // a cut lasts a bar at most: never a song gone silent (in the break, with no drums, a few misses left nothing)
+      const f = H.map((h, i) => (cut[i] ? 0.3 : 0.35 + 0.65 * h)), lift = s.k === 'break' ? 3 : 1, key = f.map(x => x.toFixed(2)).join() + dj.toFixed(2) + lift;   // lift: the break is only arp and percussion, some 13 dB under the rest — on a phone speaker that was silence   // (a cut instrument: clearly dimmer, at once, but still there)
       if (key === lastMix) return; lastMix = key;
       D.synthStrip.set({ ...st.synth, level: st.synth.level * f[0] });
       D.synth.set({ ...st.synth, cutoff: st.synth.cutoff * (0.35 + 0.65 * H[0]) });
-      D.arpStrip.set({ ...st.arp, level: st.arp.level * f[1] });
-      st.rings.forEach((r, i) => D.ringStrips[i].set({ ...r, level: r.level * f[2] }));
-      [1, 2, 5, 6].forEach(i => D.drumStrips[i].set({ ...st.drums[i], level: st.drums[i].level * (0.25 + 0.75 * f[2]) }));
+      D.arpStrip.set({ ...st.arp, level: st.arp.level * f[1] * lift });
+      st.rings.forEach((r, i) => D.ringStrips[i].set({ ...r, level: r.level * f[2] * lift }));
+      [1, 2, 5, 6].forEach(i => D.drumStrips[i].set({ ...st.drums[i], level: st.drums[i].level * (0.25 + 0.75 * f[2]) * lift }));
       D.setMix({ ...deckMix, dj }, 1);
     }
 
@@ -329,12 +330,12 @@
     function hitNote(q, d) {
       const a = Math.abs(d), j = a <= WIN.perfect ? 0 : a <= WIN.good ? 1 : 2;
       q.st = 1; q.j = j; q.err = d; P.combo++; P.maxCombo = Math.max(P.maxCombo, P.combo); P.caught++; P.jc[j]++; P.errSum += d;
-      P.score += [300, 200, 100][j] * mult(); H[q.ly] = Math.min(1, H[q.ly] + 0.09); cut[q.ly] = false;
+      P.score += [300, 200, 100][j] * mult(); H[q.ly] = Math.min(1, H[q.ly] + 0.09); cut[q.ly] = 0;
       judge(j === 0 ? tr('¡Perfecto!', 'Perfect!') : j === 1 ? tr('Bien', 'Good') : d < 0 ? tr('Temprano', 'Early') : tr('Tarde', 'Late'), 'j' + j);
       { const [bx, bs] = side(q.s, (q.lane - 1) * LW); burst(bx, at(Y, q.s) + 0.45, bs, COL[q.ly], j === 0 ? 22 : 12); } P.rings.push({ life: 0.45, c: COL[q.ly] });
       if (q.dur) { q.hold = 1; q.tick = q.t; P.act[q.lane] = q; }
     }
-    function missNote(q) { q.st = 2; P.combo = 0; P.missed++; H[q.ly] = Math.max(0, H[q.ly] - 0.15); cut[q.ly] = true; judge(tr('Fallaste', 'Missed'), 'miss'); }
+    function missNote(q) { q.st = 2; P.combo = 0; P.missed++; H[q.ly] = Math.max(0, H[q.ly] - 0.15); cut[q.ly] = songNow() + 16 * stepDur; judge(tr('Fallaste', 'Missed'), 'miss'); }
     function hitBlock(b) {
       b.st = 1; P.combo = 0; P.hitBlocks++; P.score = Math.max(0, P.score - 300); P.glitch = 1;
       for (let i = 0; i < 3; i++) H[i] = Math.max(0, H[i] - 0.08);
@@ -380,6 +381,7 @@
       paused = v; pauseEl.hidden = !v;
       try { if (v) ac.suspend(); else ac.resume(); } catch (e) { /* ignore */ }
     }
+    ac.onstatechange = () => { if (ac.state !== 'running' && ac.state !== 'closed' && !paused && !ended && ac.currentTime > T0) setPause(true); };   // the phone took the sound away (a call, a notification, another app): pause, and the tap that resumes brings it back
 
     /* ── the loop ── */
     let W = 0, Hh = 0, dpr = 1;
@@ -435,7 +437,7 @@
       if (hk !== hudKey) {   // the HUD: the DOM only when something changed
         hudKey = hk; scoreEl.textContent = P.score.toLocaleString(J.LOCALE);
         comboEl.textContent = P.combo > 1 ? `×${mult()} · ${P.combo}` : '';
-        H.forEach((h, i) => { mEls[i].style.transform = `scaleX(${Math.round(h * 20) / 20})`; mEls[i].parentNode.classList.toggle('cut', cut[i]); });
+        H.forEach((h, i) => { mEls[i].style.transform = `scaleX(${Math.round(h * 20) / 20})`; mEls[i].parentNode.classList.toggle('cut', !!cut[i]); });
       }
       const n = Math.max(0, Math.min(N - 1, Math.floor(now / stepDur))), si = stepSec[n];
       const pw = `scaleX(${Math.round(Math.max(0, Math.min(1, now / (N * stepDur))) * 200) / 200})`; if (pw !== progFill.style.transform) progFill.style.transform = pw;
