@@ -12,6 +12,7 @@
   const { tr, el } = J;
 
   const LANES = 3, LW = 2.1;           // lanes, lane width (m)
+  const AHEAD = 4;                     // the hit line is this far ahead of the ship: it shoots the notes there (m)
   const SHOW = 260;                    // how far ahead the track is drawn (m)
   const LAYERS = [
     { k: 'bass', name: tr('Bajo', 'Bass'), shape: 'sq' },
@@ -181,8 +182,9 @@
       for (let n = 32; n < N - 16; n++) {   // (two quiet bars first, and the last bar empty)
         const v = varAt(n), e = stepE[n], p = n % 16, h = has(v, n), t = n * stepDur;
         let ly = -1, lane = 1;
-        if (p % 4 === 0) {   // the beat: the middle lane
+        if (p % 4 === 0) {   // the beat: the middle lane (easy: beats 2 and 4 go to the side the bass is heading, so you move)
           if (h.kick) ly = 2; else if (h.arp) ly = 1; else if (h.ring) ly = 2;
+          if (ly >= 0 && diff === 'facil' && (p === 4 || p === 12)) { let b = null; for (let k = 0; k < 4 && !b; k++) b = has(varAt(n + k), n + k).bass; if (b) lane = sideFor(b.deg); else { lane = (alt++ % 2) * 2; side = lane; } }
         } else if (diff === 'facil') continue;
         else if (p % 4 === 2) {   // the off-beat: a side lane
           if (h.bass) { ly = 0; lane = sideFor(h.bass.deg); }
@@ -193,14 +195,28 @@
         }
         if (ly >= 0) notes.push({ n, t, lane, ly, s: S[n], st: 0 });
       }
-      // static blocks: in the build-ups and drops, on free odd 16ths, never on the lane a nearby note asks for
+      // held notes, where something really holds: the snare roll at the end of each build-up (held into the drop) and, in the break,
+      // one per two-bar phrase of the arp. Easy and normal: nothing else to play meanwhile (one finger); hard: the beats go on in the middle (two fingers)
+      const holds = []; let hb = 0;
+      secs.forEach(sc => {
+        if (sc.k === 'build' && sc.bars >= 4) holds.push({ n0: (sc.b0 + sc.bars - 2) * 16, n1: (sc.b0 + sc.bars) * 16, ly: 2, lane: diff === 'dificil' ? (hb++ % 2 ? 0 : 2) : 1 });
+        if (sc.k === 'break') for (let b = 0; b + 1 < sc.bars; b += 2) { const n0 = (sc.b0 + b) * 16; holds.push({ n0, n1: n0 + 12, ly: 1, lane: (b / 2) % 2 ? 2 : 0 }); }
+      });
+      for (const hd of holds) {
+        if (hd.n0 < 32 || hd.n1 > N - 16) continue;
+        const t0 = hd.n0 * stepDur, t1 = hd.n1 * stepDur;
+        for (let i = notes.length - 1; i >= 0; i--) { const q = notes[i]; if (q.t < t0 - 1e-6 || q.t >= t1 - 1e-6) continue; if (diff !== 'dificil' || q.lane !== 1 || q.t < t0 + 1e-6) notes.splice(i, 1); }   // (hard: the middle goes on from the next beat)
+        notes.push({ n: hd.n0, t: t0, lane: hd.lane, ly: hd.ly, s: S[hd.n0], st: 0, dur: t1 - t0, sEnd: S[hd.n1], hold: 0 });   // hold: 1 holding, 2 held to the end, 3 let go
+      }
+      notes.sort((a, b) => a.t - b.t);
+      // static blocks: in the build-ups and drops, on free odd 16ths, never on the lane a nearby note asks for (nor while a note is held)
       for (let n = 32; n < N - 16; n++) {
         const s = secs[stepSec[n]]; if (s.k !== 'drop' && s.k !== 'build') continue;
         if (n % 2 !== 1 || rnd() > (s.k === 'drop' ? 0.05 : 0.025) * (diff === 'facil' ? 0.5 : 1)) continue;   // (on the odd 16ths: between the notes)
         const t = n * stepDur, nw = diff === 'dificil' ? 0.17 : 0.3, near = notes.filter(q => Math.abs(q.t - t) < nw), busy = new Set(near.map(q => q.lane));
-        const free = [0, 1, 2].filter(l => !busy.has(l)); if (!free.length || near.some(q => Math.abs(q.t - t) < 0.09)) continue;
+        const free = [0, 1, 2].filter(l => !busy.has(l)); if (!free.length || near.some(q => Math.abs(q.t - t) < 0.09) || notes.some(q => q.dur && t > q.t - 0.3 && t < q.t + q.dur + 0.2)) continue;
         if (free.length === 3) free.splice(1, 1);   // with nothing near: never the middle (there's always a way round)
-        blocks.push({ n, t, lane: free[Math.floor(rnd() * free.length)], s: S[n], st: 0 });
+        blocks.push({ n, t, lane: free[Math.floor(rnd() * free.length)], s: S[n] - AHEAD, st: 0 });   // (they meet the ship, behind the line)
       }
     }
 
@@ -228,7 +244,7 @@
     wrap.append(cv, hudL, meters, prog, bigEl, judgeEl, hint, pauseBtn, fsBtn, pauseEl);
     stage.append(wrap);
     if (touch && fsOK) fsOn();   // on a phone: the whole screen (the start tap is the gesture it needs)
-    const COL = COLS(), RGC = new WeakMap(), rgba = (c, a) => {   // rgba(), cached per colour (alpha rounded to 0.02)
+    const COL = COLS(), WHITE = [255, 255, 255], RGC = new WeakMap(), rgba = (c, a) => {   // rgba(), cached per colour (alpha rounded to 0.02)
       const k = Math.round(Math.max(0, Math.min(1, +a)) * 50); let m = RGC.get(c); if (!m) { m = []; RGC.set(c, m); }
       return m[k] || (m[k] = `rgba(${Math.round(c[0])},${Math.round(c[1])},${Math.round(c[2])},${k / 50})`);
     };
@@ -284,7 +300,7 @@
     }
 
     /* ── play state ── */
-    const P = { lane: 1, x: 1, score: 0, combo: 0, maxCombo: 0, caught: 0, missed: 0, hitBlocks: 0, fx: [], rings: [], glitch: 0, tilt: 0, done: false, frames: 0, pads: [0, 0, 0], jc: [0, 0, 0], errSum: 0, ghost: 0 };
+    const P = { lane: 1, x: 1, score: 0, combo: 0, maxCombo: 0, caught: 0, missed: 0, hitBlocks: 0, fx: [], rings: [], glitch: 0, tilt: 0, done: false, frames: 0, pads: [0, 0, 0], jc: [0, 0, 0], errSum: 0, ghost: 0, beams: [], act: [null, null, null], holdN: notes.filter(q => q.dur).length, holdOk: 0 };
     let ni = 0;   // the first note not judged yet
     let hudKey = '', paused = false, raf = 0, ended = false, lastSec = -1, bigT = 0, auto = false, prevNow = -1;
     const mult = () => Math.min(8, 1 + Math.floor(P.combo / 8));
@@ -299,6 +315,14 @@
       let best = null, bd = 9;
       for (let i = ni; i < notes.length; i++) { const q = notes[i]; if (q.t - t > WIN.ok) break; if (q.st || q.lane !== lane) continue; const d = t - q.t; if (Math.abs(d) <= WIN.ok && Math.abs(d) < Math.abs(bd)) { best = q; bd = d; } }
       if (best) hitNote(best, bd); else P.ghost++;
+      P.beams.push({ lane, hit: !!best, c: best ? COL[best.ly] : [210, 230, 255], life: 0.16 });   // the shot (instant: the judging is when you struck)
+    }
+    // what's held down right now (keys, fingers, pad buttons) — a held note lasts while its lane is held
+    const KH = {}, PH = new Map(), GH = {};
+    const laneHeld = l => auto || Object.values(KH).includes(l) || [...PH.values()].includes(l) || Object.values(GH).includes(l);
+    function release(lane) {
+      const q = P.act[lane]; if (!q || laneHeld(lane)) return;
+      P.act[lane] = null; if (songNow() < q.t + q.dur - 0.1) { q.hold = 3; judge(tr('Soltaste', 'Let go'), 'j2'); }   // (no streak lost: only the tail)
     }
     function move(d) { if (paused || ended) return; P.lane = Math.max(0, Math.min(LANES - 1, P.lane + d)); hint.classList.add('off'); }
     function burst(x, y, s, c, nn) { for (let i = 0; i < nn; i++) { const a = Math.random() * 6.283, v = 2 + Math.random() * 7; P.fx.push({ x, y: y + 0.3, s, vx: Math.cos(a) * v, vy: Math.sin(a) * v * 0.6 + 3, vs: (Math.random() - 0.3) * 6, life: 0.5 + Math.random() * 0.4, c }); } }
@@ -308,6 +332,7 @@
       P.score += [300, 200, 100][j] * mult(); H[q.ly] = Math.min(1, H[q.ly] + 0.09); cut[q.ly] = false;
       judge(j === 0 ? tr('¡Perfecto!', 'Perfect!') : j === 1 ? tr('Bien', 'Good') : d < 0 ? tr('Temprano', 'Early') : tr('Tarde', 'Late'), 'j' + j);
       { const [bx, bs] = side(q.s, (q.lane - 1) * LW); burst(bx, at(Y, q.s) + 0.45, bs, COL[q.ly], j === 0 ? 22 : 12); } P.rings.push({ life: 0.45, c: COL[q.ly] });
+      if (q.dur) { q.hold = 1; q.tick = q.t; P.act[q.lane] = q; }
     }
     function missNote(q) { q.st = 2; P.combo = 0; P.missed++; H[q.ly] = Math.max(0, H[q.ly] - 0.15); cut[q.ly] = true; judge(tr('Fallaste', 'Missed'), 'miss'); }
     function hitBlock(b) {
@@ -321,18 +346,23 @@
     const onKey = e => {
       if (e.repeat || document.querySelector('.sc-cal')) return;
       const k = e.code;
-      if (k in LANE_KEYS) { strike(LANE_KEYS[k], evTime(e)); e.preventDefault(); }
+      if (k in LANE_KEYS) { KH[k] = LANE_KEYS[k]; strike(LANE_KEYS[k], evTime(e)); e.preventDefault(); }
       else if (k === 'ArrowLeft') { move(-1); e.preventDefault(); }
       else if (k === 'ArrowRight') { move(1); e.preventDefault(); }
-      else if (k === 'Space' || k === 'ArrowUp') { strike(P.lane, evTime(e)); e.preventDefault(); }
+      else if (k === 'Space' || k === 'ArrowUp') { KH[k] = P.lane; strike(P.lane, evTime(e)); e.preventDefault(); }
       else if (k === 'KeyP' || k === 'Escape') { setPause(!paused); e.preventDefault(); }
     };
     addEventListener('keydown', onKey);
+    const onKeyUp = e => { if (e.code in KH) { const l = KH[e.code]; delete KH[e.code]; release(l); } };
+    const onBlur = () => { for (const k in KH) delete KH[k]; PH.clear(); for (let l = 0; l < 3; l++) release(l); };
+    addEventListener('keyup', onKeyUp); addEventListener('blur', onBlur);
     const onDown = e => {
       if (paused) { setPause(false); return; }
-      const R = wrap.getBoundingClientRect(); strike(Math.max(0, Math.min(2, Math.floor((e.clientX - R.left) / R.width * 3))), evTime(e)); e.preventDefault();   // each third of the screen is a lane
+      const R = wrap.getBoundingClientRect(), l = Math.max(0, Math.min(2, Math.floor((e.clientX - R.left) / R.width * 3)));   // each third of the screen is a lane
+      PH.set(e.pointerId, l); strike(l, evTime(e)); e.preventDefault();
     };
-    cv.addEventListener('pointerdown', onDown);
+    const onUp = e => { if (!PH.has(e.pointerId)) return; const l = PH.get(e.pointerId); PH.delete(e.pointerId); release(l); };
+    cv.addEventListener('pointerdown', onDown); addEventListener('pointerup', onUp); addEventListener('pointercancel', onUp);
     pauseEl.addEventListener('click', () => setPause(false));
     pauseBtn.addEventListener('click', e => { e.stopPropagation(); setPause(!paused); });
     const onVis = () => { if (document.hidden && !paused && !ended) setPause(true); };
@@ -342,7 +372,7 @@
       const gp = navigator.getGamepads ? [...navigator.getGamepads()].find(x => x && x.connected) : null; if (!gp) return;
       const ax = gp.axes[0] || 0, l = ax < -0.5 || (gp.buttons[14] && gp.buttons[14].pressed), r = ax > 0.5 || (gp.buttons[15] && gp.buttons[15].pressed);
       if (l && !pad.l) move(-1); if (r && !pad.r) move(1); pad.l = l; pad.r = r;
-      [[2, 0], [3, 1], [1, 2], [0, -1]].forEach(([bi, ln]) => { const on = !!(gp.buttons[bi] && gp.buttons[bi].pressed); if (on && !pad['b' + bi]) strike(ln < 0 ? P.lane : ln, songNow()); pad['b' + bi] = on; });   // X Y B: the lanes · A: this lane
+      [[2, 0], [3, 1], [1, 2], [0, -1]].forEach(([bi, ln]) => { const on = !!(gp.buttons[bi] && gp.buttons[bi].pressed); if (on && !pad['b' + bi]) { const l = ln < 0 ? P.lane : ln; GH[bi] = l; strike(l, songNow()); } else if (!on && pad['b' + bi] && bi in GH) { const l = GH[bi]; delete GH[bi]; release(l); } pad['b' + bi] = on; });   // X Y B: the lanes · A: this lane
       const sb = gp.buttons[9] && gp.buttons[9].pressed; if (sb && !pad.s) setPause(!paused); pad.s = sb;
     }
     function setPause(v) {
@@ -380,6 +410,18 @@
       // a note nobody struck inside its window is missed (whatever frames a slow phone skipped)
       for (let i = ni; i < notes.length; i++) { const q = notes[i]; if (q.t > now) break; if (!q.st && now > q.t + WIN.ok) missNote(q); }
       while (ni < notes.length && notes[ni].st) ni++;
+      for (let l = 0; l < 3; l++) {   // held notes: points every 16th while held, the instrument comes up, a bonus at the end
+        const q = P.act[l]; if (!q) continue;
+        if (!laneHeld(l)) { release(l); continue; }
+        P.pads[l] = 1;
+        while (q.tick + stepDur <= Math.min(now, q.t + q.dur)) { q.tick += stepDur; P.score += 25 * mult(); }
+        H[q.ly] = Math.min(1, H[q.ly] + dt * 0.4);
+        if (now >= q.t + q.dur - 0.1) {
+          q.hold = 2; P.act[l] = null; P.holdOk++; P.score += 500 * mult(); judge(tr('¡Sostenido!', 'Held!'), 'j0');
+          const sl = distAt(now), [bx, bs] = side(sl, (l - 1) * LW); burst(bx, at(Y, sl) + 0.45, bs, COL[q.ly], 26); P.rings.push({ life: 0.45, c: COL[q.ly] });
+        }
+      }
+      P.beams = P.beams.filter(b => (b.life -= dt) > 0);
       P.pads = P.pads.map(v => Math.max(0, v - dt * 5));
       void lane;
       for (const b of blocks) { if (b.st || b.t > now) continue; if (now > b.t + 0.06 && b.t < prevNow - 0.06) { b.st = 2; continue; } if (Math.abs(P.x - b.lane) < 0.5) hitBlock(b); else if (now > b.t + 0.06) b.st = 2; }
@@ -462,7 +504,7 @@
     let specGrad = null, specKey = '', camE = 0.3, psyA = 0, lastDraw = 0, camBank = 0, camLift = 0;
     let camY0 = null;
     function draw(now) {
-      const shipS = distAt(now), e = at(Em, shipS), hue = at(Hm, shipS);
+      const lineS = distAt(now), shipS = lineS - AHEAD, e = at(Em, lineS), hue = at(Hm, lineS);   // the hit line is where the music is; the ship, a little behind
       const kick = kicks.length ? Math.exp(-Math.max(0, now - (kicks.filter(k => k <= now).pop() ?? -9)) * 7) : 0;
       const hat = hats.length ? Math.exp(-Math.max(0, now - (hats.filter(k => k <= now).pop() ?? -9)) * 14) : 0;
       while (kicks.length > 8 && kicks[1] < now) kicks.shift();
@@ -638,7 +680,7 @@
       }
       // the hit line: a bar of light across the lanes at the ship, a pad on each lane (lit when you strike it),
       // and on each lane a ring in the colour of its next note, closing in on the pad: it meets it right on the note's time
-      { const sL = shipS, yL = at(Y, sL) + 0.04, LP = u => { const [x2, s2] = side(sL, u); return proj(x2, yL, s2); }, a = LP(-half), b = LP(half);
+      { const sL = lineS, yL = at(Y, sL) + 0.04, LP = u => { const [x2, s2] = side(sL, u); return proj(x2, yL, s2); }, a = LP(-half), b = LP(half);
         if (a && b) {
           g.strokeStyle = HS(hue - 40, 100, 78, 0.9); g.lineWidth = Math.max(2, 3 * dpr); g.beginPath(); g.moveTo(a[0], a[1]); g.lineTo(b[0], b[1]); g.stroke();
           const nq = [null, null, null]; for (let i = ni; i < notes.length; i++) { const q = notes[i]; if (q.t > now + 0.8) break; if (!q.st && !nq[q.lane]) nq[q.lane] = q; }
@@ -651,6 +693,20 @@
             const q = nq[k]; if (q) { const f = Math.max(0, (q.t - now) / 0.8); g.strokeStyle = rgba(COL[q.ly], (0.95 - f * 0.6).toFixed(2)); g.lineWidth = Math.max(1, 2.5 * dpr); g.beginPath(); g.ellipse(p[0], p[1], rx * (1 + f * 2.2), ry * (1 + f * 2.2), 0, 0, 6.2832); g.stroke(); }
           }
         }
+      }
+      // held notes: a ribbon down the lane to where the hold ends; while you hold it, it runs from the line, bright and flickering
+      for (const q of notes) {
+        if (!q.dur || q.hold === 2 || q.sEnd < cam.s + 1.2 || q.s > cam.s + SHOW) continue;
+        const holding = q.hold === 1, s0 = Math.max(q.st === 1 ? lineS : q.s, cam.s + 1.2), s1 = Math.min(q.sEnd, cam.s + SHOW); if (s1 <= s0) continue;
+        const dim = q.st === 2 || q.hold === 3 ? 0.25 : 1, u = (q.lane - 1) * LW, wv = LW * (holding ? 0.2 : 0.15), Lq = [], Rq = [];
+        for (let s2 = s0, k = 0; k < 80; k++) {
+          const y = at(Y, s2) + 0.05, [lx, ls] = side(s2, u - wv), [rx, rs] = side(s2, u + wv), a = proj(lx, y, ls), b = proj(rx, y, rs); if (a && b) { Lq.push(a); Rq.push(b); }
+          if (s2 >= s1) break; s2 = Math.min(s1, s2 + (s2 - cam.s < 40 ? 2.6 : 6));
+        }
+        if (Lq.length < 2) continue;
+        g.beginPath(); g.moveTo(Lq[0][0], Lq[0][1]); for (let i = 1; i < Lq.length; i++) g.lineTo(Lq[i][0], Lq[i][1]); for (let i = Rq.length - 1; i >= 0; i--) g.lineTo(Rq[i][0], Rq[i][1]); g.closePath();
+        g.fillStyle = rgba(COL[q.ly], (holding ? 0.6 + 0.25 * Math.sin(now * 30) : 0.38) * dim); g.fill();
+        g.strokeStyle = rgba(COL[q.ly], 0.9 * dim); g.lineWidth = Math.max(1, 1.5 * dpr); g.stroke();
       }
       // notes (little 3D pieces that spin) and static blocks, far to near
       const objs = [];
@@ -706,6 +762,16 @@
       // the engines' flame behind it
       const eng = rot([0, 0.17, -0.9], bank, pitch, shipYaw), ep = proj(shipX + eng[0] * 0.9, sy + eng[1] * 0.9, ss + eng[2] * 0.9);
       if (ep) { const r = (0.4 + 0.2 * kick + Math.random() * 0.08) * ep[2], gr = g.createRadialGradient(ep[0], ep[1], 0, ep[0], ep[1], r); gr.addColorStop(0, 'rgba(255,255,255,0.95)'); gr.addColorStop(0.3, `hsla(${hue - 40},100%,65%,0.8)`); gr.addColorStop(1, `hsla(${hue - 40},100%,50%,0)`); g.fillStyle = gr; g.beginPath(); g.arc(ep[0], ep[1], r, 0, 6.283); g.fill(); }
+      // the shots: a laser from the nose to the lane on the hit line (a miss flies on into the distance); a held note keeps it on
+      { const nose = rot([0, 0.12, 1.9], bank, pitch, shipYaw), np = proj(shipX + nose[0], sy + nose[1], ss + nose[2]);
+        const shot = (lane, c, al, far, wd) => {
+          const sT = lineS + (far ? 26 : 0), [tx, ts] = side(sT, (lane - 1) * LW), tp = proj(tx, at(Y, sT) + 0.45, ts); if (!np || !tp) return;
+          g.lineCap = 'round'; g.strokeStyle = rgba(c, 0.35 * al); g.lineWidth = Math.max(2, wd * 3 * dpr); g.beginPath(); g.moveTo(np[0], np[1]); g.lineTo(tp[0], tp[1]); g.stroke();
+          g.strokeStyle = rgba(WHITE, 0.9 * al); g.lineWidth = Math.max(1, wd * dpr); g.stroke(); g.lineCap = 'butt';
+        };
+        for (const b of P.beams) shot(b.lane, b.c, b.life / 0.16, !b.hit, 2);
+        for (let l = 0; l < 3; l++) if (P.act[l]) shot(l, COL[P.act[l].ly], 0.7 + 0.3 * Math.sin(now * 40), false, 1.5);
+      }
       const tone = (h, s, l) => `hsl(${h},${s}%,${l}%)`;
       g.lineWidth = Math.max(1, 1.2 * dpr);
       mesh(SHIP_V, SHIP_F, shipX, sy, ss, bank, pitch, shipYaw, 1.0, (k, l) => {
@@ -735,6 +801,7 @@
       const words = { S: tr('¡Perfecto!', 'Perfect!'), A: tr('¡Muy bien surfeado!', 'Nicely surfed!'), B: tr('Buen surco', 'A good groove'), C: tr('El tema sonó a medias', 'The song half played'), D: tr('El tema se apagó', 'The song faded out') };
       const box = el('div', 'sc-res');
       LAYERS.forEach((Lr, i) => { const t = notes.filter(q => q.ly === i), c = t.filter(q => q.st === 1).length; const r = el('div', 'sc-rrow'); r.style.setProperty('--c', `rgb(${COL[i].join(',')})`); r.append(el('span', null, Lr.name), el('b', null, t.length ? Math.round(c / t.length * 100) + '%' : '—')); box.append(r); });
+      if (P.holdN) { const hr = el('div', 'sc-rrow'); hr.style.setProperty('--c', '#fff'); hr.append(el('span', null, tr('Sostenidas', 'Held notes')), el('b', null, `${P.holdOk}/${P.holdN}`)); box.append(hr); }
       const jr = el('div', 'sc-rrow sc-rj'); jr.append(el('span', null, tr(`Perfectos ${P.jc[0]} · Bien ${P.jc[1]} · Justos ${P.jc[2]} · Fallados ${P.missed}`, `Perfect ${P.jc[0]} · Good ${P.jc[1]} · Close ${P.jc[2]} · Missed ${P.missed}`))); box.append(jr);
       if (P.caught >= 12 && Math.abs(mean) > 0.025) box.append(el('p', 'sc-rtip', tr(`En promedio tocaste ${Math.round(Math.abs(mean) * 1000)} ms ${mean > 0 ? 'tarde' : 'temprano'}: si te pasa siempre, probá «Calibrar sonido».`, `On average you struck ${Math.round(Math.abs(mean) * 1000)} ms ${mean > 0 ? 'late' : 'early'}: if it always happens, try «Calibrate audio».`)));
       ctx.done({ score: P.score, text: `${grade} · ${words[grade]}`,
@@ -744,11 +811,11 @@
 
     raf = requestAnimationFrame(frame);
     ctx.hud(`<span class="jg-hud-i">${STYLES[style]} · ${bpm} BPM</span>`);
-    Object.assign(ctx.test, { quality: () => Q, lockQ(v) { Q = v; qLock = true; }, diff, OFF, strike, songNow, cam, P, H, notes, blocks, secs, st, N, stepDur, songTime, finish, setPause, move, setAuto(v) { auto = !!v; } });   // (Object.assign would drop a setter)
+    Object.assign(ctx.test, { quality: () => Q, lockQ(v) { Q = v; qLock = true; }, diff, OFF, strike, songNow, cam, P, H, notes, blocks, secs, st, N, stepDur, songTime, finish, setPause, move, setAuto(v) { auto = !!v; }, press(l) { KH['T' + l] = l; strike(l, songNow()); }, lift(l) { delete KH['T' + l]; release(l); } });   // (Object.assign would drop a setter)
 
     return () => {
       clearInterval(tick); cancelAnimationFrame(raf); if (ro) ro.disconnect();
-      removeEventListener('keydown', onKey); document.removeEventListener('visibilitychange', onVis);
+      removeEventListener('keydown', onKey); removeEventListener('keyup', onKeyUp); removeEventListener('blur', onBlur); removeEventListener('pointerup', onUp); removeEventListener('pointercancel', onUp); document.removeEventListener('visibilitychange', onVis);
       stage.classList.remove('sc-stage'); fsOff();
       try { ac.close(); } catch (e) { /* already closed */ }
     };
@@ -762,12 +829,12 @@
   J.GAMES.push({
     id: 'surco', wide: true, noDaily: true, title: tr('Surco', 'Groove'), tag: tr('Ritmo · nuevo', 'Rhythm · new'), art: ART,
     desc: tr('SYNDRUS compone un tema y vos lo tocás: pegale a cada nota en su momento y el tema suena completo.', 'SYNDRUS composes a song and you play it: strike each note on time and the song plays in full.'),
-    how: tr('SYNDRUS compone un tema nuevo cada vez, con intro, subidas, drops, un corte y un cierre, y la pista lo sigue. Por los tres carriles vienen las notas del tema, cada una de un instrumento: cubos rojos el bajo, rombos celestes el arpegio, esferas amarillas la percusión. Las notas siguen el groove: el carril del centro marca el tiempo (el bombo) y los de los costados lo que cae entre medio (el bajo, a la izquierda si baja y a la derecha si sube). Pegale a cada nota justo cuando cruza la línea de luz de la nave: un anillo de su color se cierra sobre el carril y la toca en el momento exacto. Según tu precisión: ¡Perfecto!, Bien, o Temprano/Tarde. Si fallás una, ese instrumento se corta hasta que vuelvas a acertarle. La racha multiplica (hasta ×8). Esquivá los bloques de estática. Compu: A S D (o J K L) tocan cada carril; ← → mueven sin tocar, Espacio toca el carril donde estás, P pausa. Celular: tocá el tercio de la pantalla de cada carril. Joystick: X Y B tocan cada carril, A el actual. Antes de jugar, «Calibrar sonido» mide la demora de tu parlante o auriculares (los Bluetooth tardan bastante): con eso la nota suena justo cuando le pegás. Con auriculares se disfruta más.',
-      'SYNDRUS composes a new song every time, with an intro, build-ups, drops, a break and an outro, and the track follows it. The notes of the song come down the three lanes, each from an instrument: red cubes the bass, cyan diamonds the arp, yellow orbs the percussion. The notes follow the groove: the middle lane is the beat (the kick) and the side lanes what falls in between (the bass, left when it goes down, right when it goes up). Strike each note right as it crosses the ship\'s line of light: a ring in its colour closes in on the lane and meets it at the exact moment. By your timing: Perfect!, Good, or Early/Late. Miss one and that instrument cuts out until you hit it again. Your streak multiplies (up to ×8). Dodge the static blocks. Computer: A S D (or J K L) strike each lane; ← → move without striking, Space strikes your lane, P pauses. Phone: tap each lane\'s third of the screen. Gamepad: X Y B strike each lane, A the current one. Before playing, «Calibrate audio» measures your speaker\'s or headphones\' delay (Bluetooth lags a lot): then the note sounds right when you strike it. Best with headphones.'),
+    how: tr('SYNDRUS compone un tema nuevo cada vez, con intro, subidas, drops, un corte y un cierre, y la pista lo sigue. Por los tres carriles vienen las notas del tema, cada una de un instrumento: cubos rojos el bajo, rombos celestes el arpegio, esferas amarillas la percusión. Las notas siguen el groove: el carril del centro marca el tiempo (el bombo) y los de los costados lo que cae entre medio (el bajo, a la izquierda si baja y a la derecha si sube; en Fácil, una por tiempo: el 1 y el 3 al centro, el 2 y el 4 a un costado). La nave les dispara: tocá cada nota justo cuando cruza la línea de luz, delante de la nave: un anillo de su color se cierra sobre el carril y la toca en el momento exacto. Según tu precisión: ¡Perfecto!, Bien, o Temprano/Tarde. Si fallás una, ese instrumento se corta hasta que vuelvas a acertarle. Las notas con cola son sostenidas: tocalas a tiempo y mantené apretado hasta el final de la cola (el láser queda prendido); vienen en el redoble antes de cada drop y en las frases del corte. En Difícil, mientras sostenés, los tiempos siguen en el centro: otro dedo. La racha multiplica (hasta ×8). Esquivá los bloques de estática. Compu: A S D (o J K L) tocan cada carril; ← → mueven sin tocar, Espacio toca el carril donde estás, P pausa. Celular: tocá el tercio de la pantalla de cada carril. Joystick: X Y B tocan cada carril, A el actual. Antes de jugar, «Calibrar sonido» mide la demora de tu parlante o auriculares (los Bluetooth tardan bastante): con eso la nota suena justo cuando le pegás. Con auriculares se disfruta más.',
+      'SYNDRUS composes a new song every time, with an intro, build-ups, drops, a break and an outro, and the track follows it. The notes of the song come down the three lanes, each from an instrument: red cubes the bass, cyan diamonds the arp, yellow orbs the percussion. The notes follow the groove: the middle lane is the beat (the kick) and the side lanes what falls in between (the bass, left when it goes down, right when it goes up; on Easy, one per beat: 1 and 3 in the middle, 2 and 4 to a side). The ship shoots them: strike each note right as it crosses the line of light ahead of the ship: a ring in its colour closes in on the lane and meets it at the exact moment. By your timing: Perfect!, Good, or Early/Late. Miss one and that instrument cuts out until you hit it again. Notes with a tail are held: strike them on time and keep holding to the end of the tail (the laser stays on); they come in the snare roll before each drop and in the break\'s phrases. On Hard, while you hold, the beats go on in the middle: another finger. Your streak multiplies (up to ×8). Dodge the static blocks. Computer: A S D (or J K L) strike each lane; ← → move without striking, Space strikes your lane, P pauses. Phone: tap each lane\'s third of the screen. Gamepad: X Y B strike each lane, A the current one. Before playing, «Calibrate audio» measures your speaker\'s or headphones\' delay (Bluetooth lags a lot): then the note sounds right when you strike it. Best with headphones.'),
     get brief() {
       const t = isTouch();
-      return tr('SYNDRUS compone un tema y vos lo tocás. Pegale a cada nota cuando cruza la línea de la nave: ' + (t ? 'tocá el tercio de la pantalla de su carril.' : 'A S D (o J K L) para cada carril.') + ' El centro marca el tiempo; los costados, el contratiempo. Si fallás, ese instrumento se corta. Calibrá el sonido una vez, sobre todo con auriculares Bluetooth.',
-        'SYNDRUS composes a song and you play it. Strike each note as it crosses the ship\'s line: ' + (t ? 'tap its lane\'s third of the screen.' : 'A S D (or J K L) for each lane.') + ' The middle is the beat; the sides, the off-beat. Miss and that instrument cuts out. Calibrate the audio once, especially with Bluetooth headphones.');
+      return tr('SYNDRUS compone un tema y vos lo tocás: la nave le dispara a cada nota cuando cruza la línea de luz. ' + (t ? 'tocá el tercio de la pantalla de su carril.' : 'A S D (o J K L) para cada carril.') + ' El centro marca el tiempo; los costados, el contratiempo. Las notas con cola se mantienen apretadas. Si fallás, ese instrumento se corta. Calibrá el sonido una vez, sobre todo con auriculares Bluetooth.',
+        'SYNDRUS composes a song and you play it: the ship shoots each note as it crosses the line of light. ' + (t ? 'tap its lane\'s third of the screen.' : 'A S D (or J K L) for each lane.') + ' The middle is the beat; the sides, the off-beat. Notes with a tail are held down. Miss and that instrument cuts out. Calibrate the audio once, especially with Bluetooth headphones.');
     },
     startNote() {   // the difficulty, and the device's sound delay
       const box = el('div', 'sc-setup'), row = el('div', 'jg-btns sc-diff');
